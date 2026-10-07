@@ -76,6 +76,7 @@ textarea.inp{min-height:84px;resize:vertical;line-height:1.7}
 .pt.zero .a b{color:#999}
 .tag{display:inline-block;font-size:12px;font-weight:800;border-radius:6px;padding:0 6px;background:var(--gold-l);color:var(--gold-d);margin-inline-end:4px}
 .tag.sup{background:#ECEFF1;color:var(--blue)}
+.tag.off{background:#EEE;color:#777}
 /* صفحة الحساب */
 .phd{background:var(--ink);color:#fff;border-radius:16px;padding:14px 16px;margin-bottom:12px;border-bottom:4px solid var(--gold)}
 .phd h2{margin:0;font-size:24px;font-weight:800;line-height:1.3}
@@ -195,6 +196,7 @@ nav svg{width:26px;height:26px}
 .pg td{padding:7px 6px;text-align:center;border-bottom:1px solid #E4DCC8;word-wrap:break-word;vertical-align:middle}
 .pg td.l{text-align:right;font-weight:600}
 .pg td.dt{white-space:nowrap;font-size:13.5px;font-weight:600}
+.pg td:first-child{white-space:nowrap;font-size:13px}
 .pg tr:nth-child(even) td{background:#FBF5E6}
 .pg tr.op td{background:#EFE6CF;font-weight:800}
 .pg td.n{direction:ltr;font-weight:700}
@@ -559,7 +561,7 @@ function renderHome() {
   const probs = selfCheck();
   $('#chk').innerHTML = probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '';
   const bal = allBalances();
-  let ly = 0, al = 0; bal.forEach(v => { if (v > 0) ly += v; else al -= v; });
+  let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
   const net = ly - al;
   $('#hTots').innerHTML = `<div><span>ليا (فلوس عند الناس)</span><b>${fmtP(ly)}</b></div><div class="cr"><span>عليا (فلوس للناس)</span><b>${fmtP(al)}</b></div>
     <div class="k"><span>الصافي ${net >= 0 ? 'ليا' : 'عليا'}</span><b>${fmtP(Math.abs(net))} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>`;
@@ -581,7 +583,7 @@ function renderList(bal) {
   $('#hList').innerHTML = ps.map(p => {
     const b = bal.get(p.id) || 0;
     return `<div class="pt ${p.sec === 'sup' ? 'sup' : ''} ${b ? '' : 'zero'}" data-id="${esc(p.id)}">
-      <div class="m"><b>${esc(p.name)}</b><small><span class="tag ${p.sec === 'sup' ? 'sup' : ''}">${SEC1[p.sec]}</span>${esc(p.phone || '')}</small></div>
+      <div class="m"><b>${esc(p.name)}</b><small><span class="tag ${p.sec === 'sup' ? 'sup' : ''}">${SEC1[p.sec]}</span>${p.noTot ? '<span class="tag off">خارج الإجمالي</span>' : ''}${esc(p.phone || '')}</small></div>
       <div class="a"><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b><small>${balWord(b)}</small></div></div>`;
   }).join('');
   $$('#hList .pt').forEach(el => el.onclick = () => go('p/' + el.dataset.id));
@@ -599,6 +601,8 @@ function partyModal(p) {
     <div class="fld"><label>الاسم</label><input class="inp" id="pmN" value="${esc(p ? p.name : '')}" autocomplete="off"></div>
     <div class="fld"><label>التليفون (اختياري)</label><input class="inp" id="pmPh" inputmode="tel" style="direction:ltr;text-align:right" value="${esc(p ? p.phone || '' : '')}"></div>
     <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="pmNote" value="${esc(p ? p.note || '' : '')}"></div>
+    <div class="chkrow"><input type="checkbox" id="pmNoTot" ${p && p.noTot ? 'checked' : ''}><label for="pmNoTot">حساب فرعي: ميدخلش في أي إجماليات</label></div>
+    <p class="hint" style="margin:-4px 0 10px">زي فاتورة فرع محسوبة أصلاً في حساب الشركة الأساسية. الحساب بيفضل موجود بكشفه، بس رصيده مش بيتجمع مع ليا وعليا.</p>
     ${isNew ? `<div class="card" style="background:var(--gold-l);margin:4px 0 12px">
       <label>رصيد أول المدة (لو ليه رصيد قديم، وإلا سيبه فاضي)</label>
       <div class="seg dir" id="pmDir"><button type="button" data-v="dr" class="on">عليه (فلوس ليا عنده)</button><button type="button" data-v="cr">ليه (فلوس عليا له)</button></div>
@@ -617,16 +621,16 @@ function partyModal(p) {
     if (!name) return toast('اكتب الاسم');
     const dup = liveParties().find(x => x !== p && x.sec === sec && norm(x.name) === norm(name));
     if (dup && !(await confirmBox(`فيه حساب تاني بنفس الاسم "${dup.name}" في ${SECS[sec]}. تكمّل برضه؟`, 'أيوه كمّل'))) return;
-    const phone = normDigits($('#pmPh') ? $('#pmPh').value : '').trim(), note = ($('#pmNote') ? $('#pmNote').value : '').trim();
+    const phone = normDigits($('#pmPh') ? $('#pmPh').value : '').trim(), note = ($('#pmNote') ? $('#pmNote').value : '').trim(), noTot = $('#pmNoTot').checked;
     if (isNew) {
       const amt = toP($('#pmAmt').value), date = $('#pmDate').value || todayISO();
       const now = Date.now();
-      const np = {id: newId('p_'), sec, name, phone, note, at: now, upd: now, del: false};
+      const np = {id: newId('p_'), sec, name, phone, note, noTot, at: now, upd: now, del: false};
       db.parties.push(np); P.set(np.id, np);
       if (amt > 0) addEntry({party: np.id, kind: 'open', date, desc: 'رصيد أول المدة', dr: dir === 'dr' ? amt : 0, cr: dir === 'cr' ? amt : 0});
       saveDB(); closeModal(); toast('اتضاف الحساب ✔'); go('p/' + np.id);
     } else {
-      Object.assign(p, {sec, name, phone, note}); touch(p); saveDB(); closeModal(); route(); toast('اتحفظ ✔');
+      Object.assign(p, {sec, name, phone, note, noTot}); touch(p); saveDB(); closeModal(); route(); toast('اتحفظ ✔');
     }
   };
   if (!isNew) $('#pmDel').onclick = async () => {
@@ -691,7 +695,7 @@ function renderParty(id) {
   const list = all.filter(e => showX || !e.del).reverse();
   $('#p-party').innerHTML = `
     <div class="sech" style="margin-top:0"><a id="ppBack">→ كل الحسابات</a><a id="ppEdit">تعديل البيانات</a></div>
-    <div class="phd"><h2>${esc(p.name)}</h2><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}</small>
+    <div class="phd"><h2>${esc(p.name)}</h2><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}${p.noTot ? ' — <b style="color:var(--gold)">حساب فرعي خارج الإجماليات</b>' : ''}</small>
       <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))} <small style="font-size:14px;color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
     <div class="g2" style="margin-bottom:10px">
@@ -947,7 +951,7 @@ function rowsOf(e) {
     if (e.disc) out.push({date: e.date, desc: 'خصم', ref, dr: sale ? 0 : e.disc, cr: sale ? e.disc : 0});
     return out;
   }
-  if (e.kind === 'pay' || e.kind === 'ppay') return [{date: e.date, desc: (e.kind === 'pay' ? 'دفعة ' : 'دفعة ليه ') + (e.method || 'نقدي'), ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0}];
+  if (e.kind === 'pay' || e.kind === 'ppay') return [{date: e.date, desc: 'دفعة ' + (e.method || 'نقدي'), ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0}];
   return [{date: e.date, desc: e.desc, ref: e.kind === 'open' ? '' : '', dr: e.dr || 0, cr: e.cr || 0}];
 }
 function stmtData(pid, from, to) {
@@ -957,7 +961,10 @@ function stmtData(pid, from, to) {
   let run = open || 0, tdr = 0, tcr = 0;
   const rows = [];
   ents.forEach(e => rowsOf(e).forEach(r => { run += r.dr - r.cr; tdr += r.dr; tcr += r.cr; rows.push(Object.assign(r, {run})); }));
-  return {open, rows, n: ents.length, tdr, tcr, close: run, from, to};
+  /* زي الإكسيل: الرصيد بيتكتب من ناحية الطرف التاني (للمورد = اللي ليه)، وأي سطر بيزوّد الرصيد في عمود الإجمالي وأي سطر بينقّصه في عمود الدفعة */
+  const sg = P.get(pid).sec === 'sup' ? -1 : 1;
+  let tg = 0, tp = 0; rows.forEach(r => { const x = (r.dr - r.cr) * sg; r.gd = x > 0 ? x : 0; r.pd = x < 0 ? -x : 0; tg += r.gd; tp += r.pd; });
+  return {open, rows, n: ents.length, tdr, tcr, tg, tp, sg, close: run, from, to};
 }
 const periodText = s => s.from ? `من ${dispDate(s.from)} إلى ${dispDate(s.to)}` : (s.to && s.to !== todayISO() ? `الحساب كله حتى ${dispDate(s.to)}` : 'الحساب كله');
 function stmtModal(p) {
@@ -975,7 +982,7 @@ function stmtModal(p) {
     if (mode === 'range' && (!f || !to || f > to)) { $('#smOut').innerHTML = '<div class="empty">اختار تاريخ البداية قبل تاريخ النهاية</div>'; return null; }
     const s = stmtData(p.id, f, to);
     $('#smOut').innerHTML = `<div class="stm">${s.open !== null ? `<div><span>رصيد أول المدة</span><b>${fmtP(Math.abs(s.open))} <small>${balWord(s.open)}</small></b></div><div><span>عدد الحركات</span><b>${s.n}</b></div>` : `<div style="grid-column:1/-1"><span>عدد الحركات</span><b>${s.n}</b></div>`}
-      <div><span>إجمالي المدين</span><b>${fmtP(s.tdr)}</b></div><div><span>إجمالي الدائن</span><b>${fmtP(s.tcr)}</b></div>
+      <div><span>${s.sg < 0 ? 'إجمالي المشتريات' : 'إجمالي المسحوبات'}</span><b>${fmtP(s.tg)}</b></div><div><span>إجمالي الدفعات والخصومات</span><b>${fmtP(s.tp)}</b></div>
       <div class="k"><span>الرصيد النهائي (${balWord(s.close)})</span><b>${fmtP(Math.abs(s.close))}</b></div></div>`;
     return s;
   };
@@ -1004,11 +1011,11 @@ function buildStmtPages(p, s) {
   const over = (inn, el) => el.getBoundingClientRect().bottom > inn.getBoundingClientRect().bottom - 16;
   const mkTable = () => {
     const t = document.createElement('table');
-    t.innerHTML = `<colgroup><col style="width:4.5%"><col style="width:11.5%"><col style="width:25%"><col style="width:10%"><col style="width:10%"><col style="width:12%"><col style="width:12%"><col style="width:15%"></colgroup>
-      <thead><tr><th>#</th><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead><tbody></tbody>`;
+    t.innerHTML = `<colgroup><col style="width:6%"><col style="width:11.5%"><col style="width:23.5%"><col style="width:10%"><col style="width:10%"><col style="width:12%"><col style="width:12%"><col style="width:15%"></colgroup>
+      <thead><tr><th>#</th><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody></tbody>`;
     return t;
   };
-  const balCell = b => `<td class="b ${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))} <small>${b > 0 ? 'مدين' : b < 0 ? 'دائن' : ''}</small></td>`;
+  const balCell = b => `<td class="b">${fmtP(b * s.sg)}</td>`;
   let pg = shell(true), tbl = mkTable(); pg.inn.appendChild(tbl);
   const put = tr => {
     tbl.tBodies[0].appendChild(tr);
@@ -1017,14 +1024,12 @@ function buildStmtPages(p, s) {
   if (s.open !== null) { const tr = document.createElement('tr'); tr.className = 'op'; tr.innerHTML = `<td></td><td class="dt">${dispDate(s.from)}</td><td class="l">رصيد أول المدة</td><td></td><td></td><td></td><td></td>${balCell(s.open)}`; put(tr); }
   s.rows.forEach((r, i) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i + 1}</td><td class="dt">${dispDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td><td class="q">${esc(r.qty || '')}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.dr ? fmtP(r.dr) : ''}</td><td class="n">${r.cr ? fmtP(r.cr) : ''}</td>${balCell(r.run)}`;
+    tr.innerHTML = `<td>${i + 1}</td><td class="dt">${dispDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td><td class="q">${esc(r.qty || '')}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td>${balCell(r.run)}`;
     put(tr);
   });
   if (!s.rows.length) { const tr = document.createElement('tr'); tr.innerHTML = `<td colspan="8">مفيش حركات في الفترة دي</td>`; put(tr); }
   const sum = document.createElement('div'); sum.className = 'sum';
-  sum.innerHTML = (s.open !== null ? `<div class="l"><span>رصيد أول المدة</span><span>${fmtP(Math.abs(s.open))} ${s.open > 0 ? 'مدين' : s.open < 0 ? 'دائن' : ''}</span></div>` : '') +
-    `<div class="l"><span>إجمالي المدين</span><span>${fmtP(s.tdr)} ${CUR}</span></div><div class="l"><span>إجمالي الدائن</span><span>${fmtP(s.tcr)} ${CUR}</span></div>
-     <div class="f"><span>الرصيد النهائي ${s.close > 0 ? '(مدين)' : s.close < 0 ? '(دائن)' : ''}</span><b>${fmtP(Math.abs(s.close))} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div>`;
+  sum.innerHTML = `<div class="f"><span>الرصيد</span><b>${fmtP(s.close * s.sg)} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div>`;
   const note = document.createElement('div'); note.className = 'note';
   note.textContent = 'برجاء مراجعة الكشف، ولو فيه أي ملاحظة يا ريت تتواصلوا معانا.';
   [sum, note].forEach(el => { pg.inn.appendChild(el); if (over(pg.inn, el)) { el.remove(); pg = shell(false); pg.inn.appendChild(el); } });

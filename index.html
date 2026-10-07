@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="فلاش أون">
+<title>فلاش أون - الرئيسية</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;font-family:'Cairo',system-ui,sans-serif;background:#F5F2EA;color:#111;display:flex;flex-direction:column;align-items:center;padding:calc(28px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom))}
+.logo{width:190px;max-width:55vw;border-radius:18px;background:#fff;box-shadow:0 4px 18px #0002}
+h1{margin:14px 0 2px;font-size:30px;font-weight:800}
+p.sub{margin:0 0 26px;color:#9C7420;font-weight:700;text-align:center}
+.tools{width:100%;max-width:460px;display:grid;gap:16px}
+/* كل أداة = زرار كبير */
+.tool{display:flex;align-items:center;gap:16px;min-height:96px;padding:16px 20px;border-radius:18px;background:#111;color:#fff;text-decoration:none;font-size:24px;font-weight:800;border:3px solid #DAAE57;box-shadow:0 4px 14px #0003}
+.tool:active{transform:scale(.98)}
+.tool svg{width:44px;height:44px;flex:none;color:#DAAE57}
+.tool small{display:block;font-size:14px;font-weight:600;color:#ccc;margin-top:2px}
+</style>
+</head>
+<body>
+<img class="logo" src="icons/logo.jpg" alt="فلاش أون">
+<h1>فلاش أون</h1>
+<p class="sub">لصناعة الخراطيم والكابلات الكهربائية</p>
+
+<div class="tools">
+  <!-- لإضافة أداة جديدة: انسخ أي <a class="tool"> وغيّر الرابط والاسم -->
+  <a class="tool" href="quote.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+    <span>عرض سعر<small>عمل وأرشفة وإرسال عروض الأسعار</small></span>
+  </a>
+  <a class="tool" href="cost.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg>
+    <span>تكلفة الكيلو<small>حاسبة تكلفة كيلو الخرطوم والربح</small></span>
+  </a>
+  <a class="tool" href="delivery.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h13v10H1zM14 9h4l4 4v3h-8z"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+    <span>إذن تسليم<small>إذن خروج بضاعة للعميل مع توقيع المستلم</small></span>
+  </a>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).then(reg => {
+    reg.update().catch(() => {});
+    // نخزّن كل الأدوات علشان تفتح حتى من غير نت
+    document.querySelectorAll('a.tool').forEach(a => fetch(a.href, {cache: 'no-store'}).catch(() => {}));
+  }).catch(() => {});
+  // لو نسخة جديدة من التحديث اشتغلت، نعيد تحميل الصفحة مرة واحدة علشان تجيب الأحدث
+  let had = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!had) { had = true; return; }
+    if (!sessionStorage.getItem('sw_reload')) { sessionStorage.setItem('sw_reload', '1'); location.reload(); }
+  });
+}
+</script>
+</body>
+</html>

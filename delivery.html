@@ -216,19 +216,25 @@ nav svg{width:26px;height:26px}
     <div class="fld"><label for="rcv">اسم المستلم (بيتكتب تحت التوقيع)</label><input class="inp" id="rcv" autocomplete="off"></div>
     <div id="sigArea"></div>
     </div>
-    <p class="hint">اللي مش معلّم عليه مش بيظهر في الـ PDF خالص.</p>
+    <p class="hint">اللي مش معلّم عليه مش بيظهر في الـ PDF أو الصورة خالص.</p>
   </div>
 
-  <div class="stack">
+  <div class="card">
+    <label>الإرسال والحفظ كـ</label>
+    <div class="seg fmtSeg" style="margin-bottom:10px"><button type="button" data-f="pdf">ملف PDF</button><button type="button" data-f="img">صورة</button></div>
+    <div class="stack">
     <button class="btn green" id="bShare" type="button">ابعت واتساب</button>
-    <button class="btn" id="bPdf" type="button">معاينة / تنزيل PDF</button>
+    <button class="btn" id="bPdf" type="button">معاينة / تنزيل</button>
     <button class="btn gold" id="bSave" type="button">حفظ في الأرشيف</button>
+    </div>
   </div>
 </section>
 
 <!-- ============== الأرشيف ============== -->
 <section class="page" id="p-archive">
   <div class="card">
+    <label>الإرسال والحفظ كـ</label>
+    <div class="seg fmtSeg" style="margin-bottom:10px"><button type="button" data-f="pdf">ملف PDF</button><button type="button" data-f="img">صورة</button></div>
     <input class="inp" id="qsearch" placeholder="ابحث باسم العميل أو رقم الإذن أو التاريخ" type="search" autocomplete="off">
     <p class="hint" id="qcount"></p>
   </div>
@@ -717,7 +723,7 @@ async function makePdf(p) {
   }
   $('#render').innerHTML = '';
   const name = `إذن تسليم ${p.no} - ${p.customer}`.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim() + '.pdf';
-  return {blob: doc.output('blob'), imgs, name};
+  return {blob: doc.output('blob'), imgs, name, base: name.replace(/\.pdf$/, '')};
 }
 
 function downloadBlob(blob, name) {
@@ -728,11 +734,26 @@ function busy(on) {
   if (on) modal('<p style="text-align:center">جاري تجهيز ملف الـ PDF…</p>'); else closeModal();
 }
 
+const outFmt = () => db.settings.lastFmt === 'img' ? 'img' : 'pdf';
+function applyFmt() { $$('.fmtSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === outFmt())); }
+$$('.fmtSeg').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  db.settings.lastFmt = b.dataset.f; saveDB(); applyFmt();
+}));
+function dataToBlob(u) { const [h, d] = u.split(','), bin = atob(d), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return new Blob([a], {type: h.slice(5, h.indexOf(';'))}); }
+// الملفات اللي هتتبعت/تتنزّل حسب الصيغة المختارة (PDF واحد، أو صورة لكل صفحة)
+function fileList(res) {
+  if (outFmt() === 'pdf') return [{blob: res.blob, name: res.name}];
+  return res.imgs.map((u, i) => ({blob: dataToBlob(u), name: res.base + (res.imgs.length > 1 ? ` - صفحة ${i + 1}` : '') + '.jpg'}));
+}
+function downloadAll(list) { list.forEach((f, i) => setTimeout(() => downloadBlob(f.blob, f.name), i * 400)); }
+
 async function shareFile(res, p) {
-  const file = new File([res.blob], res.name, {type: 'application/pdf'});
-  const data = {files: [file], title: `إذن تسليم رقم ${p.no}`, text: `إذن تسليم رقم ${p.no} - فلاش أون`};
+  const list = fileList(res);
+  const files = list.map(f => new File([f.blob], f.name, {type: f.blob.type}));
+  const data = {files, title: `إذن تسليم رقم ${p.no}`, text: `إذن تسليم رقم ${p.no} - فلاش أون`};
   if (!(navigator.canShare && navigator.canShare(data))) {
-    downloadBlob(res.blob, res.name);
+    downloadAll(list);
     toast('الموبايل ده مش بيدعم المشاركة المباشرة. الملف اتنزّل، ابعته من واتساب بإيدك.', 6000);
     return;
   }
@@ -742,10 +763,10 @@ async function shareFile(res, p) {
     if (e.name === 'NotAllowedError') {
       modal(`<p>الملف جاهز. اضغط للإرسال:</p><div class="stack"><button class="btn green" id="shGo">فتح المشاركة (واتساب)</button><button class="btn line" id="shNo">إلغاء</button></div>`);
       $('#shNo').onclick = closeModal;
-      $('#shGo').onclick = async () => { try { await navigator.share(data); closeModal(); } catch (x) { if (x.name !== 'AbortError') { closeModal(); downloadBlob(res.blob, res.name); } else closeModal(); } };
+      $('#shGo').onclick = async () => { try { await navigator.share(data); closeModal(); } catch (x) { closeModal(); if (x.name !== 'AbortError') downloadAll(list); } };
       return;
     }
-    downloadBlob(res.blob, res.name); toast('حصلت مشكلة في المشاركة، الملف اتنزّل بدلها.', 5000);
+    downloadAll(list); toast('حصلت مشكلة في المشاركة، الملف اتنزّل بدلها.', 5000);
   }
 }
 
@@ -753,13 +774,14 @@ async function doExport(p, mode) {
   busy(true);
   let res;
   try { res = await makePdf(p); }
-  catch (e) { busy(false); console.error(e); toast('حصلت مشكلة في تجهيز الـ PDF، جرّب تاني.'); return; }
+  catch (e) { busy(false); console.error(e); toast('حصلت مشكلة في تجهيز الملف، جرّب تاني.'); return; }
   busy(false);
   if (mode === 'share') return shareFile(res, p);
+  const img = outFmt() === 'img';
   modal(`${res.imgs.map(u => `<img src="${u}" alt="">`).join('')}
-    <div class="stack"><button class="btn green" id="pvShare">ابعت واتساب</button><button class="btn gold" id="pvDl">تنزيل PDF</button><button class="btn line" id="pvX">إغلاق</button></div>`, true);
+    <div class="stack"><button class="btn green" id="pvShare">ابعت واتساب</button><button class="btn gold" id="pvDl">${img ? 'تنزيل كصورة' : 'تنزيل PDF'}</button><button class="btn line" id="pvX">إغلاق</button></div>`, true);
   $('#pvX').onclick = closeModal;
-  $('#pvDl').onclick = () => downloadBlob(res.blob, res.name);
+  $('#pvDl').onclick = () => downloadAll(fileList(res));
   $('#pvShare').onclick = () => { closeModal(); shareFile(res, p); };
 }
 
@@ -864,7 +886,7 @@ $('#fRestore').addEventListener('change', async e => {
 function go(p) { if (location.hash !== '#' + p) location.hash = p; else route(); }
 function route() {
   let p = location.hash.slice(1); if (!['new', 'archive', 'settings'].includes(p)) p = 'new';
-  qCache = null;
+  qCache = null; applyFmt();
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + p));
   $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === p));
   sgHide();

@@ -178,6 +178,7 @@ ol.steps li{margin-bottom:6px}
   <a class="sync ok" href="accounts.html#cash" style="text-decoration:none">🔗 الدفتر ده متصل بخزنة برنامج الحسابات: اللي تسجله هنا أو هناك بيظهر في المكانين. <b style="margin-inline-start:auto;text-decoration:underline">افتح الحسابات ←</b></a>
   <div class="sync" id="syncBox"></div>
   <div class="total"><small>الرصيد الإجمالي</small><b id="hTotal">0</b></div>
+  <button class="btn gold" id="bCount" type="button" style="margin-bottom:12px">✎ الفلوس اللي معايا دلوقتي</button>
   <div class="vaults" id="hVaults"></div>
   <div class="bigbtns">
     <button class="btn redf" id="bExp" type="button">مصروف −</button>
@@ -439,6 +440,34 @@ function openTx(type, edit) {
     toast(edit ? 'اتعدّلت الحركة' : isTr ? 'اتعمل التحويل' : type === 'exp' ? 'اتسجّل المصروف' : 'اتسجّل الإيراد');
   };
 }
+
+/* الفلوس اللي معايا دلوقتي: لو الخزنة مفيهاش حركات الرقم بيبقى الرصيد الافتتاحي، ولو فيها، الفرق بيتسجل النهارده "تسوية جرد" */
+function countModal() {
+  const vs = vaults(), moved = v => db.tx.some(t => !t.del && (t.vault === v.id || t.to === v.id));
+  modal(`<h3>الفلوس اللي معايا دلوقتي</h3>
+    <p style="font-size:16px">اكتب الفلوس اللي موجودة فعلاً في كل خزنة دلوقتي.</p>
+    ${vs.map(v => `<div class="fld"><label>${esc(v.name)} <small style="color:#777">(الدفتر شايف ${fmt(balance(v.id))})</small></label><input class="inp num amt" data-v="${v.id}" placeholder="0"></div>`).join('')}
+    <p class="hint">${vs.some(moved) ? 'الخزنة اللي فيها حركات: الفرق هيتسجل النهارده "تسوية جرد"، والحركات القديمة مش هتتغير.' : 'الرقم ده هيبقى الرصيد الافتتاحي.'}</p>
+    <div class="stack"><button class="btn gold" id="cnOk" type="button">حفظ</button><button class="btn line" id="cnX" type="button">رجوع</button></div>`);
+  $$('#modal [data-v]').forEach(el => { bindMoney(el); setMoney(el, balance(el.dataset.v)); });
+  $('#cnX').onclick = closeModal;
+  $('#cnOk').onclick = () => {
+    let n = 0;
+    $$('#modal [data-v]').forEach(el => {
+      const v = vaultOf(el.dataset.v); if (!v) return;
+      const d = Math.round((num(el.value) - balance(v.id)) * 100) / 100; if (!d) return;
+      if (!moved(v)) { v.open = Math.round(((+v.open || 0) + d) * 100) / 100; touch(v); }
+      else {
+        const type = d > 0 ? 'inc' : 'exp', cid = d > 0 ? 'c_adj_in' : 'c_adj_out';
+        if (!catOf(cid)) { const c = {id: cid, type, name: d > 0 ? 'تسوية جرد — زيادة' : 'تسوية جرد — عجز', ord: 98, del: false, sy: 0}; touch(c); db.cats.push(c); }
+        const t = {id: uid(), type, amt: Math.abs(d), ts: Date.now(), vault: v.id, cat: cid, note: `جرد: الموجود فعلاً ${fmt(num(el.value))}`, del: false, sy: 0}; touch(t); db.tx.push(t);
+      }
+      n++;
+    });
+    if (n) saveDB(); closeModal(); refresh(); toast(n ? 'اتظبط رصيد الخزنة' : 'الرصيد مظبوط، متغيرش حاجة');
+  };
+}
+$('#bCount').onclick = countModal;
 
 /* ====================== الشاشة الرئيسية ====================== */
 function txCard(t, showDate) {

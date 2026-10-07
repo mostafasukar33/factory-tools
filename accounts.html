@@ -148,13 +148,17 @@ table.ldg{width:100%;border-collapse:collapse;font-size:13.5px}
 .ldg tr.op td{background:#EFE6CF;font-weight:800}
 .ldg tr.pay td{background:#DDF1E3;color:#14632C;font-weight:800}
 .ldg td.q small{display:block;font-size:10.5px;color:#777}
+.ldg td.dt small{display:block;font-size:10.5px;color:#888}
 @media (max-width:600px){
-  table.ldg{font-size:11.5px}
-  .ldg th{font-size:11px;padding:6px 2px}
-  .ldg td{padding:6px 2px}
-  .ldg td.l{min-width:0;font-size:12px}
-  .ldg td.dt,.ldg td.q{font-size:10.5px}
-  .ldg td.b{font-size:12px}
+  #p-party{margin:0 -8px}
+  table.ldg{font-size:14px}
+  .ldg th{font-size:13px;padding:7px 2px}
+  .ldg td{padding:8px 1px}
+  .ldg td.l{min-width:0;font-size:14.5px;font-weight:700;line-height:1.35}
+  .ldg td.l small{font-size:12px}
+  .ldg td.dt,.ldg td.q{font-size:13px}
+  .ldg td.q small{font-size:11.5px}
+  .ldg td.b{font-size:14.5px}
 }
 .ldgf{display:flex;justify-content:space-between;align-items:center;background:var(--ink);color:var(--gold);border-radius:12px;padding:10px 14px;margin-top:8px;font-weight:800}
 .ldgf b{color:#fff;font-size:24px;direction:ltr}.ldgf small{font-size:13px;color:var(--gold)}
@@ -998,7 +1002,7 @@ function histHtml(e) {
 }
 
 /* جدول الحساب جوه البرنامج: نفس شكل الكشف اللي بيتبعت للعميل بالظبط. الدوسة على أي سطر بتفتح الفاتورة أو الدفعة بتاعته */
-const shortDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}/${m}/${y.slice(2)}` : ''; };
+const shortDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}/${m}<small>${y}</small>` : ''; };   // اليوم/الشهر وتحتهم السنة علشان الجدول يدخل في الموبايل
 function ledgerTable(p) {
   const s = stmtData(p.id, '', '');
   if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده</div>';
@@ -1614,6 +1618,7 @@ function renderCash() {
     return;
   }
   const vs = vaultsL(), total = vaultBal('');
+  const noMoves = !db.txs.some(t => !t.del) && !db.entries.some(e => !e.del && e.vault);
   if (cashVault && !vs.some(v => v.id === cashVault)) cashVault = '';
   const [from, to] = cashRange();
   const mv = vaultMoves(cashVault, from, to);
@@ -1626,6 +1631,8 @@ function renderCash() {
     ${old && !db.cfg.cashMigrated ? `<div class="sync">لقيت دفتر الخزنة القديم على الجهاز ده. <a id="cMig">انقله هنا</a></div>` : ''}
     <div class="tots"><div class="k"><span>رصيد كل الخزن</span><b class="${total < 0 ? 'cr' : ''}">${fmtP(total)} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>
       ${vs.map(v => { const b = vaultBal(v.id); return `<div class="vt ${cashVault === v.id ? 'on' : ''}" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="${b < 0 ? 'cr2' : ''}">${fmtP(b)}</b></div>`; }).join('')}</div>
+    ${noMoves ? `<div class="card" style="background:var(--gold-l);border-color:var(--gold)"><p style="font-weight:800;margin:0 0 8px">لسه بادئ؟ اكتب الفلوس اللي معاك دلوقتي في كل خزنة، وبعد كده كل حاجة هتتحسب عليها.</p>
+      <button class="btn gold" id="cOpen2" type="button">اكتب الرصيد اللي معايا دلوقتي</button></div>` : ''}
     <div class="g2" style="margin-bottom:10px">
       <button class="btn green big" id="cRecv" type="button">💵 استلمت من عميل</button>
       <button class="btn big" id="cPayS" type="button">💸 دفعت لمورد</button>
@@ -1647,7 +1654,7 @@ function renderCash() {
     <div class="sech"><span>الحركات (${mv.length})</span></div>
     ${mv.length ? mv.map((m, i) => `<div class="cm ${m.cls}" data-i="${i}"><div class="m"><b>${esc(m.title)}</b><small>${dispDate(m.date)} — ${esc(m.sub)}</small></div>
       <div class="a ${m.sign > 0 ? 'inc' : m.sign < 0 ? 'exp' : ''}">${m.sign > 0 ? '+' : m.sign < 0 ? '−' : ''} ${fmtP(m.amt)}</div></div>`).join('') : '<div class="empty">مفيش حركات في الفترة دي</div>'}
-    <button class="btn line sm" id="cSet" type="button" style="margin-top:12px">⚙ الخزن والبنود</button>`;
+    <div class="g2" style="margin-top:12px"><button class="btn line sm" id="cOpen" type="button">✎ رصيد البداية</button><button class="btn line sm" id="cSet" type="button">⚙ الخزن والبنود</button></div>`;
   if ($('#cMig')) $('#cMig').onclick = migrateCashModal;
   $$('#p-cash .vt').forEach(el => el.onclick = () => { cashVault = cashVault === el.dataset.v ? '' : el.dataset.v; renderCash(); });
   $('#cRecv').onclick = () => pickParty('pay');
@@ -1665,6 +1672,23 @@ function renderCash() {
     if (m.src === 'tx') txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
   });
   $('#cSet').onclick = vaultSettings;
+  $('#cOpen').onclick = openingModal; if ($('#cOpen2')) $('#cOpen2').onclick = openingModal;
+}
+/* رصيد البداية: الفلوس اللي في كل خزنة يوم ما بدأت تشتغل على البرنامج */
+function openingModal() {
+  const vs = vaultsL();
+  modal(`<h3>رصيد البداية</h3>
+    <p style="font-size:16px">اكتب الفلوس اللي في كل خزنة وقت ما بدأت. ده بيتحسب قبل أي حركة.</p>
+    ${vs.map(v => `<div class="fld"><label>${esc(v.name)}</label><input class="inp num amt" data-v="${esc(v.id)}" placeholder="0" value="${v.open ? fmtP(v.open) : ''}"></div>`).join('')}
+    <div class="stack"><button class="btn gold" id="opOk" type="button">حفظ</button><button class="btn line sm" id="opAdd" type="button">+ خزنة تانية (بنك، محفظة…)</button><button class="btn line" id="opX" type="button">رجوع</button></div>`);
+  $$('#modal [data-v]').forEach(bindMoney);
+  $('#opX').onclick = closeModal;
+  $('#opAdd').onclick = () => editVault();
+  $('#opOk').onclick = () => {
+    let n = 0;
+    $$('#modal [data-v]').forEach(el => { const v = IDX.vault.get(el.dataset.v), o = toP(el.value); if (v && (v.open || 0) !== o) { v.open = o; touch(v); n++; } });
+    if (n) saveDB(); closeModal(); route(); toast(n ? 'اتحفظ رصيد البداية ✔' : 'متغيرش حاجة');
+  };
 }
 function vaultOpts(sel, none) {
   return (none ? `<option value="" ${!sel ? 'selected' : ''}>${esc(none)}</option>` : '') + vaultsL().map(v => `<option value="${esc(v.id)}" ${sel === v.id ? 'selected' : ''}>${esc(v.name)} (${fmtP(vaultBal(v.id))})</option>`).join('');
@@ -1676,15 +1700,15 @@ function pickParty(kind) {
   const sup = kind === 'ppay';
   const draw = q => {
     const ps = liveParties().filter(p => (p.sec === 'sup') === sup && (!q || norm(p.name).includes(q))).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
-    $('#ppList').innerHTML = ps.map(p => { const b = balance(p.id); return `<div class="pt ${sup ? 'sup' : ''}" data-id="${esc(p.id)}"><div class="m"><b>${esc(p.name)}</b><small>${SEC1[p.sec]}</small></div><div class="a"><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b><small>${balWord(b)}</small></div></div>`; }).join('') || '<div class="empty">مفيش حساب بالاسم ده</div>';
-    $$('#ppList .pt').forEach(el => el.onclick = () => payModal(P.get(el.dataset.id), kind));
+    $('#pkList').innerHTML = ps.map(p => { const b = balance(p.id); return `<div class="pt ${sup ? 'sup' : ''}" data-id="${esc(p.id)}"><div class="m"><b>${esc(p.name)}</b><small>${SEC1[p.sec]}</small></div><div class="a"><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b><small>${balWord(b)}</small></div></div>`; }).join('') || '<div class="empty">مفيش حساب بالاسم ده</div>';
+    $$('#pkList .pt').forEach(el => el.onclick = () => payModal(P.get(el.dataset.id), kind));
   };
   modal(`<h3>${sup ? '💸 دفعت لمورد — اختار المورد' : '💵 استلمت من عميل — اختار العميل'}</h3>
-    <input class="inp" id="ppQ" type="search" placeholder="🔍 دوّر بالاسم" autocomplete="off" style="margin-bottom:10px">
-    <div id="ppList" style="max-height:55vh;overflow:auto"></div>
-    <button class="btn line" id="ppX" type="button" style="margin-top:10px">رجوع</button>`, true);
-  $('#ppX').onclick = closeModal;
-  $('#ppQ').oninput = () => draw(norm($('#ppQ').value));
+    <input class="inp" id="pkQ" type="search" placeholder="🔍 دوّر بالاسم" autocomplete="off" style="margin-bottom:10px">
+    <div id="pkList" style="max-height:55vh;overflow:auto"></div>
+    <button class="btn line" id="pkX" type="button" style="margin-top:10px">رجوع</button>`, true);
+  $('#pkX').onclick = closeModal;
+  $('#pkQ').oninput = () => draw(norm($('#pkQ').value));
   draw('');
 }
 /* مصروف / إيراد / تحويل */
@@ -1824,7 +1848,7 @@ function route() {
 let lastHash = '';
 $$('nav button').forEach(b => b.onclick = () => go(b.dataset.go));
 addEventListener('hashchange', () => { closeModal(); route(); if (location.hash !== lastHash) window.scrollTo(0, 0); lastHash = location.hash; });
-$('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk,#dcOk,#pyOk,#txOk,#evOk,#ecOk')) closeModal(); });
+$('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk,#dcOk,#pyOk,#txOk,#evOk,#ecOk,#opOk')) closeModal(); });
 
 showLock();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});

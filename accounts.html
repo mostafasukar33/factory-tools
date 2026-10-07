@@ -147,6 +147,8 @@ table.ldg{width:100%;border-collapse:collapse;font-size:13.5px}
 .ldg tr.f td{border-top:1.5px solid #E2D6B5}
 .ldg tr.op td{background:#EFE6CF;font-weight:800}
 .ldg tr.pay td{background:#DDF1E3;color:#14632C;font-weight:800}
+.ldg tr.ret td{background:#FFF1E0;color:#8A4B00}
+.ldg tr.bnc td{background:#FDE3E1;color:#B3261E;font-weight:800}
 .ldg td.q small{display:block;font-size:10.5px;color:#777}
 .ldg td.dt small{display:block;font-size:10.5px;color:#888}
 @media (max-width:600px){
@@ -162,6 +164,17 @@ table.ldg{width:100%;border-collapse:collapse;font-size:13.5px}
 }
 .ldgf{display:flex;justify-content:space-between;align-items:center;background:var(--ink);color:var(--gold);border-radius:12px;padding:10px 14px;margin-top:8px;font-weight:800}
 .ldgf b{color:#fff;font-size:24px;direction:ltr}.ldgf small{font-size:13px;color:var(--gold)}
+.pt.lim-y{background:#FFF8DC;border-color:#E9C46A}.pt.lim-r{background:#FDECEA;border-color:#F0B9B3}
+.limw{margin-top:8px;font-weight:800;font-size:14px;border-radius:8px;padding:4px 8px}.limw.lim-y{background:#5a4a12;color:#FFE08A}.limw.lim-r{background:#5a1f1a;color:#FFB4AB}
+nav button{position:relative}
+nav .nb{position:absolute;top:6px;inset-inline-start:calc(50% + 6px);background:var(--red);color:#fff;font-style:normal;font-size:11px;font-weight:800;border-radius:9px;min-width:18px;height:18px;line-height:18px;padding:0 4px}
+.ck{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;border-right:6px solid var(--green)}
+.ck.ppay{border-right-color:var(--ink)}.ck.c{opacity:.75}.ck.b{border-right-color:var(--red);background:#FFF6F5}
+.ckh{display:flex;justify-content:space-between;gap:8px;font-size:16px}.ckh .money{font-size:19px}
+.ckm{font-size:13.5px;color:#555;font-weight:700;margin:4px 0 8px}
+.ckb{display:flex;gap:6px;flex-wrap:wrap}.ckb .btn{width:auto;flex:1;min-height:42px}
+.cb{display:inline-block;font-size:12px;font-weight:800;border-radius:6px;padding:0 6px;background:#ECEFF1;color:var(--blue)}
+.cb.ok{background:var(--green-l);color:var(--green)}.cb.warn{background:#FFF3CD;color:#8A6200}.cb.bad{background:var(--red-l);color:var(--red)}
 .sech{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;font-weight:800;color:var(--gold-d)}
 .sech a{font-size:14px;text-decoration:underline;cursor:pointer}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#EFE9D8;border-radius:12px;padding:4px;margin-bottom:10px}
@@ -190,7 +203,7 @@ ol.steps li{margin-bottom:6px}
 .chkrow label{margin:0;font-size:16px;color:#111}
 .hist{border-top:1px dashed #ccc;padding:6px 0;font-size:14px}
 /* التنقل */
-nav{position:fixed;bottom:0;inset-inline:0;background:var(--ink);display:grid;grid-template-columns:repeat(3,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:30;border-top:3px solid var(--gold)}
+nav{position:fixed;bottom:0;inset-inline:0;background:var(--ink);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:30;border-top:3px solid var(--gold)}
 nav button{background:none;border:0;color:#bbb;padding:9px 4px 8px;font-weight:700;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-height:64px}
 nav button.on{color:var(--gold)}
 nav svg{width:26px;height:26px}
@@ -241,6 +254,8 @@ nav svg{width:26px;height:26px}
 .pg tr:nth-child(even) td{background:#FBF5E6}
 .pg tr.op td{background:#EFE6CF;font-weight:800}
 .pg tr.pay td{background:#DDF1E3;color:#14632C;font-weight:800;border-bottom-color:#B9DFC4}
+.pg tr.ret td{background:#FFF1E0;color:#8A4B00}
+.pg tr.bnc td{background:#FDE3E1;color:#B3261E;font-weight:800}
 .pg td.n{direction:ltr;font-weight:700}
 .pg td.q{font-weight:600;font-size:13.5px}
 .pg td small.rf{display:block;font-size:11.5px;color:#9C7420;font-weight:700}
@@ -294,6 +309,9 @@ nav svg{width:26px;height:26px}
 <!-- ============== الخزنة ============== -->
 <section class="page" id="p-cash"></section>
 
+<!-- ============== الشيكات ============== -->
+<section class="page" id="p-chk"></section>
+
 <!-- ============== الإعدادات ============== -->
 <section class="page" id="p-set">
   <div class="card">
@@ -310,6 +328,25 @@ nav svg{width:26px;height:26px}
     <h2>بيانات الشركة في الـ PDF</h2>
     <div class="fld"><label>رقم التليفون</label><input class="inp" id="sPhone" inputmode="tel" style="direction:ltr;text-align:right" placeholder="01xxxxxxxxx"></div>
     <button class="btn line sm" id="sPhoneSave" type="button">حفظ الرقم</button>
+  </div>
+  <div class="card">
+    <h2>🔒 قفل الفترة</h2>
+    <p class="hint" style="margin:0 0 10px">بعد ما تراجع شهر وتبعت الكشوف، اقفله: أي حركة تاريخها لحد اليوم ده مش هتتسجل ولا تتعدل ولا تتلغي، على كل الأجهزة.</p>
+    <div id="sLock"></div>
+  </div>
+  <div class="card">
+    <h2>حدود ألوان رصيد العملا</h2>
+    <div class="g2"><div class="fld"><label>🟡 أصفر لما يعدّي</label><input class="inp num" id="sLimY"></div><div class="fld"><label>🔴 أحمر لما يعدّي</label><input class="inp num" id="sLimR"></div></div>
+    <button class="btn line sm" id="sLimSave" type="button">حفظ الحدود</button>
+  </div>
+  <div class="card">
+    <h2>تنبيه الشيكات</h2>
+    <div class="fld"><label>نبّهني قبل ميعاد الشيك بكام يوم</label><input class="inp num" id="sChkDays" inputmode="numeric"></div>
+    <button class="btn line sm" id="sChkSave" type="button">حفظ</button>
+  </div>
+  <div class="card">
+    <h2>سجل التعديلات</h2>
+    <button class="btn line" id="sAudit" type="button">اعرض كل التعديلات والإلغاء</button>
   </div>
   <div class="card">
     <h2>كلمة السر</h2>
@@ -331,6 +368,7 @@ nav svg{width:26px;height:26px}
 <nav>
   <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>الحسابات</button>
   <button data-go="cash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 10v5M18 10v5"/></svg>الخزنة</button>
+  <button data-go="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 10h8M6 14h5M16 14h2"/></svg>الشيكات<i class="nb" id="nbChk"></i></button>
   <button data-go="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>الإعدادات</button>
 </nav>
 <div id="toast"></div>
@@ -434,13 +472,13 @@ async function unseal(key, box) {
 
 function defaults() {
   return {
-    v: 1, parties: [], entries: [], vaults: [], cats: [], txs: [],
+    v: 1, parties: [], entries: [], vaults: [], cats: [], txs: [], sets: [],
     cfg: {dev: Array.from(crypto.getRandomValues(new Uint8Array(3)), x => x.toString(36).padStart(2, '0')).join(''), sheetUrl: '', sheetKey: '', sheetOk: false, cursor: 0, lastSync: 0, phone: ''}
   };
 }
 let db = null, cryptoKey = null, saltU8 = null;
 /* كل نوع سجل ومكانه في القاعدة. أي نوع جديد بيتضاف هنا بس، والمزامنة والنسخة الاحتياطية بيشتغلوا عليه لوحدهم */
-const STORE = {party: 'parties', entry: 'entries', vault: 'vaults', cat: 'cats', tx: 'txs'};
+const STORE = {party: 'parties', entry: 'entries', vault: 'vaults', cat: 'cats', tx: 'txs', set: 'sets'};
 let IDX = {}, P = new Map(), E = new Map();          // فهارس سريعة بالـ id
 function reindex() { for (const k in STORE) IDX[k] = new Map((db[STORE[k]] = db[STORE[k]] || []).map(r => [r.id, r])); P = IDX.party; E = IDX.entry; }
 
@@ -500,7 +538,9 @@ function selfCheck() {
     if (!p) { probs.push(`حركة "${e.desc}" بتاريخ ${dispDate(e.date)} على حساب مش موجود`); continue; }
     if (p.del) probs.push(`حركة "${e.desc}" على حساب "${p.name}" اللي اتشال`);
     if (!Number.isInteger(e.dr || 0) || !Number.isInteger(e.cr || 0) || (e.dr || 0) < 0 || (e.cr || 0) < 0) probs.push(`مبلغ غير سليم في حركة "${e.desc}"`);
-    if ((e.kind === 'inv' || e.kind === 'pur') && (e.kind === 'inv' ? e.dr : e.cr) !== (e.lines || []).reduce((t, l) => t + Math.round((+l.qty || 0) * (l.price || 0)), 0) - (e.disc || 0)) probs.push(`إجمالي فاتورة "${e.desc}" مش مساوي لمجموع أصنافها`);
+    if (isDoc(e) && (e.dr || e.cr) !== docTotal(e)) probs.push(`إجمالي "${e.desc}" مش مساوي لمجموع أصنافها`);
+    if (e.chk && e.chk.st === 'c' && !e.vault) probs.push(`شيك "${e.desc}" متصرف من غير خزنة`);
+    if (e.kind === 'bnc' && !(E.get(e.ref) && E.get(e.ref).chk)) probs.push(`شيك مرتجع "${e.desc}" ملوش شيك أصلي`);
     if (!p.del) sumEnt += (e.dr || 0) - (e.cr || 0);
   }
   for (const e of db.entries) if (!e.del && e.vault && !IDX.vault.get(e.vault)) probs.push(`دفعة "${e.desc}" على خزنة مش موجودة`);
@@ -610,7 +650,7 @@ function renderHome() {
   if (!db) return;
   renderSyncBox();
   const probs = selfCheck();
-  $('#chk').innerHTML = probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '';
+  $('#chk').innerHTML = chkAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '');
   const bal = allBalances();
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
   const net = ly - al;
@@ -633,7 +673,7 @@ function renderList(bal) {
   if (!ps.length) { $('#hList').innerHTML = `<div class="empty">${liveParties().length ? 'مفيش حساب بالاسم ده' : 'لسه مفيش حسابات. اضغط "+ حساب جديد".'}</div>`; return; }
   $('#hList').innerHTML = ps.map(p => {
     const b = bal.get(p.id) || 0;
-    return `<div class="pt ${p.sec === 'sup' ? 'sup' : ''} ${b ? '' : 'zero'}" data-id="${esc(p.id)}">
+    return `<div class="pt ${p.sec === 'sup' ? 'sup' : ''} ${b ? '' : 'zero'} ${limitClass(p, b)}" data-id="${esc(p.id)}">
       <div class="m"><b>${esc(p.name)}</b><small><span class="tag ${p.sec === 'sup' ? 'sup' : ''}">${SEC1[p.sec]}</span>${p.noTot ? '<span class="tag off">خارج الإجمالي</span>' : ''}${esc(p.phone || '')}</small></div>
       <div class="a"><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b><small>${balWord(b)}</small></div></div>`;
   }).join('');
@@ -697,12 +737,18 @@ function partyModal(p) {
    pay  = دفعة استلمتها من عميل      ← دائن
    pur  = فاتورة شراء من مورد (أصناف) ← دائن بإجمالي الفاتورة
    ppay = دفعة دفعتها لمورد          ← مدين
+   rinv = مرتجع بيع (أصناف) ← دائن، rpur = مرتجع شراء (أصناف) ← مدين
+   adj  = خصم أو تسوية على الحساب: dir 'dn' بينقّص الرصيد، 'up' بيزوّده (من ناحية العميل أو المورد)
+   bnc  = شيك مرتجع: بيرجّع قيمة الشيك على الحساب (of = نوع الدفعة الأصلية، ref = id الدفعة)
+   الشيك هو دفعة (pay/ppay) method 'شيك' وفيها chk {no, bank, due, st: p لسه | c اتصرف | b رجع, cdate, bnc}.
+   الشيك مبيدخلش خزنة غير لما يتصرف، وتاريخ دخوله الخزنة هو cdate.
    open = رصيد أول المدة، man = حركة قديمة يدوية (من النسخة الأولى)
    الفاتورة فيها lines [{name, unit, qty, price(بالقرش)}] و disc (خصم بالقرش)، و dr/cr بيتحسبوا منها وقت الحفظ. */
 const UNITS = ['كيلو', 'لفة', 'قطعة', 'وحدة', 'متر'];
-const KIND = {inv: 'فاتورة بيع', pay: 'دفعة مستلمة', pur: 'فاتورة شراء', ppay: 'دفعة مدفوعة', open: 'رصيد أول المدة', man: 'حركة'};
+const KIND = {inv: 'فاتورة بيع', pay: 'دفعة مستلمة', pur: 'فاتورة شراء', ppay: 'دفعة مدفوعة', rinv: 'مرتجع بيع', rpur: 'مرتجع شراء', adj: 'خصم / تسوية', bnc: 'شيك مرتجع', open: 'رصيد أول المدة', man: 'حركة'};
+const isRet = e => e.kind === 'rinv' || e.kind === 'rpur';
 const METHODS = ['نقدي', 'تحويل', 'شيك'];
-const isDoc = e => e.kind === 'inv' || e.kind === 'pur';
+const isDoc = e => e.kind === 'inv' || e.kind === 'pur' || e.kind === 'rinv' || e.kind === 'rpur';
 const lineTot = l => Math.round((+l.qty || 0) * (l.price || 0));
 const docTotal = e => (e.lines || []).reduce((s, l) => s + lineTot(l), 0) - (e.disc || 0);
 const fmtQ = q => (+q || 0).toLocaleString('en-US', {maximumFractionDigits: 3});
@@ -712,11 +758,20 @@ function applyAmounts(e) {
   else if (e.kind === 'pur') { e.cr = docTotal(e); e.dr = 0; }
   else if (e.kind === 'pay') { e.cr = e.amt; e.dr = 0; }
   else if (e.kind === 'ppay') { e.dr = e.amt; e.cr = 0; }
+  else if (e.kind === 'rinv') { e.cr = docTotal(e); e.dr = 0; }
+  else if (e.kind === 'rpur') { e.dr = docTotal(e); e.cr = 0; }
+  else if (e.kind === 'adj') { const sup = (P.get(e.party) || {}).sec === 'sup', down = e.dir === 'dn'; e.dr = down === sup ? e.amt : 0; e.cr = down === sup ? 0 : e.amt; }
+  else if (e.kind === 'bnc') { e.dr = e.of === 'pay' ? e.amt : 0; e.cr = e.of === 'pay' ? 0 : e.amt; }
 }
+/* تاريخ دخول الفلوس الخزنة: الشيك يوم ما اتصرف، وغير كده يوم الدفعة */
+const vdate = e => e.chk && e.chk.st === 'c' && e.chk.cdate ? e.chk.cdate : e.date;
 function nextNo(kind) { let m = 0; db.entries.forEach(e => { if (e.kind === kind && +e.no > m) m = +e.no; }); return m + 1; }
 function docTitle(e) {
   if (isDoc(e)) return `${KIND[e.kind]}${e.no ? ' رقم ' + e.no : ''}`;
+  if ((e.kind === 'pay' || e.kind === 'ppay') && e.chk) return `${e.kind === 'pay' ? 'شيك وارد' : 'شيك صادر'}${e.chk.no ? ' رقم ' + e.chk.no : ''} — يستحق ${dispDate(e.chk.due)}`;
   if (e.kind === 'pay' || e.kind === 'ppay') return `${e.kind === 'pay' ? 'دفعة استلمتها' : 'دفعة دفعتها'} — ${e.method || 'نقدي'}${e.vault ? ' — ' + vName(e.vault) : ''}`;
+  if (e.kind === 'adj') return `${e.dir === 'dn' ? 'خصم' : 'تسوية'}: ${e.note || ''}`;
+  if (e.kind === 'bnc') return `شيك مرتجع${e.chkno ? ' رقم ' + e.chkno : ''}`;
   return e.desc;
 }
 function docDesc(e) {
@@ -739,18 +794,21 @@ function renderParty(id) {
   const all = partyEntries(id, true);
   let run = 0, tDoc = 0, tPay = 0; const runAt = new Map();
   all.forEach(e => {
-    if (!e.del) { run += (e.dr || 0) - (e.cr || 0); if (isDoc(e)) tDoc += docTotal(e); if (e.kind === 'pay' || e.kind === 'ppay') tPay += e.amt || 0; }
+    if (!e.del) { run += (e.dr || 0) - (e.cr || 0); if (e.kind === 'inv' || e.kind === 'pur') tDoc += docTotal(e); if (isRet(e)) tDoc -= docTotal(e); if (e.kind === 'pay' || e.kind === 'ppay') tPay += e.amt || 0; if (e.kind === 'bnc') tPay -= e.amt || 0; }
     runAt.set(e.id, run);
   });
   const nX = all.filter(e => e.del).length;
   $('#p-party').innerHTML = `
     <div class="sech" style="margin-top:0"><a id="ppBack">→ كل الحسابات</a><a id="ppEdit">تعديل البيانات</a></div>
     <div class="phd"><h2>${esc(p.name)}</h2><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}${p.noTot ? ' — <b style="color:var(--gold)">حساب فرعي خارج الإجماليات</b>' : ''}</small>
+      ${limitClass(p, b) ? `<div class="limw ${limitClass(p, b)}">${limitClass(p, b) === 'lim-r' ? '🔴 رصيده فوق الحد الأحمر' : '🟡 رصيده فوق الحد الأصفر'} (${fmtP(limitClass(p, b) === 'lim-r' ? limitsOf(p).r : limitsOf(p).y)})</div>` : ''}
       <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))} <small style="font-size:14px;color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
     <div class="g2" style="margin-bottom:10px">
       <button class="btn big" id="ppDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button>
       <button class="btn green big" id="ppPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button>
+      <button class="btn line" id="ppRet" type="button">↩ ${sup ? 'مرتجع شراء' : 'مرتجع بيع'}</button>
+      <button class="btn line" id="ppAdj" type="button">✂ خصم / تسوية</button>
     </div>
     <button class="btn gold" id="ppStmt" type="button">📄 كشف حساب</button>
     ${nX ? `<div class="sech" style="margin-bottom:0"><span></span><a id="ppX">${showX ? 'إخفاء الملغي' : `إظهار الملغي (${nX})`}</a></div>` : ''}
@@ -761,6 +819,8 @@ function renderParty(id) {
   $('#ppStmt').onclick = () => stmtModal(p);
   $('#ppDoc').onclick = () => docModal(p, sup ? 'pur' : 'inv');
   $('#ppPay').onclick = () => payModal(p, sup ? 'ppay' : 'pay');
+  $('#ppRet').onclick = () => docModal(p, sup ? 'rpur' : 'rinv');
+  $('#ppAdj').onclick = () => adjModal(p);
   if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
   $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => openEntry(p, E.get(el.dataset.id)));
   if ($('#ppEnd')) $('#ppEnd').onclick = () => $('#ldgEnd').scrollIntoView({behavior: 'smooth', block: 'end'});
@@ -787,6 +847,8 @@ function openEntry(p, e) {
   if (e.del) return cancelledModal(e);
   if (isDoc(e)) return docModal(p, e.kind, e);
   if (e.kind === 'pay' || e.kind === 'ppay') return payModal(p, e.kind, e);
+  if (e.kind === 'adj') return adjModal(p, e);
+  if (e.kind === 'bnc') return bounceInfo(p, e);
   return entryModal(p, e);
 }
 function cancelledModal(e) {
@@ -797,10 +859,15 @@ function cancelledModal(e) {
   $('#emBack').onclick = () => { e.del = false; delete e.delAt; touch(e); saveDB(); closeModal(); route(); toast('رجعت الحركة ✔'); };
 }
 /* حفظ التعديل: النسخة القديمة بتتحفظ في hist */
-function snapshot(e) { const s = {t: Date.now(), kind: e.kind, date: e.date, desc: e.desc, dr: e.dr || 0, cr: e.cr || 0}; ['no', 'lines', 'disc', 'amt', 'method', 'note', 'vault'].forEach(k => { if (e[k] !== undefined) s[k] = JSON.parse(JSON.stringify(e[k])); }); return s; }
+function snapshot(e) { const s = {t: Date.now(), kind: e.kind, date: e.date, desc: e.desc, dr: e.dr || 0, cr: e.cr || 0}; ['no', 'lines', 'disc', 'amt', 'method', 'note', 'vault', 'chk', 'dir'].forEach(k => { if (e[k] !== undefined) s[k] = JSON.parse(JSON.stringify(e[k])); }); return s; }
 async function cancelEntry(e) {
   if (!(await confirmBox(`تلغي "${docDesc(e)}" (${fmtP(e.dr || e.cr)})؟ هتفضل ظاهرة كـ "ملغية" وتقدر ترجّعها.`, 'ألغيها', true))) return;
-  e.del = true; e.delAt = Date.now(); touch(e); saveDB(); route(); toast('اتلغت');
+  if (isLocked(e.date)) return lockToast();
+  e.del = true; e.delAt = Date.now(); touch(e);
+  /* الدفعة اللي بشيك مرتجع: الشيك المرتجع بيتلغي معاها. والشيك المرتجع لو اتلغى، الشيك بيرجع "لسه" */
+  if (e.chk && e.chk.bnc) { const b = E.get(e.chk.bnc); if (b && !b.del) { b.del = true; b.delAt = Date.now(); touch(b); } }
+  if (e.kind === 'bnc') { const o = E.get(e.ref); if (o && o.chk && o.chk.st === 'b') { o.chk = Object.assign({}, o.chk, {st: 'p', bnc: ''}); touch(o); } }
+  saveDB(); route(); toast('اتلغت');
 }
 
 /* ---------- أسماء الأصناف: من عرض السعر + اللي اتكتب قبل كده في الحسابات ---------- */
@@ -819,19 +886,23 @@ function lastPrice(pid, kind, name) {
 
 /* ---------- فاتورة بيع / شراء ---------- */
 function docModal(p, kind, e) {
-  const isNew = !e, sale = kind === 'inv';
+  const isNew = !e, sale = kind === 'inv', ret = kind === 'rinv' || kind === 'rpur', base = kind === 'rinv' ? 'inv' : kind === 'rpur' ? 'pur' : kind;
+  const ttl = {inv: '🧾 فاتورة بيع', pur: '🧾 فاتورة شراء', rinv: '↩ مرتجع بيع', rpur: '↩ مرتجع شراء'}[kind];
+  if (e && isLocked(e.date)) return lockedView(p, e);
   const lines = e ? e.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty), price: fmtP(l.price)})) : [{name: '', unit: 'كيلو', qty: '', price: ''}];
   const book = itemBook();
-  modal(`<h3>${isNew ? (sale ? '🧾 فاتورة بيع' : '🧾 فاتورة شراء') : 'تعديل ' + esc(docTitle(e))} — ${esc(p.name)}</h3>
+  modal(`<h3>${isNew ? ttl : 'تعديل ' + esc(docTitle(e))} — ${esc(p.name)}</h3>
+    ${ret ? `<p class="hint" style="margin:-6px 0 10px">البضاعة اللي ${kind === 'rinv' ? 'رجعت من العميل' : 'رجعتها للمورد'}. قيمتها ${kind === 'rinv' ? 'بتنزل من اللي عليه' : 'بتنزل من اللي ليه'}.</p>` : ''}
     <div class="g2"><div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${e ? e.date : todayISO()}"></div>
-      <div class="fld"><label>رقم الفاتورة</label><input class="inp num" id="dcNo" inputmode="numeric" value="${esc(e ? e.no || '' : nextNo(kind))}"></div></div>
+      <div class="fld"><label>${ret ? 'رقم المرتجع' : 'رقم الفاتورة'}</label><input class="inp num" id="dcNo" inputmode="numeric" value="${esc(e ? e.no || '' : nextNo(kind))}"></div></div>
     <datalist id="dlItems">${[...book.values()].map(x => `<option value="${esc(x.name)}">`).join('')}</datalist>
     <div id="dcLines"></div>
     <button class="btn line sm" id="dcAdd" type="button" style="margin-bottom:10px">+ صنف كمان</button>
     <div class="g2"><div class="fld"><label>خصم على الفاتورة (اختياري)</label><input class="inp num" id="dcDisc" placeholder="0" value="${e && e.disc ? fmtP(e.disc) : ''}"></div>
       <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="dcNote" value="${esc(e ? e.note || '' : '')}"></div></div>
-    <div class="dtot"><span>إجمالي الفاتورة</span><b id="dcTot">0</b></div>
-    ${isNew ? `<div class="g2"><div class="fld"><label>${sale ? 'العميل دفع دلوقتي (اختياري)' : 'دفعت للمورد دلوقتي (اختياري)'}</label><input class="inp num" id="dcPaid" placeholder="0"></div>
+    <div class="dtot"><span>${ret ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}</span><b id="dcTot">0</b></div>
+    <div id="dcWarn"></div>
+    ${isNew && !ret ? `<div class="g2"><div class="fld"><label>${sale ? 'العميل دفع دلوقتي (اختياري)' : 'دفعت للمورد دلوقتي (اختياري)'}</label><input class="inp num" id="dcPaid" placeholder="0"></div>
       <div class="fld"><label>${sale ? 'دخلت خزنة' : 'من خزنة'}</label><select class="inp" id="dcPV">${(ensureVaults(), vaultOpts(defVault()))}</select></div></div>` : ''}
     ${e ? histHtml(e) : ''}
     <div class="stack" style="margin-top:8px"><button class="btn gold" id="dcOk" type="button">${isNew ? 'حفظ الفاتورة' : 'حفظ التعديل'}</button>
@@ -860,7 +931,7 @@ function docModal(p, kind, e) {
     $$('#dcLines [data-f=name]').forEach(el => el.addEventListener('change', () => {
       const li = el.closest('.li'), pr = li.querySelector('[data-f=price]');
       if (!el.value.trim() || pr.value) return;
-      const x = lastPrice(p.id, kind, el.value) || book.get(norm(el.value));
+      const x = lastPrice(p.id, base, el.value) || book.get(norm(el.value));
       if (!x) return;
       if (x.unit) { const s = li.querySelector('[data-f=unit]'); if (![...s.options].some(o => o.value === x.unit)) s.add(new Option(x.unit)); s.value = x.unit; }
       if (x.price) pr.value = fmtP(x.price);
@@ -874,6 +945,7 @@ function docModal(p, kind, e) {
   if ($('#dcPaid')) bindMoney($('#dcPaid'));
   $('#dcAdd').onclick = () => { const ls = readLines(); const last = ls[ls.length - 1]; ls.push({name: '', unit: last ? last.unit : 'كيلو', qty: '', price: ''}); draw(ls); const n = $$('#dcLines [data-f=name]'); n[n.length - 1].focus(); };
   $('#dcX').onclick = closeModal;
+  let warned = false;
   $('#dcOk').onclick = () => {
     const date = $('#dcDate').value;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');
@@ -887,19 +959,27 @@ function docModal(p, kind, e) {
     const ls = raw.map(l => ({name: l.name, unit: l.unit, qty: Math.round(num(l.qty) * 1000) / 1000, price: toP(l.price)}));
     const disc = toP($('#dcDisc').value), no = normDigits($('#dcNo').value).trim(), note = $('#dcNote').value.trim();
     const doc = {kind, date, no, lines: ls, disc, note};
-    if (docTotal(doc) <= 0) return toast('الخصم أكبر من إجمالي الفاتورة');
+    if (docTotal(doc) <= 0) return toast('الخصم أكبر من الإجمالي');
+    if (isLocked(date)) return lockToast();
+    /* تنبيهات قبل الحفظ: نفس الفاتورة اتسجلت قبل كده، أو العميل هيعدّي حد الرصيد */
+    if (isNew && !warned) {
+      const w = [];
+      if (db.entries.some(x => !x.del && x.party === p.id && x.kind === kind && x.date === date && docTotal(x) === docTotal(doc))) w.push(`فيه ${KIND[kind]} بنفس المبلغ (${fmtP(docTotal(doc))}) لنفس الحساب في نفس اليوم. متأكد إنها مش متكررة؟`);
+      if (kind === 'inv') { const nb = balance(p.id) + docTotal(doc) - toP(($('#dcPaid') || {}).value), lim = limitsOf(p); if (nb >= lim.r) w.push(`رصيد العميل هيبقى ${fmtP(nb)}، وده فوق الحد الأحمر (${fmtP(lim.r)}).`); }
+      if (w.length) { warned = true; $('#dcWarn').innerHTML = `<div class="sync warn">${w.map(esc).join('<br>')}</div>`; $('#dcOk').textContent = 'متأكد، احفظ برضه'; return; }
+    }
     if (no && db.entries.some(x => x !== e && x.kind === kind && !x.del && String(x.no) === no)) return toast(`فيه ${KIND[kind]} تانية برقم ${no}. غيّر الرقم.`, 4000);
     doc.desc = docDesc(doc);
     if (isNew) {
       const ne = addEntry(Object.assign({party: p.id}, doc)); applyAmounts(ne);
-      const paid = toP($('#dcPaid').value);
+      const paid = $('#dcPaid') ? toP($('#dcPaid').value) : 0;
       if (paid > 0) { const pe = addEntry({party: p.id, kind: sale ? 'pay' : 'ppay', date, amt: paid, method: 'نقدي', vault: $('#dcPV').value, note: `مع ${docTitle(ne)}`, at: ne.at + 1}); rememberVault('نقدي', pe.vault); pe.desc = docDesc(pe); applyAmounts(pe); }
-      toast('اتسجلت الفاتورة ✔');
+      toast(ret ? 'اتسجل المرتجع ✔' : 'اتسجلت الفاتورة ✔');
     } else {
       const same = JSON.stringify([e.date, e.no, e.lines, e.disc || 0, e.note || '']) === JSON.stringify([date, no, ls, disc, note]);
       if (same) return closeModal();
       (e.hist = e.hist || []).push(snapshot(e));
-      Object.assign(e, doc); applyAmounts(e); touch(e); toast('اتعدّلت الفاتورة ✔ (والنسخة القديمة محفوظة)');
+      Object.assign(e, doc); applyAmounts(e); touch(e); toast('اتعدّلت ✔ (والنسخة القديمة محفوظة)');
     }
     saveDB(); closeModal(); route();
   };
@@ -909,16 +989,25 @@ function docModal(p, kind, e) {
 /* ---------- دفعة استلمتها / دفعتها ---------- */
 function payModal(p, kind, e, opts = {}) {
   const isNew = !e, rec = kind === 'pay';
-  let method = e ? e.method || 'نقدي' : 'نقدي';
+  if (e && isLocked(e.date)) return lockedView(p, e);
+  let method = e ? e.method || 'نقدي' : opts.method || 'نقدي';
+  const ck = e && e.chk || {};
   ensureVaults();
   const v0 = e ? e.vault || '' : (opts.vault || defVault(method));
   modal(`<h3>💵 ${isNew ? (rec ? 'دفعة استلمتها من' : 'دفعة دفعتها لـ') : 'تعديل دفعة —'} ${esc(p.name)}</h3>
     <div class="fld"><label>المبلغ</label><input class="inp num amt" id="pyAmt" placeholder="0" value="${e ? fmtP(e.amt) : ''}"></div>
     <div class="fld"><label>طريقة الدفع</label><div class="seg s3" id="pyM">${METHODS.map(m => `<button type="button" data-v="${m}" class="${m === method ? 'on' : ''}">${m}</button>`).join('')}</div></div>
-    <div class="fld"><label>${rec ? 'دخلت أنهي خزنة' : 'طلعت من أنهي خزنة'}</label><select class="inp" id="pyV">${vaultOpts(v0, 'مش داخل خزنة (شيك لسه متصرفش أو حركة قديمة)')}</select></div>
+    <div class="fld" id="pyVW"><label>${rec ? 'دخلت أنهي خزنة' : 'طلعت من أنهي خزنة'}</label><select class="inp" id="pyV">${vaultOpts(v0, 'مش داخل خزنة (حركة قديمة)')}</select></div>
+    <div id="pyChk" class="card" style="background:var(--gold-l);margin:0 0 10px">
+      <div class="g2"><div class="fld"><label>رقم الشيك</label><input class="inp num" id="pyCn" inputmode="numeric" value="${esc(ck.no || '')}"></div>
+        <div class="fld"><label>البنك</label><input class="inp" id="pyCb" value="${esc(ck.bank || '')}"></div></div>
+      <div class="fld"><label>تاريخ الاستحقاق</label><input class="inp" id="pyCd" type="date" value="${esc(ck.due || '')}"></div>
+      <p class="hint" style="margin:0">${ck.st === 'c' ? `✔ الشيك اتصرف يوم ${dispDate(ck.cdate)} في ${esc(vName(e.vault))}.` : ck.st === 'b' ? '✖ الشيك ده رجع.' : `الشيك ${rec ? 'بينزل من رصيد العميل' : 'بينزل من اللي ليه'} من دلوقتي، ومبيدخلش الخزنة غير لما يتصرف (من تبويب الشيكات).`}</p>
+    </div>
     <div class="fld"><label>التاريخ</label><input class="inp" id="pyDate" type="date" value="${e ? e.date : todayISO()}"></div>
     <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="pyNote" value="${esc(e ? e.note || '' : '')}" placeholder="مثلاً: رقم الشيك أو التحويل" autocomplete="off"></div>
     <p class="hint">الرصيد الحالي: ${fmtP(Math.abs(balance(p.id)))} ${balWord(balance(p.id))}</p>
+    <div id="pyWarn"></div>
     ${e ? histHtml(e) : ''}
     <div class="stack" style="margin-top:8px"><button class="btn green" id="pyOk" type="button">${isNew ? 'حفظ الدفعة' : 'حفظ التعديل'}</button>
     ${isNew ? '' : '<button class="btn red sm" id="pyDel" type="button">إلغاء الدفعة</button>'}
@@ -926,23 +1015,40 @@ function payModal(p, kind, e, opts = {}) {
   bindMoney($('#pyAmt'));
   $$('#pyM button').forEach(b => b.onclick = () => {
     method = b.dataset.v; $$('#pyM button').forEach(x => x.classList.toggle('on', x === b));
-    if (method === 'شيك') $('#pyV').value = ''; else if (isNew) $('#pyV').value = defVault(method);
+    if (method === 'شيك') $('#pyV').value = ''; else if (isNew || !$('#pyV').value) $('#pyV').value = defVault(method);
+    showChk();
   });
+  const showChk = () => { $('#pyChk').style.display = method === 'شيك' ? '' : 'none'; $('#pyVW').style.display = method === 'شيك' ? 'none' : ''; };
+  showChk();
   $('#pyX').onclick = closeModal;
+  let warned = false;
   if (isNew) setTimeout(() => $('#pyAmt') && $('#pyAmt').focus(), 50);
   $('#pyOk').onclick = () => {
     const amt = toP($('#pyAmt').value), date = $('#pyDate').value, note = $('#pyNote').value.trim(), vault = $('#pyV').value;
     if (amt <= 0) return toast('اكتب المبلغ');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');
-    if (!vault && method !== 'شيك' && (isNew || e.vault)) return toast('اختار الخزنة');
+    if (!vault && method !== 'شيك' && (isNew || e.vault || e.chk)) return toast('اختار الخزنة');
+    if (isLocked(date)) return lockToast();
     const o = {kind, date, amt, method, note, vault};
+    if (method === 'شيك') {
+      const due = $('#pyCd').value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) return toast('اكتب تاريخ استحقاق الشيك');
+      o.chk = Object.assign({st: 'p', cdate: '', bnc: ''}, ck, {no: normDigits($('#pyCn').value).trim(), bank: $('#pyCb').value.trim(), due});
+      o.vault = o.chk.st === 'c' ? (e && e.vault) || '' : '';
+    } else if (e && e.chk) {
+      if (e.chk.st === 'b') return toast('الشيك ده رجع. الغي "الشيك المرتجع" الأول لو عايز تغيّره.', 5000);
+      o.chk = undefined;
+    }
+    if (isNew && !warned && db.entries.some(x => !x.del && x.party === p.id && x.kind === kind && x.date === date && x.amt === amt)) {
+      warned = true; $('#pyWarn').innerHTML = `<div class="sync warn">فيه دفعة بنفس المبلغ (${fmtP(amt)}) لنفس الحساب في نفس اليوم. متأكد إنها مش متكررة؟</div>`; $('#pyOk').textContent = 'متأكد، احفظ برضه'; return;
+    }
     rememberVault(method, vault);
     o.desc = docDesc(o);
-    if (isNew) { applyAmounts(addEntry(Object.assign({party: p.id}, o))); toast('اتسجلت الدفعة ✔'); }
+    if (isNew) { if (!o.chk) delete o.chk; applyAmounts(addEntry(Object.assign({party: p.id}, o))); toast(o.chk ? 'اتسجل الشيك ✔' : 'اتسجلت الدفعة ✔'); }
     else {
-      if (e.amt === amt && e.date === date && e.method === method && (e.note || '') === note && (e.vault || '') === vault) return closeModal();
+      if (e.amt === amt && e.date === date && e.method === method && (e.note || '') === note && (e.vault || '') === o.vault && JSON.stringify(e.chk || null) === JSON.stringify(o.chk || null)) return closeModal();
       (e.hist = e.hist || []).push(snapshot(e));
-      Object.assign(e, o); applyAmounts(e); touch(e); toast('اتعدّلت الدفعة ✔');
+      Object.assign(e, o); if (!o.chk) delete e.chk; applyAmounts(e); touch(e); toast('اتعدّلت الدفعة ✔');
     }
     saveDB(); closeModal(); route();
   };
@@ -1009,23 +1115,27 @@ function ledgerTable(p) {
   if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده</div>';
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
-    ${s.rows.map(r => `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}</td><td class="q">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
+    ${s.rows.map(r => `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}</td><td class="q">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b>${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>
-    <p class="hint">دوس على أي سطر علشان تعدّله. الدفعات باللون الأخضر.</p>`;
+    <p class="hint">دوس على أي سطر علشان تعدّله. الدفعات أخضر، والمرتجعات والخصومات برتقاني، والشيكات المرتجعة أحمر.</p>`;
 }
 
 /* ====================== كشف الحساب ====================== */
 /* كل حركة بتتفرد لسطور زي شيت الإكسيل: كل صنف في الفاتورة سطر (الكمية والسعر والإجمالي)، والخصم سطر، والدفعة سطر.
    from/to بصيغة YYYY-MM-DD. لو from فاضي يبقى الحساب كله من أوله. */
 function rowsOf(e) {
-  const ref = e.no ? `فاتورة ${e.no}` : KIND[e.kind];
+  const ref = e.no ? `${isRet(e) ? 'مرتجع' : 'فاتورة'} ${e.no}` : KIND[e.kind];
   if (isDoc(e)) {
-    const sale = e.kind === 'inv', out = (e.lines || []).map(l => ({date: e.date, desc: l.name, ref, qty: `${fmtQ(l.qty)} ${l.unit}`, price: l.price, dr: sale ? lineTot(l) : 0, cr: sale ? 0 : lineTot(l)}));
-    if (e.disc) out.push({date: e.date, desc: 'خصم', ref, dr: sale ? 0 : e.disc, cr: sale ? e.disc : 0});
+    const up = e.kind === 'inv' || e.kind === 'rpur', ret = isRet(e);   // up = بيتحط في المدين
+    const out = (e.lines || []).map(l => ({date: e.date, desc: (ret ? 'مرتجع: ' : '') + l.name, ref, qty: `${fmtQ(l.qty)} ${l.unit}`, price: l.price, dr: up ? lineTot(l) : 0, cr: up ? 0 : lineTot(l), ret}));
+    if (e.disc) out.push({date: e.date, desc: 'خصم', ref, dr: up ? 0 : e.disc, cr: up ? e.disc : 0, ret});
     return out;
   }
+  if ((e.kind === 'pay' || e.kind === 'ppay') && e.chk) return [{date: e.date, desc: `شيك${e.chk.no ? ' رقم ' + e.chk.no : ''}`, ref: `يستحق ${dispDate(e.chk.due)}${e.chk.bank ? ' — ' + e.chk.bank : ''}`, dr: e.dr || 0, cr: e.cr || 0, pay: true}];
   if (e.kind === 'pay' || e.kind === 'ppay') return [{date: e.date, desc: 'دفعة ' + (e.method || 'نقدي'), ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, pay: true}];
+  if (e.kind === 'adj') return [{date: e.date, desc: e.dir === 'dn' ? 'خصم' : 'تسوية', ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, ret: e.dir === 'dn'}];
+  if (e.kind === 'bnc') return [{date: e.date, desc: `شيك مرتجع${e.chkno ? ' رقم ' + e.chkno : ''}`, ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, bnc: true}];
   return [{date: e.date, desc: e.desc, ref: '', dr: e.dr || 0, cr: e.cr || 0, op: e.kind === 'open'}];
 }
 function rowsWithRef(e) { return rowsOf(e).map((r, i) => Object.assign(r, {e, first: i === 0})); }
@@ -1098,7 +1208,7 @@ function buildStmtPages(p, s) {
   };
   if (s.open !== null) { const tr = document.createElement('tr'); tr.className = 'op'; tr.innerHTML = `<td></td><td class="dt">${dispDate(s.from)}</td><td class="l">رصيد أول المدة</td><td></td><td></td><td></td><td></td>${balCell(s.open)}`; put(tr); }
   s.rows.forEach((r, i) => {
-    const tr = document.createElement('tr'); tr.className = r.pay ? 'pay' : r.op ? 'op' : '';
+    const tr = document.createElement('tr'); tr.className = r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : '';
     tr.innerHTML = `<td>${i + 1}</td><td class="dt">${dispDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td><td class="q">${esc(r.qty || '')}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td>${balCell(r.run)}`;
     put(tr);
   });
@@ -1244,6 +1354,7 @@ function viewOf(kind, r) {
   if (kind === 'party') return ['', cell(r.name), SECS[r.sec] || '', cell(r.phone || ''), '', ''];
   if (kind === 'vault') return ['', cell(r.name), 'خزنة', 'رصيد افتتاحي', (r.open || 0) / 100, ''];
   if (kind === 'cat') return ['', cell(r.name), r.type === 'exp' ? 'بند مصروف' : 'بند إيراد', '', '', ''];
+  if (kind === 'set') return ['', r.id, 'إعداد', cell(JSON.stringify(r.val)), '', ''];
   if (kind === 'tx') return [r.date, cell(r.type === 'tr' ? vName(r.vault) + ' ← ' + vName(r.to) : vName(r.vault)), 'خزنة: ' + TXT[r.type], cell((r.type === 'tr' ? '' : cName(r.cat)) + (r.note ? ' — ' + r.note : '')), r.type === 'inc' ? r.amt / 100 : '', r.type === 'inc' ? '' : r.amt / 100];
   const p = P.get(r.party);
   return [r.date, cell(p ? p.name : '؟'), p ? SECS[p.sec] : '', cell(r.desc), (r.dr || 0) / 100, (r.cr || 0) / 100];
@@ -1325,6 +1436,27 @@ function makeKey() {
 }
 function renderSettings() {
   const c = db.cfg;
+  const lk = lockDate(), lim = limitsOf();
+  $('#sLock').innerHTML = lk ? `<div class="sync ok">🔒 مقفول لحد ${dispDate(lk)}</div><div class="g2"><input class="inp" type="date" id="sLockD" value="${lk}"><button class="btn gold sm" id="sLockGo" type="button">غيّر يوم القفل</button></div><button class="btn line sm" id="sUnlock" type="button" style="margin-top:8px">افتح الفترة (محتاج كلمة السر)</button>`
+    : `<div class="g2"><input class="inp" type="date" id="sLockD" value="${todayISO().slice(0, 8)}01"><button class="btn gold sm" id="sLockGo" type="button">اقفل لحد اليوم ده</button></div>`;
+  const askPass = () => new Promise(res => {
+    modal(`<h3>كلمة السر</h3><div class="fld"><input class="inp" id="apP" type="password" inputmode="numeric" pattern="[0-9]*" style="text-align:center;font-size:20px"></div><div class="g2"><button class="btn gold" id="apOk" type="button">تمام</button><button class="btn line" id="apX" type="button">رجوع</button></div>`);
+    $('#apX').onclick = () => { closeModal(); res(false); };
+    $('#apOk').onclick = async () => { try { await unseal(await deriveKey($('#apP').value, saltU8), await idbGet('vault')); closeModal(); res(true); } catch (e) { toast('كلمة السر غلط'); } };
+  });
+  $('#sLockGo').onclick = async () => {
+    const d = $('#sLockD').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return toast('اختار اليوم');
+    if (d > todayISO()) return toast('مينفعش تقفل يوم لسه مجاش');
+    if (lk && d < lk && !(await askPass())) return;
+    if (!(await confirmBox(`تقفل كل الحركات لحد ${dispDate(d)}؟`, 'اقفل'))) return;
+    putSet('lock', d); renderSettings(); toast('اتقفلت الفترة ✔');
+  };
+  if ($('#sUnlock')) $('#sUnlock').onclick = async () => { if (!(await askPass())) return; putSet('lock', ''); renderSettings(); toast('اتفتحت الفترة'); };
+  $('#sLimY').value = fmtP(lim.y); $('#sLimR').value = fmtP(lim.r); bindMoney($('#sLimY')); bindMoney($('#sLimR'));
+  $('#sLimSave').onclick = () => { const y = toP($('#sLimY').value), r = toP($('#sLimR').value); if (!(y > 0 && r > y)) return toast('الأحمر لازم يبقى أكبر من الأصفر'); putSet('limits', {y, r}); toast('اتحفظت الحدود ✔'); };
+  $('#sChkDays').value = chkDays();
+  $('#sChkSave').onclick = () => { const n = parseInt(normDigits($('#sChkDays').value), 10); if (!(n >= 0 && n <= 60)) return toast('اكتب عدد أيام من 0 لـ 60'); c.chkDays = n; saveDB(); toast('اتحفظ ✔'); };
+  $('#sAudit').onclick = auditModal;
   $('#sPhone').value = c.phone || '';
   $('#sSheet').innerHTML = `<p class="hint" style="margin:0 0 10px">ده شيت <b>منفصل</b> للحسابات (مش بتاع دفتر الخزنة). أي حركة بتتبعت له لوحدها، وأي جهاز تفتح منه بينزّل منه آخر حاجة.</p>
     <div class="fld"><label>لينك الشيت (Web app URL)</label><input class="inp" id="shUrl" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" value="${esc(c.sheetUrl)}"></div>
@@ -1573,7 +1705,7 @@ function vaultBal(vid, before) {
     else if (t.type === 'tr' && vid) { if (t.vault === vid) b -= t.amt; if (t.to === vid) b += t.amt; }
   }
   for (const e of db.entries) {
-    if (e.del || !isPay(e) || !e.vault || (before && e.date >= before) || (vid && e.vault !== vid)) continue;
+    if (e.del || !isPay(e) || !e.vault || (before && vdate(e) >= before) || (vid && e.vault !== vid)) continue;
     b += e.kind === 'pay' ? e.amt : -e.amt;
   }
   return b;
@@ -1590,10 +1722,10 @@ function vaultMoves(vid, from, to) {
       sub: (t.type === 'tr' ? '' : vName(t.vault)) + (t.note ? (t.type === 'tr' ? '' : ' — ') + t.note : ''), cls: t.type});
   });
   db.entries.forEach(e => {
-    if (e.del || !isPay(e) || !e.vault || !inR(e.date) || (vid && e.vault !== vid)) return;
+    if (e.del || !isPay(e) || !e.vault || !inR(vdate(e)) || (vid && e.vault !== vid)) return;
     const p = P.get(e.party);
-    out.push({src: 'pay', r: e, date: e.date, at: e.at || 0, sign: e.kind === 'pay' ? 1 : -1, amt: e.amt,
-      title: `${e.kind === 'pay' ? 'تحصيل من' : 'دفع لـ'} ${p ? p.name : '؟'}`, sub: `${vName(e.vault)} — ${e.method || 'نقدي'}${e.note ? ' — ' + e.note : ''}`, cls: e.kind === 'pay' ? 'inc' : 'exp'});
+    out.push({src: 'pay', r: e, date: vdate(e), at: e.at || 0, sign: e.kind === 'pay' ? 1 : -1, amt: e.amt,
+      title: `${e.kind === 'pay' ? 'تحصيل من' : 'دفع لـ'} ${p ? p.name : '؟'}`, sub: `${vName(e.vault)} — ${e.chk ? 'شيك' + (e.chk.no ? ' رقم ' + e.chk.no : '') + ' اتصرف' : e.method || 'نقدي'}${e.note ? ' — ' + e.note : ''}`, cls: e.kind === 'pay' ? 'inc' : 'exp'});
   });
   return out.sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at);
 }
@@ -1712,14 +1844,14 @@ function vaultOpts(sel, none) {
 /* الخزنة الافتراضية: النقدي والمصروفات دايماً من أول خزنة (خزنة المصنع)، والتحويل من آخر خزنة اتسجل فيها تحويل */
 const defVault = (method = 'نقدي') => { const l = method === 'تحويل' && (db.cfg.lv || {})['تحويل']; return l && IDX.vault.get(l) && !IDX.vault.get(l).del ? l : (vaultsL()[0] || {}).id || ''; };
 const rememberVault = (method, id) => { if (id && method === 'تحويل') db.cfg.lv = Object.assign({}, db.cfg.lv, {'تحويل': id}); };
-function pickParty(kind) {
+function pickParty(kind, opts = {}) {
   const sup = kind === 'ppay';
   const draw = q => {
     const ps = liveParties().filter(p => (p.sec === 'sup') === sup && (!q || norm(p.name).includes(q))).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
     $('#pkList').innerHTML = ps.map(p => { const b = balance(p.id); return `<div class="pt ${sup ? 'sup' : ''}" data-id="${esc(p.id)}"><div class="m"><b>${esc(p.name)}</b><small>${SEC1[p.sec]}</small></div><div class="a"><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b><small>${balWord(b)}</small></div></div>`; }).join('') || '<div class="empty">مفيش حساب بالاسم ده</div>';
-    $$('#pkList .pt').forEach(el => el.onclick = () => payModal(P.get(el.dataset.id), kind));
+    $$('#pkList .pt').forEach(el => el.onclick = () => payModal(P.get(el.dataset.id), kind, null, opts));
   };
-  modal(`<h3>${sup ? '💸 دفعت لمورد — اختار المورد' : '💵 استلمت من عميل — اختار العميل'}</h3>
+  modal(`<h3>${opts.method === 'شيك' ? (sup ? '⬆ شيك صادر — اختار المورد' : '⬇ شيك وارد — اختار العميل') : sup ? '💸 دفعت لمورد — اختار المورد' : '💵 استلمت من عميل — اختار العميل'}</h3>
     <input class="inp" id="pkQ" type="search" placeholder="🔍 دوّر بالاسم" autocomplete="off" style="margin-bottom:10px">
     <div id="pkList" style="max-height:55vh;overflow:auto"></div>
     <button class="btn line" id="pkX" type="button" style="margin-top:10px">رجوع</button>`, true);
@@ -1731,6 +1863,7 @@ function pickParty(kind) {
 function txModal(type, t) {
   ensureVaults();
   if (t && t.del) return cancelledModal(t);
+  if (t && isLocked(t.date)) { modal(`<h3>🔒 ${TXT[t.type]} ${fmtP(t.amt)}</h3><div class="sync">الحركة دي في فترة مقفولة (لحد ${dispDate(lockDate())}). افتحها من الإعدادات لو محتاج تعدّل.</div><button class="btn line" id="lvX" type="button">رجوع</button>`); $('#lvX').onclick = closeModal; return; }
   const isNew = !t, vs = vaultsL();
   if (type === 'tr' && vs.length < 2) return toast('محتاج خزنتين على الأقل. زوّد خزنة من "الخزن والبنود".');
   const cats = catsL(type);
@@ -1756,6 +1889,7 @@ function txModal(type, t) {
     const o = {type, amt, date, note, vault, to: type === 'tr' ? $('#txTo').value : '', cat: type === 'tr' ? '' : $('#txC').value};
     if (type === 'tr' && o.to === vault) return toast('اختار خزنتين مختلفتين');
     if (type !== 'tr' && !o.cat) return toast('اختار البند');
+    if (isLocked(date)) return lockToast();
     if (isNew) { const now = Date.now(); const r = Object.assign({id: newId('t_'), at: now, upd: now, del: false, hist: []}, o); db.txs.push(r); IDX.tx.set(r.id, r); toast('اتسجلت ✔'); }
     else {
       if (['amt', 'date', 'note', 'vault', 'to', 'cat'].every(k => (t[k] || '') === (o[k] || ''))) return closeModal();
@@ -1835,7 +1969,7 @@ function ensurePayCats() {
 }
 const tsOfDate = (date, at) => { const [y, m, d] = date.split('-').map(Number), t = new Date(at || Date.now()); return new Date(y, m - 1, d, t.getHours(), t.getMinutes()).getTime(); };
 function payName(e) { const p = P.get(e.party); return (p ? p.name : '') + (e.note ? ' — ' + e.note : ''); }
-let bridgeBusy = false;
+let bridgeBusy = false, lockedFromCash = 0;
 function bridgeOut() {
   if (!db || bridgeBusy) return;
   let c = readCash();
@@ -1854,7 +1988,7 @@ function bridgeOut() {
   db.txs.forEach(t => put('tx', Object.assign({id: t.id, type: t.type, amt: t.amt / 100, ts: tsOfDate(t.date, t.at), vault: t.vault, note: t.note || '', upd: t.upd, del: !!t.del}, t.type === 'tr' ? {to: t.to} : {cat: t.cat})));
   db.entries.forEach(e => {
     if (!isPay(e) || (!e.vault && !idx.tx.has(e.id))) return;
-    put('tx', {id: e.id, type: e.kind === 'pay' ? 'inc' : 'exp', amt: (e.amt || 0) / 100, ts: tsOfDate(e.date, e.at), vault: e.vault || '', cat: PAY_CAT[e.kind],
+    put('tx', {id: e.id, type: e.kind === 'pay' ? 'inc' : 'exp', amt: (e.amt || 0) / 100, ts: tsOfDate(vdate(e), e.at), vault: e.vault || '', cat: PAY_CAT[e.kind],
       note: payName(e), party: e.party, pkind: e.kind, method: e.method || 'نقدي', pnote: e.note || '', upd: e.upd, del: !!e.del || !e.vault});
   });
   if (ch) try { localStorage.setItem('fo_cash_v1', JSON.stringify(c)); } catch (x) {}
@@ -1883,15 +2017,24 @@ function bridgeIn() {
       const e = Object.assign({hist: [], at: t.ts}, cur || {}, {id: t.id, party: t.party, kind: t.pkind || (t.type === 'inc' ? 'pay' : 'ppay'), date: isoOf(t.ts), amt: p2(t.amt),
         method: t.method || 'نقدي', note: t.pnote || '', vault: t.vault || '', upd: t.upd, del: !!t.del});
       delete e.sy;
+      /* الشيك: الدفتر بيشوف بس يوم الصرف. المسح هناك معناه "لسه متصرفش" مش إلغاء الشيك */
+      if (cur && cur.chk) {
+        e.date = cur.date; e.method = 'شيك';
+        if (t.del || !t.vault) { e.del = cur.del; e.vault = ''; e.chk = Object.assign({}, cur.chk, cur.chk.st === 'c' ? {st: 'p', cdate: ''} : {}); }
+        else e.chk = Object.assign({}, cur.chk, {cdate: isoOf(t.ts)});
+      }
+      if (cur && isLocked(cur.date) || isLocked(e.date)) { if (cur) { touch(cur); lockedFromCash++; } return; }
       if (cur && !cur.del && (cur.amt !== e.amt || cur.date !== e.date || cur.vault !== e.vault)) e.hist = (cur.hist || []).concat([snapshot(cur)]);
       applyAmounts(e); e.desc = docDesc(e);
       up('entry', e);
     } else {
       const cur = IDX.tx.get(t.id);
+      if (cur && isLocked(cur.date) || isLocked(isoOf(t.ts))) { if (cur && (cur.upd || 0) < t.upd) { touch(cur); lockedFromCash++; } return; }
       up('tx', {id: t.id, type: t.type, amt: p2(t.amt), vault: t.vault, to: t.to || '', cat: t.cat || '', note: t.note || '', date: isoOf(t.ts), at: t.ts, upd: t.upd || 1, del: !!t.del, hist: cur ? cur.hist || [] : []});
     }
   });
   n += ensurePayCats();
+  if (lockedFromCash) { toast(`فيه ${lockedFromCash} تعديل في دفتر الخزنة على فترة مقفولة، واترفض.`, 6000); lockedFromCash = 0; n++; }
   if (n) { bridgeBusy = true; try { saveDB(); } finally { bridgeBusy = false; } }
   return n;
 }
@@ -1900,21 +2043,196 @@ addEventListener('storage', ev => {
   if (bridgeIn() && !$('#mask').classList.contains('on')) route();
 });
 
+/* ====================== إعدادات مشتركة بين الأجهزة ====================== */
+/* بتتحفظ كسجلات (kind = set) فبتتزامن زي أي حاجة: lock = تاريخ قفل الفترة، limits = حدود ألوان الرصيد */
+const getSet = (id, def) => { const r = IDX.set && IDX.set.get(id); return r && !r.del ? r.val : def; };
+function putSet(id, val) {
+  let r = IDX.set.get(id);
+  if (!r) { r = {id, val, upd: 0, del: false}; db.sets.push(r); IDX.set.set(id, r); }
+  r.val = val; touch(r); saveDB();
+}
+/* ---------- قفل الفترة: أي حركة تاريخها لحد يوم القفل مينفعش تتسجل أو تتعدل أو تتلغي ---------- */
+const lockDate = () => getSet('lock', '');
+const isLocked = d => { const l = lockDate(); return !!(l && d && d <= l); };
+const lockToast = () => toast(`الفترة لحد ${dispDate(lockDate())} مقفولة. افتحها من الإعدادات لو محتاج تعدّل فيها.`, 5000);
+function lockedView(p, e) {
+  modal(`<h3>🔒 ${esc(docTitle(e))}</h3><p style="font-size:16px">${dispDate(e.date)} — ${fmtP(e.dr || e.cr)} ${CUR}</p>
+    <div class="sync">الحركة دي في فترة مقفولة (لحد ${dispDate(lockDate())})، فمينفعش تتعدل أو تتلغي. لو محتاج، افتح الفترة من الإعدادات.</div>
+    ${histHtml(e)}<button class="btn line" id="lvX" type="button">رجوع</button>`);
+  $('#lvX').onclick = closeModal;
+}
+/* ---------- حدود ألوان الرصيد (زي الإكسيل): أصفر لما يعدّي الحد الأول، أحمر لما يعدّي التاني ---------- */
+const limitsOf = p => { const g = getSet('limits', {y: 10000000, r: 30000000}); return {y: p && p.limY || g.y, r: p && p.limR || g.r}; };
+function limitClass(p, b) { if (p.sec === 'sup' || b <= 0) return ''; const l = limitsOf(p); return b >= l.r ? 'lim-r' : b >= l.y ? 'lim-y' : ''; }
+
+/* ====================== خصم / تسوية على الحساب ====================== */
+function adjModal(p, e) {
+  if (e && isLocked(e.date)) return lockedView(p, e);
+  const isNew = !e, sup = p.sec === 'sup';
+  let dir = e ? e.dir : 'dn';
+  modal(`<h3>✂ ${isNew ? 'خصم / تسوية' : 'تعديل خصم / تسوية'} — ${esc(p.name)}</h3>
+    <div class="seg dir" id="adDir"><button type="button" data-v="dn" class="${dir === 'dn' ? 'on' : ''}">خصم −<br><small>${sup ? 'ينزّل اللي ليه' : 'ينزّل اللي عليه'}</small></button><button type="button" data-v="up" class="${dir === 'up' ? 'on' : ''}">تسوية +<br><small>${sup ? 'يزوّد اللي ليه' : 'يزوّد اللي عليه'}</small></button></div>
+    <div class="fld"><label>المبلغ</label><input class="inp num amt" id="adAmt" placeholder="0" value="${e ? fmtP(e.amt) : ''}"></div>
+    <div class="fld"><label>التاريخ</label><input class="inp" id="adDate" type="date" value="${e ? e.date : todayISO()}"></div>
+    <div class="fld"><label>السبب</label><input class="inp" id="adNote" value="${esc(e ? e.note || '' : '')}" placeholder="مثلاً: خصم تعجيل دفع، جبر كسور، فرق حساب" autocomplete="off"></div>
+    ${e ? histHtml(e) : ''}
+    <div class="stack" style="margin-top:8px"><button class="btn gold" id="adOk" type="button">${isNew ? 'حفظ' : 'حفظ التعديل'}</button>
+    ${isNew ? '' : '<button class="btn red sm" id="adDel" type="button">إلغاء</button>'}<button class="btn line" id="adX" type="button">رجوع</button></div>`);
+  bindMoney($('#adAmt'));
+  $$('#adDir button').forEach(b => b.onclick = () => { dir = b.dataset.v; $$('#adDir button').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#adX').onclick = closeModal;
+  $('#adOk').onclick = () => {
+    const amt = toP($('#adAmt').value), date = $('#adDate').value, note = $('#adNote').value.trim();
+    if (amt <= 0) return toast('اكتب المبلغ');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');
+    if (!note) return toast('اكتب السبب');
+    if (isLocked(date)) return lockToast();
+    const o = {kind: 'adj', dir, amt, date, note};
+    if (isNew) { const ne = addEntry(Object.assign({party: p.id}, o)); applyAmounts(ne); ne.desc = docDesc(ne); toast('اتسجل ✔'); }
+    else {
+      if (e.amt === amt && e.date === date && e.dir === dir && e.note === note) return closeModal();
+      (e.hist = e.hist || []).push(snapshot(e)); Object.assign(e, o); applyAmounts(e); e.desc = docDesc(e); touch(e); toast('اتعدّل ✔');
+    }
+    saveDB(); closeModal(); route();
+  };
+  if (!isNew) $('#adDel').onclick = () => cancelEntry(e);
+}
+
+/* ====================== الشيكات ====================== */
+const chkList = () => db.entries.filter(e => !e.del && e.chk && isPay(e));
+const daysTo = d => Math.round((dayStartISO(d) - dayStartISO(todayISO())) / 86400000);
+const dayStartISO = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
+const chkDays = () => db.cfg.chkDays ?? 3;
+/* الشيكات اللي محتاجة انتباه: لسه متصرفتش وميعادها فات أو قرّب */
+function chkDue() { const n = chkDays(); return chkList().filter(e => e.chk.st === 'p' && daysTo(e.chk.due) <= n).sort((a, b) => a.chk.due.localeCompare(b.chk.due)); }
+function chkAlertHtml() {
+  const d = chkDue(); if (!d.length) return '';
+  const late = d.filter(e => daysTo(e.chk.due) < 0).length;
+  return `<a class="sync warn" id="chkAlert" href="#chk" style="text-decoration:none">⏰ ${d.length} شيك ${late ? `(منهم ${late} ميعادهم فات) ` : ''}محتاجين متابعة — أقربهم ${esc((P.get(d[0].party) || {}).name || '')} ${fmtP(d[0].amt)} يوم ${dispDate(d[0].chk.due)} <b style="margin-inline-start:auto;text-decoration:underline">الشيكات ←</b></a>`;
+}
+let chkSt = 'p', chkDir = 'all';
+function renderChecks() {
+  const all = chkList(), pg = $('#p-chk');
+  const sum = (k, st) => all.filter(e => e.kind === k && e.chk.st === st);
+  const inP = sum('pay', 'p'), outP = sum('ppay', 'p');
+  const list = all.filter(e => (chkSt === 'all' || e.chk.st === chkSt) && (chkDir === 'all' || e.kind === chkDir))
+    .sort((a, b) => chkSt === 'p' ? a.chk.due.localeCompare(b.chk.due) : b.chk.due.localeCompare(a.chk.due));
+  pg.innerHTML = `${chkAlertHtml()}
+    <div class="stm"><div class="i"><span>شيكات واردة لسه (${inP.length})</span><b>${fmtP(inP.reduce((s, e) => s + e.amt, 0))}</b></div>
+      <div class="e"><span>شيكات صادرة لسه (${outP.length})</span><b>${fmtP(outP.reduce((s, e) => s + e.amt, 0))}</b></div></div>
+    <div class="g2" style="margin-bottom:10px"><button class="btn green" id="ckIn" type="button">+ شيك وارد من عميل</button><button class="btn" id="ckOut" type="button">+ شيك صادر لمورد</button></div>
+    <div class="seg s4" id="ckSt">${[['p', 'لسه'], ['c', 'اتصرف'], ['b', 'رجع'], ['all', 'الكل']].map(([k, n]) => `<button type="button" data-v="${k}" class="${chkSt === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    <div class="seg s3" id="ckDir">${[['all', 'الكل'], ['pay', 'وارد'], ['ppay', 'صادر']].map(([k, n]) => `<button type="button" data-v="${k}" class="${chkDir === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    ${list.length ? list.map(e => {
+      const p = P.get(e.party), d = daysTo(e.chk.due), st = e.chk.st;
+      const badge = st === 'c' ? `<span class="cb ok">اتصرف ${dispDate(e.chk.cdate)}</span>` : st === 'b' ? '<span class="cb bad">رجع</span>'
+        : d < 0 ? `<span class="cb bad">فات ميعاده بـ ${-d} يوم</span>` : d === 0 ? '<span class="cb bad">النهارده</span>' : d <= chkDays() ? `<span class="cb warn">باقي ${d} يوم</span>` : `<span class="cb">باقي ${d} يوم</span>`;
+      return `<div class="ck ${e.kind} ${st}" data-id="${esc(e.id)}">
+        <div class="ckh"><b>${e.kind === 'pay' ? '⬇ وارد من' : '⬆ صادر لـ'} ${esc(p ? p.name : '؟')}</b><b class="money">${fmtP(e.amt)}</b></div>
+        <div class="ckm">${e.chk.no ? 'رقم ' + esc(e.chk.no) + ' — ' : ''}${e.chk.bank ? esc(e.chk.bank) + ' — ' : ''}يستحق ${dispDate(e.chk.due)} ${badge}</div>
+        <div class="ckb">${st === 'p' ? `<button class="btn green sm" data-a="cash" type="button">✔ اتصرف</button><button class="btn red sm" data-a="bnc" type="button">✖ رجع</button>`
+          : `<button class="btn line sm" data-a="undo" type="button">↶ رجّعه "لسه"</button>`}<button class="btn line sm" data-a="edit" type="button">✎ تفاصيل</button></div></div>`;
+    }).join('') : '<div class="empty">مفيش شيكات هنا</div>'}`;
+  $('#ckIn').onclick = () => pickParty('pay', {method: 'شيك'});
+  $('#ckOut').onclick = () => pickParty('ppay', {method: 'شيك'});
+  $$('#ckSt button').forEach(b => b.onclick = () => { chkSt = b.dataset.v; renderChecks(); });
+  $$('#ckDir button').forEach(b => b.onclick = () => { chkDir = b.dataset.v; renderChecks(); });
+  $$('#p-chk .ck [data-a]').forEach(b => b.onclick = ev => {
+    ev.stopPropagation();
+    const e = E.get(b.closest('.ck').dataset.id), a = b.dataset.a;
+    if (a === 'cash') cashCheck(e); else if (a === 'bnc') bounceCheck(e); else if (a === 'undo') undoCheck(e); else payModal(P.get(e.party), e.kind, e);
+  });
+}
+function cashCheck(e) {
+  if (isLocked(e.date)) return lockToast();
+  const inc = e.kind === 'pay';
+  ensureVaults();
+  modal(`<h3>✔ الشيك اتصرف</h3><p style="font-size:16px">${esc(docTitle(e))}<br>${fmtP(e.amt)} ${CUR}</p>
+    <div class="fld"><label>${inc ? 'الفلوس دخلت أنهي خزنة' : 'الفلوس طلعت من أنهي خزنة'}</label><select class="inp" id="ccV">${vaultOpts(defVault('تحويل'))}</select></div>
+    <div class="fld"><label>يوم الصرف</label><input class="inp" id="ccD" type="date" value="${todayISO()}"></div>
+    <div class="stack"><button class="btn green" id="ccOk" type="button">حفظ</button><button class="btn line" id="ccX" type="button">رجوع</button></div>`);
+  $('#ccX').onclick = closeModal;
+  $('#ccOk').onclick = () => {
+    const v = $('#ccV').value, d = $('#ccD').value;
+    if (!v) return toast('اختار الخزنة'); if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return toast('اختار اليوم');
+    if (isLocked(d)) return lockToast();
+    (e.hist = e.hist || []).push(snapshot(e));
+    e.chk = Object.assign({}, e.chk, {st: 'c', cdate: d}); e.vault = v; rememberVault('تحويل', v); touch(e);
+    saveDB(); closeModal(); route(); toast(`اتسجل صرف الشيك ✔ ${inc ? 'ودخل' : 'وطلع من'} ${vName(v)}`);
+  };
+}
+function bounceCheck(e) {
+  if (isLocked(e.date)) return lockToast();
+  const p = P.get(e.party);
+  modal(`<h3>✖ الشيك رجع</h3><p style="font-size:16px">${esc(docTitle(e))}<br>${fmtP(e.amt)} ${CUR} — ${esc(p ? p.name : '')}</p>
+    <div class="sync warn">قيمة الشيك هترجع على ${e.kind === 'pay' ? 'حساب العميل (يزيد اللي عليه)' : 'حساب المورد (يزيد اللي ليه)'}، وهيظهر في الكشف "شيك مرتجع".</div>
+    <div class="fld"><label>يوم الرجوع</label><input class="inp" id="bcD" type="date" value="${todayISO()}"></div>
+    <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="bcN" placeholder="مثلاً: رصيد غير كافي"></div>
+    <div class="stack"><button class="btn redf" id="bcOk" type="button">الشيك رجع</button><button class="btn line" id="bcX" type="button">رجوع</button></div>`);
+  $('#bcX').onclick = closeModal;
+  $('#bcOk').onclick = () => {
+    const d = $('#bcD').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return toast('اختار اليوم');
+    if (isLocked(d)) return lockToast();
+    const b = addEntry({party: e.party, kind: 'bnc', of: e.kind, ref: e.id, chkno: e.chk.no || '', amt: e.amt, date: d, note: $('#bcN').value.trim()});
+    applyAmounts(b); b.desc = docDesc(b);
+    e.chk = Object.assign({}, e.chk, {st: 'b', bnc: b.id}); touch(e);
+    saveDB(); closeModal(); route(); toast('اتسجل رجوع الشيك، وقيمته رجعت على الحساب');
+  };
+}
+async function undoCheck(e) {
+  if (isLocked(e.date)) return lockToast();
+  const st = e.chk.st;
+  if (!(await confirmBox(st === 'c' ? 'ترجّع الشيك "لسه متصرفش"؟ الفلوس هتطلع من الخزنة تاني.' : 'ترجّع الشيك "لسه"؟ "الشيك المرتجع" هيتلغي والرصيد يرجع زي ما كان.', 'أيوه'))) return;
+  (e.hist = e.hist || []).push(snapshot(e));
+  if (st === 'b') { const b = E.get(e.chk.bnc); if (b && !b.del) { if (isLocked(b.date)) return lockToast(); b.del = true; b.delAt = Date.now(); touch(b); } }
+  e.chk = Object.assign({}, e.chk, {st: 'p', cdate: '', bnc: ''}); e.vault = ''; touch(e);
+  saveDB(); route(); toast('رجع "لسه" ✔');
+}
+function bounceInfo(p, e) {
+  const o = E.get(e.ref);
+  modal(`<h3>✖ ${esc(docTitle(e))}</h3><p style="font-size:16px">${dispDate(e.date)} — ${fmtP(e.amt)} ${CUR}${e.note ? '<br>' + esc(e.note) : ''}</p>
+    ${o ? `<p class="hint">الشيك الأصلي: ${esc(docTitle(o))} — اتسجل يوم ${dispDate(o.date)}</p>` : ''}
+    <div class="stack"><button class="btn line" id="biUndo" type="button">↶ الشيك مرجعش (الغي الشيك المرتجع)</button><button class="btn line" id="biX" type="button">رجوع</button></div>`);
+  $('#biX').onclick = closeModal;
+  $('#biUndo').onclick = () => { closeModal(); if (o) undoCheck(o); else cancelEntry(e); };
+}
+
+/* ====================== سجل التعديلات ====================== */
+function auditModal() {
+  const items = [];
+  db.entries.forEach(e => {
+    const p = P.get(e.party), who = p ? p.name : '؟';
+    (e.hist || []).forEach(h => items.push({t: h.t, txt: `✎ اتعدّلت: ${who} — ${docTitle(Object.assign({}, e, h))} (كانت ${fmtP(h.dr || h.cr || h.amt)} بتاريخ ${dispDate(h.date)})`}));
+    if (e.del && e.delAt) items.push({t: e.delAt, txt: `✖ اتلغت: ${who} — ${e.desc || docTitle(e)} (${fmtP(e.dr || e.cr)})`});
+  });
+  db.txs.forEach(t => {
+    (t.hist || []).forEach(h => items.push({t: h.t, txt: `✎ خزنة اتعدّلت: ${h.desc} (كانت ${fmtP(h.dr)} بتاريخ ${dispDate(h.date)})`}));
+    if (t.del && t.delAt) items.push({t: t.delAt, txt: `✖ خزنة اتلغت: ${TXT[t.type]} ${fmtP(t.amt)} — ${t.type === 'tr' ? '' : cName(t.cat)}`});
+  });
+  items.sort((a, b) => b.t - a.t);
+  modal(`<h3>سجل التعديلات والإلغاء</h3>
+    <p class="hint" style="margin:-6px 0 10px">كل تعديل أو إلغاء حصل، الأحدث فوق. الحاجة الأصلية بتفضل محفوظة جوه الحركة نفسها.</p>
+    ${items.length ? items.slice(0, 300).map(x => `<div class="hist"><b>${dispDate(isoOf(x.t))} ${dispTime(x.t)}</b> — ${esc(x.txt)}</div>`).join('') : '<div class="empty">مفيش تعديلات لحد دلوقتي</div>'}
+    <button class="btn line" id="auX" type="button" style="margin-top:12px">رجوع</button>`, true);
+  $('#auX').onclick = closeModal;
+}
+
 /* ====================== التنقل ====================== */
 function go(p) { if (location.hash !== '#' + p) location.hash = p; else route(); }
 function route() {
   if (!db) return;
   const h = decodeURIComponent(location.hash.slice(1));
   let pg = 'home';
-  if (h === 'set' || h === 'cash') pg = h; else if (h.startsWith('p/')) pg = 'party';
+  if (h === 'set' || h === 'cash' || h === 'chk') pg = h; else if (h.startsWith('p/')) pg = 'party';
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
   $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (pg === 'party' ? 'home' : pg)));
-  if (pg === 'set') renderSettings(); else if (pg === 'cash') renderCash(); else if (pg === 'party') renderParty(h.slice(2)); else renderHome();
+  const nd = chkDue().length; $('#nbChk').textContent = nd || ''; $('#nbChk').style.display = nd ? '' : 'none';
+  if (pg === 'set') renderSettings(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'party') renderParty(h.slice(2)); else renderHome();
 }
 let lastHash = '';
 $$('nav button').forEach(b => b.onclick = () => go(b.dataset.go));
 addEventListener('hashchange', () => { closeModal(); route(); if (location.hash !== lastHash) window.scrollTo(0, 0); lastHash = location.hash; });
-$('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk,#dcOk,#pyOk,#txOk,#evOk,#ecOk,#opOk')) closeModal(); });
+$('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk,#dcOk,#pyOk,#txOk,#evOk,#ecOk,#opOk,#adOk,#ccOk,#bcOk,#apOk')) closeModal(); });
 
 showLock();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});

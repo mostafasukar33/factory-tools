@@ -1,0 +1,1139 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="فلاش أون">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>فلاش أون - الحسابات</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+:root{--gold:#DAAE57;--gold-d:#9C7420;--gold-l:#FBF5E6;--ink:#111;--bg:#F5F2EA;--line:#E4DCC8;--red:#C62828;--red-l:#FDECEA;--green:#1B8E3E;--green-l:#E6F6EB;--blue:#37474F}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{font-family:'Cairo',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.5;touch-action:manipulation;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font-family:inherit;font-size:18px;color:inherit}
+.top{background:var(--ink);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20;border-bottom:3px solid var(--gold)}
+.top img{width:42px;height:42px;border-radius:8px;background:#fff}
+.top h1{font-size:19px;margin:0;font-weight:800}
+.top small{color:var(--gold);font-size:12px;display:block;font-weight:600}
+.homebtn{display:inline-flex;align-items:center;gap:6px;background:#fff;color:#111;text-decoration:none;font-weight:800;font-size:14px;padding:8px 12px;border-radius:10px;min-height:40px;flex:none;border:2px solid #DAAE57;cursor:pointer}
+.homebtn:first-of-type{margin-inline-start:auto}
+.lockbtn{background:#222;color:var(--gold);border-color:#444}
+main{padding:12px 12px 0;max-width:680px;margin:0 auto}
+.page{display:none}.page.on{display:block}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h2{font-size:17px;margin:0 0 10px;font-weight:800;color:var(--gold-d)}
+label{display:block;font-size:14px;font-weight:700;color:#555;margin-bottom:4px}
+.inp{width:100%;min-height:54px;padding:10px 12px;border:1.5px solid #D6CDB5;border-radius:11px;background:#fff;outline:none}
+.inp:focus{border-color:var(--gold);box-shadow:0 0 0 3px #DAAE5744}
+textarea.inp{min-height:84px;resize:vertical;line-height:1.7}
+.num{text-align:center;direction:ltr;font-weight:800}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{min-height:56px;border:0;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--ink);color:#fff;width:100%}
+.btn:active{transform:scale(.98)}
+.btn.gold{background:var(--gold);color:#111}
+.btn.green{background:var(--green);color:#fff}
+.btn.line{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+.btn.red{background:#fff;color:var(--red);border:1.5px solid var(--red)}
+.btn.sm{min-height:46px;font-size:15px;padding:6px 10px}
+.btn.big{min-height:68px;font-size:22px;border-radius:16px}
+.stack{display:grid;gap:10px}
+.fld{margin-bottom:10px}
+.hint{color:#777;font-size:13px;margin:6px 0 0}
+.hint a{text-decoration:underline;cursor:pointer;color:var(--gold-d)}
+.empty{text-align:center;color:#888;padding:26px 10px}
+.money{direction:ltr;unicode-bidi:isolate;font-weight:800;white-space:nowrap}
+.dr{color:var(--ink)}.cr{color:var(--red)}
+/* الإجماليات */
+.tots{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.tots div{border-radius:14px;padding:12px 8px;text-align:center;background:#fff;border:1.5px solid var(--line)}
+.tots div span{display:block;font-size:14px;font-weight:700;color:#555}
+.tots div b{display:block;font-size:24px;font-weight:800;direction:ltr}
+.tots .k{grid-column:1/-1;background:var(--ink);border:0;border-bottom:4px solid var(--gold)}
+.tots .k span{color:var(--gold)}.tots .k b{color:#fff;font-size:30px}
+.tots .cr b{color:var(--red)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:#EFE9D8;border-radius:12px;padding:4px;margin-bottom:10px}
+.tabs button{border:0;background:none;border-radius:9px;min-height:50px;font-weight:800;font-size:14px;cursor:pointer;color:#555;line-height:1.25;padding:4px 2px}
+.tabs button small{display:block;font-size:12px;font-weight:700;opacity:.8}
+.tabs button.on{background:#111;color:#DAAE57}
+.srow{display:grid;grid-template-columns:1fr 128px;gap:8px;margin-bottom:10px}
+/* قايمة الحسابات */
+.pt{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--line);border-radius:13px;padding:11px 12px;margin-bottom:8px;cursor:pointer;border-right:6px solid var(--gold)}
+.pt.sup{border-right-color:var(--blue)}
+.pt .m{flex:1;min-width:0}
+.pt .m b{display:block;font-size:18px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pt .m small{display:block;color:#777;font-size:13px}
+.pt .a{text-align:left}
+.pt .a b{display:block;font-size:19px;font-weight:800;direction:ltr}
+.pt .a small{display:block;font-size:12px;font-weight:700;color:#777}
+.pt.zero .a b{color:#999}
+.tag{display:inline-block;font-size:12px;font-weight:800;border-radius:6px;padding:0 6px;background:var(--gold-l);color:var(--gold-d);margin-inline-end:4px}
+.tag.sup{background:#ECEFF1;color:var(--blue)}
+/* صفحة الحساب */
+.phd{background:var(--ink);color:#fff;border-radius:16px;padding:14px 16px;margin-bottom:12px;border-bottom:4px solid var(--gold)}
+.phd h2{margin:0;font-size:24px;font-weight:800;line-height:1.3}
+.phd small{color:#ccc;font-weight:600;font-size:14px}
+.phd .bal{margin-top:10px;display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid #333;padding-top:10px}
+.phd .bal span{color:var(--gold);font-weight:800}
+.phd .bal b{font-size:32px;direction:ltr;font-weight:800}
+.phd .bal b.cr{color:#FF8A80}
+.en{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:7px;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:2px 10px}
+.en .d{font-size:13px;color:#777;font-weight:700}
+.en .t{font-weight:800;font-size:16px;grid-column:1}
+.en .v{grid-row:1/3;grid-column:2;text-align:left;align-self:center}
+.en .v b{display:block;font-size:19px;direction:ltr}
+.en .v small{display:block;font-size:12px;color:#777;direction:ltr;font-weight:700}
+.en.x{opacity:.55}.en.x .t{text-decoration:line-through}
+.en .flag{font-size:11px;font-weight:800;border-radius:5px;padding:0 5px;margin-inline-start:4px;background:#ECEFF1;color:var(--blue)}
+.en .flag.o{background:var(--gold-l);color:var(--gold-d)}
+.en .flag.x{background:var(--red-l);color:var(--red)}
+.sech{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;font-weight:800;color:var(--gold-d)}
+.sech a{font-size:14px;text-decoration:underline;cursor:pointer}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#EFE9D8;border-radius:12px;padding:4px;margin-bottom:10px}
+.seg.s3{grid-template-columns:1fr 1fr 1fr}.seg.s4{grid-template-columns:repeat(4,1fr)}
+.seg button{border:0;background:none;border-radius:9px;min-height:48px;font-weight:800;font-size:15px;cursor:pointer;color:#555;line-height:1.3}
+.seg button.on{background:#111;color:#DAAE57}
+.seg.dir button.on[data-v=dr]{background:#111;color:#fff}.seg.dir button.on[data-v=cr]{background:var(--red);color:#fff}
+.stm{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.stm div{border-radius:12px;padding:8px;text-align:center;background:#fff;border:1.5px solid var(--line)}
+.stm div span{display:block;font-size:13px;font-weight:700;color:#555}
+.stm div b{display:block;font-size:20px;font-weight:800;direction:ltr}
+.stm .k{grid-column:1/-1;background:var(--ink)}.stm .k span{color:var(--gold)}.stm .k b{color:#fff;font-size:26px}
+/* المزامنة */
+.sync{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;padding:8px 12px;border-radius:10px;background:var(--gold-l);border:1.5px dashed var(--gold);margin-bottom:12px;flex-wrap:wrap}
+.sync.ok{background:var(--green-l);border-color:#A9DDB8;color:var(--green)}
+.sync.warn{background:var(--red-l);border-color:#F0B9B3;color:var(--red)}
+.sync a{margin-inline-start:auto;text-decoration:underline;cursor:pointer;color:var(--gold-d)}
+.sync.warn a{color:var(--red)}
+.krow{display:grid;grid-template-columns:1fr 46px;gap:6px;align-items:center}
+.ibtn{width:46px;height:46px;border-radius:10px;border:1.5px solid var(--line);background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-weight:800}
+pre.code{direction:ltr;text-align:left;background:#111;color:#e8e1c8;border-radius:10px;padding:10px;font-size:12px;line-height:1.5;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:8px 0}
+ol.steps{padding-inline-start:22px;margin:6px 0 0;font-weight:600;line-height:1.9;font-size:16px}
+ol.steps li{margin-bottom:6px}
+.chkrow{display:flex;align-items:center;gap:10px;font-weight:700;margin:6px 0}
+.chkrow input{width:26px;height:26px;accent-color:#9C7420;flex:none}
+.chkrow label{margin:0;font-size:16px;color:#111}
+.hist{border-top:1px dashed #ccc;padding:6px 0;font-size:14px}
+/* التنقل */
+nav{position:fixed;bottom:0;inset-inline:0;background:var(--ink);display:grid;grid-template-columns:repeat(2,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:30;border-top:3px solid var(--gold)}
+nav button{background:none;border:0;color:#bbb;padding:9px 4px 8px;font-weight:700;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-height:64px}
+nav button.on{color:var(--gold)}
+nav svg{width:26px;height:26px}
+.mask{position:fixed;inset:0;background:#000a;z-index:130;display:none;align-items:center;justify-content:center;padding:12px}
+.mask.on{display:flex}
+.modal{background:#fff;border-radius:16px;padding:16px;width:100%;max-width:460px;max-height:92vh;overflow:auto}
+.modal.wide{max-width:600px}
+.modal h3{margin:0 0 12px;font-size:20px;font-weight:800}
+.modal p{margin:0 0 14px;font-size:17px;font-weight:700;line-height:1.7}
+.modal img{width:100%;border:1px solid #ccc;margin-bottom:8px;display:block}
+.amt{font-size:30px;min-height:62px}
+#toast{position:fixed;bottom:calc(90px + env(safe-area-inset-bottom));inset-inline:16px;margin:auto;max-width:420px;background:#111;color:#fff;border:2px solid var(--gold);padding:12px 14px;border-radius:12px;text-align:center;font-weight:700;z-index:140;display:none;pointer-events:none}
+/* شاشة القفل */
+#lock{position:fixed;inset:0;z-index:120;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px 18px;overflow:auto}
+#lock.on{display:flex}
+#lock img{width:110px;border-radius:18px;background:#fff;box-shadow:0 4px 18px #0002}
+#lock h2{margin:12px 0 2px;font-size:26px;font-weight:800}
+#lock .box{width:100%;max-width:380px;margin-top:16px}
+#lock .err{color:var(--red);font-weight:800;min-height:26px;text-align:center;margin:6px 0}
+#lock .lnk{display:block;text-align:center;margin-top:14px;color:var(--gold-d);font-weight:700;text-decoration:underline;cursor:pointer;background:none;border:0;width:100%}
+.shake{animation:sh .35s}
+@keyframes sh{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+#render{position:absolute;left:-12000px;top:0;width:794px;pointer-events:none}
+/* ============ ورقة كشف الحساب (A4) — نفس شكل عرض السعر ============ */
+.pg{width:794px;height:1123px;background:#fff;position:relative;display:flex;flex-direction:column;color:#111;direction:rtl;overflow:hidden;font-family:'Cairo',sans-serif}
+.pg .strip{height:12px;background:linear-gradient(90deg,#111 0 30%,#DAAE57 30% 100%);flex:none}
+.pg .in{flex:1;min-height:0;display:flex;flex-direction:column;padding:26px 44px 0;overflow:hidden}
+.pg .hd{display:flex;align-items:center;gap:18px;padding-bottom:16px;border-bottom:4px solid #DAAE57;margin-bottom:16px;flex:none}
+.pg .hd img{width:110px;height:110px;object-fit:contain}
+.pg .co b{display:block;font-size:36px;font-weight:800;line-height:1.2}
+.pg .co span{display:block;font-size:17px;font-weight:600;color:#444}
+.pg .co em{display:block;font-style:normal;font-size:17px;font-weight:700;margin-top:6px;color:#9C7420;direction:ltr;text-align:right}
+.pg .ti{margin-right:auto;text-align:center;border:2.5px solid #111;border-radius:10px;padding:8px 18px;min-width:220px}
+.pg .ti h3{margin:-8px -18px 8px;font-size:26px;font-weight:800;color:#111;background:#DAAE57;padding:4px 0;border-radius:7px 7px 0 0}
+.pg .ti div{font-size:15px;font-weight:700;line-height:1.7}
+.pg .ti div span{color:#9C7420}
+.pg .mini{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #DAAE57;padding-bottom:8px;margin-bottom:12px;font-weight:700;font-size:15px;flex:none}
+.pg .mini b{font-size:20px;font-weight:800}
+.pg .cust{background:#FBF5E6;border-right:6px solid #DAAE57;border-radius:6px;padding:10px 16px;margin-bottom:14px;font-size:16px;display:flex;justify-content:space-between;align-items:center;flex:none}
+.pg .cust b{font-size:22px;font-weight:800;margin-right:8px}
+.pg .cust i{font-style:normal;font-weight:700;color:#9C7420;font-size:15px}
+.pg table{width:100%;border-collapse:collapse;font-size:14.5px;table-layout:fixed;flex:none}
+.pg th{background:#111;color:#DAAE57;padding:8px 5px;font-weight:700;font-size:14.5px;text-align:center}
+.pg td{padding:7px 6px;text-align:center;border-bottom:1px solid #E4DCC8;word-wrap:break-word;vertical-align:middle}
+.pg td.l{text-align:right;font-weight:600}
+.pg td.dt{white-space:nowrap;font-size:13.5px;font-weight:600}
+.pg tr:nth-child(even) td{background:#FBF5E6}
+.pg tr.op td{background:#EFE6CF;font-weight:800}
+.pg td.n{direction:ltr;font-weight:700}
+.pg td.b{direction:ltr;font-weight:800}
+.pg td.b small{font-size:11.5px;font-weight:700;color:#777}
+.pg td.b.cr{color:#C62828}
+.pg .sum{align-self:flex-end;width:360px;margin-top:14px;flex:none}
+.pg .sum .l{display:flex;justify-content:space-between;padding:5px 14px;font-size:16px;font-weight:600;border-bottom:1px solid #E4DCC8}
+.pg .sum .l span:last-child{direction:ltr;font-weight:700}
+.pg .sum .f{display:flex;justify-content:space-between;align-items:center;background:#111;color:#DAAE57;padding:10px 14px;border-radius:8px;margin-top:8px;font-size:18px;font-weight:800}
+.pg .sum .f b{font-size:26px;color:#fff;direction:ltr;font-weight:800}
+.pg .note{margin-top:14px;font-size:13.5px;font-weight:600;color:#555;flex:none}
+.pg .ft{flex:none;background:#111;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 44px;height:44px;font-size:13.5px;font-weight:600;border-top:4px solid #DAAE57}
+.pg .ft span:first-child{color:#DAAE57;font-size:16px;font-weight:700}
+</style>
+</head>
+<body>
+<!-- ============== شاشة القفل ============== -->
+<div id="lock" class="on">
+  <img src="icons/logo.jpg" alt="فلاش أون">
+  <h2>الحسابات</h2>
+  <div style="color:#9C7420;font-weight:700">فلاش أون</div>
+  <div class="box" id="lockBox"><div class="empty">جاري الفتح…</div></div>
+</div>
+
+<header class="top">
+  <img src="icons/logo.jpg" alt="فلاش أون">
+  <div><h1>فلاش أون</h1><small>الحسابات</small></div>
+  <a class="homebtn" href="index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>الرئيسية</a>
+  <button class="homebtn lockbtn" id="bLock" type="button" title="قفل"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>قفل</button>
+</header>
+
+<main>
+<!-- ============== الحسابات ============== -->
+<section class="page" id="p-home">
+  <div class="sync" id="syncBox"></div>
+  <div id="chk"></div>
+  <div class="tots" id="hTots"></div>
+  <button class="btn gold big" id="bNewParty" type="button" style="margin-bottom:12px">+ حساب جديد</button>
+  <div class="tabs" id="hTabs"></div>
+  <div class="srow">
+    <input class="inp" id="hSearch" type="search" placeholder="🔍 دوّر بالاسم أو التليفون" autocomplete="off">
+    <select class="inp" id="hSort"><option value="name">بالاسم</option><option value="bal">الأكبر رصيد</option><option value="last">آخر حركة</option></select>
+  </div>
+  <div id="hList"></div>
+</section>
+
+<!-- ============== صفحة حساب ============== -->
+<section class="page" id="p-party"></section>
+
+<!-- ============== الإعدادات ============== -->
+<section class="page" id="p-set">
+  <div class="card">
+    <h2>النسخة على Google Sheet</h2>
+    <div id="sSheet"></div>
+  </div>
+  <div class="card">
+    <h2>بيانات الشركة في الـ PDF</h2>
+    <div class="fld"><label>رقم التليفون</label><input class="inp" id="sPhone" inputmode="tel" style="direction:ltr;text-align:right" placeholder="01xxxxxxxxx"></div>
+    <button class="btn line sm" id="sPhoneSave" type="button">حفظ الرقم</button>
+  </div>
+  <div class="card">
+    <h2>كلمة السر</h2>
+    <p class="hint" style="margin:0 0 10px">البرنامج بيتقفل لوحده بعد 10 دقايق من غير استخدام، أو لو قفلت الشاشة أكتر من 5 دقايق.</p>
+    <button class="btn line" id="sPass" type="button">تغيير كلمة السر</button>
+  </div>
+  <div class="card">
+    <h2>النسخة الاحتياطية (ملف)</h2>
+    <div class="stack">
+      <button class="btn gold" id="bBackup" type="button">تنزيل نسخة احتياطية</button>
+      <button class="btn line" id="bRestore" type="button">استرجاع نسخة احتياطية</button>
+      <input type="file" id="fRestore" accept=".json,application/json" hidden>
+    </div>
+    <p class="hint">الملف متقفل بكلمة السر بتاعتك، فمحدش يقدر يفتحه من غيرها. احتفظ بيه في مكان آمن.</p>
+  </div>
+</section>
+</main>
+
+<nav>
+  <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>الحسابات</button>
+  <button data-go="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>الإعدادات</button>
+</nav>
+<div id="toast"></div>
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div id="render"></div>
+
+<script src="lib/html2canvas.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script>
+'use strict';
+/*
+  برنامج الحسابات - فلاش أون
+  ---------------------------
+  - كل البيانات في قاعدة واحدة متشفرة بكلمة السر، ومحفوظة في مخزن المتصفح الكبير (IndexedDB) باسم fo_accounts.
+    مش بنلمس أي مفتاح بتاع الأدوات التانية (بنقرا رقم التليفون من fo_db بس كقيمة أولى).
+  - الفلوس بتتخزن بالقرش كرقم صحيح (dr = مدين يعني عليه / زوّد اللي ليا، cr = دائن يعني ليه / قلّل اللي ليا).
+  - الرصيد عمره ما بيتخزن: بيتحسب كل مرة من الحركات (مجموع dr - cr). موجب = عليه (ليا عنده)، سالب = ليه (عليا له).
+  - كل سجل ليه id مميز (فيه رقم الجهاز) + upd (آخر تعديل) + del (ملغي) + sy (آخر نسخة اتبعتت للشيت).
+    مفيش مسح نهائي: الإلغاء بيعلّم السجل بس، والتعديل بيحفظ النسخة القديمة في hist.
+*/
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const normDigits = s => String(s ?? '')
+  .replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632)
+  .replace(/[۰-۹]/g, d => d.charCodeAt(0) - 1776)
+  .replace(/٫/g, '.').replace(/[٬,،]/g, '');
+const num = s => { const n = parseFloat(normDigits(s).replace(/[^\d.\-]/g, '')); return isFinite(n) ? n : 0; };
+const toP = s => Math.round(num(s) * 100);                                   // جنيه → قرش
+const fmtP = p => { p = Math.round(+p || 0); const a = Math.abs(p); return (p < 0 ? '-' : '') + (a / 100).toLocaleString('en-US', {minimumFractionDigits: a % 100 ? 2 : 0, maximumFractionDigits: 2}); };
+const pad2 = n => String(n).padStart(2, '0');
+const isoOf = ms => { const d = new Date(ms); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
+const todayISO = () => isoOf(Date.now());
+const dispDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}/${m}/${y}` : ''; };
+const dispTime = ms => { const d = new Date(ms), h = d.getHours(); return `${pad2(h % 12 || 12)}:${pad2(d.getMinutes())} ${h < 12 ? 'ص' : 'م'}`; };
+const CUR = 'ج.م';
+const SECS = {mkt: 'عملاء السوق', site: 'عملاء المواقع', sup: 'الموردين'};
+const SEC1 = {mkt: 'عميل سوق', site: 'عميل مواقع', sup: 'مورد'};
+/* الرصيد بالكلام: موجب = عليه (فلوس ليا عنده)، سالب = ليه (فلوس عليا له) */
+const balWord = b => b > 0 ? 'عليه' : b < 0 ? 'ليه' : 'خالص';
+
+let toastT;
+function toast(msg, ms = 2800) {
+  const t = $('#toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms);
+}
+function modal(html, wide) { $('#modal').className = 'modal' + (wide ? ' wide' : ''); $('#modal').innerHTML = html; $('#mask').classList.add('on'); }
+function closeModal() { $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; }
+function confirmBox(msg, okLabel = 'تأكيد', danger = false) {
+  return new Promise(res => {
+    modal(`<p>${esc(msg)}</p><div class="g2"><button class="btn ${danger ? 'red' : 'gold'}" id="cOk">${esc(okLabel)}</button><button class="btn line" id="cNo">إلغاء</button></div>`);
+    $('#cOk').onclick = () => { closeModal(); res(true); };
+    $('#cNo').onclick = () => { closeModal(); res(false); };
+  });
+}
+function bindMoney(el) {
+  el.setAttribute('inputmode', 'decimal'); el.setAttribute('autocomplete', 'off');
+  el.addEventListener('input', () => {
+    let s = normDigits(el.value).replace(/[^\d.]/g, '');
+    const p = s.split('.'); s = p[0] + (p.length > 1 ? '.' + p.slice(1).join('').slice(0, 2) : '');
+    let [i, d] = s.split('.');
+    i = i.replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    el.value = i + (d !== undefined ? '.' + d : '');
+  });
+}
+function downloadBlob(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+
+/* ====================== التشفير والتخزين على الجهاز ====================== */
+const IDB_NAME = 'fo_accounts';
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(IDB_NAME, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+let idbP = null;
+const idbGet = async k => { const d = await (idbP = idbP || idb()); return new Promise((res, rej) => { const q = d.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); };
+const idbPut = async (k, v) => { const d = await (idbP = idbP || idb()); return new Promise((res, rej) => { const t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); };
+const idbDel = async k => { const d = await (idbP = idbP || idb()); return new Promise((res, rej) => { const t = d.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); };
+
+const b64 = u8 => { let s = ''; const a = new Uint8Array(u8); for (let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const ITER = 250000;
+async function deriveKey(pass, salt) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name: 'PBKDF2', salt, iterations: ITER, hash: 'SHA-256'}, base, {name: 'AES-GCM', length: 256}, false, ['encrypt', 'decrypt']);
+}
+async function seal(key, salt, obj) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name: 'AES-GCM', iv}, key, new TextEncoder().encode(JSON.stringify(obj)));
+  return {v: 1, salt: b64(salt), iv: b64(iv), ct: b64(ct)};
+}
+async function unseal(key, box) {
+  const pt = await crypto.subtle.decrypt({name: 'AES-GCM', iv: unb64(box.iv)}, key, unb64(box.ct));   // بيرمي خطأ لو كلمة السر غلط
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+function defaults() {
+  return {
+    v: 1, parties: [], entries: [],
+    cfg: {dev: Array.from(crypto.getRandomValues(new Uint8Array(3)), x => x.toString(36).padStart(2, '0')).join(''), sheetUrl: '', sheetKey: '', sheetOk: false, cursor: 0, lastSync: 0, phone: ''}
+  };
+}
+let db = null, cryptoKey = null, saltU8 = null;
+let P = new Map(), E = new Map();          // فهارس سريعة بالـ id
+function reindex() { P = new Map(db.parties.map(r => [r.id, r])); E = new Map(db.entries.map(r => [r.id, r])); }
+
+let saveT = null, saveChain = Promise.resolve(), saveFailed = false;
+function saveDB(now) {
+  clearTimeout(saveT);
+  if (now) return flushSave();
+  saveT = setTimeout(flushSave, 250);
+  schedSync();
+}
+function flushSave() {
+  clearTimeout(saveT); saveT = null;
+  if (!db || !cryptoKey) return saveChain;
+  const snap = db, key = cryptoKey, salt = saltU8;
+  saveChain = saveChain.then(async () => {
+    try {
+      await idbPut('vault', await seal(key, salt, snap));
+      await idbPut('meta', {pending: pendingRecs().length, at: Date.now()});
+      saveFailed = false;
+    } catch (e) {
+      console.error(e);
+      if (!saveFailed) toast('تحذير: الجهاز مش قادر يحفظ. اتأكد إن فيه مساحة، ونزّل نسخة احتياطية حالاً.', 7000);
+      saveFailed = true;
+    }
+  });
+  return saveChain;
+}
+const newId = p => p + Date.now().toString(36) + db.cfg.dev + Math.random().toString(36).slice(2, 7);
+function touch(r) { r.upd = Math.max(Date.now(), (r.upd || 0) + 1); }
+
+/* ====================== الحسابات والأرصدة ====================== */
+const liveParties = () => db.parties.filter(p => !p.del);
+const liveEntries = () => db.entries.filter(e => !e.del);
+const entCmp = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.at || 0) - (b.at || 0) || (a.id < b.id ? -1 : 1);
+function partyEntries(pid, withCancelled) { return db.entries.filter(e => e.party === pid && (withCancelled || !e.del)).sort(entCmp); }
+/* رصيد حساب = مجموع (مدين - دائن) لكل الحركات الشغالة. لو اتبعت تاريخ: الحركات اللي قبله بس */
+function balance(pid, beforeDate) {
+  let b = 0;
+  for (const e of db.entries) if (!e.del && e.party === pid && (!beforeDate || e.date < beforeDate)) b += (e.dr || 0) - (e.cr || 0);
+  return b;
+}
+function allBalances() {
+  const m = new Map(); liveParties().forEach(p => m.set(p.id, 0));
+  for (const e of db.entries) if (!e.del && m.has(e.party)) m.set(e.party, m.get(e.party) + (e.dr || 0) - (e.cr || 0));
+  return m;
+}
+function lastDates() { const m = new Map(); for (const e of db.entries) if (!e.del && (!m.has(e.party) || m.get(e.party) < e.date)) m.set(e.party, e.date); return m; }
+/* مراجعة: كل حركة لازم تبقى على حساب موجود، والأرقام صحيحة بالقرش، والمجموعين متطابقين */
+function selfCheck() {
+  const probs = [];
+  let sumBal = 0, sumEnt = 0;
+  allBalances().forEach(v => sumBal += v);
+  for (const e of db.entries) {
+    if (e.del) continue;
+    const p = P.get(e.party);
+    if (!p) { probs.push(`حركة "${e.desc}" بتاريخ ${dispDate(e.date)} على حساب مش موجود`); continue; }
+    if (p.del) probs.push(`حركة "${e.desc}" على حساب "${p.name}" اللي اتشال`);
+    if (!Number.isInteger(e.dr || 0) || !Number.isInteger(e.cr || 0) || (e.dr || 0) < 0 || (e.cr || 0) < 0) probs.push(`مبلغ غير سليم في حركة "${e.desc}"`);
+    if (!p.del) sumEnt += (e.dr || 0) - (e.cr || 0);
+  }
+  if (sumBal !== sumEnt) probs.push('مجموع الأرصدة مش مساوي لمجموع الحركات');
+  return probs;
+}
+
+/* ====================== شاشة القفل ====================== */
+const LOCK_IDLE = 10 * 60 * 1000, LOCK_HIDDEN = 5 * 60 * 1000;
+let lastAct = Date.now(), hiddenAt = 0;
+async function showLock(msg) {
+  $('#lock').classList.add('on'); closeModal();
+  let vault = null;
+  try { vault = await idbGet('vault'); } catch (e) {
+    $('#lockBox').innerHTML = `<div class="err">المتصفح ده مش سامح بالحفظ (ممكن تكون فاتح "تصفح خفي"). افتح الصفحة من المتصفح العادي.</div>`; return;
+  }
+  if (!vault) return renderSetup();
+  $('#lockBox').innerHTML = `
+    <label for="lkP">كلمة السر</label>
+    <input class="inp" id="lkP" type="password" autocomplete="current-password" style="text-align:center;font-size:22px">
+    <div class="err" id="lkErr">${esc(msg || '')}</div>
+    <button class="btn gold big" id="lkGo" type="button">فتح</button>
+    <button class="lnk" id="lkForgot" type="button">نسيت كلمة السر؟</button>`;
+  const go = async () => {
+    const pw = $('#lkP').value; if (!pw) return;
+    $('#lkGo').disabled = true; $('#lkErr').textContent = '⏳ بفتح…';
+    try {
+      const salt = unb64(vault.salt), key = await deriveKey(pw, salt);
+      const d = await unseal(key, vault);
+      db = Object.assign(defaults(), d); db.cfg = Object.assign(defaults().cfg, d.cfg || {});
+      cryptoKey = key; saltU8 = salt; reindex(); unlocked();
+    } catch (e) {
+      $('#lkGo').disabled = false; $('#lkErr').textContent = 'كلمة السر غلط'; $('#lkP').value = '';
+      $('#lockBox').classList.remove('shake'); void $('#lockBox').offsetWidth; $('#lockBox').classList.add('shake'); $('#lkP').focus();
+    }
+  };
+  $('#lkGo').onclick = go;
+  $('#lkP').onkeydown = e => { if (e.key === 'Enter') go(); };
+  $('#lkForgot').onclick = forgotFlow;
+  setTimeout(() => $('#lkP') && $('#lkP').focus(), 100);
+}
+function renderSetup() {
+  $('#lockBox').innerHTML = `
+    <p style="font-weight:700;text-align:center;margin:0 0 12px">أول مرة على الجهاز ده. اعمل كلمة سر للبرنامج.<br><small style="color:#777">اكتبها في ورقة واحتفظ بيها في مكان آمن.</small></p>
+    <div class="fld"><label for="suP">كلمة السر (6 حروف أو أرقام على الأقل)</label><input class="inp" id="suP" type="password" autocomplete="new-password" style="text-align:center;font-size:20px"></div>
+    <div class="fld"><label for="suP2">اكتبها تاني للتأكيد</label><input class="inp" id="suP2" type="password" autocomplete="new-password" style="text-align:center;font-size:20px"></div>
+    <div class="err" id="suErr"></div>
+    <button class="btn gold big" id="suGo" type="button">ابدأ</button>`;
+  $('#suGo').onclick = async () => {
+    const a = $('#suP').value, b = $('#suP2').value;
+    if (a.length < 6) return $('#suErr').textContent = 'كلمة السر لازم تبقى 6 حروف أو أرقام على الأقل';
+    if (a !== b) return $('#suErr').textContent = 'الكلمتين مش زي بعض';
+    $('#suGo').disabled = true; $('#suErr').textContent = '⏳ لحظة…';
+    saltU8 = crypto.getRandomValues(new Uint8Array(16)); cryptoKey = await deriveKey(a, saltU8);
+    db = defaults();
+    try { const q = JSON.parse(localStorage.getItem('fo_db')); if (q && q.settings && q.settings.phone) db.cfg.phone = q.settings.phone; } catch (e) {}
+    reindex();
+    await flushSave();
+    try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+    unlocked();
+    toast('تمام. لو عندك بيانات على Google Sheet، اربطه من الإعدادات وهتنزل لوحدها.', 6000);
+  };
+}
+async function forgotFlow() {
+  let meta = null; try { meta = await idbGet('meta'); } catch (e) {}
+  const pend = meta && meta.pending || 0;
+  modal(`<h3>نسيت كلمة السر؟</h3>
+    <p style="font-size:16px">مفيش أي طريقة تفتح البيانات اللي على الجهاز ده من غير كلمة السر، وده اللي بيحميها.</p>
+    <p style="font-size:16px">بس كل حاجة متسجلة على Google Sheet بتاعك. تقدر تمسح البيانات من الجهاز ده بس، وتعمل كلمة سر جديدة، وتنزّل كل حاجة تاني من الشيت (محتاج لينك الشيت والمفتاح السري).</p>
+    ${pend ? `<p style="font-size:16px;color:#C62828">⚠️ فيه ${pend} سجل على الجهاز ده لسه متبعتش للشيت، ودول هيضيعوا.</p>` : ''}
+    <div class="fld"><label>للتأكيد اكتب كلمة: امسح</label><input class="inp" id="fgW" style="text-align:center"></div>
+    <div class="stack"><button class="btn red" id="fgGo" type="button">امسح من الجهاز ده وابدأ من جديد</button><button class="btn line" id="fgX" type="button">رجوع</button></div>`);
+  $('#fgX').onclick = closeModal;
+  $('#fgGo').onclick = async () => {
+    if ($('#fgW').value.trim() !== 'امسح') return toast('اكتب كلمة "امسح" الأول');
+    await idbDel('vault'); await idbDel('meta'); closeModal(); renderSetup();
+  };
+}
+function lockNow(msg) {
+  if (!db) return;
+  flushSave().then(() => { db = null; cryptoKey = null; P = new Map(); E = new Map(); $('#p-party').innerHTML = ''; $('#hList').innerHTML = ''; showLock(msg); });
+}
+function unlocked() {
+  $('#lock').classList.remove('on'); $('#lockBox').innerHTML = '';
+  lastAct = Date.now(); route();
+  setTimeout(() => syncNow(), 600);
+}
+['pointerdown', 'keydown', 'scroll'].forEach(ev => addEventListener(ev, () => lastAct = Date.now(), {passive: true, capture: true}));
+setInterval(() => { if (db && Date.now() - lastAct > LOCK_IDLE) lockNow('اتقفل لوحده بعد 10 دقايق من غير استخدام'); }, 20000);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hiddenAt = Date.now(); flushSave(); }
+  else if (db && hiddenAt && Date.now() - hiddenAt > LOCK_HIDDEN) lockNow();
+  else if (db) { lastAct = Date.now(); syncNow(); }
+});
+addEventListener('pagehide', () => flushSave());
+$('#bLock').onclick = () => lockNow();
+</script>
+<script>
+'use strict';
+/* ====================== الرئيسية: قايمة الحسابات ====================== */
+const norm = s => normDigits(s).toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
+let tab = 'all';
+function renderHome() {
+  if (!db) return;
+  renderSyncBox();
+  const probs = selfCheck();
+  $('#chk').innerHTML = probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '';
+  const bal = allBalances();
+  let ly = 0, al = 0; bal.forEach(v => { if (v > 0) ly += v; else al -= v; });
+  const net = ly - al;
+  $('#hTots').innerHTML = `<div><span>ليا (فلوس عند الناس)</span><b>${fmtP(ly)}</b></div><div class="cr"><span>عليا (فلوس للناس)</span><b>${fmtP(al)}</b></div>
+    <div class="k"><span>الصافي ${net >= 0 ? 'ليا' : 'عليا'}</span><b>${fmtP(Math.abs(net))} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>`;
+  const ps = liveParties();
+  const cnt = s => ps.filter(p => s === 'all' || p.sec === s).length;
+  $('#hTabs').innerHTML = [['all', 'الكل'], ['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']]
+    .map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small></button>`).join('');
+  $$('#hTabs button').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
+  renderList(bal);
+}
+function renderList(bal) {
+  bal = bal || allBalances();
+  const q = norm($('#hSearch').value), sort = $('#hSort').value, last = sort === 'last' ? lastDates() : null;
+  let ps = liveParties().filter(p => (tab === 'all' || p.sec === tab) && (!q || norm(p.name).includes(q) || norm(p.phone || '').includes(q)));
+  if (sort === 'bal') ps.sort((a, b) => Math.abs(bal.get(b.id)) - Math.abs(bal.get(a.id)));
+  else if (sort === 'last') ps.sort((a, b) => (last.get(b.id) || '').localeCompare(last.get(a.id) || ''));
+  else ps.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  if (!ps.length) { $('#hList').innerHTML = `<div class="empty">${liveParties().length ? 'مفيش حساب بالاسم ده' : 'لسه مفيش حسابات. اضغط "+ حساب جديد".'}</div>`; return; }
+  $('#hList').innerHTML = ps.map(p => {
+    const b = bal.get(p.id) || 0;
+    return `<div class="pt ${p.sec === 'sup' ? 'sup' : ''} ${b ? '' : 'zero'}" data-id="${esc(p.id)}">
+      <div class="m"><b>${esc(p.name)}</b><small><span class="tag ${p.sec === 'sup' ? 'sup' : ''}">${SEC1[p.sec]}</span>${esc(p.phone || '')}</small></div>
+      <div class="a"><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b><small>${balWord(b)}</small></div></div>`;
+  }).join('');
+  $$('#hList .pt').forEach(el => el.onclick = () => go('p/' + el.dataset.id));
+}
+$('#hSearch').addEventListener('input', () => renderList());
+$('#hSort').addEventListener('change', () => renderList());
+$('#bNewParty').onclick = () => partyModal();
+
+/* ====================== حساب جديد / تعديل حساب ====================== */
+function partyModal(p) {
+  const isNew = !p;
+  const sec0 = p ? p.sec : (tab !== 'all' ? tab : 'mkt');
+  modal(`<h3>${isNew ? 'حساب جديد' : 'تعديل بيانات الحساب'}</h3>
+    <div class="fld"><label>القسم</label><div class="seg s3" id="pmSec">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${k === sec0 ? 'on' : ''}">${n}</button>`).join('')}</div></div>
+    <div class="fld"><label>الاسم</label><input class="inp" id="pmN" value="${esc(p ? p.name : '')}" autocomplete="off"></div>
+    <div class="fld"><label>التليفون (اختياري)</label><input class="inp" id="pmPh" inputmode="tel" style="direction:ltr;text-align:right" value="${esc(p ? p.phone || '' : '')}"></div>
+    <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="pmNote" value="${esc(p ? p.note || '' : '')}"></div>
+    ${isNew ? `<div class="card" style="background:var(--gold-l);margin:4px 0 12px">
+      <label>رصيد أول المدة (لو ليه رصيد قديم، وإلا سيبه فاضي)</label>
+      <div class="seg dir" id="pmDir"><button type="button" data-v="dr" class="on">عليه (فلوس ليا عنده)</button><button type="button" data-v="cr">ليه (فلوس عليا له)</button></div>
+      <div class="g2"><input class="inp num amt" id="pmAmt" placeholder="0"><input class="inp" id="pmDate" type="date" value="${todayISO()}"></div>
+    </div>` : ''}
+    <div class="stack"><button class="btn gold" id="pmOk" type="button">${isNew ? 'إضافة الحساب' : 'حفظ'}</button>
+    ${isNew ? '' : '<button class="btn red sm" id="pmDel" type="button">شيل الحساب</button>'}
+    <button class="btn line" id="pmX" type="button">إلغاء</button></div>`);
+  let sec = sec0, dir = 'dr';
+  $$('#pmSec button').forEach(b => b.onclick = () => { sec = b.dataset.v; $$('#pmSec button').forEach(x => x.classList.toggle('on', x === b)); });
+  if (isNew) { bindMoney($('#pmAmt')); $$('#pmDir button').forEach(b => b.onclick = () => { dir = b.dataset.v; $$('#pmDir button').forEach(x => x.classList.toggle('on', x === b)); }); }
+  $('#pmX').onclick = closeModal;
+  setTimeout(() => isNew && $('#pmN') && $('#pmN').focus(), 50);
+  $('#pmOk').onclick = async () => {
+    const name = $('#pmN').value.trim().replace(/\s+/g, ' ');
+    if (!name) return toast('اكتب الاسم');
+    const dup = liveParties().find(x => x !== p && x.sec === sec && norm(x.name) === norm(name));
+    if (dup && !(await confirmBox(`فيه حساب تاني بنفس الاسم "${dup.name}" في ${SECS[sec]}. تكمّل برضه؟`, 'أيوه كمّل'))) return;
+    const phone = normDigits($('#pmPh') ? $('#pmPh').value : '').trim(), note = ($('#pmNote') ? $('#pmNote').value : '').trim();
+    if (isNew) {
+      const amt = toP($('#pmAmt').value), date = $('#pmDate').value || todayISO();
+      const now = Date.now();
+      const np = {id: newId('p_'), sec, name, phone, note, at: now, upd: now, del: false};
+      db.parties.push(np); P.set(np.id, np);
+      if (amt > 0) addEntry({party: np.id, kind: 'open', date, desc: 'رصيد أول المدة', dr: dir === 'dr' ? amt : 0, cr: dir === 'cr' ? amt : 0});
+      saveDB(); closeModal(); toast('اتضاف الحساب ✔'); go('p/' + np.id);
+    } else {
+      Object.assign(p, {sec, name, phone, note}); touch(p); saveDB(); closeModal(); route(); toast('اتحفظ ✔');
+    }
+  };
+  if (!isNew) $('#pmDel').onclick = async () => {
+    if (partyEntries(p.id).length) return toast('الحساب ده عليه حركات. الغي الحركات الأول لو عايز تشيله.', 5000);
+    if (!(await confirmBox(`تشيل حساب "${p.name}"؟`, 'شيله', true))) return;
+    p.del = true; touch(p); saveDB(); toast('اتشال الحساب'); go('home');
+  };
+}
+
+/* ====================== صفحة الحساب ====================== */
+let showX = false;
+function addEntry(o) {
+  const now = Date.now();
+  const e = Object.assign({id: newId('e_'), kind: 'man', at: now, upd: now, del: false, hist: []}, o);
+  db.entries.push(e); E.set(e.id, e); return e;
+}
+function renderParty(id) {
+  const p = P.get(id);
+  if (!p || p.del) return go('home');
+  const b = balance(id);
+  const all = partyEntries(id, true);
+  let run = 0; const runAt = new Map();
+  all.forEach(e => { if (!e.del) run += (e.dr || 0) - (e.cr || 0); runAt.set(e.id, run); });
+  const nX = all.filter(e => e.del).length;
+  const list = all.filter(e => showX || !e.del).reverse();
+  $('#p-party').innerHTML = `
+    <div class="sech" style="margin-top:0"><a id="ppBack">→ كل الحسابات</a><a id="ppEdit">تعديل البيانات</a></div>
+    <div class="phd"><h2>${esc(p.name)}</h2><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}</small>
+      <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))} <small style="font-size:14px;color:var(--gold)">${CUR}</small></b></div></div>
+    <button class="btn gold big" id="ppStmt" type="button" style="margin-bottom:10px">📄 كشف حساب</button>
+    <button class="btn" id="ppAdd" type="button">+ حركة على الحساب</button>
+    <div class="sech"><span>الحركات (${all.length - nX})</span>${nX ? `<a id="ppX">${showX ? 'إخفاء الملغي' : `إظهار الملغي (${nX})`}</a>` : ''}</div>
+    ${list.length ? list.map(e => `<div class="en ${e.del ? 'x' : ''}" data-id="${esc(e.id)}">
+      <div class="d">${dispDate(e.date)}${e.kind === 'open' ? '<span class="flag o">أول المدة</span>' : ''}${e.hist && e.hist.length ? '<span class="flag">اتعدّلت</span>' : ''}${e.del ? '<span class="flag x">ملغية</span>' : ''}</div>
+      <div class="t">${esc(e.desc)}</div>
+      <div class="v"><b class="${e.cr ? 'cr' : 'dr'}">${e.cr ? '−' : '+'} ${fmtP(e.dr || e.cr)}</b><small>${e.del ? '' : 'رصيد ' + fmtP(Math.abs(runAt.get(e.id))) + ' ' + balWord(runAt.get(e.id))}</small></div></div>`).join('')
+      : '<div class="empty">لسه مفيش حركات على الحساب ده</div>'}
+    <p class="hint">+ يعني مدين (بيزوّد اللي عليه)، و − يعني دائن (بيقلّل اللي عليه أو بيزوّد اللي ليه).</p>`;
+  $('#ppBack').onclick = () => go('home');
+  $('#ppEdit').onclick = () => partyModal(p);
+  $('#ppStmt').onclick = () => stmtModal(p);
+  $('#ppAdd').onclick = () => entryModal(p);
+  if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
+  $$('#p-party .en').forEach(el => el.onclick = () => entryModal(p, E.get(el.dataset.id)));
+}
+
+/* ====================== حركة على الحساب ====================== */
+function entryModal(p, e) {
+  const isNew = !e;
+  let dir = e ? (e.cr ? 'cr' : 'dr') : 'dr';
+  if (e && e.del) {
+    modal(`<h3>حركة ملغية</h3><p style="font-size:16px">${dispDate(e.date)} — ${esc(e.desc)}<br>${e.cr ? 'دائن' : 'مدين'} ${fmtP(e.dr || e.cr)} ${CUR}</p>
+      ${histHtml(e)}
+      <div class="stack"><button class="btn gold" id="emBack" type="button">رجّع الحركة دي</button><button class="btn line" id="emX" type="button">إغلاق</button></div>`);
+    $('#emX').onclick = closeModal;
+    $('#emBack').onclick = () => { e.del = false; delete e.delAt; touch(e); saveDB(); closeModal(); route(); toast('رجعت الحركة ✔'); };
+    return;
+  }
+  modal(`<h3>${isNew ? 'حركة على حساب' : 'تعديل حركة'} — ${esc(p.name)}</h3>
+    <div class="seg dir" id="emDir"><button type="button" data-v="dr" class="${dir === 'dr' ? 'on' : ''}">مدين +<br><small>عليه (زوّد اللي ليا)</small></button><button type="button" data-v="cr" class="${dir === 'cr' ? 'on' : ''}">دائن −<br><small>ليه (قلّل اللي ليا)</small></button></div>
+    <div class="fld"><label>المبلغ</label><input class="inp num amt" id="emAmt" placeholder="0" value="${e ? fmtP(e.dr || e.cr) : ''}"></div>
+    <div class="fld"><label>التاريخ</label><input class="inp" id="emDate" type="date" value="${e ? e.date : todayISO()}"></div>
+    <div class="fld"><label>البيان</label><input class="inp" id="emDesc" value="${esc(e ? e.desc : '')}" placeholder="مثلاً: بضاعة / دفعة / فرق حساب" autocomplete="off"></div>
+    <div class="chkrow"><input type="checkbox" id="emOpen" ${e && e.kind === 'open' ? 'checked' : ''}><label for="emOpen">دي رصيد أول المدة</label></div>
+    ${e ? histHtml(e) : ''}
+    <div class="stack" style="margin-top:8px"><button class="btn gold" id="emOk" type="button">${isNew ? 'حفظ الحركة' : 'حفظ التعديل'}</button>
+    ${isNew ? '' : '<button class="btn red sm" id="emDel" type="button">إلغاء الحركة دي</button>'}
+    <button class="btn line" id="emX" type="button">رجوع</button></div>`);
+  bindMoney($('#emAmt'));
+  $$('#emDir button').forEach(b => b.onclick = () => { dir = b.dataset.v; $$('#emDir button').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#emOpen').onchange = () => { if ($('#emOpen').checked && !$('#emDesc').value.trim()) $('#emDesc').value = 'رصيد أول المدة'; };
+  $('#emX').onclick = closeModal;
+  if (isNew) setTimeout(() => $('#emAmt') && $('#emAmt').focus(), 50);
+  $('#emOk').onclick = () => {
+    const amt = toP($('#emAmt').value), date = $('#emDate').value, desc = $('#emDesc').value.trim().replace(/\s+/g, ' '), kind = $('#emOpen').checked ? 'open' : 'man';
+    if (amt <= 0) return toast('اكتب المبلغ');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');
+    if (!desc) return toast('اكتب البيان');
+    const dr = dir === 'dr' ? amt : 0, cr = dir === 'cr' ? amt : 0;
+    if (isNew) { addEntry({party: p.id, kind, date, desc, dr, cr}); toast('اتسجلت الحركة ✔'); }
+    else {
+      if (e.date === date && e.desc === desc && (e.dr || 0) === dr && (e.cr || 0) === cr && e.kind === kind) return closeModal();
+      (e.hist = e.hist || []).push({t: Date.now(), date: e.date, desc: e.desc, dr: e.dr || 0, cr: e.cr || 0, kind: e.kind});
+      Object.assign(e, {date, desc, dr, cr, kind}); touch(e); toast('اتعدّلت الحركة ✔ (والنسخة القديمة محفوظة)');
+    }
+    saveDB(); closeModal(); route();
+  };
+  if (!isNew) $('#emDel').onclick = async () => {
+    if (!(await confirmBox(`تلغي الحركة دي؟ (${fmtP(e.dr || e.cr)} — ${e.desc}). هتفضل ظاهرة كـ "ملغية" وتقدر ترجّعها.`, 'ألغيها', true))) return;
+    e.del = true; e.delAt = Date.now(); touch(e); saveDB(); route(); toast('اتلغت الحركة');
+  };
+}
+function histHtml(e) {
+  if (!e.hist || !e.hist.length) return '';
+  return `<details style="margin:6px 0 10px"><summary style="font-weight:800;color:var(--gold-d);cursor:pointer">سجل التعديلات (${e.hist.length})</summary>
+    ${e.hist.slice().reverse().map(h => `<div class="hist">قبل تعديل ${dispDate(isoOf(h.t))} ${dispTime(h.t)}: كانت <b>${h.cr ? 'دائن' : 'مدين'} ${fmtP(h.dr || h.cr)}</b> بتاريخ ${dispDate(h.date)} — ${esc(h.desc)}</div>`).join('')}
+    <div class="hist">اتسجلت أول مرة: ${dispDate(isoOf(e.at))} ${dispTime(e.at)}</div></details>`;
+}
+
+/* ====================== كشف الحساب ====================== */
+/* from/to بصيغة YYYY-MM-DD. لو from فاضي يبقى الحساب كله من أوله. */
+function stmtData(pid, from, to) {
+  const all = partyEntries(pid);
+  const open = from ? balance(pid, from) : null;
+  const lines = all.filter(e => (!from || e.date >= from) && (!to || e.date <= to));
+  let run = open || 0, tdr = 0, tcr = 0;
+  const rows = lines.map(e => { run += (e.dr || 0) - (e.cr || 0); tdr += e.dr || 0; tcr += e.cr || 0; return {e, run}; });
+  return {open, rows, tdr, tcr, close: run, from, to};
+}
+const periodText = s => s.from ? `من ${dispDate(s.from)} إلى ${dispDate(s.to)}` : (s.to && s.to !== todayISO() ? `الحساب كله حتى ${dispDate(s.to)}` : 'الحساب كله');
+function stmtModal(p) {
+  let mode = 'all';
+  const t = todayISO(), y = t.slice(0, 4), m = t.slice(0, 7);
+  modal(`<h3>كشف حساب — ${esc(p.name)}</h3>
+    <div class="seg s4" id="smMode"><button type="button" data-m="all" class="on">الحساب كله</button><button type="button" data-m="month">الشهر ده</button><button type="button" data-m="year">السنة دي</button><button type="button" data-m="range">من – إلى</button></div>
+    <div class="g2" id="smRange" style="display:none;margin-bottom:6px"><div><label>من</label><input class="inp" type="date" id="smFrom" value="${y}-01-01"></div><div><label>إلى</label><input class="inp" type="date" id="smTo" value="${t}"></div></div>
+    <div id="smOut"></div>
+    <div class="stack" style="margin-top:6px"><button class="btn green big" id="smShare" type="button">ابعت واتساب</button>
+      <button class="btn gold" id="smPdf" type="button">معاينة / تنزيل PDF</button><button class="btn line" id="smX" type="button">إغلاق</button></div>`, true);
+  const range = () => mode === 'all' ? ['', ''] : mode === 'month' ? [m + '-01', t] : mode === 'year' ? [y + '-01-01', t] : [$('#smFrom').value, $('#smTo').value];
+  const upd = () => {
+    const [f, to] = range();
+    if (mode === 'range' && (!f || !to || f > to)) { $('#smOut').innerHTML = '<div class="empty">اختار تاريخ البداية قبل تاريخ النهاية</div>'; return null; }
+    const s = stmtData(p.id, f, to);
+    $('#smOut').innerHTML = `<div class="stm">${s.open !== null ? `<div><span>رصيد أول المدة</span><b>${fmtP(Math.abs(s.open))} <small>${balWord(s.open)}</small></b></div><div><span>عدد الحركات</span><b>${s.rows.length}</b></div>` : `<div style="grid-column:1/-1"><span>عدد الحركات</span><b>${s.rows.length}</b></div>`}
+      <div><span>إجمالي المدين</span><b>${fmtP(s.tdr)}</b></div><div><span>إجمالي الدائن</span><b>${fmtP(s.tcr)}</b></div>
+      <div class="k"><span>الرصيد النهائي (${balWord(s.close)})</span><b>${fmtP(Math.abs(s.close))}</b></div></div>`;
+    return s;
+  };
+  $$('#smMode button').forEach(b => b.onclick = () => { mode = b.dataset.m; $$('#smMode button').forEach(x => x.classList.toggle('on', x === b)); $('#smRange').style.display = mode === 'range' ? 'grid' : 'none'; upd(); });
+  $('#smFrom').onchange = $('#smTo').onchange = upd;
+  upd();
+  $('#smX').onclick = closeModal;
+  const run = async how => { const s = upd(); if (!s) return; s.to = s.to || todayISO(); await exportStmt(p, s, how); };
+  $('#smShare').onclick = () => run('share');
+  $('#smPdf').onclick = () => run('preview');
+}
+function buildStmtPages(p, s) {
+  const box = $('#render'); box.innerHTML = '';
+  const phone = db.cfg.phone, issued = Date.now();
+  const shell = first => {
+    const pg = document.createElement('div'); pg.className = 'pg';
+    pg.innerHTML = `<div class="strip"></div><div class="in">` + (first
+      ? `<div class="hd"><img src="icons/logo.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${phone ? `<em>${esc(phone)}</em>` : ''}</div>
+         <div class="ti"><h3>كشف حساب</h3><div>تاريخ الإصدار: <span>${dispDate(isoOf(issued))}</span></div><div>الفترة: <span>${esc(periodText(s))}</span></div></div></div>
+         <div class="cust"><span>السادة / <b>${esc(p.name)}</b></span><i>${SEC1[p.sec]}</i></div>`
+      : `<div class="mini"><b>فلاش أون</b><span>كشف حساب — ${esc(p.name)} — ${esc(periodText(s))}</span></div>`) +
+      `</div><div class="ft"><span>عالم متكامل من احتياجاتك الكهربائية</span><span class="pn"></span></div>`;
+    box.appendChild(pg);
+    return {pg, inn: pg.querySelector('.in')};
+  };
+  const over = (inn, el) => el.getBoundingClientRect().bottom > inn.getBoundingClientRect().bottom - 16;
+  const mkTable = () => {
+    const t = document.createElement('table');
+    t.innerHTML = `<colgroup><col style="width:6%"><col style="width:14%"><col style="width:35%"><col style="width:14%"><col style="width:14%"><col style="width:17%"></colgroup>
+      <thead><tr><th>#</th><th>التاريخ</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead><tbody></tbody>`;
+    return t;
+  };
+  const balCell = b => `<td class="b ${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))} <small>${b > 0 ? 'مدين' : b < 0 ? 'دائن' : ''}</small></td>`;
+  let pg = shell(true), tbl = mkTable(); pg.inn.appendChild(tbl);
+  const put = tr => {
+    tbl.tBodies[0].appendChild(tr);
+    if (over(pg.inn, tr) && tbl.tBodies[0].rows.length > 1) { tr.remove(); pg = shell(false); tbl = mkTable(); pg.inn.appendChild(tbl); tbl.tBodies[0].appendChild(tr); }
+  };
+  if (s.open !== null) { const tr = document.createElement('tr'); tr.className = 'op'; tr.innerHTML = `<td></td><td class="dt">${dispDate(s.from)}</td><td class="l">رصيد أول المدة</td><td></td><td></td>${balCell(s.open)}`; put(tr); }
+  s.rows.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i + 1}</td><td class="dt">${dispDate(r.e.date)}</td><td class="l">${esc(r.e.desc)}</td><td class="n">${r.e.dr ? fmtP(r.e.dr) : ''}</td><td class="n">${r.e.cr ? fmtP(r.e.cr) : ''}</td>${balCell(r.run)}`;
+    put(tr);
+  });
+  if (!s.rows.length) { const tr = document.createElement('tr'); tr.innerHTML = `<td colspan="6">مفيش حركات في الفترة دي</td>`; put(tr); }
+  const sum = document.createElement('div'); sum.className = 'sum';
+  sum.innerHTML = (s.open !== null ? `<div class="l"><span>رصيد أول المدة</span><span>${fmtP(Math.abs(s.open))} ${s.open > 0 ? 'مدين' : s.open < 0 ? 'دائن' : ''}</span></div>` : '') +
+    `<div class="l"><span>إجمالي المدين</span><span>${fmtP(s.tdr)} ${CUR}</span></div><div class="l"><span>إجمالي الدائن</span><span>${fmtP(s.tcr)} ${CUR}</span></div>
+     <div class="f"><span>الرصيد النهائي ${s.close > 0 ? '(مدين)' : s.close < 0 ? '(دائن)' : ''}</span><b>${fmtP(Math.abs(s.close))} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div>`;
+  const note = document.createElement('div'); note.className = 'note';
+  note.textContent = 'برجاء مراجعة الكشف، ولو فيه أي ملاحظة يا ريت تتواصلوا معانا.';
+  [sum, note].forEach(el => { pg.inn.appendChild(el); if (over(pg.inn, el)) { el.remove(); pg = shell(false); pg.inn.appendChild(el); } });
+  const pages = [...box.children];
+  pages.forEach((x, i) => x.querySelector('.pn').textContent = `صفحة ${i + 1} من ${pages.length}`);
+  return pages;
+}
+async function makeStmtPdf(p, s) {
+  await Promise.all(['400', '600', '700', '800'].map(w => document.fonts.load(w + ' 16px Cairo', 'نص عربي 123abc')));
+  const pages = buildStmtPages(p, s);
+  await Promise.all([...$('#render').querySelectorAll('img')].map(i => i.decode ? i.decode().catch(() => {}) : 0));
+  await document.fonts.ready;
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit: 'mm', format: 'a4', orientation: 'portrait', compress: true});
+  const imgs = [];
+  for (let i = 0; i < pages.length; i++) {
+    const cv = await html2canvas(pages[i], {scale: 2, backgroundColor: '#fff', logging: false, useCORS: true, width: 794, height: 1123, windowWidth: 794});
+    const url = cv.toDataURL('image/jpeg', 0.9); if (i < 6) imgs.push(url);
+    if (i) doc.addPage();
+    doc.addImage(url, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+    cv.width = cv.height = 0;
+  }
+  $('#render').innerHTML = '';
+  const name = `كشف حساب - ${p.name} - ${dispDate(todayISO()).replace(/\//g, '-')}`.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim() + '.pdf';
+  return {blob: doc.output('blob'), imgs, name, pages: pages.length};
+}
+async function shareFile(res, title) {
+  const file = new File([res.blob], res.name, {type: 'application/pdf'});
+  const data = {files: [file], title, text: title + ' - فلاش أون'};
+  if (!(navigator.canShare && navigator.canShare(data))) {
+    downloadBlob(res.blob, res.name);
+    toast('الجهاز ده مش بيدعم المشاركة المباشرة. الملف اتنزّل، ابعته من واتساب بإيدك.', 6000);
+    return;
+  }
+  try { await navigator.share(data); }
+  catch (e) {
+    if (e.name === 'AbortError') return;
+    if (e.name === 'NotAllowedError') {
+      modal(`<p>الملف جاهز. اضغط للإرسال:</p><div class="stack"><button class="btn green" id="shGo">فتح المشاركة (واتساب)</button><button class="btn line" id="shNo">إلغاء</button></div>`);
+      $('#shNo').onclick = closeModal;
+      $('#shGo').onclick = async () => { try { await navigator.share(data); closeModal(); } catch (x) { closeModal(); if (x.name !== 'AbortError') downloadBlob(res.blob, res.name); } };
+      return;
+    }
+    downloadBlob(res.blob, res.name); toast('حصلت مشكلة في المشاركة، الملف اتنزّل بدلها.', 5000);
+  }
+}
+async function exportStmt(p, s, how) {
+  modal('<p style="text-align:center">جاري تجهيز كشف الحساب…</p>');
+  let res;
+  try { res = await makeStmtPdf(p, s); }
+  catch (e) { closeModal(); console.error(e); toast('حصلت مشكلة في تجهيز الـ PDF، جرّب تاني.'); return; }
+  closeModal();
+  const title = `كشف حساب ${p.name}`;
+  if (how === 'share') return shareFile(res, title);
+  modal(`${res.imgs.map(u => `<img src="${u}" alt="">`).join('')}${res.pages > res.imgs.length ? `<p class="hint">(المعاينة بتعرض أول ${res.imgs.length} صفحات من ${res.pages})</p>` : ''}
+    <div class="stack"><button class="btn green" id="pvShare">ابعت واتساب</button><button class="btn gold" id="pvDl">تنزيل PDF</button><button class="btn line" id="pvX">إغلاق</button></div>`, true);
+  $('#pvX').onclick = closeModal;
+  $('#pvDl').onclick = () => downloadBlob(res.blob, res.name);
+  $('#pvShare').onclick = () => { closeModal(); shareFile(res, title); };
+}
+
+/* ====================== المزامنة مع Google Sheet ====================== */
+/* شيت منفصل للحسابات، مقفول بمفتاح سري بيتكتب على كل جهاز ومتخزن متشفر جوه البرنامج.
+   الكود اللي بيتحط في Apps Script بيتعمل هنا على الجهاز ومعاه المفتاح، فالمفتاح مش موجود في أي ملف على GitHub.
+   كل سجل بياخد "رقم مزامنة" متزايد في الشيت، وكل جهاز بيفتكر آخر رقم نزّله، فبينزل الجديد بس.
+   لو نفس السجل اتعدّل على جهازين، الأحدث تعديلاً هو اللي بيكسب. */
+const scriptFor = key => `// حسابات فلاش أون (مقفول بمفتاح سري)
+const KEY = ${JSON.stringify(key)};
+const SHEET = 'السجلات';
+const HEAD = ['id','النوع','آخر تعديل','رقم المزامنة','ملغي','التاريخ','الحساب','القسم','البيان','مدين','دائن','البيانات (لا تعدّلها)'];
+const W = HEAD.length;
+function sh_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let s = ss.getSheetByName(SHEET);
+  if (!s) { s = ss.insertSheet(SHEET); s.appendRow(HEAD); s.setFrozenRows(1); }
+  return s;
+}
+function doGet() { return out_({ok: false, error: 'locked'}); }
+function doPost(e) {
+  let req;
+  try { req = JSON.parse(e.postData.contents); } catch (x) { return out_({ok: false, error: 'bad'}); }
+  if (!req || req.key !== KEY) return out_({ok: false, error: 'key'});
+  if (req.action === 'ping') return out_({ok: true, app: 'fo-acc', v: 1, n: Math.max(sh_().getLastRow() - 1, 0)});
+  if (req.action === 'push') return out_(push_(req.rows || []));
+  if (req.action === 'pull') return out_(pull_(Number(req.since) || 0));
+  return out_({ok: false, error: 'action'});
+}
+function push_(rows) {
+  const lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    const s = sh_(), last = s.getLastRow();
+    const cur = last > 1 ? s.getRange(2, 1, last - 1, 3).getValues() : [];
+    const pos = {}; cur.forEach((r, i) => pos[String(r[0])] = i);
+    const props = PropertiesService.getScriptProperties();
+    let seq = Number(props.getProperty('SEQ')) || 0;
+    const add = [], addAt = {}, ack = [];
+    rows.forEach(r => {
+      const i = pos[r.id];
+      ack.push(r.id);
+      if (i !== undefined && Number(cur[i][2]) >= Number(r.upd)) return;
+      if (addAt[r.id] !== undefined && Number(add[addAt[r.id]][2]) >= Number(r.upd)) return;
+      seq++;
+      const v = (r.view || []).concat(['', '', '', '', '', '']).slice(0, 6);
+      const line = [r.id, r.kind, r.upd, seq, r.del ? 'نعم' : ''].concat(v, [JSON.stringify(r.data)]);
+      if (i !== undefined) { s.getRange(i + 2, 1, 1, W).setValues([line]); cur[i][2] = r.upd; }
+      else if (addAt[r.id] !== undefined) add[addAt[r.id]] = line;
+      else { addAt[r.id] = add.length; add.push(line); }
+    });
+    if (add.length) s.getRange(last + 1, 1, add.length, W).setValues(add);
+    props.setProperty('SEQ', String(seq));
+    return {ok: true, ack: ack, seq: seq};
+  } catch (err) { return {ok: false, error: String(err)}; }
+  finally { lock.releaseLock(); }
+}
+function pull_(since) {
+  const s = sh_(), last = s.getLastRow();
+  if (last < 2) return {ok: true, rows: [], next: since, more: false};
+  const v = s.getRange(2, 1, last - 1, W).getValues().filter(r => Number(r[3]) > since);
+  v.sort((a, b) => Number(a[3]) - Number(b[3]));
+  const page = v.slice(0, 1500);
+  const rows = page.map(r => { try { return {id: String(r[0]), kind: String(r[1]), upd: Number(r[2]), del: r[4] === 'نعم', data: JSON.parse(r[W - 1])}; } catch (e) { return null; } }).filter(Boolean);
+  return {ok: true, rows: rows, next: page.length ? Number(page[page.length - 1][3]) : since, more: v.length > page.length};
+}
+function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }`;
+
+async function callSheet(body, url = db.cfg.sheetUrl, key = db.cfg.sheetKey, ms = 45000) {
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
+  try {
+    const resp = await fetch(url, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify(Object.assign({key}, body)), signal: ctl.signal});
+    const txt = await resp.text();
+    try { return JSON.parse(txt); } catch (e) { const x = new Error('page'); x.code = 'page'; throw x; }
+  } finally { clearTimeout(tm); }
+}
+const pendingRecs = () => db ? [...db.parties.map(r => ['party', r]), ...db.entries.map(r => ['entry', r])].filter(([k, r]) => r.sy !== r.upd) : [];
+const cell = s => { s = String(s ?? ''); return /^[=+\-@]/.test(s) ? "'" + s : s; };   // علشان الشيت ميفهمش الكلام كمعادلة
+function viewOf(kind, r) {
+  if (kind === 'party') return ['', cell(r.name), SECS[r.sec] || '', cell(r.phone || ''), '', ''];
+  const p = P.get(r.party);
+  return [r.date, cell(p ? p.name : '؟'), p ? SECS[p.sec] : '', cell(r.desc), (r.dr || 0) / 100, (r.cr || 0) / 100];
+}
+const stripLocal = r => { const o = Object.assign({}, r); delete o.sy; return o; };
+function mergeRow(r) {
+  const map = r.kind === 'party' ? P : r.kind === 'entry' ? E : null;
+  if (!map || !r.data || !r.id) return false;
+  const cur = map.get(r.id);
+  if (cur && cur.upd > r.upd) return false;
+  if (cur && cur.upd === r.upd) { cur.sy = cur.upd; return false; }
+  const rec = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del, sy: r.upd});
+  if (cur) { Object.keys(cur).forEach(k => delete cur[k]); Object.assign(cur, rec); }
+  else { (r.kind === 'party' ? db.parties : db.entries).push(rec); map.set(r.id, rec); }
+  return true;
+}
+let syncing = false, syncT = null, syncErr = '', lastPullAt = 0;
+function schedSync() { clearTimeout(syncT); syncT = setTimeout(() => syncNow(), 1500); }
+async function syncNow(manual) {
+  if (!db) return;
+  if (!db.cfg.sheetUrl || !db.cfg.sheetOk) { if (manual) toast('اربط الشيت الأول من الإعدادات'); return; }
+  if (syncing) return;
+  if (!navigator.onLine) { renderSyncBox(); if (manual) toast('مفيش نت دلوقتي. هيتبعت أول ما النت يرجع.'); return; }
+  syncing = true; syncErr = ''; renderSyncBox();
+  const d0 = db;
+  let got = 0;
+  try {
+    let p = pendingRecs();
+    while (p.length) {
+      const batch = p.slice(0, 200);
+      const rows = batch.map(([kind, r]) => ({id: r.id, kind, upd: r.upd, del: !!r.del, view: viewOf(kind, r), data: stripLocal(r)}));
+      const j = await callSheet({action: 'push', rows});
+      if (db !== d0) return;
+      if (!j.ok) throw new Error(j.error || 'خطأ من الشيت');
+      const ack = new Set(j.ack || []);
+      if (!ack.size) throw new Error('الشيت مأكدش الاستلام');
+      batch.forEach(([k, r], i) => { if (ack.has(r.id) && r.upd === rows[i].upd) r.sy = r.upd; });
+      p = pendingRecs(); renderSyncBox();
+    }
+    let more = true;
+    while (more) {
+      const j = await callSheet({action: 'pull', since: db.cfg.cursor});
+      if (db !== d0) return;
+      if (!j.ok) throw new Error(j.error || 'خطأ من الشيت');
+      j.rows.forEach(r => { if (mergeRow(r)) got++; });
+      db.cfg.cursor = j.next; more = !!j.more;
+    }
+    db.cfg.lastSync = lastPullAt = Date.now();
+    await flushSave();
+    if (manual) toast(got ? `اتبعت كل حاجة، ونزل ${got} سجل جديد ✔` : 'كل حاجة متسجلة على الشيت ✔');
+  } catch (e) {
+    syncErr = e.message === 'key' ? 'key' : String(e.message || e);
+    if (manual) toast(syncErr === 'key' ? 'الشيت رفض المفتاح السري. راجع المفتاح في الإعدادات.' : 'معرفتش أوصل للشيت. اتأكد من النت.', 5000);
+    if (db === d0) flushSave();
+  } finally {
+    syncing = false;
+    if (db === d0) { renderSyncBox(); if (got) { if (P.size !== db.parties.length || E.size !== db.entries.length) reindex(); if (!$('#mask').classList.contains('on')) route(); } }
+  }
+}
+function renderSyncBox() {
+  const b = $('#syncBox'); if (!b || !db) return;
+  const n = pendingRecs().length;
+  if (!db.cfg.sheetUrl || !db.cfg.sheetOk) { b.className = 'sync warn'; b.innerHTML = `الشيت لسه مش مربوط — البيانات على الجهاز ده بس. <a id="syGo">اربطه</a>`; $('#syGo').onclick = () => go('set'); return; }
+  if (syncing) { b.className = 'sync'; b.textContent = 'جاري المزامنة مع الشيت…'; return; }
+  if (syncErr === 'key') { b.className = 'sync warn'; b.innerHTML = `الشيت رفض المفتاح السري. <a id="syGo">راجع المفتاح</a>`; $('#syGo').onclick = () => go('set'); return; }
+  if (!n && !syncErr) { b.className = 'sync ok'; b.textContent = '✔ كل حاجة متسجلة على Google Sheet' + (db.cfg.lastSync ? ' — آخر مزامنة ' + dispTime(db.cfg.lastSync) : ''); return; }
+  b.className = 'sync'; b.innerHTML = `${n ? n + ' سجل مستني الإرسال للشيت' : 'مستني المزامنة'}${navigator.onLine ? '' : ' (مفيش نت)'}${syncErr ? ' — فيه مشكلة في الاتصال' : ''} <a id="syNow">زامن دلوقتي</a>`;
+  $('#syNow').onclick = () => syncNow(true);
+}
+addEventListener('online', () => syncNow());
+setInterval(() => { if (db && (pendingRecs().length || Date.now() - lastPullAt > 120000)) syncNow(); }, 30000);
+
+/* ====================== الإعدادات ====================== */
+const KEY_RE = /^[A-Za-z0-9؀-ۿ_\-@#.!]{8,64}$/;
+function makeKey() {
+  const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', r = crypto.getRandomValues(new Uint8Array(12));
+  return [...r].map(x => A[x % A.length]).join('').replace(/(.{4})(?!$)/g, '$1-');
+}
+function renderSettings() {
+  const c = db.cfg;
+  $('#sPhone').value = c.phone || '';
+  $('#sSheet').innerHTML = `<p class="hint" style="margin:0 0 10px">ده شيت <b>منفصل</b> للحسابات (مش بتاع دفتر الخزنة). أي حركة بتتبعت له لوحدها، وأي جهاز تفتح منه بينزّل منه آخر حاجة.</p>
+    <div class="fld"><label>لينك الشيت (Web app URL)</label><input class="inp" id="shUrl" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" value="${esc(c.sheetUrl)}"></div>
+    <div class="fld"><label>المفتاح السري (بتكتبه مرة واحدة على كل جهاز)</label>
+      <div class="krow"><input class="inp" id="shKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:16px" placeholder="8 حروف أو أرقام على الأقل" value="${esc(c.sheetKey)}">
+      <button class="ibtn" id="shEye" type="button" title="إظهار">👁</button></div>
+      <p class="hint">من غير المفتاح ده محدش يقدر يقرا ولا يكتب في الشيت حتى لو معاه اللينك. اكتبه في ورقة. ممكن تستخدم نفس مفتاح دفتر الخزنة. <a id="shGen">اعملي مفتاح جديد</a></p>
+    </div>
+    <div class="stack">
+      <button class="btn gold" id="shSave" type="button">حفظ واختبار الاتصال</button>
+      <button class="btn line" id="shNow" type="button">زامن دلوقتي (${pendingRecs().length} مستني)</button>
+      <button class="btn line" id="shAll" type="button">نزّل كل البيانات من الشيت تاني</button>
+      <button class="btn line" id="shHelp" type="button">إزاي أعمل شيت الحسابات؟ (خطوة بخطوة)</button>
+    </div>
+    <div id="shStat" class="sync" style="display:none;margin:10px 0 0"></div>
+    <p class="hint">${c.lastSync ? 'آخر مزامنة ناجحة: ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة ناجحة.'}</p>`;
+  $('#shEye').onclick = () => { const k = $('#shKey'); k.type = k.type === 'password' ? 'text' : 'password'; };
+  $('#shGen').onclick = () => { $('#shKey').value = makeKey(); $('#shKey').type = 'text'; toast('ده مفتاح جديد. اكتبه في ورقة قبل ما تحفظ.', 5000); };
+  $('#shSave').onclick = testSheet;
+  $('#shNow').onclick = () => syncNow(true);
+  $('#shAll').onclick = async () => {
+    if (!c.sheetOk) return toast('اربط الشيت الأول');
+    if (!(await confirmBox('هنزّل كل السجلات من الشيت تاني وأدمجها مع اللي على الجهاز (الأحدث تعديلاً هو اللي يكسب). مفيش حاجة هتتمسح.', 'نزّل'))) return;
+    c.cursor = 0; syncNow(true);
+  };
+  $('#shHelp').onclick = showHelp;
+}
+function setStat(k, msg) {
+  const e = $('#shStat'); if (!e) return toast(msg, 6000);
+  e.style.display = 'flex'; e.className = 'sync' + (k === 'ok' ? ' ok' : k === 'bad' ? ' warn' : '');
+  e.textContent = msg; e.scrollIntoView({block: 'center', behavior: 'smooth'});
+}
+async function testSheet() {
+  const c = db.cfg, u = $('#shUrl').value.trim(), k = $('#shKey').value.trim();
+  if (u && !/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u)) return setStat('bad', '❌ اللينك مش شكل لينك Apps Script. لازم يبدأ بـ https://script.google.com ويخلص بـ /exec.');
+  if (/\/dev(\?|$)/.test(u)) return setStat('bad', '❌ اللينك ده بتاع التجربة (/dev). المطلوب اللينك اللي بيخلص بـ /exec.');
+  if (u && !KEY_RE.test(k)) return setStat('bad', '❌ اكتب مفتاح سري من 8 لـ 64 حرف أو رقم من غير مسافات (أو اضغط "اعملي مفتاح جديد").');
+  if (u !== c.sheetUrl) { c.cursor = 0; c.sheetOk = false; db.parties.forEach(r => delete r.sy); db.entries.forEach(r => delete r.sy); }   // شيت جديد = كل حاجة تتبعت له من الأول
+  if (k !== c.sheetKey) c.sheetOk = false;
+  c.sheetUrl = u; c.sheetKey = u ? k : ''; await flushSave();
+  if (!u) { c.sheetOk = false; await flushSave(); renderSettings(); renderSyncBox(); return toast('اتفصل الشيت'); }
+  setStat('wait', '⏳ بختبر الاتصال… (ممكن ياخد لحد 30 ثانية)');
+  let j;
+  try { j = await callSheet({action: 'ping'}, u, k, 30000); }
+  catch (e) {
+    return setStat('bad', e.code === 'page' ? '❌ الشيت رد بصفحة مش مفهومة. غالباً الوصول مش "أي شخص (Anyone)". ارجع Apps Script ← نشر ← إدارة عمليات النشر ← عدّل ← Who has access = Anyone ← إصدار جديد ← نشر.'
+      : e.name === 'AbortError' ? '❌ الشيت مردش في 30 ثانية. اتأكد من النت وجرّب تاني.'
+      : '❌ معرفتش أوصل للشيت. الأسباب المحتملة: (1) الوصول مش "أي شخص (Anyone)" (2) اللينك ناقص أو غلط (3) عدّلت الكود ومعملتش إصدار جديد في النشر (4) مفيش نت.');
+  }
+  if (!j.ok && j.error === 'key') return setStat('bad', '❌ الشيت رفض المفتاح. المفتاح اللي هنا لازم يبقى نفس اللي اتحط في الكود. لو مش متأكد، انسخ الكود تاني من الخطوات وحطه في الشيت.');
+  if (j.ok && j.app !== 'fo-acc') return setStat('bad', j.v === 2 ? '❌ ده لينك شيت دفتر الخزنة. الحسابات محتاجة شيت جديد لوحده — شوف الخطوات.' : '❌ الشيت ده عليه كود تاني مش بتاع الحسابات. اعمل الخطوات وانسخ الكود من هنا.');
+  if (!j.ok) return setStat('bad', '❌ الشيت رد بخطأ: ' + (j.error || 'غير معروف'));
+  c.sheetOk = true; await flushSave();
+  setStat('ok', `✅ الاتصال شغال والشيت مقفول بالمفتاح (في الشيت ${j.n} سجل). ببدأ المزامنة…`);
+  await syncNow();
+  setStat(syncErr ? 'bad' : 'ok', syncErr ? '⚠️ الاتصال شغال بس المزامنة وقفت: ' + syncErr : '✅ الاتصال شغال وكل حاجة اتزامنت.');
+  renderSyncBox();
+}
+function showHelp() {
+  const k = db.cfg.sheetKey;
+  if (!k) return toast('اكتب المفتاح السري الأول (أو اضغط "اعملي مفتاح جديد") واضغط حفظ، وبعدين افتح الخطوات.', 6000);
+  const code = scriptFor(k), lines = code.split('\n').length;
+  modal(`<h3>شيت الحسابات (مرة واحدة بس)</h3>
+  <ol class="steps">
+    <li>افتح <b>sheets.google.com</b> بحساب جوجل بتاعك، واضغط <b>+ (فاضي)</b> علشان تعمل جدول جديد. سمّيه: <b>حسابات فلاش أون</b>.</li>
+    <li>من القايمة اللي فوق: <b>الإضافات (Extensions)</b> ← <b>Apps Script</b>.</li>
+    <li>اضغط جوه خانة الكود، واختار <b>تحديد الكل (Select all)</b> وامسح كل حاجة. وارجع هنا واضغط <b>"انسخ الكود"</b>، وبعدين الصق <b>مرة واحدة بس</b>. الكود الصح بيخلص عند السطر رقم ${lines}.</li>
+    <li>اضغط أيقونة الحفظ 💾.</li>
+    <li>فوق على اليمين: <b>نشر (Deploy)</b> ← <b>نشر جديد (New deployment)</b> ← العجلة ⚙ ← <b>Web app</b>.</li>
+    <li><b>Execute as</b> = <b>Me (أنا)</b>، و<b>Who has access</b> = <b>Anyone (أي شخص)</b>. ده عادي لأن المفتاح السري هو اللي بيحمي البيانات.</li>
+    <li>اضغط <b>نشر (Deploy)</b> ← <b>Authorize access</b> ← اختار حسابك ← <b>Advanced</b> ← <b>Go to ... (unsafe)</b> ← <b>Allow</b>. (التحذير عادي لأن الكود بتاعك إنت.)</li>
+    <li>انسخ <b>Web app URL</b> (بيخلص بـ /exec)، والصقه هنا في خانة اللينك، واضغط <b>حفظ واختبار الاتصال</b>.</li>
+  </ol>
+  <p style="font-size:14px;margin:10px 0 0;color:#555">على أي جهاز تاني: افتح البرنامج، وحط نفس اللينك ونفس المفتاح، وكل البيانات هتنزل لوحدها. متعدّلش في الجدول بإيدك.</p>
+  <p style="font-size:14px;margin:6px 0 0;color:#555">لو غيّرت المفتاح بعدين: لازم تنسخ الكود تاني وتحطه، وبعدين <b>نشر ← إدارة عمليات النشر ← ✏️ ← إصدار جديد</b>.</p>
+  <div class="stack" style="margin-top:12px"><button class="btn green" id="hpCopy" type="button">انسخ الكود</button><button class="btn line" id="hpShow" type="button">اعرض الكود</button><button class="btn line" id="hpX" type="button">إغلاق</button></div>`, true);
+  $('#hpX').onclick = closeModal;
+  $('#hpShow').onclick = () => { if (!$('#hpCode')) $('#hpShow').insertAdjacentHTML('afterend', `<pre class="code" id="hpCode">${esc(code)}</pre>`); };
+  $('#hpCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(code); toast('اتنسخ الكود ✔ دلوقتي الصقه في Apps Script', 5000); }
+    catch (e) {
+      $('#hpShow').click(); const r = document.createRange(); r.selectNodeContents($('#hpCode')); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      toast('اضغط مطوّل على الكود واختار نسخ (Copy)', 6000);
+    }
+  };
+}
+$('#sPhoneSave').onclick = () => { db.cfg.phone = normDigits($('#sPhone').value).trim(); saveDB(); toast('اتحفظ الرقم ✔'); };
+$('#sPass').onclick = () => {
+  modal(`<h3>تغيير كلمة السر</h3>
+    <div class="fld"><label>كلمة السر الحالية</label><input class="inp" id="cpO" type="password" autocomplete="current-password"></div>
+    <div class="fld"><label>كلمة السر الجديدة (6 على الأقل)</label><input class="inp" id="cpN" type="password" autocomplete="new-password"></div>
+    <div class="fld"><label>الجديدة تاني</label><input class="inp" id="cpN2" type="password" autocomplete="new-password"></div>
+    <p class="hint">كلمة السر بتتغير على الجهاز ده بس. كل جهاز ليه كلمة السر بتاعته.</p>
+    <div class="stack" style="margin-top:10px"><button class="btn gold" id="cpOk" type="button">غيّر</button><button class="btn line" id="cpX" type="button">إلغاء</button></div>`);
+  $('#cpX').onclick = closeModal;
+  $('#cpOk').onclick = async () => {
+    const o = $('#cpO').value, n = $('#cpN').value;
+    if (n.length < 6) return toast('الجديدة لازم 6 حروف أو أرقام على الأقل');
+    if (n !== $('#cpN2').value) return toast('الجديدة مش زي بعض');
+    $('#cpOk').disabled = true;
+    try { await unseal(await deriveKey(o, saltU8), await idbGet('vault')); }
+    catch (e) { $('#cpOk').disabled = false; return toast('كلمة السر الحالية غلط'); }
+    saltU8 = crypto.getRandomValues(new Uint8Array(16)); cryptoKey = await deriveKey(n, saltU8);
+    await flushSave(); closeModal(); toast('اتغيرت كلمة السر ✔');
+  };
+};
+
+/* ====================== النسخة الاحتياطية (ملف متشفر) ====================== */
+$('#bBackup').onclick = async () => {
+  const box = await seal(cryptoKey, saltU8, {parties: db.parties.map(stripLocal), entries: db.entries.map(stripLocal)});
+  const data = Object.assign({app: 'flash-on-accounts-backup', exportedAt: new Date().toISOString(), parties: liveParties().length, entries: liveEntries().length}, box);
+  downloadBlob(new Blob([JSON.stringify(data)], {type: 'application/json'}), `flash-on-accounts-${todayISO()}.json`);
+  toast('اتنزّلت النسخة الاحتياطية (متقفلة بكلمة السر). احتفظ بيها في مكان آمن.', 5000);
+};
+$('#bRestore').onclick = () => $('#fRestore').click();
+$('#fRestore').addEventListener('change', async ev => {
+  const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
+  let box; try { box = JSON.parse(await f.text()); if (box.app !== 'flash-on-accounts-backup' || !box.ct) throw 0; } catch (x) { return toast('الملف ده مش نسخة احتياطية بتاعة الحسابات'); }
+  let d = null;
+  if (b64(saltU8) === box.salt) try { d = await unseal(cryptoKey, box); } catch (e) {}
+  if (!d) {
+    const pw = await new Promise(res => {
+      modal(`<h3>كلمة سر الملف</h3><p style="font-size:16px">الملف ده اتعمل بكلمة سر تانية. اكتب كلمة السر اللي كانت وقت ما اتعمل.</p>
+        <div class="fld"><input class="inp" id="rpP" type="password"></div><div class="g2"><button class="btn gold" id="rpOk">فتح</button><button class="btn line" id="rpX">إلغاء</button></div>`);
+      $('#rpOk').onclick = () => { const v = $('#rpP').value; closeModal(); res(v); }; $('#rpX').onclick = () => { closeModal(); res(null); };
+    });
+    if (pw === null) return;
+    try { d = await unseal(await deriveKey(pw, unb64(box.salt)), box); } catch (e) { return toast('كلمة السر غلط'); }
+  }
+  if (!(await confirmBox(`النسخة فيها ${box.parties} حساب و ${box.entries} حركة. هتتدمج مع اللي على الجهاز (الأحدث تعديلاً هو اللي يكسب)، ومفيش حاجة هتتمسح. تكمّل؟`, 'استرجاع'))) return;
+  let n = 0;
+  [['party', d.parties || []], ['entry', d.entries || []]].forEach(([kind, arr]) => arr.forEach(r => { if (mergeRow({id: r.id, kind, upd: r.upd, del: r.del, data: r})) { const x = (kind === 'party' ? P : E).get(r.id); delete x.sy; n++; } }));
+  saveDB(); route(); toast(`اتم الاسترجاع (${n} سجل اتضاف أو اتحدّث)`, 5000);
+});
+
+/* ====================== التنقل ====================== */
+function go(p) { if (location.hash !== '#' + p) location.hash = p; else route(); }
+function route() {
+  if (!db) return;
+  const h = decodeURIComponent(location.hash.slice(1));
+  let pg = 'home';
+  if (h === 'set') pg = 'set'; else if (h.startsWith('p/')) pg = 'party';
+  $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
+  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (pg === 'set' ? 'set' : 'home')));
+  if (pg === 'set') renderSettings(); else if (pg === 'party') renderParty(h.slice(2)); else renderHome();
+}
+let lastHash = '';
+$$('nav button').forEach(b => b.onclick = () => go(b.dataset.go));
+addEventListener('hashchange', () => { closeModal(); route(); if (location.hash !== lastHash) window.scrollTo(0, 0); lastHash = location.hash; });
+$('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk')) closeModal(); });
+
+showLock();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
+</script>
+</body>
+</html>

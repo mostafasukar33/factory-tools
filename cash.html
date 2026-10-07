@@ -118,6 +118,8 @@ nav svg{width:26px;height:26px}
 .sync{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;padding:8px 12px;border-radius:10px;background:var(--gold-l);border:1.5px dashed var(--gold);margin-bottom:12px;flex-wrap:wrap}
 .sync.ok{background:var(--green-l);border-color:#A9DDB8;color:var(--green)}
 .sync a{margin-inline-start:auto;text-decoration:underline;cursor:pointer;color:var(--gold-d)}
+.sync.warn{background:var(--red-l);border-color:#F0B9B3;color:var(--red)}
+.krow{display:grid;grid-template-columns:1fr 46px;gap:6px;align-items:center}
 .chkrow{display:flex;align-items:center;gap:10px;font-weight:700;margin:6px 0}
 .chkrow input{width:26px;height:26px;accent-color:#9C7420}
 pre.code{direction:ltr;text-align:left;background:#111;color:#e8e1c8;border-radius:10px;padding:10px;font-size:12px;line-height:1.5;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:8px 0}
@@ -307,7 +309,7 @@ function defaults() {
     vaults: [{id: 'v_main', name: 'خزنة المصنع', open: 0, upd: now, del: false, sy: 0}],
     cats: [...DEF_EXP.map((n, i) => mk('exp', n, i)), ...DEF_INC.map((n, i) => mk('inc', n, i))],
     tx: [],
-    sheetUrl: '', lastSync: 0, lastVault: 'v_main'
+    sheetUrl: '', sheetKey: '', lastSync: 0, lastVault: 'v_main'
   };
 }
 let db = loadDB();
@@ -740,7 +742,8 @@ $$('[data-addcat]').forEach(b => b.onclick = () => {
 $('#bBackup').onclick = () => {
   const others = {};
   OTHER_KEYS.forEach(k => { try { const v = localStorage.getItem(k); if (v != null) others[k] = v; } catch (e) {} });
-  const data = {app: 'flash-on-full-backup', exportedAt: new Date().toISOString(), cash: db, others};
+  const cash = Object.assign({}, db); delete cash.sheetKey;   // المفتاح السري ميطلعش في ملف النسخة
+  const data = {app: 'flash-on-full-backup', exportedAt: new Date().toISOString(), cash, others};
   downloadBlob(new Blob([JSON.stringify(data)], {type: 'application/json'}), `flash-on-backup-${todayISO()}.json`);
   toast('اتنزّلت النسخة الاحتياطية. احتفظ بيها في مكان آمن.', 5000);
 };
@@ -754,7 +757,9 @@ $('#fRestore').addEventListener('change', async e => {
     <div class="stack"><button class="btn gold" id="rsAll" type="button">استرجاع الدفتر + باقي الأدوات</button><button class="btn line" id="rsCash" type="button">استرجاع دفتر الخزنة بس</button><button class="btn line" id="rsX" type="button">إلغاء</button></div>`);
   $('#rsX').onclick = closeModal;
   const go = withOthers => {
+    const keep = {sheetUrl: db.sheetUrl, sheetKey: db.sheetKey};
     db = Object.assign(defaults(), d.cash);
+    if (!db.sheetKey && keep.sheetKey && db.sheetUrl === keep.sheetUrl) db.sheetKey = keep.sheetKey;
     db.tx.forEach(t => t.sy = 0); db.vaults.forEach(t => t.sy = 0); db.cats.forEach(t => t.sy = 0);   // يتبعت للشيت من جديد
     if (withOthers && d.others) Object.entries(d.others).forEach(([k, v]) => { if (OTHER_KEYS.includes(k)) try { localStorage.setItem(k, v); } catch (x) {} });
     saveDB(); closeModal(); refresh(); toast('اتم استرجاع البيانات');
@@ -763,7 +768,11 @@ $('#fRestore').addEventListener('change', async e => {
 });
 
 /* ====================== المزامنة مع Google Sheet ====================== */
-const SCRIPT = `// دفتر الخزنة - فلاش أون
+/* الشيت مقفول بمفتاح سري. الكود اللي بيتحط في Apps Script بيتعمل هنا على الجهاز ومعاه المفتاح اللي
+   صاحب المشروع كتبه، فالمفتاح مش مكتوب في أي ملف على GitHub. أي طلب من غير المفتاح الشيت بيرفضه،
+   والفتح من المتصفح (GET) مبيرجعش أي بيانات. */
+const scriptFor = key => `// دفتر الخزنة - فلاش أون (مقفول بمفتاح سري)
+const KEY = ${JSON.stringify(key)};
 const SHEET = 'الحركات';
 const HEAD = ['id','النوع','آخر تعديل','ممسوحة','التاريخ','الساعة','نوع الحركة','المبلغ','الخزنة','البند','ملاحظة','البيانات (لا تعدّلها)'];
 function sh_() {
@@ -773,9 +782,14 @@ function sh_() {
   return s;
 }
 function doPost(e) {
+  let req;
+  try { req = JSON.parse(e.postData.contents); } catch (x) { return out_({ok: false, error: 'bad'}); }
+  if (!req || req.key !== KEY) return out_({ok: false, error: 'key'});
+  if (req.action === 'ping') return out_({ok: true, v: 2, n: Math.max(sh_().getLastRow() - 1, 0)});
+  if (req.action === 'pull') return out_({ok: true, v: 2, rows: rows_()});
   const lock = LockService.getScriptLock(); lock.waitLock(30000);
   try {
-    const rows = JSON.parse(e.postData.contents).rows || [];
+    const rows = req.rows || [];
     const s = sh_(), last = s.getLastRow();
     const ids = last > 1 ? s.getRange(2, 1, last - 1, 1).getValues().map(r => String(r[0])) : [];
     const pos = {}; ids.forEach((id, i) => pos[id] = i + 2);
@@ -784,17 +798,27 @@ function doPost(e) {
       if (pos[r.id]) s.getRange(pos[r.id], 1, 1, line.length).setValues([line]);
       else { s.appendRow(line); pos[r.id] = s.getLastRow(); }
     });
-    return out_({ok: true, n: rows.length});
+    return out_({ok: true, v: 2, n: rows.length});
   } catch (err) { return out_({ok: false, error: String(err)}); }
   finally { lock.releaseLock(); }
 }
-function doGet() {
+function rows_() {
   const s = sh_(), last = s.getLastRow();
   const v = last > 1 ? s.getRange(2, 1, last - 1, HEAD.length).getValues() : [];
-  const rows = v.map(r => { try { return {id: String(r[0]), kind: r[1], upd: r[2], del: r[3] === 'نعم', data: JSON.parse(r[11])}; } catch (e) { return null; } }).filter(Boolean);
-  return out_({ok: true, rows: rows});
+  return v.map(r => { try { return {id: String(r[0]), kind: r[1], upd: r[2], del: r[3] === 'نعم', data: JSON.parse(r[11])}; } catch (e) { return null; } }).filter(Boolean);
 }
+function doGet() { return out_({ok: false, error: 'locked'}); }
 function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }`;
+
+/* طلب للشيت بالمفتاح. بيرجع رد الشيت، أو بيرمي خطأ لو الرد مش مفهوم */
+async function callSheet(body, url = db.sheetUrl, key = db.sheetKey, ms = 30000) {
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
+  try {
+    const resp = await fetch(url, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify(Object.assign({key: key || ''}, body)), signal: ctl.signal});
+    const txt = await resp.text();
+    try { return JSON.parse(txt); } catch (e) { const x = new Error('page'); x.code = 'page'; throw x; }
+  } finally { clearTimeout(tm); }
+}
 
 const pendingRecs = () => [
   ...db.vaults.map(r => ['vault', r]), ...db.cats.map(r => ['cat', r]), ...db.tx.map(r => ['tx', r])
@@ -818,16 +842,18 @@ async function syncNow(manual) {
     while (p.length) {
       const batch = p.slice(0, 40);
       const rows = batch.map(([kind, r]) => ({id: r.id, kind, upd: r.upd, del: !!r.del, view: viewOf(kind, r), data: stripLocal(r)}));
-      const resp = await fetch(db.sheetUrl, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify({rows})});
-      const j = await resp.json();
-      if (!j.ok) throw new Error(j.error || 'خطأ من الشيت');
+      const j = await callSheet({rows});
+      if (!j.ok) throw new Error(j.error === 'key' ? 'key' : (j.error || 'خطأ من الشيت'));
       batch.forEach(([k, r], i) => { if (r.upd === rows[i].upd) r.sy = rows[i].upd; });   // لو اتعدّل في الأثناء يفضل معلّق
       db.lastSync = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {}
       p = pendingRecs();
       renderSyncBox();
     }
     if (manual) toast('اتبعت كل حاجة للشيت ✔');
-  } catch (e) { syncErr = String(e.message || e); if (manual) toast('معرفتش أوصل للشيت. اتأكد من اللينك والنت.', 5000); }
+  } catch (e) {
+    syncErr = String(e.message || e);
+    if (manual) toast(syncErr === 'key' ? 'الشيت رفض المفتاح السري. راجع المفتاح في الإعدادات.' : 'معرفتش أوصل للشيت. اتأكد من اللينك والنت.', 5000);
+  }
   syncing = false; renderSyncBox(); renderListsPending();
 }
 function stripLocal(r) { const o = Object.assign({}, r); delete o.sy; return o; }
@@ -836,43 +862,66 @@ function renderSyncBox() {
   const b = $('#syncBox'); if (!b) return;
   const n = pendingRecs().length;
   if (!db.sheetUrl) { b.className = 'sync'; b.innerHTML = `الشيت لسه مش مربوط — الحسابات محفوظة على الموبايل بس. <a id="syGo">اربطه</a>`; $('#syGo').onclick = () => go('set'); return; }
+  if (!db.sheetLocked) { b.className = 'sync warn'; b.innerHTML = `⚠️ لينك الشيت لسه مش مقفول بمفتاح سري، وأي حد يوصله يقدر يشوف الحركات. <a id="syGo">اقفله دلوقتي</a>`; $('#syGo').onclick = () => go('set'); return; }
   if (syncing) { b.className = 'sync'; b.textContent = 'جاري الإرسال للشيت…'; return; }
+  if (syncErr === 'key') { b.className = 'sync warn'; b.innerHTML = `الشيت رفض المفتاح السري، والحركات مستنية. <a id="syGo">راجع المفتاح</a>`; $('#syGo').onclick = () => go('set'); return; }
   if (!n) { b.className = 'sync ok'; b.textContent = '✔ كل الحركات متسجلة على Google Sheet'; return; }
   b.className = 'sync'; b.innerHTML = `${n} سجل مستني الإرسال للشيت${navigator.onLine ? '' : ' (مفيش نت)'}${syncErr ? ' — فيه مشكلة في الاتصال' : ''} <a id="syNow">ابعت دلوقتي</a>`;
   $('#syNow').onclick = () => syncNow(true);
 }
+const KEY_RE = /^[A-Za-z0-9؀-ۿ_\-@#.!]{8,64}$/;
+function makeKey() {
+  const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', r = crypto.getRandomValues(new Uint8Array(12));
+  return [...r].map(x => A[x % A.length]).join('').replace(/(.{4})(?!$)/g, '$1-');
+}
 function renderSheetBox() {
   const n = pendingRecs().length;
   $('#sSheet').innerHTML = `<p class="hint" style="margin:0 0 10px">كل حركة بتتبعت لوحدها لجدول Google بتاعك، وأي تعديل أو مسح بيتعدّل هناك كمان. الأداة بتشتغل عادي من غير الشيت.</p>
+    ${db.sheetUrl && !db.sheetLocked ? `<div class="sync warn" style="margin:0 0 10px">⚠️ الشيت لسه مش مقفول. اكتب مفتاح سري تحت واضغط حفظ، وبعدين افتح "خطوات قفل الشيت" ونفّذها.</div>` : ''}
     <div class="fld"><label>لينك الشيت (Web app URL)</label><input class="inp" id="shUrl" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" value="${esc(db.sheetUrl)}"></div>
+    <div class="fld"><label>المفتاح السري (بتكتبه مرة واحدة على كل جهاز)</label>
+      <div class="krow"><input class="inp" id="shKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:16px" placeholder="8 حروف أو أرقام على الأقل" value="${esc(db.sheetKey)}">
+      <button class="ibtn" id="shEye" type="button" title="إظهار">👁</button></div>
+      <p class="hint">المفتاح ده زي قفل الشيت: من غيره محدش يقدر يقرا ولا يكتب حاجة حتى لو معاه اللينك. اكتبه في ورقة واحتفظ بيه. <a id="shGen" style="text-decoration:underline;cursor:pointer;color:var(--gold-d)">اعملي مفتاح جديد</a></p>
+    </div>
     <div class="stack">
-      <button class="btn gold" id="shSave" type="button">حفظ اللينك واختبار الاتصال</button>
+      <button class="btn gold" id="shSave" type="button">حفظ واختبار الاتصال</button>
       <button class="btn line" id="shNow" type="button">ابعت اللي مستني دلوقتي (${n})</button>
       <button class="btn line" id="shRestore" type="button">أرجّع كل البيانات من الشيت</button>
-      <button class="btn line" id="shHelp" type="button">إزاي أظبط الشيت؟ (خطوة بخطوة)</button>
+      <button class="btn line" id="shHelp" type="button">${db.sheetUrl && !db.sheetLocked ? 'خطوات قفل الشيت (للشيت الموجود)' : 'إزاي أظبط الشيت؟ (خطوة بخطوة)'}</button>
     </div>
     <div id="shStat" class="sync" style="display:none;margin:10px 0 0"></div>
     <p class="hint">${db.lastSync ? 'آخر إرسال ناجح: ' + dispDate(isoOf(db.lastSync)) + ' ' + dispTime(db.lastSync) : 'لسه مفيش إرسال ناجح.'}</p>`;
+  $('#shEye').onclick = () => { const k = $('#shKey'); k.type = k.type === 'password' ? 'text' : 'password'; };
+  $('#shGen').onclick = () => { $('#shKey').value = makeKey(); $('#shKey').type = 'text'; toast('ده مفتاح جديد. اكتبه في ورقة قبل ما تحفظ.', 5000); };
   $('#shSave').onclick = async () => {
-    const u = $('#shUrl').value.trim();
+    const u = $('#shUrl').value.trim(), k = $('#shKey').value.trim();
     if (u && !/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u)) return setStat('bad', '❌ اللينك مش شكل لينك Apps Script. لازم يبدأ بـ https://script.google.com ويخلص بـ /exec. راجع الخطوات.');
     if (/\/dev(\?|$)/.test(u)) return setStat('bad', '❌ اللينك ده بتاع التجربة (/dev). المطلوب اللينك اللي بيخلص بـ /exec من "نشر جديد".');
-    db.sheetUrl = u; saveDB();
+    if (u && !KEY_RE.test(k)) return setStat('bad', '❌ اكتب مفتاح سري من 8 لـ 64 حرف أو رقم من غير مسافات (أو اضغط "اعملي مفتاح جديد").');
+    if (u !== db.sheetUrl || k !== db.sheetKey) db.sheetLocked = false;
+    db.sheetUrl = u; db.sheetKey = u ? k : ''; saveDB();
     if (!u) { renderSettings(); return toast('اتفصل الشيت'); }
-    setStat('wait', '⏳ بختبر الاتصال… (ممكن ياخد لحد 20 ثانية)');
-    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 20000);
-    try {
-      const resp = await fetch(u + (u.includes('?') ? '&' : '?') + 't=' + Date.now(), {signal: ctl.signal});
-      const txt = await resp.text();
-      let j; try { j = JSON.parse(txt); } catch (e) { j = null; }
-      if (!j) return setStat('bad', '❌ الشيت رد بصفحة مش مفهومة. غالباً الوصول مش "أي شخص (Anyone)". ارجع Apps Script ← نشر ← إدارة عمليات النشر ← عدّل ← Who has access = Anyone ← نسخة جديدة ← نشر.');
-      if (!j.ok) return setStat('bad', '❌ الشيت رد بخطأ: ' + (j.error || 'غير معروف'));
-      setStat('ok', `✅ الاتصال شغال! في الشيت ${j.rows.filter(r => r.kind === 'tx').length} حركة. بدأت أبعت الحركات المستنية…`);
-      await syncNow();
-      setStat('ok', '✅ الاتصال شغال. ' + (pendingRecs().length ? 'لسه ' + pendingRecs().length + ' سجل مستني الإرسال.' : 'وكل الحركات اتبعتت للشيت.') + ' افتح الجدول وشوف تبويب "الحركات".');
-    } catch (e) {
-      setStat('bad', e.name === 'AbortError' ? '❌ الشيت مردش في 20 ثانية. اتأكد من النت وجرّب تاني.' : '❌ معرفتش أوصل للشيت. الأسباب المحتملة: (1) الوصول مش "أي شخص (Anyone)" (2) اللينك ناقص أو غلط (3) عدّلت الكود ومعملتش "نشر جديد" (4) مفيش نت.');
-    } finally { clearTimeout(tm); }
+    setStat('wait', '⏳ بختبر الاتصال… (ممكن ياخد لحد 30 ثانية)');
+    let j;
+    try { j = await callSheet({action: 'ping'}); }
+    catch (e) {
+      return setStat('bad', e.code === 'page' ? '❌ الشيت رد بصفحة مش مفهومة. غالباً الوصول مش "أي شخص (Anyone)". ارجع Apps Script ← نشر ← إدارة عمليات النشر ← عدّل ← Who has access = Anyone ← نسخة جديدة ← نشر.'
+        : e.name === 'AbortError' ? '❌ الشيت مردش في 30 ثانية. اتأكد من النت وجرّب تاني.'
+        : '❌ معرفتش أوصل للشيت. الأسباب المحتملة: (1) الوصول مش "أي شخص (Anyone)" (2) اللينك ناقص أو غلط (3) عدّلت الكود ومعملتش نسخة جديدة في النشر (4) مفيش نت.');
+    }
+    if (!j.ok && j.error === 'key') { renderSyncBox(); return setStat('bad', '❌ الشيت شغال بالكود الجديد بس رفض المفتاح. المفتاح اللي هنا لازم يبقى نفس اللي اتحط في الكود. لو مش فاكر، اعمل الخطوات تاني وانسخ الكود من هنا.'); }
+    if (!j.ok) return setStat('bad', '❌ الشيت رد بخطأ: ' + (j.error || 'غير معروف'));
+    if (j.v !== 2) {
+      renderSyncBox();
+      setStat('bad', '⚠️ الاتصال شغال، بس الشيت لسه بالكود القديم المفتوح لأي حد معاه اللينك. اضغط "خطوات قفل الشيت" ونفّذها، وبعدين اضغط حفظ واختبار تاني.');
+      syncNow(); return;
+    }
+    db.sheetLocked = true; saveDB();
+    setStat('ok', `✅ الاتصال شغال والشيت مقفول بالمفتاح. بدأت أبعت الحركات المستنية…`);
+    await syncNow();
+    renderSyncBox();
+    setStat('ok', '✅ الاتصال شغال والشيت مقفول بالمفتاح. ' + (pendingRecs().length ? 'لسه ' + pendingRecs().length + ' سجل مستني الإرسال.' : 'وكل الحركات اتبعتت للشيت.'));
   };
   $('#shNow').onclick = () => syncNow(true);
   $('#shHelp').onclick = showHelp;
@@ -889,8 +938,16 @@ async function restoreFromSheet() {
   if (!navigator.onLine) return toast('محتاج نت للاسترجاع');
   toast('بنزّل البيانات من الشيت…', 10000);
   let rows;
-  try { const j = await (await fetch(db.sheetUrl + (db.sheetUrl.includes('?') ? '&' : '?') + 't=' + Date.now())).json(); if (!j.ok) throw 0; rows = j.rows; }
-  catch (e) { return toast('معرفتش أنزّل من الشيت. راجع اللينك والنت.', 5000); }
+  try {
+    const j = await callSheet({action: 'pull'});
+    if (!j.ok) throw new Error(j.error);
+    rows = j.rows;
+    if (!rows) {   // الكود القديم (قبل القفل) مبيعرفش "pull"
+      const o = await (await fetch(db.sheetUrl + (db.sheetUrl.includes('?') ? '&' : '?') + 't=' + Date.now())).json();
+      if (!o.ok) throw 0; rows = o.rows;
+    }
+  }
+  catch (e) { return toast(e && e.message === 'key' ? 'الشيت رفض المفتاح السري. راجع المفتاح.' : 'معرفتش أنزّل من الشيت. راجع اللينك والمفتاح والنت.', 5000); }
   const nTx = rows.filter(r => r.kind === 'tx' && !r.del).length;
   const pend = pendingRecs().length;
   if (!(await confirmBox(`في الشيت ${nTx} حركة. هيتم دمجها مع الموجود على الموبايل (الأحدث تعديلاً هو اللي يكسب)${pend ? `. ملحوظة: عندك ${pend} سجل لسه ما اتبعتوش وهيفضلوا زي ما هم لو أحدث` : ''}. تكمّل؟`, 'أرجّع', false))) return;
@@ -911,27 +968,42 @@ window.addEventListener('online', () => syncNow());
 setInterval(() => { if (pendingRecs().length) syncNow(); }, 60000);
 
 function showHelp() {
-  modal(`<h3>إعداد Google Sheet (مرة واحدة بس)</h3>
+  const k = db.sheetKey, upd = db.sheetUrl && !db.sheetLocked;
+  if (!k) return toast('اكتب المفتاح السري الأول (أو اضغط "اعملي مفتاح جديد") واضغط حفظ، وبعدين افتح الخطوات.', 6000);
+  const code = scriptFor(k), lines = code.split('\n').length;
+  const paste = `اضغط جوه خانة الكود، واختار <b>تحديد الكل (Select all)</b> وامسح كل حاجة مكتوبة، لحد ما الصفحة تبقى فاضية تماماً. وارجع هنا واضغط الزرار الأخضر <b>"انسخ الكود"</b>، وبعدين الصق (Paste) <b>مرة واحدة بس</b>. الكود الصح بيخلص عند السطر رقم ${lines} ومفيش بعده أي حاجة.`;
+  modal((upd ? `<h3>قفل الشيت الموجود (مرة واحدة بس)</h3>
+  <p style="font-size:15px">هتحط كود جديد في نفس الشيت، واللينك هيفضل زي ما هو. الكود الجديد فيه المفتاح بتاعك، فمن غيره محدش يقدر يقرا حاجة.</p>
+  <ol class="steps">
+    <li>افتح جدول <b>دفتر الخزنة</b> على sheets.google.com.</li>
+    <li>من القايمة اللي فوق: <b>الإضافات (Extensions)</b> ← <b>Apps Script</b>.</li>
+    <li>${paste}</li>
+    <li>اضغط أيقونة الحفظ 💾.</li>
+    <li>فوق على اليمين: <b>نشر (Deploy)</b> ← <b>إدارة عمليات النشر (Manage deployments)</b>.</li>
+    <li>اضغط القلم ✏️ (تعديل). في خانة <b>الإصدار (Version)</b> اختار <b>إصدار جديد (New version)</b>. <b>متعملش "نشر جديد"</b> عشان اللينك القديم ميفضلش مفتوح.</li>
+    <li>اضغط <b>نشر (Deploy)</b>. لو طلب إذن وافق زي أول مرة.</li>
+    <li>ارجع هنا واضغط <b>حفظ واختبار الاتصال</b>. لازم يظهر "✅ الشيت مقفول بالمفتاح".</li>
+  </ol>` : `<h3>إعداد Google Sheet (مرة واحدة بس)</h3>
   <ol class="steps">
     <li>افتح <b>sheets.google.com</b> من أي متصفح، وادخل بحساب جوجل بتاعك.</li>
     <li>اضغط <b>+ (فاضي)</b> علشان تعمل جدول جديد. سمّيه من فوق: <b>دفتر الخزنة</b>.</li>
     <li>من القايمة اللي فوق اضغط <b>الإضافات (Extensions)</b> ← <b>Apps Script</b>. هتفتحلك صفحة فيها كود.</li>
-    <li>اضغط جوه خانة الكود، واختار <b>تحديد الكل (Select all)</b> وامسح كل حاجة مكتوبة، لحد ما الصفحة تبقى فاضية تماماً (حتى علامة <b>}</b> الصغيرة تتمسح). وارجع هنا واضغط الزرار الأخضر <b>"انسخ الكود"</b>، وبعدين الصق (Paste) <b>مرة واحدة بس</b>. الكود الصح بيخلص عند السطر رقم 32 ومفيش بعده أي حاجة. لو لقيت سطر 33 أو أكتر، امسح اللي بعد السطر 32.</li>
+    <li>${paste}</li>
     <li>اضغط أيقونة الحفظ 💾 (أو Ctrl+S).</li>
     <li>فوق على اليمين اضغط <b>نشر (Deploy)</b> ← <b>نشر جديد (New deployment)</b>.</li>
     <li>جنب "اختيار النوع" اضغط العجلة ⚙ واختار <b>Web app (تطبيق ويب)</b>.</li>
-    <li>في خانة <b>Execute as</b> سيبها <b>Me (أنا)</b>. وفي خانة <b>Who has access</b> اختار <b>Anyone (أي شخص)</b>. دي مهمة جداً.</li>
+    <li>في خانة <b>Execute as</b> سيبها <b>Me (أنا)</b>. وفي خانة <b>Who has access</b> اختار <b>Anyone (أي شخص)</b>. ده عادي لأن المفتاح السري هو اللي بيحمي البيانات.</li>
     <li>اضغط <b>نشر (Deploy)</b>. جوجل هيطلب إذن: اضغط <b>Authorize access</b>، اختار حسابك، وبعدين <b>Advanced</b> ← <b>Go to ... (unsafe)</b> ← <b>Allow</b>. (التحذير عادي لأن الكود بتاعك إنت.)</li>
     <li>هيظهرلك <b>Web app URL</b> لينك طويل بيخلص بـ <b>/exec</b>. اضغط <b>Copy</b>.</li>
-    <li>ارجع للأداة دي، <b>الإعدادات ← النسخة على Google Sheet</b>، والصق اللينك في الخانة، واضغط <b>حفظ اللينك واختبار الاتصال</b>. لو ظهرت علامة ✔ يبقى خلصنا.</li>
-  </ol>
-  <p style="font-size:14px;margin:10px 0 0;color:#555">بعد كده كل حركة هتظهر في تبويب اسمه <b>الحركات</b> في الجدول. اللينك سري، متبعتوش لحد. ومتعدّلش في العمود الأخير في الجدول.</p>
-  <p style="font-size:14px;margin:6px 0 0;color:#555">لو غيّرت الموبايل: افتح الأداة، حط نفس اللينك، واضغط <b>أرجّع كل البيانات من الشيت</b>.</p>
-  <div class="stack" style="margin-top:12px"><button class="btn green" id="hpCopy" type="button">انسخ الكود (الخطوة 4)</button><button class="btn line" id="hpShow" type="button">اعرض الكود</button><button class="btn line" id="hpX" type="button">إغلاق</button></div>`, true);
+    <li>ارجع هنا، والصق اللينك في الخانة، واضغط <b>حفظ واختبار الاتصال</b>. لو ظهرت علامة ✅ يبقى خلصنا.</li>
+  </ol>`) + `
+  <p style="font-size:14px;margin:10px 0 0;color:#555">كل حركة بتظهر في تبويب اسمه <b>الحركات</b> في الجدول. متعدّلش في العمود الأخير في الجدول.</p>
+  <p style="font-size:14px;margin:6px 0 0;color:#555">لو غيّرت الموبايل: افتح الأداة، حط نفس اللينك ونفس المفتاح، واضغط <b>أرجّع كل البيانات من الشيت</b>.</p>
+  <div class="stack" style="margin-top:12px"><button class="btn green" id="hpCopy" type="button">انسخ الكود</button><button class="btn line" id="hpShow" type="button">اعرض الكود</button><button class="btn line" id="hpX" type="button">إغلاق</button></div>`, true);
   $('#hpX').onclick = closeModal;
-  $('#hpShow').onclick = () => { if (!$('#hpCode')) $('#hpShow').insertAdjacentHTML('afterend', `<pre class="code" id="hpCode">${esc(SCRIPT)}</pre>`); };
+  $('#hpShow').onclick = () => { if (!$('#hpCode')) $('#hpShow').insertAdjacentHTML('afterend', `<pre class="code" id="hpCode">${esc(code)}</pre>`); };
   $('#hpCopy').onclick = async () => {
-    try { await navigator.clipboard.writeText(SCRIPT); toast('اتنسخ الكود ✔ دلوقتي الصقه في Apps Script', 5000); }
+    try { await navigator.clipboard.writeText(code); toast('اتنسخ الكود ✔ دلوقتي الصقه في Apps Script', 5000); }
     catch (e) {
       $('#hpShow').click(); const r = document.createRange(); r.selectNodeContents($('#hpCode')); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
       toast('اضغط مطوّل على الكود واختار نسخ (Copy)', 6000);

@@ -175,7 +175,7 @@ ol.steps li{margin-bottom:6px}
 <main>
 <!-- ============== الرئيسية ============== -->
 <section class="page" id="p-home">
-  <a class="sync warn" href="accounts.html#cash" style="text-decoration:none">📢 الخزنة بقت جوه برنامج الحسابات (تبويب "الخزنة")، وهناك الدفعات بتتربط بالعملا والموردين. انقل الدفتر ده مرة واحدة من هناك وسجّل من هناك بس. <b style="margin-inline-start:auto;text-decoration:underline">افتح الخزنة الجديدة ←</b></a>
+  <a class="sync ok" href="accounts.html#cash" style="text-decoration:none">🔗 الدفتر ده متصل بخزنة برنامج الحسابات: اللي تسجله هنا أو هناك بيظهر في المكانين. <b style="margin-inline-start:auto;text-decoration:underline">افتح الحسابات ←</b></a>
   <div class="sync" id="syncBox"></div>
   <div class="total"><small>الرصيد الإجمالي</small><b id="hTotal">0</b></div>
   <div class="vaults" id="hVaults"></div>
@@ -288,7 +288,7 @@ function toast(msg, ms = 2800) {
   clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms);
 }
 function modal(html, wide) { $('#modal').className = 'modal' + (wide ? ' wide' : ''); $('#modal').innerHTML = html; $('#mask').classList.add('on'); }
-function closeModal() { $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; }
+function closeModal() { $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; if (typeof reloadLater !== 'undefined' && reloadLater) setTimeout(reloadFromStorage, 0); }
 function confirmBox(msg, okLabel = 'تأكيد', danger = false) {
   return new Promise(res => {
     modal(`<p>${esc(msg)}</p><div class="g2"><button class="btn ${danger ? 'red' : 'gold'}" id="cOk">${esc(okLabel)}</button><button class="btn line" id="cNo">إلغاء</button></div>`);
@@ -303,7 +303,7 @@ function confirmBox(msg, okLabel = 'تأكيد', danger = false) {
 const DEF_EXP = ['خامات', 'صبغة', 'كهربا', 'أجور', 'نقل', 'صيانة', 'إيجار', 'نثريات', 'أخرى'];
 const DEF_INC = ['تحصيل من عميل', 'مبيعات نقدي', 'أخرى'];
 function defaults() {
-  const now = Date.now();
+  const now = 1;   // الخزنة والبنود الافتراضية بتاريخ قديم جداً، علشان أي بيانات حقيقية جاية من الشيت أو الحسابات تكسبها
   const mk = (t, n, i) => ({id: 'c_' + t + i, type: t, name: n, ord: i, upd: now, del: false, sy: 0});
   return {
     v: 1,
@@ -383,13 +383,18 @@ function openTx(type, edit) {
   const cl = isTr ? [] : cats(type);
   if (!isTr && edit) { const cur = catOf(edit.cat); if (cur && cur.del) cl.push(cur); }
   const title = isTr ? 'تحويل بين الخزن' : type === 'exp' ? 'مصروف' : 'إيراد';
+  /* أسامي العملا والموردين جاية من برنامج الحسابات. الدفعة هنا بتنزل على حساب صاحبها هناك */
+  let names = []; try { names = JSON.parse(localStorage.getItem('fo_acc_names')) || []; } catch (e) {}
+  const plist = isTr ? [] : names.filter(n => type === 'inc' ? n.sec !== 'sup' : n.sec === 'sup');
+  if (t0.party && !plist.some(n => n.id === t0.party)) plist.unshift({id: t0.party, name: (t0.note || '').split(' — ')[0] || 'حساب'});
   const vSel = (edit && vaultOf(t0.vault) && !vaultOf(t0.vault).del) ? t0.vault : (vaultOf(db.lastVault) && !vaultOf(db.lastVault).del ? db.lastVault : vs[0].id);
   modal(`<h3 class="${isTr ? '' : type}">${edit ? 'تعديل ' : ''}${title}</h3>
     <div class="fld"><label>المبلغ (${CUR})</label><input class="inp num amt" id="tAmt" placeholder="0" type="text"></div>
     ${isTr ? `<div class="g2 fld"><div><label>من خزنة</label><select class="inp" id="tV">${vOpts(vSel)}</select></div><div><label>إلى خزنة</label><select class="inp" id="tTo"></select></div></div>`
-      : `<div class="g2 fld"><div><label>البند</label><select class="inp" id="tC">${cl.map(c => `<option value="${c.id}" ${c.id === t0.cat ? 'selected' : ''}>${esc(c.name)}${c.del ? ' (محذوف)' : ''}</option>`).join('')}</select></div>
+      : `${plist.length ? `<div class="fld"><label>${type === 'inc' ? 'دفعة من عميل؟' : 'دفعة لمورد؟'}</label><select class="inp" id="tP" ${t0.party ? 'disabled' : ''}><option value="">— لأ، ${type === 'inc' ? 'إيراد' : 'مصروف'} عادي —</option>${plist.map(n => `<option value="${esc(n.id)}" ${t0.party === n.id ? 'selected' : ''}>${esc(n.name)}</option>`).join('')}</select></div>` : ''}
+      <div class="g2 fld"><div id="tCW"><label>البند</label><select class="inp" id="tC">${cl.map(c => `<option value="${c.id}" ${c.id === t0.cat ? 'selected' : ''}>${esc(c.name)}${c.del ? ' (محذوف)' : ''}</option>`).join('')}</select></div>
       <div><label>الخزنة</label><select class="inp" id="tV">${vOpts(vSel)}</select></div></div>`}
-    <div class="fld"><label>ملاحظة / وصف</label><textarea class="inp" id="tN" placeholder="اكتب تفاصيل لو عايز">${esc(t0.note || '')}</textarea></div>
+    <div class="fld"><label>ملاحظة / وصف</label><textarea class="inp" id="tN" placeholder="اكتب تفاصيل لو عايز">${esc(t0.party ? t0.pnote || '' : t0.note || '')}</textarea></div>
     <div class="g2 fld"><div><label>التاريخ</label><input class="inp" type="date" id="tD" value="${when.date}"></div><div><label>الساعة</label><input class="inp" type="time" id="tT" value="${when.time}"></div></div>
     <div class="stack"><button class="btn ${isTr ? 'gold' : type === 'exp' ? 'redf' : 'green'}" id="tSave" type="button">حفظ</button>
     ${edit ? '<button class="btn red" id="tDel" type="button">مسح الحركة</button>' : ''}
@@ -403,6 +408,7 @@ function openTx(type, edit) {
     $('#tV').onchange = fillTo; fillTo();
   }
   if (!edit) setTimeout(() => amt.focus(), 120);
+  if ($('#tP')) { const tg = () => { $('#tCW').style.display = $('#tP').value ? 'none' : ''; }; $('#tP').onchange = tg; tg(); }
   $('#tX').onclick = closeModal;
   if (edit) $('#tDel').onclick = async () => {
     if (!(await confirmBox('تمسح الحركة دي؟ مش هترجع تاني.', 'امسح', true))) return;
@@ -418,7 +424,16 @@ function openTx(type, edit) {
     if (isTr) {
       rec.to = $('#tTo').value; delete rec.cat;
       if (!rec.to || rec.to === rec.vault) return toast('اختار خزنتين مختلفتين');
-    } else { rec.cat = $('#tC').value; delete rec.to; }
+    } else {
+      rec.cat = $('#tC').value; delete rec.to;
+      const pid = $('#tP') ? $('#tP').value : rec.party || '';
+      if (pid) {
+        const pn = rec.note, nm = (plist.find(n => n.id === pid) || {name: ''}).name;
+        const cid = type === 'inc' ? 'c_inc0' : 'c_payout';
+        if (!catOf(cid)) db.cats.push({id: cid, type, name: type === 'inc' ? 'تحصيل من عميل' : 'دفعات للموردين', ord: 99, upd: 1, del: false, sy: 0});
+        Object.assign(rec, {cat: cid, party: pid, pkind: type === 'inc' ? 'pay' : 'ppay', method: rec.method || 'نقدي', pnote: pn, note: nm + (pn ? ' — ' + pn : '')});
+      }
+    }
     touch(rec); if (!edit) db.tx.push(rec);
     db.lastVault = rec.vault; saveDB(); closeModal(); refresh();
     toast(edit ? 'اتعدّلت الحركة' : isTr ? 'اتعمل التحويل' : type === 'exp' ? 'اتسجّل المصروف' : 'اتسجّل الإيراد');
@@ -792,10 +807,11 @@ function doPost(e) {
   try {
     const rows = req.rows || [];
     const s = sh_(), last = s.getLastRow();
-    const ids = last > 1 ? s.getRange(2, 1, last - 1, 1).getValues().map(r => String(r[0])) : [];
-    const pos = {}; ids.forEach((id, i) => pos[id] = i + 2);
+    const ids = last > 1 ? s.getRange(2, 1, last - 1, 3).getValues() : [];
+    const pos = {}, upd = {}; ids.forEach((r, i) => { pos[String(r[0])] = i + 2; upd[String(r[0])] = Number(r[2]) || 0; });
     rows.forEach(r => {
       const line = [r.id, r.kind, r.upd, r.del ? 'نعم' : '', ...(r.view || ['','','','','','','']), JSON.stringify(r.data)];
+      if (pos[r.id] && upd[r.id] > Number(r.upd)) return;
       if (pos[r.id]) s.getRange(pos[r.id], 1, 1, line.length).setValues([line]);
       else { s.appendRow(line); pos[r.id] = s.getLastRow(); }
     });
@@ -823,7 +839,7 @@ async function callSheet(body, url = db.sheetUrl, key = db.sheetKey, ms = 30000)
 
 const pendingRecs = () => [
   ...db.vaults.map(r => ['vault', r]), ...db.cats.map(r => ['cat', r]), ...db.tx.map(r => ['tx', r])
-].filter(([k, r]) => r.sy !== r.upd);
+].filter(([k, r]) => r.sy !== r.upd && r.upd > 1);   // الافتراضي (upd = 1) مبيتبعتش، علشان ميغطيش على بيانات حقيقية
 function viewOf(kind, r) {
   if (kind === 'tx') return [isoOf(r.ts), timeOf(r.ts), r.type === 'exp' ? 'مصروف' : r.type === 'inc' ? 'إيراد' : 'تحويل', r.amt,
     r.type === 'tr' ? `${vName(r.vault)} ← ${vName(r.to)}` : vName(r.vault), r.type === 'tr' ? '' : cName(r), r.note || ''];
@@ -952,19 +968,39 @@ async function restoreFromSheet() {
   const nTx = rows.filter(r => r.kind === 'tx' && !r.del).length;
   const pend = pendingRecs().length;
   if (!(await confirmBox(`في الشيت ${nTx} حركة. هيتم دمجها مع الموجود على الموبايل (الأحدث تعديلاً هو اللي يكسب)${pend ? `. ملحوظة: عندك ${pend} سجل لسه ما اتبعتوش وهيفضلوا زي ما هم لو أحدث` : ''}. تكمّل؟`, 'أرجّع', false))) return;
-  const tbl = {vault: db.vaults, cat: db.cats, tx: db.tx};
-  let n = 0;
-  rows.forEach(r => {
-    const arr = tbl[r.kind]; if (!arr || !r.data) return;
-    const cur = arr.find(x => x.id === r.id);
-    if (cur && cur.upd >= r.upd) { if (cur.upd === r.upd) cur.sy = cur.upd; return; }
-    const rec = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del, sy: r.upd});
-    if (cur) Object.assign(cur, rec); else arr.push(rec);
-    n++;
-  });
+  const n = mergeRows(rows);
   if (!vaults().length) db.vaults.push({id: uid(), name: 'خزنة المصنع', open: 0, upd: Date.now(), del: false, sy: 0});
   saveDB(); refresh(); toast(`اتم الاسترجاع (${n} سجل اتضاف أو اتحدّث)`, 5000);
 }
+/* دمج سجلات الشيت مع الموجود (الأحدث تعديلاً هو اللي يكسب). بيرجع عدد اللي اتغير */
+function mergeRows(rows) {
+  const tbl = {vault: db.vaults, cat: db.cats, tx: db.tx}, idx = {};
+  Object.keys(tbl).forEach(k => idx[k] = new Map(tbl[k].map(x => [x.id, x])));
+  let n = 0;
+  rows.forEach(r => {
+    const arr = tbl[r.kind]; if (!arr || !r.data) return;
+    const cur = idx[r.kind].get(r.id);
+    if (cur && cur.upd >= r.upd) { if (cur.upd === r.upd) cur.sy = cur.upd; return; }
+    const rec = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del, sy: r.upd});
+    if (cur) Object.assign(cur, rec); else { arr.push(rec); idx[r.kind].set(r.id, rec); }
+    n++;
+  });
+  return n;
+}
+/* الدفتر بيجيب لوحده آخر حركات من الشيت، علشان اللي اتسجل من جهاز تاني (أو من الحسابات) يبان هنا */
+async function autoPull() {
+  if (!db.sheetUrl || !db.sheetLocked || !navigator.onLine || syncing || $('#mask').classList.contains('on')) return;
+  try {
+    const j = await callSheet({action: 'pull'});
+    if (j.ok && j.rows && mergeRows(j.rows)) { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} refresh(); }
+  } catch (e) {}
+}
+setInterval(autoPull, 180000);
+/* الحسابات بتكتب في نفس المكان؛ أول ما يتغير نعيد القراية */
+let reloadLater = false;
+function reloadFromStorage() { if ($('#mask').classList.contains('on')) { reloadLater = true; return; } reloadLater = false; db = loadDB(); refresh(); }
+window.addEventListener('storage', e => { if (e.key === KEY) reloadFromStorage(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { reloadFromStorage(); autoPull(); } });
 window.addEventListener('online', () => syncNow());
 setInterval(() => { if (pendingRecs().length) syncNow(); }, 60000);
 
@@ -1027,7 +1063,7 @@ $$('nav button').forEach(b => b.onclick = () => go(b.dataset.go));
 window.addEventListener('hashchange', route);
 $('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#tSave')) closeModal(); });
 route();
-setTimeout(syncNow, 1500);
+setTimeout(() => autoPull().finally(() => syncNow()), 1200);   // نجيب الأول وبعدين نبعت
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
 </script>

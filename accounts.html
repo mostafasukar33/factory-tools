@@ -460,6 +460,7 @@ function flushSave() {
       await idbPut('vault', await seal(key, salt, snap));
       await idbPut('meta', {pending: pendingRecs().length, at: Date.now()});
       saveFailed = false;
+      if (snap === db) try { bridgeOut(); } catch (x) { console.error(x); }
     } catch (e) {
       console.error(e);
       if (!saveFailed) toast('تحذير: الجهاز مش قادر يحفظ. اتأكد إن فيه مساحة، ونزّل نسخة احتياطية حالاً.', 7000);
@@ -587,7 +588,7 @@ function lockNow(msg) {
 }
 function unlocked() {
   $('#lock').classList.remove('on'); $('#lockBox').innerHTML = '';
-  lastAct = Date.now(); route();
+  lastAct = Date.now(); bridgeIn(); route(); flushSave();
   setTimeout(() => syncNow(), 600);
 }
 ['pointerdown', 'keydown', 'scroll'].forEach(ev => addEventListener(ev, () => lastAct = Date.now(), {passive: true, capture: true}));
@@ -595,7 +596,7 @@ setInterval(() => { if (db && Date.now() - lastAct > LOCK_IDLE) lockNow('اتق�
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { hiddenAt = Date.now(); flushSave(); }
   else if (db && hiddenAt && Date.now() - hiddenAt > LOCK_HIDDEN) lockNow();
-  else if (db) { lastAct = Date.now(); syncNow(); }
+  else if (db) { lastAct = Date.now(); if (bridgeIn() && !$('#mask').classList.contains('on')) route(); syncNow(); }
 });
 addEventListener('pagehide', () => flushSave());
 $('#bLock').onclick = () => lockNow();
@@ -1292,6 +1293,7 @@ async function syncNow(manual) {
     }
     db.cfg.lastSync = lastPullAt = Date.now();
     await flushSave();
+    if (got) bridgeOut();
     if (manual) toast(got ? `اتبعت كل حاجة، ونزل ${got} سجل جديد ✔` : 'كل حاجة متسجلة على الشيت ✔');
   } catch (e) {
     syncErr = e.message === 'key' ? 'key' : String(e.message || e);
@@ -1549,7 +1551,7 @@ $('#fRestore').addEventListener('change', async ev => {
 const DEF_EXP = ['خامات', 'صبغة', 'كهربا', 'أجور', 'نقل', 'صيانة', 'إيجار', 'نثريات', 'أخرى'];
 const TXT = {exp: 'مصروف', inc: 'إيراد', tr: 'تحويل'};
 const vaultsL = () => db.vaults.filter(v => !v.del).sort((a, b) => (a.ord || 0) - (b.ord || 0) || (a.at || 0) - (b.at || 0));
-const catsL = t => db.cats.filter(c => !c.del && c.type === t).sort((a, b) => (a.ord || 0) - (b.ord || 0));
+const catsL = t => db.cats.filter(c => !c.del && c.type === t && !SPECIAL_CATS.has(c.id)).sort((a, b) => (a.ord || 0) - (b.ord || 0));
 const vName = id => (IDX.vault.get(id) || {name: '؟'}).name;
 const cName = id => (IDX.cat.get(id) || {name: 'بدون بند'}).name;
 const isPay = e => e.kind === 'pay' || e.kind === 'ppay';
@@ -1558,7 +1560,7 @@ function ensureVaults() {
   db.vaults.push({id: 'v_main', name: 'خزنة المصنع', open: 0, ord: 0, upd: 1, del: false});
   DEF_EXP.forEach((n, i) => db.cats.push({id: 'c_exp' + i, type: 'exp', name: n, ord: i, upd: 1, del: false}));
   db.cats.push({id: 'c_inc1', type: 'inc', name: 'مبيعات نقدي', ord: 1, upd: 1, del: false}, {id: 'c_inc2', type: 'inc', name: 'أخرى', ord: 2, upd: 1, del: false});
-  reindex(); saveDB();
+  reindex(); ensurePayCats(); saveDB();
 }
 /* رصيد خزنة (أو كل الخزن لو vid فاضي). لو before اتبعت: الحركات اللي قبل التاريخ ده بس */
 function vaultBal(vid, before) {
@@ -1606,14 +1608,11 @@ function cashRange() {
 }
 function renderCash() {
   const pg = $('#p-cash');
-  const old = readCash();
+  bridgeIn();
   if (!db.vaults.length) {
     pg.innerHTML = `<div class="card"><h2>الخزنة</h2>
-      <p style="font-weight:700;margin:0 0 12px">من هنا هتسجل كل فلوس داخلة أو خارجة. ولما تسجل دفعة من عميل أو لمورد، بتدخل الخزنة أو تطلع منها لوحدها.</p>
-      ${old ? `<div class="sync">لقيت دفتر الخزنة القديم على الجهاز ده (فيه ${old.tx.filter(x => !x.del).length} حركة).</div>
-        <button class="btn gold big" id="cMig" type="button">انقل دفتر الخزنة القديم</button>` : ''}
-      <button class="btn ${old ? 'line' : 'gold big'}" id="cNew" type="button" style="margin-top:10px">${old ? 'ابدأ خزنة جديدة من غير نقل' : 'ابدأ الخزنة'}</button></div>`;
-    if (old) $('#cMig').onclick = migrateCashModal;
+      <p style="font-weight:700;margin:0 0 12px">من هنا هتسجل كل فلوس داخلة أو خارجة. ولما تسجل دفعة من عميل أو لمورد، بتدخل الخزنة أو تطلع منها لوحدها. وكل ده بيظهر كمان في "دفتر الخزنة" اللي في الصفحة الرئيسية.</p>
+      <button class="btn gold big" id="cNew" type="button">ابدأ الخزنة</button></div>`;
     $('#cNew').onclick = () => { ensureVaults(); renderCash(); };
     return;
   }
@@ -1628,7 +1627,7 @@ function renderCash() {
     if (m.sign) { const x = by.get(k) || {n: k, i: 0, o: 0}; if (m.sign > 0) x.i += m.amt; else x.o += m.amt; by.set(k, x); } });
   const t = todayISO();
   pg.innerHTML = `
-    ${old && !db.cfg.cashMigrated ? `<div class="sync">لقيت دفتر الخزنة القديم على الجهاز ده. <a id="cMig">انقله هنا</a></div>` : ''}
+    <div class="sync ok">🔗 الخزنة دي هي نفسها "دفتر الخزنة" اللي في الصفحة الرئيسية. اللي بتسجله هنا أو هناك بيظهر في المكانين.</div>
     <div class="tots"><div class="k"><span>رصيد كل الخزن</span><b class="${total < 0 ? 'cr' : ''}">${fmtP(total)} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>
       ${vs.map(v => { const b = vaultBal(v.id); return `<div class="vt ${cashVault === v.id ? 'on' : ''}" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="${b < 0 ? 'cr2' : ''}">${fmtP(b)}</b></div>`; }).join('')}</div>
     ${noMoves ? `<div class="card" style="background:var(--gold-l);border-color:var(--gold)"><p style="font-weight:800;margin:0 0 8px">لسه بادئ؟ اكتب الفلوس اللي معاك دلوقتي في كل خزنة، وبعد كده كل حاجة هتتحسب عليها.</p>
@@ -1655,7 +1654,6 @@ function renderCash() {
     ${mv.length ? mv.map((m, i) => `<div class="cm ${m.cls}" data-i="${i}"><div class="m"><b>${esc(m.title)}</b><small>${dispDate(m.date)} — ${esc(m.sub)}</small></div>
       <div class="a ${m.sign > 0 ? 'inc' : m.sign < 0 ? 'exp' : ''}">${m.sign > 0 ? '+' : m.sign < 0 ? '−' : ''} ${fmtP(m.amt)}</div></div>`).join('') : '<div class="empty">مفيش حركات في الفترة دي</div>'}
     <div class="g2" style="margin-top:12px"><button class="btn line sm" id="cOpen" type="button">✎ رصيد البداية</button><button class="btn line sm" id="cSet" type="button">⚙ الخزن والبنود</button></div>`;
-  if ($('#cMig')) $('#cMig').onclick = migrateCashModal;
   $$('#p-cash .vt').forEach(el => el.onclick = () => { cashVault = cashVault === el.dataset.v ? '' : el.dataset.v; renderCash(); });
   $('#cRecv').onclick = () => pickParty('pay');
   $('#cPayS').onclick = () => pickParty('ppay');
@@ -1765,13 +1763,11 @@ function vaultSettings() {
     <button class="btn line sm" data-addc="exp" type="button">+ بند مصروف</button>
     <div class="sech"><span class="inc">بنود الإيرادات</span></div>${catsL('inc').map(c => row('cat', c)).join('')}
     <button class="btn line sm" data-addc="inc" type="button">+ بند إيراد</button>
-    ${readCash() ? `<div class="sech"><span>دفتر الخزنة القديم</span></div><button class="btn line sm" id="vsMig" type="button">${db.cfg.cashMigrated ? 'انقله تاني (مش هيتكرر حاجة)' : 'انقل دفتر الخزنة القديم'}</button>` : ''}
     <button class="btn gold" id="vsX" type="button" style="margin-top:14px">تمام</button>`, true);
   $('#vsX').onclick = () => { closeModal(); route(); };
   $('#vsAddV').onclick = () => editVault();
   $$('[data-addc]').forEach(b => b.onclick = () => editCat(b.dataset.addc));
   $$('[data-ed]').forEach(b => b.onclick = () => { const [k, id] = b.dataset.ed.split(':'); k === 'vault' ? editVault(IDX.vault.get(id)) : editCat(null, IDX.cat.get(id)); });
-  if ($('#vsMig')) $('#vsMig').onclick = migrateCashModal;
 }
 function editVault(v) {
   const used = v && (db.txs.some(t => !t.del && (t.vault === v.id || t.to === v.id)) || db.entries.some(e => !e.del && e.vault === v.id));
@@ -1804,35 +1800,87 @@ function editCat(type, c) {
   };
   if (c) $('#ecDel').onclick = () => { c.del = true; touch(c); saveDB(); vaultSettings(); toast('اتشال البند (الحركات القديمة بتفضل باسمه)'); };
 }
-/* نقل دفتر الخزنة القديم (fo_cash_v1) — بنقرا بس ومش بنغيّر فيه حاجة */
 function readCash() { try { const d = JSON.parse(localStorage.getItem('fo_cash_v1')); if (d && Array.isArray(d.tx) && Array.isArray(d.vaults)) return d; } catch (e) {} return null; }
-function migrateCashModal() {
-  const d = readCash(); if (!d) return toast('مفيش دفتر خزنة قديم على الجهاز ده');
-  const p2 = x => Math.round((+x || 0) * 100);
-  const vaults = d.vaults.map((v, i) => ({id: v.id, name: v.name, open: p2(v.open), ord: i, upd: v.upd || 1, del: !!v.del}));
-  const cats = (d.cats || []).map(c => ({id: c.id, type: c.type, name: c.name, ord: c.ord || 0, upd: c.upd || 1, del: !!c.del}));
-  const txs = d.tx.map(t => ({id: t.id, type: t.type, amt: p2(t.amt), vault: t.vault, to: t.to || '', cat: t.cat || '', note: t.note || '', date: isoOf(t.ts), at: t.ts, upd: t.upd || 1, del: !!t.del, hist: []}));
-  /* المطابقة: رصيد كل خزنة بطريقة الدفتر القديم بالظبط، قصاد رصيدها بعد التحويل */
-  const oldBal = vid => { let b = 0; d.vaults.forEach(v => { if (!v.del && v.id === vid) b += +v.open || 0; }); d.tx.forEach(t => { if (t.del) return; const a = +t.amt || 0; if (t.type === 'inc' && t.vault === vid) b += a; else if (t.type === 'exp' && t.vault === vid) b -= a; else if (t.type === 'tr') { if (t.vault === vid) b -= a; if (t.to === vid) b += a; } }); return Math.round(b * 100); };
-  const newBal = vid => { let b = 0; vaults.forEach(v => { if (!v.del && v.id === vid) b += v.open; }); txs.forEach(t => { if (t.del) return; if (t.type === 'inc' && t.vault === vid) b += t.amt; else if (t.type === 'exp' && t.vault === vid) b -= t.amt; else if (t.type === 'tr') { if (t.vault === vid) b -= t.amt; if (t.to === vid) b += t.amt; } }); return b; };
-  const rep = vaults.filter(v => !v.del).map(v => ({v, o: oldBal(v.id), n: newBal(v.id)}));
-  const bad = rep.filter(x => x.o !== x.n);
-  modal(`<h3>نقل دفتر الخزنة القديم</h3>
-    <div class="stm"><div><span>الخزن</span><b>${rep.length}</b></div><div><span>الحركات</span><b>${txs.filter(t => !t.del).length}</b></div></div>
-    ${bad.length ? `<div class="sync warn">✖ فيه ${bad.length} خزنة رصيدها مش مطابق. كلمني قبل ما تنقل.</div>` : `<div class="sync ok">✔ رصيد كل خزنة مطابق للدفتر القديم بالقرش.</div>`}
-    <table class="lt rep"><thead><tr><th>الخزنة</th><th>الدفتر القديم</th><th>بعد النقل</th><th></th></tr></thead><tbody>
-      ${rep.map(x => `<tr class="${x.o === x.n ? '' : 'bad'}"><td>${esc(x.v.name)}</td><td class="n">${fmtP(x.o)}</td><td class="n">${fmtP(x.n)}</td><td>${x.o === x.n ? '✔' : '✖'}</td></tr>`).join('')}</tbody></table>
-    <p class="hint">الدفتر القديم مش هيتمسح ولا هيتغير. بعد النقل سجّل من هنا بس، عشان اللي هتسجله في الدفتر القديم مش هيظهر هنا.</p>
-    <div class="stack" style="margin-top:10px">${bad.length ? '' : '<button class="btn gold" id="mgGo" type="button">انقل الخزنة</button>'}<button class="btn line" id="mgX" type="button">رجوع</button></div>`, true);
-  $('#mgX').onclick = closeModal;
-  if ($('#mgGo')) $('#mgGo').onclick = async () => {
-    let n = 0;
-    [['vault', vaults], ['cat', cats], ['tx', txs]].forEach(([kind, arr]) => arr.forEach(x => { if (mergeRow({id: x.id, kind, upd: x.upd, del: x.del, data: x})) { delete IDX[kind].get(x.id).sy; n++; } }));
-    db.cfg.cashMigrated = Date.now();
-    await flushSave(); schedSync(); closeModal(); go('cash');
-    toast(`✔ اتنقل دفتر الخزنة (${n} سجل). من دلوقتي سجّل من هنا بس.`, 7000);
-  };
+/* ---------- الربط مع دفتر الخزنة (cash.html) ----------
+   دفتر الخزنة بيفتح من غير كلمة سر، وبيحفظ في fo_cash_v1 بنفس شكله القديم (المبالغ بالجنيه و ts بالوقت).
+   الحسابات بتكتب فيه نسخة من الخزن والبنود والحركات ودفعات العملا والموردين، وبتاخد منه أي حاجة اتسجلت هناك.
+   كل سجل ليه نفس الـ id في المكانين، والأحدث تعديلاً (upd) هو اللي بيكسب، فمفيش تكرار ولا لف في دواير.
+   دفعة العميل/المورد بتبان في الدفتر كحركة فيها party، ولو اتسجلت أو اتعدلت هناك بترجع هنا دفعة على الحساب. */
+const PAY_CAT = {pay: 'c_inc0', ppay: 'c_payout'};
+const SPECIAL_CATS = new Set(Object.values(PAY_CAT));
+function ensurePayCats() {
+  let n = 0;
+  [['c_inc0', 'inc', 'تحصيل من عميل'], ['c_payout', 'exp', 'دفعات للموردين']].forEach(([id, type, name]) => {
+    if (!IDX.cat.get(id)) { const r = {id, type, name, ord: 99, upd: 1, del: false}; db.cats.push(r); IDX.cat.set(id, r); n++; }
+  });
+  return n;
 }
+const tsOfDate = (date, at) => { const [y, m, d] = date.split('-').map(Number), t = new Date(at || Date.now()); return new Date(y, m - 1, d, t.getHours(), t.getMinutes()).getTime(); };
+function payName(e) { const p = P.get(e.party); return (p ? p.name : '') + (e.note ? ' — ' + e.note : ''); }
+let bridgeBusy = false;
+function bridgeOut() {
+  if (!db || bridgeBusy) return;
+  let c = readCash();
+  if (!c) { if (!db.vaults.length) return; c = {v: 1, vaults: [], cats: [], tx: [], sheetUrl: '', lastSync: 0, lastVault: ''}; }
+  if (!Array.isArray(c.cats)) c.cats = [];
+  const idx = {vaults: new Map(c.vaults.map((r, i) => [r.id, i])), cats: new Map(c.cats.map((r, i) => [r.id, i])), tx: new Map(c.tx.map((r, i) => [r.id, i]))};
+  let ch = 0;
+  const put = (arr, rec) => {
+    const i = idx[arr].get(rec.id);
+    if (i === undefined) { idx[arr].set(rec.id, c[arr].length); c[arr].push(Object.assign(rec, {sy: 0})); ch++; return; }
+    if ((c[arr][i].upd || 0) >= rec.upd) return;
+    c[arr][i] = Object.assign(rec, {sy: 0}); ch++;
+  };
+  db.vaults.forEach(v => put('vaults', {id: v.id, name: v.name, open: (v.open || 0) / 100, upd: v.upd, del: !!v.del}));
+  db.cats.forEach(x => put('cats', {id: x.id, type: x.type, name: x.name, ord: x.ord || 0, upd: x.upd, del: !!x.del}));
+  db.txs.forEach(t => put('tx', Object.assign({id: t.id, type: t.type, amt: t.amt / 100, ts: tsOfDate(t.date, t.at), vault: t.vault, note: t.note || '', upd: t.upd, del: !!t.del}, t.type === 'tr' ? {to: t.to} : {cat: t.cat})));
+  db.entries.forEach(e => {
+    if (!isPay(e) || (!e.vault && !idx.tx.has(e.id))) return;
+    put('tx', {id: e.id, type: e.kind === 'pay' ? 'inc' : 'exp', amt: (e.amt || 0) / 100, ts: tsOfDate(e.date, e.at), vault: e.vault || '', cat: PAY_CAT[e.kind],
+      note: payName(e), party: e.party, pkind: e.kind, method: e.method || 'نقدي', pnote: e.note || '', upd: e.upd, del: !!e.del || !e.vault});
+  });
+  if (ch) try { localStorage.setItem('fo_cash_v1', JSON.stringify(c)); } catch (x) {}
+  /* أسامي العملا والموردين بس (من غير أرصدة) علشان دفتر الخزنة يقدر يسجل دفعة باسم حد */
+  const names = JSON.stringify(liveParties().map(p => ({id: p.id, name: p.name, sec: p.sec})).sort((a, b) => a.name.localeCompare(b.name, 'ar')));
+  try { if (localStorage.getItem('fo_acc_names') !== names) localStorage.setItem('fo_acc_names', names); } catch (x) {}
+}
+function bridgeIn() {
+  if (!db) return 0;
+  const c = readCash(); if (!c) return 0;
+  const p2 = x => Math.round((+x || 0) * 100);
+  let n = 0;
+  const up = (kind, rec) => {
+    const cur = IDX[kind].get(rec.id);
+    if (cur && (cur.upd || 0) >= rec.upd) return;
+    if (cur) { Object.keys(cur).forEach(k => delete cur[k]); Object.assign(cur, rec); }
+    else { db[STORE[kind]].push(rec); IDX[kind].set(rec.id, rec); }
+    n++;
+  };
+  c.vaults.forEach((v, i) => { const cur = IDX.vault.get(v.id); up('vault', {id: v.id, name: v.name, open: p2(v.open), ord: cur ? cur.ord : i, at: cur ? cur.at : v.upd, upd: v.upd || 1, del: !!v.del}); });
+  (c.cats || []).forEach(x => up('cat', {id: x.id, type: x.type, name: x.name, ord: x.ord || 0, upd: x.upd || 1, del: !!x.del}));
+  c.tx.forEach(t => {
+    if (t.party) {
+      const cur = E.get(t.id);
+      if (cur && (cur.upd || 0) >= t.upd) return;
+      const e = Object.assign({hist: [], at: t.ts}, cur || {}, {id: t.id, party: t.party, kind: t.pkind || (t.type === 'inc' ? 'pay' : 'ppay'), date: isoOf(t.ts), amt: p2(t.amt),
+        method: t.method || 'نقدي', note: t.pnote || '', vault: t.vault || '', upd: t.upd, del: !!t.del});
+      delete e.sy;
+      if (cur && !cur.del && (cur.amt !== e.amt || cur.date !== e.date || cur.vault !== e.vault)) e.hist = (cur.hist || []).concat([snapshot(cur)]);
+      applyAmounts(e); e.desc = docDesc(e);
+      up('entry', e);
+    } else {
+      const cur = IDX.tx.get(t.id);
+      up('tx', {id: t.id, type: t.type, amt: p2(t.amt), vault: t.vault, to: t.to || '', cat: t.cat || '', note: t.note || '', date: isoOf(t.ts), at: t.ts, upd: t.upd || 1, del: !!t.del, hist: cur ? cur.hist || [] : []});
+    }
+  });
+  n += ensurePayCats();
+  if (n) { bridgeBusy = true; try { saveDB(); } finally { bridgeBusy = false; } }
+  return n;
+}
+addEventListener('storage', ev => {
+  if (!db || ev.key !== 'fo_cash_v1') return;
+  if (bridgeIn() && !$('#mask').classList.contains('on')) route();
+});
 
 /* ====================== التنقل ====================== */
 function go(p) { if (location.hash !== '#' + p) location.hash = p; else route(); }

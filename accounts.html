@@ -136,6 +136,28 @@ table.lt.rep tr.bad td{background:var(--red-l);color:var(--red)}
 .lrow{display:grid;grid-template-columns:1fr 46px;gap:6px;align-items:center;margin-bottom:6px;font-weight:700}
 .lrow small{color:#777;font-weight:600}
 .modal h3.exp{color:var(--red)}.modal h3.inc{color:var(--green)}
+.ldgw{overflow-x:auto;border:1.5px solid var(--line);border-radius:12px;background:#fff;-webkit-overflow-scrolling:touch}
+table.ldg{width:100%;border-collapse:collapse;font-size:13.5px}
+.ldg th{background:#111;color:#DAAE57;font-weight:700;padding:7px 4px;position:sticky;top:0;white-space:nowrap}
+.ldg td{padding:7px 4px;border-bottom:1px solid #EEE7D6;text-align:center;vertical-align:middle;font-weight:600}
+.ldg td.l{text-align:right;min-width:130px}.ldg td.l small{display:block;font-size:11px;color:#9C7420;font-weight:700}
+.ldg td.dt{white-space:nowrap;font-size:12.5px}.ldg td.q{white-space:nowrap;font-size:12.5px}
+.ldg td.n{direction:ltr;white-space:nowrap}.ldg td.b{direction:ltr;white-space:nowrap;font-weight:800}
+.ldg tr{cursor:pointer}.ldg tr:nth-child(even) td{background:#FBF8EF}
+.ldg tr.f td{border-top:1.5px solid #E2D6B5}
+.ldg tr.op td{background:#EFE6CF;font-weight:800}
+.ldg tr.pay td{background:#DDF1E3;color:#14632C;font-weight:800}
+.ldg td.q small{display:block;font-size:10.5px;color:#777}
+@media (max-width:600px){
+  table.ldg{font-size:11.5px}
+  .ldg th{font-size:11px;padding:6px 2px}
+  .ldg td{padding:6px 2px}
+  .ldg td.l{min-width:0;font-size:12px}
+  .ldg td.dt,.ldg td.q{font-size:10.5px}
+  .ldg td.b{font-size:12px}
+}
+.ldgf{display:flex;justify-content:space-between;align-items:center;background:var(--ink);color:var(--gold);border-radius:12px;padding:10px 14px;margin-top:8px;font-weight:800}
+.ldgf b{color:#fff;font-size:24px;direction:ltr}.ldgf small{font-size:13px;color:var(--gold)}
 .sech{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;font-weight:800;color:var(--gold-d)}
 .sech a{font-size:14px;text-decoration:underline;cursor:pointer}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#EFE9D8;border-radius:12px;padding:4px;margin-bottom:10px}
@@ -214,6 +236,7 @@ nav svg{width:26px;height:26px}
 .pg td:first-child{white-space:nowrap;font-size:13px}
 .pg tr:nth-child(even) td{background:#FBF5E6}
 .pg tr.op td{background:#EFE6CF;font-weight:800}
+.pg tr.pay td{background:#DDF1E3;color:#14632C;font-weight:800;border-bottom-color:#B9DFC4}
 .pg td.n{direction:ltr;font-weight:700}
 .pg td.q{font-weight:600;font-size:13.5px}
 .pg td small.rf{display:block;font-size:11.5px;color:#9C7420;font-weight:700}
@@ -715,7 +738,6 @@ function renderParty(id) {
     runAt.set(e.id, run);
   });
   const nX = all.filter(e => e.del).length;
-  const list = all.filter(e => showX || !e.del).reverse();
   $('#p-party').innerHTML = `
     <div class="sech" style="margin-top:0"><a id="ppBack">→ كل الحسابات</a><a id="ppEdit">تعديل البيانات</a></div>
     <div class="phd"><h2>${esc(p.name)}</h2><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}${p.noTot ? ' — <b style="color:var(--gold)">حساب فرعي خارج الإجماليات</b>' : ''}</small>
@@ -726,15 +748,17 @@ function renderParty(id) {
       <button class="btn green big" id="ppPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button>
     </div>
     <button class="btn gold" id="ppStmt" type="button">📄 كشف حساب</button>
-    <div class="sech"><span>كل الحركات (${all.length - nX})</span>${nX ? `<a id="ppX">${showX ? 'إخفاء الملغي' : `إظهار الملغي (${nX})`}</a>` : ''}</div>
-    ${list.length ? list.map(e => entryCard(e, runAt.get(e.id))).join('') : '<div class="empty">لسه مفيش حركات على الحساب ده</div>'}`;
+    ${nX ? `<div class="sech" style="margin-bottom:0"><span></span><a id="ppX">${showX ? 'إخفاء الملغي' : `إظهار الملغي (${nX})`}</a></div>` : ''}
+    ${ledgerTable(p)}
+    ${showX && nX ? `<div class="sech"><span>الحركات الملغية</span></div>${all.filter(e => e.del).reverse().map(e => entryCard(e, 0)).join('')}` : ''}`;
   $('#ppBack').onclick = () => go('home');
   $('#ppEdit').onclick = () => partyModal(p);
   $('#ppStmt').onclick = () => stmtModal(p);
   $('#ppDoc').onclick = () => docModal(p, sup ? 'pur' : 'inv');
   $('#ppPay').onclick = () => payModal(p, sup ? 'ppay' : 'pay');
   if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
-  $$('#p-party .en').forEach(el => el.onclick = () => openEntry(p, E.get(el.dataset.id)));
+  $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => openEntry(p, E.get(el.dataset.id)));
+  if ($('#ppEnd')) $('#ppEnd').onclick = () => $('#ldgEnd').scrollIntoView({behavior: 'smooth', block: 'end'});
 }
 function entryCard(e, runB) {
   const flags = `${e.kind === 'open' ? '<span class="flag o">أول المدة</span>' : ''}${e.hist && e.hist.length ? '<span class="flag">اتعدّلت</span>' : ''}${e.del ? '<span class="flag x">ملغية</span>' : ''}`;
@@ -973,6 +997,19 @@ function histHtml(e) {
     <div class="hist">اتسجلت أول مرة: ${dispDate(isoOf(e.at))} ${dispTime(e.at)}</div></details>`;
 }
 
+/* جدول الحساب جوه البرنامج: نفس شكل الكشف اللي بيتبعت للعميل بالظبط. الدوسة على أي سطر بتفتح الفاتورة أو الدفعة بتاعته */
+const shortDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}/${m}/${y.slice(2)}` : ''; };
+function ledgerTable(p) {
+  const s = stmtData(p.id, '', '');
+  if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده</div>';
+  return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
+    <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
+    ${s.rows.map(r => `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}</td><td class="q">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b>${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>
+    <p class="hint">دوس على أي سطر علشان تعدّله. الدفعات باللون الأخضر.</p>`;
+}
+
 /* ====================== كشف الحساب ====================== */
 /* كل حركة بتتفرد لسطور زي شيت الإكسيل: كل صنف في الفاتورة سطر (الكمية والسعر والإجمالي)، والخصم سطر، والدفعة سطر.
    from/to بصيغة YYYY-MM-DD. لو from فاضي يبقى الحساب كله من أوله. */
@@ -983,16 +1020,17 @@ function rowsOf(e) {
     if (e.disc) out.push({date: e.date, desc: 'خصم', ref, dr: sale ? 0 : e.disc, cr: sale ? e.disc : 0});
     return out;
   }
-  if (e.kind === 'pay' || e.kind === 'ppay') return [{date: e.date, desc: 'دفعة ' + (e.method || 'نقدي'), ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0}];
-  return [{date: e.date, desc: e.desc, ref: e.kind === 'open' ? '' : '', dr: e.dr || 0, cr: e.cr || 0}];
+  if (e.kind === 'pay' || e.kind === 'ppay') return [{date: e.date, desc: 'دفعة ' + (e.method || 'نقدي'), ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, pay: true}];
+  return [{date: e.date, desc: e.desc, ref: '', dr: e.dr || 0, cr: e.cr || 0, op: e.kind === 'open'}];
 }
+function rowsWithRef(e) { return rowsOf(e).map((r, i) => Object.assign(r, {e, first: i === 0})); }
 function stmtData(pid, from, to) {
   const all = partyEntries(pid);
   const open = from ? balance(pid, from) : null;
   const ents = all.filter(e => (!from || e.date >= from) && (!to || e.date <= to));
   let run = open || 0, tdr = 0, tcr = 0;
   const rows = [];
-  ents.forEach(e => rowsOf(e).forEach(r => { run += r.dr - r.cr; tdr += r.dr; tcr += r.cr; rows.push(Object.assign(r, {run})); }));
+  ents.forEach(e => rowsWithRef(e).forEach(r => { run += r.dr - r.cr; tdr += r.dr; tcr += r.cr; rows.push(Object.assign(r, {run})); }));
   /* زي الإكسيل: الرصيد بيتكتب من ناحية الطرف التاني (للمورد = اللي ليه)، وأي سطر بيزوّد الرصيد في عمود الإجمالي وأي سطر بينقّصه في عمود الدفعة */
   const sg = P.get(pid).sec === 'sup' ? -1 : 1;
   let tg = 0, tp = 0; rows.forEach(r => { const x = (r.dr - r.cr) * sg; r.gd = x > 0 ? x : 0; r.pd = x < 0 ? -x : 0; tg += r.gd; tp += r.pd; });
@@ -1055,7 +1093,7 @@ function buildStmtPages(p, s) {
   };
   if (s.open !== null) { const tr = document.createElement('tr'); tr.className = 'op'; tr.innerHTML = `<td></td><td class="dt">${dispDate(s.from)}</td><td class="l">رصيد أول المدة</td><td></td><td></td><td></td><td></td>${balCell(s.open)}`; put(tr); }
   s.rows.forEach((r, i) => {
-    const tr = document.createElement('tr');
+    const tr = document.createElement('tr'); tr.className = r.pay ? 'pay' : r.op ? 'op' : '';
     tr.innerHTML = `<td>${i + 1}</td><td class="dt">${dispDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td><td class="q">${esc(r.qty || '')}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td>${balCell(r.run)}`;
     put(tr);
   });

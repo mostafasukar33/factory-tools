@@ -175,6 +175,9 @@ nav .nb{position:absolute;top:6px;inset-inline-start:calc(50% + 6px);background:
 .ckb{display:flex;gap:6px;flex-wrap:wrap}.ckb .btn{width:auto;flex:1;min-height:42px}
 .cb{display:inline-block;font-size:12px;font-weight:800;border-radius:6px;padding:0 6px;background:#ECEFF1;color:var(--blue)}
 .cb.ok{background:var(--green-l);color:var(--green)}.cb.warn{background:#FFF3CD;color:#8A6200}.cb.bad{background:var(--red-l);color:var(--red)}
+.rph{font-size:19px;margin:6px 2px 8px;font-weight:800}.rph small{display:block;font-size:13px;color:#777;font-weight:700}
+.ldg.rp tr[data-p]{cursor:pointer}
+table.ldg.rp{min-width:520px}.ldg.rp td{white-space:nowrap}.ldg.rp td.l{white-space:normal;min-width:110px}
 .sech{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;font-weight:800;color:var(--gold-d)}
 .sech a{font-size:14px;text-decoration:underline;cursor:pointer}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#EFE9D8;border-radius:12px;padding:4px;margin-bottom:10px}
@@ -203,8 +206,8 @@ ol.steps li{margin-bottom:6px}
 .chkrow label{margin:0;font-size:16px;color:#111}
 .hist{border-top:1px dashed #ccc;padding:6px 0;font-size:14px}
 /* التنقل */
-nav{position:fixed;bottom:0;inset-inline:0;background:var(--ink);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:30;border-top:3px solid var(--gold)}
-nav button{background:none;border:0;color:#bbb;padding:9px 4px 8px;font-weight:700;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-height:64px}
+nav{position:fixed;bottom:0;inset-inline:0;background:var(--ink);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:30;border-top:3px solid var(--gold)}
+nav button{background:none;border:0;color:#bbb;padding:9px 2px 8px;font-weight:700;font-size:12.5px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-height:64px}
 nav button.on{color:var(--gold)}
 nav svg{width:26px;height:26px}
 .mask{position:fixed;inset:0;background:#000a;z-index:130;display:none;align-items:center;justify-content:center;padding:12px}
@@ -313,6 +316,9 @@ nav svg{width:26px;height:26px}
 <!-- ============== الشيكات ============== -->
 <section class="page" id="p-chk"></section>
 
+<!-- ============== التقارير ============== -->
+<section class="page" id="p-rep"></section>
+
 <!-- ============== الإعدادات ============== -->
 <section class="page" id="p-set">
   <div class="card">
@@ -370,6 +376,7 @@ nav svg{width:26px;height:26px}
   <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>الحسابات</button>
   <button data-go="cash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 10v5M18 10v5"/></svg>الخزنة</button>
   <button data-go="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 10h8M6 14h5M16 14h2"/></svg>الشيكات<i class="nb" id="nbChk"></i></button>
+  <button data-go="rep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>التقارير</button>
   <button data-go="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>الإعدادات</button>
 </nav>
 <div id="toast"></div>
@@ -1228,25 +1235,7 @@ function buildStmtPages(p, s) {
   pages.forEach((x, i) => x.querySelector('.pn').textContent = `صفحة ${i + 1} من ${pages.length}`);
   return pages;
 }
-async function makeStmtPdf(p, s) {
-  await Promise.all(['400', '600', '700', '800'].map(w => document.fonts.load(w + ' 16px Cairo', 'نص عربي 123abc')));
-  const pages = buildStmtPages(p, s);
-  await Promise.all([...$('#render').querySelectorAll('img')].map(i => i.decode ? i.decode().catch(() => {}) : 0));
-  await document.fonts.ready;
-  const {jsPDF} = window.jspdf;
-  const doc = new jsPDF({unit: 'mm', format: 'a4', orientation: 'portrait', compress: true});
-  const imgs = [];
-  for (let i = 0; i < pages.length; i++) {
-    const cv = await html2canvas(pages[i], {scale: 2, backgroundColor: '#fff', logging: false, useCORS: true, width: 794, height: 1123, windowWidth: 794});
-    const url = cv.toDataURL('image/jpeg', 0.9); if (i < 6) imgs.push(url);
-    if (i) doc.addPage();
-    doc.addImage(url, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-    cv.width = cv.height = 0;
-  }
-  $('#render').innerHTML = '';
-  const name = `كشف حساب - ${p.name} - ${dispDate(todayISO()).replace(/\//g, '-')}`.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim() + '.pdf';
-  return {blob: doc.output('blob'), imgs, name, pages: pages.length};
-}
+async function makeStmtPdf(p, s) { return pagesToPdf(() => buildStmtPages(p, s), `كشف حساب - ${p.name}`); }
 async function shareFile(res, title) {
   const file = new File([res.blob], res.name, {type: 'application/pdf'});
   const data = {files: [file], title, text: title + ' - فلاش أون'};
@@ -2206,6 +2195,186 @@ function bounceInfo(p, e) {
   $('#biUndo').onclick = () => { closeModal(); if (o) undoCheck(o); else cancelEntry(e); };
 }
 
+/* ====================== التقارير ====================== */
+/* كل تقرير بيرجّع نفس الشكل: {title, period, cols:[{h, w, c}], rows:[{cells, cls}], sum:[[label, value]], fin:[label, value]}
+   والشكل ده بيتعرض جوه البرنامج وبيتطبع PDF بنفس شكل الكشف. */
+let repKind = 'debt', repSide = 'mkt', repMode = 'month', repDay = '', repMonth = '', repYear = '', repFrom = '', repTo = '', repVault = '', repItemKind = 'inv';
+function repRange() {
+  const t = todayISO();
+  if (repMode === 'day') { const d = repDay || t; return [d, d]; }
+  if (repMode === 'month') { const m = repMonth || t.slice(0, 7), [y, mo] = m.split('-').map(Number); return [m + '-01', m + '-' + pad2(new Date(y, mo, 0).getDate())]; }
+  if (repMode === 'year') { const y = repYear || t.slice(0, 4); return [y + '-01-01', y + '-12-31']; }
+  return [repFrom || t.slice(0, 8) + '01', repTo || t];
+}
+const rangeText = (f, t) => f === t ? dispDate(f) : `من ${dispDate(f)} إلى ${dispDate(t)}`;
+/* أعمار الديون: الدفعات والمرتجعات بتتخصم من أقدم مسحوبات الأول (FIFO)، واللي فاضل بيتقسم حسب عمره */
+function agingOf(p) {
+  const sg = p.sec === 'sup' ? -1 : 1, debits = []; let credits = 0;
+  partyEntries(p.id).forEach(e => { const up = ((e.dr || 0) - (e.cr || 0)) * sg; if (up > 0) debits.push({date: e.date, amt: up}); else if (up < 0) credits -= up; });
+  const b = [0, 0, 0, 0]; let oldest = '';
+  debits.forEach(d => {
+    const use = Math.min(d.amt, credits); credits -= use; const left = d.amt - use;
+    if (left <= 0) return;
+    if (!oldest) oldest = d.date;
+    const age = -daysTo(d.date);
+    b[age <= 30 ? 0 : age <= 60 ? 1 : age <= 90 ? 2 : 3] += left;
+  });
+  return {b, oldest, total: b.reduce((s, x) => s + x, 0)};
+}
+function buildReport() {
+  const ps = liveParties();
+  if (repKind === 'debt') {
+    const sup = repSide === 'sup';
+    const list = ps.filter(p => (sup ? p.sec === 'sup' : p.sec === repSide) && !p.noTot).map(p => ({p, a: agingOf(p)})).filter(x => x.a.total > 0).sort((x, y) => y.a.total - x.a.total);
+    const t = [0, 0, 0, 0]; list.forEach(x => x.a.b.forEach((v, i) => t[i] += v));
+    const tot = t.reduce((s, x) => s + x, 0);
+    return {title: sup ? 'مديونيات الموردين' : 'المديونيات وأعمارها', period: `${SECS[repSide]} — لحد ${dispDate(todayISO())}`,
+      cols: [{h: 'الاسم', w: 24, c: 'l'}, {h: 'الرصيد', w: 14, c: 'b'}, {h: 'أقدم دين', w: 12, c: 'dt'}, {h: 'لحد 30 يوم', w: 12.5, c: 'n'}, {h: '31 – 60', w: 12.5, c: 'n'}, {h: '61 – 90', w: 12.5, c: 'n'}, {h: 'أكتر من 90', w: 12.5, c: 'n'}],
+      rows: list.map(x => ({cells: [x.p.name, fmtP(x.a.total), dispDate(x.a.oldest), ...x.a.b.map(v => v ? fmtP(v) : '')], cls: x.a.b[3] ? 'bnc' : x.a.b[2] ? 'ret' : '', id: x.p.id})),
+      sum: [['لحد 30 يوم', fmtP(t[0])], ['من 31 لـ 60 يوم', fmtP(t[1])], ['من 61 لـ 90 يوم', fmtP(t[2])], ['أكتر من 90 يوم', fmtP(t[3])]], fin: ['الإجمالي (' + list.length + ' حساب)', fmtP(tot)]};
+  }
+  if (repKind === 'tot') {
+    const bal = allBalances(), rows = [], sum = [];
+    let ly = 0, al = 0;
+    ['mkt', 'site', 'sup'].forEach(sec => {
+      const l = ps.filter(p => p.sec === sec && !p.noTot && bal.get(p.id)).sort((a, b) => Math.abs(bal.get(b.id)) - Math.abs(bal.get(a.id)));
+      let sl = 0, sa = 0;
+      l.forEach(p => { const v = bal.get(p.id); if (v > 0) sl += v; else sa -= v; rows.push({cells: [p.name, SECS[sec], v > 0 ? fmtP(v) : '', v < 0 ? fmtP(-v) : ''], cls: v < 0 ? 'ret' : '', id: p.id}); });
+      ly += sl; al += sa;
+      sum.push([SECS[sec], (sl ? 'ليا ' + fmtP(sl) : '') + (sl && sa ? ' — ' : '') + (sa ? 'عليا ' + fmtP(sa) : '') || '0']);
+    });
+    const off = ps.filter(p => p.noTot && bal.get(p.id));
+    if (off.length) sum.push(['خارج الإجمالي', off.map(p => `${p.name}: ${fmtP(Math.abs(bal.get(p.id)))}`).join('، ')]);
+    sum.push(['إجمالي ليا', fmtP(ly)], ['إجمالي عليا', fmtP(al)]);
+    return {title: 'ليا وعليا', period: `لحد ${dispDate(todayISO())}`, cols: [{h: 'الاسم', w: 40, c: 'l'}, {h: 'القسم', w: 20, c: ''}, {h: 'ليا عنده', w: 20, c: 'n'}, {h: 'عليا له', w: 20, c: 'n'}],
+      rows, sum, fin: [`الصافي ${ly - al >= 0 ? 'ليا' : 'عليا'}`, fmtP(Math.abs(ly - al))]};
+  }
+  if (repKind === 'cash') {
+    ensureVaults();
+    const [f, t] = repRange(), v = repVault;
+    const open = vaultBal(v, f), mv = vaultMoves(v, f, t).slice().reverse();
+    let tin = 0, tout = 0, run = open; const by = new Map();
+    const rows = mv.map(m => {
+      if (m.sign > 0) tin += m.amt; else if (m.sign < 0) tout += m.amt; run += m.sign * m.amt;
+      const k = m.src === 'pay' ? (m.r.kind === 'pay' ? 'تحصيل من العملا' : 'دفعات للموردين') : m.r.type === 'tr' ? 'تحويلات بين الخزن' : cName(m.r.cat);
+      if (m.sign) { const x = by.get(k) || [0, 0]; x[m.sign > 0 ? 0 : 1] += m.amt; by.set(k, x); }
+      return {cells: [dispDate(m.date), m.title, m.sub, m.sign > 0 ? fmtP(m.amt) : m.sign === 0 ? fmtP(m.amt) : '', m.sign < 0 ? fmtP(m.amt) : '', fmtP(run)], cls: m.sign > 0 ? 'pay' : m.sign < 0 ? 'ret' : ''};
+    });
+    const sum = [['رصيد أول المدة', fmtP(open)], ['الداخل', fmtP(tin)], ['الخارج', fmtP(tout)], ...[...by.entries()].sort((a, b) => (b[1][0] + b[1][1]) - (a[1][0] + a[1][1])).map(([k, x]) => ['  ' + k, (x[0] ? '+ ' + fmtP(x[0]) : '') + (x[0] && x[1] ? '  ' : '') + (x[1] ? '− ' + fmtP(x[1]) : '')])];
+    return {title: 'تقرير الخزنة', period: `${v ? vName(v) : 'كل الخزن'} — ${rangeText(f, t)}`,
+      cols: [{h: 'التاريخ', w: 12, c: 'dt'}, {h: 'الحركة', w: 26, c: 'l'}, {h: 'التفاصيل', w: 22, c: 'l'}, {h: 'داخل', w: 13, c: 'n'}, {h: 'خارج', w: 13, c: 'n'}, {h: 'الرصيد', w: 14, c: 'b'}],
+      rows, sum, fin: ['رصيد آخر المدة', fmtP(open + tin - tout)]};
+  }
+  /* المبيعات أو المشتريات بالصنف (المرتجع بيتخصم) */
+  const [f, t] = repRange(), sale = repItemKind === 'inv', ret = sale ? 'rinv' : 'rpur';
+  const m = new Map();
+  db.entries.forEach(e => {
+    if (e.del || (e.kind !== repItemKind && e.kind !== ret) || e.date < f || e.date > t) return;
+    const sg = e.kind === ret ? -1 : 1;
+    (e.lines || []).forEach(l => {
+      const k = norm(l.name) + '|' + l.unit, x = m.get(k) || {name: l.name, unit: l.unit, q: 0, v: 0, docs: new Set(), who: new Set()};
+      x.q += sg * (+l.qty || 0); x.v += sg * lineTot(l); x.docs.add(e.id); x.who.add(e.party); m.set(k, x);
+    });
+    if (e.disc) { const x = m.get('|خصم') || {name: 'خصومات على الفواتير', unit: '', q: 0, v: 0, docs: new Set(), who: new Set()}; x.v -= sg * e.disc; m.set('|خصم', x); }
+  });
+  const list = [...m.values()].sort((a, b) => b.v - a.v), tot = list.reduce((s, x) => s + x.v, 0);
+  return {title: sale ? 'المبيعات بالصنف' : 'المشتريات بالصنف', period: rangeText(f, t),
+    cols: [{h: 'الصنف', w: 34, c: 'l'}, {h: 'الكمية', w: 16, c: 'q'}, {h: 'متوسط السعر', w: 14, c: 'n'}, {h: 'عدد الفواتير', w: 10, c: ''}, {h: sale ? 'عدد العملا' : 'عدد الموردين', w: 10, c: ''}, {h: 'القيمة', w: 16, c: 'b'}],
+    rows: list.map(x => ({cells: [x.name, x.unit ? `${fmtQ(x.q)} ${x.unit}` : '', x.q ? fmtP(Math.round(x.v / x.q)) : '', x.unit ? String(x.docs.size) : '', x.unit ? String(x.who.size) : '', fmtP(x.v)], cls: x.v < 0 ? 'ret' : ''})),
+    sum: [['عدد الأصناف', String(list.filter(x => x.unit).length)]], fin: [sale ? 'إجمالي المبيعات' : 'إجمالي المشتريات', fmtP(tot)]};
+}
+function renderReports() {
+  const R = buildReport(), t = todayISO(), [f, to] = repRange();
+  const needRange = repKind === 'cash' || repKind === 'item';
+  $('#p-rep').innerHTML = `
+    <div class="seg s4" id="rpK">${[['debt', 'المديونيات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    <div class="card">
+      ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
+      ${repKind === 'tot' ? '<p class="hint" style="margin:0">كل الحسابات اللي ليها رصيد، والحساب الفرعي ظاهر لوحده ومش داخل في الإجمالي.</p>' : ''}
+      ${repKind === 'item' ? `<div class="seg" id="rpIK">${[['inv', 'المبيعات'], ['pur', 'المشتريات']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repItemKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
+      ${needRange ? `<div class="seg s4" id="rpM">${[['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${repMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+        ${repMode === 'day' ? `<input class="inp" type="date" id="rpDay" value="${repDay || t}">` : repMode === 'month' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">`
+          : repMode === 'year' ? `<input class="inp num" id="rpYear" inputmode="numeric" value="${repYear || t.slice(0, 4)}">` : `<div class="g2"><input class="inp" type="date" id="rpFrom" value="${f}"><input class="inp" type="date" id="rpTo" value="${to}"></div>`}` : ''}
+      ${repKind === 'cash' ? `<select class="inp" id="rpV" style="margin-top:8px"><option value="">كل الخزن</option>${vaultsL().map(v => `<option value="${esc(v.id)}" ${repVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>` : ''}
+    </div>
+    <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
+    ${R.rows.length ? `<p class="hint" style="margin:0 0 6px">لو الجدول عريض، اسحبه يمين وشمال. ودوس على أي اسم يفتحلك حسابه.</p><div class="ldgw"><table class="ldg rp"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
+      ${R.rows.map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
+    <div class="card" style="margin-top:10px">${R.sum.map(([a, b]) => `<div class="bl"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
+    <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>
+    <div class="stack" style="margin-top:10px"><button class="btn green" id="rpShare" type="button">ابعت PDF واتساب</button><button class="btn gold" id="rpPdf" type="button">معاينة / تنزيل PDF</button></div>`;
+  $$('#rpK button').forEach(b => b.onclick = () => { repKind = b.dataset.v; renderReports(); });
+  $$('#rpSide button').forEach(b => b.onclick = () => { repSide = b.dataset.v; renderReports(); });
+  $$('#rpIK button').forEach(b => b.onclick = () => { repItemKind = b.dataset.v; renderReports(); });
+  $$('#rpM button').forEach(b => b.onclick = () => { repMode = b.dataset.m; renderReports(); });
+  const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); renderReports(); }; };
+  bindI('#rpDay', v => repDay = v); bindI('#rpMonth', v => repMonth = v); bindI('#rpYear', v => repYear = normDigits(v).replace(/\D/g, '').slice(0, 4));
+  bindI('#rpFrom', v => repFrom = v); bindI('#rpTo', v => repTo = v); bindI('#rpV', v => repVault = v);
+  $$('#p-rep tr[data-p]').forEach(el => el.onclick = () => go('p/' + el.dataset.p));
+  $('#rpShare').onclick = () => exportReport(R, 'share');
+  $('#rpPdf').onclick = () => exportReport(R, 'preview');
+}
+/* صفحات A4 لأي تقرير، بنفس شكل الكشف */
+function buildReportPages(R) {
+  const box = $('#render'); box.innerHTML = '';
+  const phone = db.cfg.phone;
+  const shell = first => {
+    const pg = document.createElement('div'); pg.className = 'pg';
+    pg.innerHTML = `<div class="strip"></div><div class="in">` + (first
+      ? `<div class="hd"><img src="icons/logo.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${phone ? `<em>${esc(phone)}</em>` : ''}</div>
+         <div class="ti"><h3>${esc(R.title)}</h3><div>تاريخ الإصدار: <span>${dispDate(todayISO())}</span></div><div><span>${esc(R.period)}</span></div></div></div>`
+      : `<div class="mini"><b>فلاش أون</b><span>${esc(R.title)} — ${esc(R.period)}</span></div>`) +
+      `</div><div class="ft"><span>عالم متكامل من احتياجاتك الكهربائية</span><span class="pn"></span></div>`;
+    box.appendChild(pg); return {pg, inn: pg.querySelector('.in')};
+  };
+  const over = (inn, el) => el.getBoundingClientRect().bottom > inn.getBoundingClientRect().bottom - 16;
+  const mkTable = () => { const t = document.createElement('table'); t.innerHTML = `<colgroup>${R.cols.map(c => `<col style="width:${c.w}%">`).join('')}</colgroup><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody></tbody>`; return t; };
+  let pg = shell(true), tbl = mkTable(); pg.inn.appendChild(tbl);
+  R.rows.forEach(r => {
+    const tr = document.createElement('tr'); tr.className = r.cls || '';
+    tr.innerHTML = r.cells.map((x, i) => `<td class="${R.cols[i].c === 'b' ? 'b' : R.cols[i].c}">${esc(x)}</td>`).join('');
+    tbl.tBodies[0].appendChild(tr);
+    if (over(pg.inn, tr) && tbl.tBodies[0].rows.length > 1) { tr.remove(); pg = shell(false); tbl = mkTable(); pg.inn.appendChild(tbl); tbl.tBodies[0].appendChild(tr); }
+  });
+  if (!R.rows.length) { const tr = document.createElement('tr'); tr.innerHTML = `<td colspan="${R.cols.length}">مفيش حاجة في التقرير ده</td>`; tbl.tBodies[0].appendChild(tr); }
+  const sum = document.createElement('div'); sum.className = 'sum';
+  sum.innerHTML = R.sum.map(([a, b]) => `<div class="l"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('') + `<div class="f"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div>`;
+  pg.inn.appendChild(sum); if (over(pg.inn, sum)) { sum.remove(); pg = shell(false); pg.inn.appendChild(sum); }
+  const pages = [...box.children];
+  pages.forEach((x, i) => x.querySelector('.pn').textContent = `صفحة ${i + 1} من ${pages.length}`);
+  return pages;
+}
+async function exportReport(R, how) {
+  modal('<p style="text-align:center">جاري تجهيز التقرير…</p>');
+  let res;
+  try { res = await pagesToPdf(() => buildReportPages(R), `${R.title} - ${R.period}`); }
+  catch (e) { closeModal(); console.error(e); toast('حصلت مشكلة في تجهيز الـ PDF، جرّب تاني.'); return; }
+  closeModal();
+  if (how === 'share') return shareFile(res, R.title);
+  modal(`${res.imgs.map(u => `<img src="${u}" alt="">`).join('')}${res.pages > res.imgs.length ? `<p class="hint">(المعاينة بتعرض أول ${res.imgs.length} صفحات من ${res.pages})</p>` : ''}
+    <div class="stack"><button class="btn green" id="pvShare">ابعت واتساب</button><button class="btn gold" id="pvDl">تنزيل PDF</button><button class="btn line" id="pvX">إغلاق</button></div>`, true);
+  $('#pvX').onclick = closeModal; $('#pvDl').onclick = () => downloadBlob(res.blob, res.name); $('#pvShare').onclick = () => { closeModal(); shareFile(res, R.title); };
+}
+async function pagesToPdf(build, title) {
+  await Promise.all(['400', '600', '700', '800'].map(w => document.fonts.load(w + ' 16px Cairo', 'نص عربي 123abc')));
+  const pages = build();
+  await Promise.all([...$('#render').querySelectorAll('img')].map(i => i.decode ? i.decode().catch(() => {}) : 0));
+  await document.fonts.ready;
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit: 'mm', format: 'a4', orientation: 'portrait', compress: true});
+  const imgs = [];
+  for (let i = 0; i < pages.length; i++) {
+    const cv = await html2canvas(pages[i], {scale: 2, backgroundColor: '#fff', logging: false, useCORS: true, width: 794, height: 1123, windowWidth: 794});
+    const url = cv.toDataURL('image/jpeg', 0.9); if (i < 6) imgs.push(url);
+    if (i) doc.addPage();
+    doc.addImage(url, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+    cv.width = cv.height = 0;
+  }
+  $('#render').innerHTML = '';
+  const name = `${title} - ${dispDate(todayISO()).replace(/\//g, '-')}`.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim() + '.pdf';
+  return {blob: doc.output('blob'), imgs, name, pages: pages.length};
+}
+
 /* ====================== مراجعة الجهاز مع الشيت ====================== */
 /* بننزّل كل السجلات من الشيت (من غير ما نغيّر حاجة) ونقارن كل سجل بالنسخة اللي على الجهاز.
    بتشتغل لوحدها مرة كل يوم، ولو لقت فرق بيظهر تنبيه في الرئيسية. */
@@ -2271,11 +2440,11 @@ function route() {
   if (!db) return;
   const h = decodeURIComponent(location.hash.slice(1));
   let pg = 'home';
-  if (h === 'set' || h === 'cash' || h === 'chk') pg = h; else if (h.startsWith('p/')) pg = 'party';
+  if (h === 'set' || h === 'cash' || h === 'chk' || h === 'rep') pg = h; else if (h.startsWith('p/')) pg = 'party';
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
   $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (pg === 'party' ? 'home' : pg)));
   const nd = chkDue().length; $('#nbChk').textContent = nd || ''; $('#nbChk').style.display = nd ? '' : 'none';
-  if (pg === 'set') renderSettings(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'party') renderParty(h.slice(2)); else renderHome();
+  if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'party') renderParty(h.slice(2)); else renderHome();
 }
 let lastHash = '';
 $$('nav button').forEach(b => b.onclick = () => go(b.dataset.go));

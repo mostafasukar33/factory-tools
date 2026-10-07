@@ -293,6 +293,7 @@ nav svg{width:26px;height:26px}
 <section class="page" id="p-home">
   <div class="sync" id="syncBox"></div>
   <div id="chk"></div>
+  <div id="bkRem"></div>
   <div class="tots" id="hTots"></div>
   <button class="btn gold big" id="bNewParty" type="button" style="margin-bottom:12px">+ حساب جديد</button>
   <div class="tabs" id="hTabs"></div>
@@ -650,6 +651,11 @@ function renderHome() {
   if (!db) return;
   renderSyncBox();
   const probs = selfCheck();
+  const au = db.cfg.audit;
+  if (au && !au.ok) probs.unshift(au.msg);
+  const lb = db.cfg.lastBackup || 0, every = db.cfg.sheetOk ? 30 : 7, days = Math.floor((Date.now() - lb) / 86400000);
+  $('#bkRem').innerHTML = db.parties.length && days >= every ? `<div class="sync">💾 ${lb ? `آخر نسخة احتياطية من ${days} يوم.` : 'لسه منزّلتش نسخة احتياطية.'} <a id="bkGo">نزّل واحدة دلوقتي</a></div>` : '';
+  if ($('#bkGo')) $('#bkGo').onclick = () => $('#bBackup').click();
   $('#chk').innerHTML = chkAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '');
   const bal = allBalances();
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
@@ -1469,6 +1475,7 @@ function renderSettings() {
       <button class="btn gold" id="shSave" type="button">حفظ واختبار الاتصال</button>
       <button class="btn line" id="shNow" type="button">زامن دلوقتي (${pendingRecs().length} مستني)</button>
       <button class="btn line" id="shAll" type="button">نزّل كل البيانات من الشيت تاني</button>
+      <button class="btn line" id="shAudit" type="button">راجع الجهاز ده مع الشيت</button>
       <button class="btn line" id="shHelp" type="button">إزاي أعمل شيت الحسابات؟ (خطوة بخطوة)</button>
     </div>
     <div id="shStat" class="sync" style="display:none;margin:10px 0 0"></div>
@@ -1477,6 +1484,7 @@ function renderSettings() {
   $('#shGen').onclick = () => { $('#shKey').value = makeKey(); $('#shKey').type = 'text'; toast('ده مفتاح جديد. اكتبه في ورقة قبل ما تحفظ.', 5000); };
   $('#shSave').onclick = testSheet;
   $('#shNow').onclick = () => syncNow(true);
+  $('#shAudit').onclick = () => sheetAudit(true);
   $('#shAll').onclick = async () => {
     if (!c.sheetOk) return toast('اربط الشيت الأول');
     if (!(await confirmBox('هنزّل كل السجلات من الشيت تاني وأدمجها مع اللي على الجهاز (الأحدث تعديلاً هو اللي يكسب). مفيش حاجة هتتمسح.', 'نزّل'))) return;
@@ -1652,6 +1660,7 @@ $('#bBackup').onclick = async () => {
   const box = await seal(cryptoKey, saltU8, Object.fromEntries(Object.values(STORE).map(a => [a, db[a].map(stripLocal)])));
   const data = Object.assign({app: 'flash-on-accounts-backup', exportedAt: new Date().toISOString(), parties: liveParties().length, entries: liveEntries().length}, box);
   downloadBlob(new Blob([JSON.stringify(data)], {type: 'application/json'}), `flash-on-accounts-${todayISO()}.json`);
+  db.cfg.lastBackup = Date.now(); saveDB();
   toast('اتنزّلت النسخة الاحتياطية (متقفلة بكلمة السر). احتفظ بيها في مكان آمن.', 5000);
 };
 $('#bRestore').onclick = () => $('#fRestore').click();
@@ -2196,6 +2205,45 @@ function bounceInfo(p, e) {
   $('#biX').onclick = closeModal;
   $('#biUndo').onclick = () => { closeModal(); if (o) undoCheck(o); else cancelEntry(e); };
 }
+
+/* ====================== مراجعة الجهاز مع الشيت ====================== */
+/* بننزّل كل السجلات من الشيت (من غير ما نغيّر حاجة) ونقارن كل سجل بالنسخة اللي على الجهاز.
+   بتشتغل لوحدها مرة كل يوم، ولو لقت فرق بيظهر تنبيه في الرئيسية. */
+async function sheetAudit(manual) {
+  if (!db || !db.cfg.sheetOk || !navigator.onLine || syncing) { if (manual) toast(db && db.cfg.sheetOk ? 'محتاج نت' : 'اربط الشيت الأول'); return; }
+  if (manual) toast('بقارن الجهاز بالشيت…', 8000);
+  const d0 = db, srv = new Map();
+  try {
+    let since = 0, more = true;
+    while (more) {
+      const j = await callSheet({action: 'pull', since});
+      if (db !== d0) return;
+      if (!j.ok) throw new Error(j.error);
+      j.rows.forEach(r => srv.set(r.kind + ':' + r.id, r.upd)); since = j.next; more = !!j.more;
+    }
+  } catch (e) { if (manual) toast('معرفتش أوصل للشيت', 4000); return; }
+  let missing = 0, behind = 0, ahead = 0, same = 0;
+  const toPush = [];
+  Object.entries(STORE).forEach(([k, a]) => db[a].forEach(r => {
+    const u = srv.get(k + ':' + r.id);
+    if (u === undefined) { missing++; toPush.push(r); } else if (u < r.upd) { ahead++; toPush.push(r); } else if (u > r.upd) behind++; else same++;
+    srv.delete(k + ':' + r.id);
+  }));
+  const onlySheet = srv.size, ok = !missing && !behind && !ahead && !onlySheet;
+  const msg = ok ? `✔ الجهاز والشيت متطابقين (${same} سجل)` : `الجهاز والشيت مش متطابقين: ${missing + ahead} سجل لسه موصلش الشيت، و${behind + onlySheet} سجل في الشيت لسه منزلش الجهاز`;
+  db.cfg.audit = {at: Date.now(), ok, msg}; flushSave();
+  /* اللي ناقص الشيت يتعلّم إنه لسه متبعتش، واللي ناقص الجهاز ينزل من الأول */
+  if (!ok) { toPush.forEach(r => delete r.sy); db.cfg.cursor = 0; }
+  if (manual) {
+    modal(`<h3>مراجعة الجهاز مع الشيت</h3><div class="sync ${ok ? 'ok' : 'warn'}">${esc(msg)}</div>
+      ${ok ? '' : '<p style="font-size:16px">اضغط "صلّح" والبرنامج هيبعت اللي ناقص الشيت وينزّل اللي ناقص الجهاز.</p>'}
+      <div class="stack">${ok ? '' : '<button class="btn gold" id="saFix" type="button">صلّح دلوقتي</button>'}<button class="btn line" id="saX" type="button">تمام</button></div>`);
+    $('#saX').onclick = closeModal;
+    if ($('#saFix')) $('#saFix').onclick = async () => { closeModal(); await syncNow(true); sheetAudit(true); };
+  } else if (!ok) syncNow();
+  if (!$('#mask').classList.contains('on')) route();
+}
+setInterval(() => { if (db && db.cfg.sheetOk && Date.now() - ((db.cfg.audit || {}).at || 0) > 86400000) sheetAudit(false); }, 60000);
 
 /* ====================== سجل التعديلات ====================== */
 function auditModal() {

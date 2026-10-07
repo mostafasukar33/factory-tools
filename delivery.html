@@ -141,6 +141,7 @@ nav svg{width:26px;height:26px}
 .pg .sg2 .sb i{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;font-style:normal}
 .pg .sg2 .sb img{max-width:100%;max-height:78px;object-fit:contain}
 .pg .sg2 .sb em{font-style:normal;color:#111;font-size:14.5px;border-top:1px solid #D8CBA3;padding-top:4px}
+.pg .sg2.one .sb{flex:0 0 calc(50% - 15px)}
 .pg .ft{flex:none;background:#111;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 44px;height:44px;font-size:13.5px;font-weight:600;border-top:4px solid #DAAE57}
 .pg .ft span:first-child{color:#DAAE57;font-size:16px;font-weight:700}
 .pg.d2 .hd{padding-bottom:8px;margin-bottom:10px}.pg.d2 .hd img{width:88px;height:88px}.pg.d2 .co b{font-size:32px}
@@ -194,6 +195,11 @@ nav svg{width:26px;height:26px}
   </div>
 
   <div class="card">
+    <h2>القياس</h2>
+    <div class="seg" id="measSeg" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:0"><button type="button" data-m="kg">بالكيلو</button><button type="button" data-m="m">بالمتر</button><button type="button" data-m="none">عدد بس</button></div>
+  </div>
+
+  <div class="card">
     <h2>الأصناف (من غير أسعار)</h2>
     <div id="items"></div>
     <button class="btn gold" id="addRow" type="button">+ إضافة صنف</button>
@@ -203,10 +209,14 @@ nav svg{width:26px;height:26px}
 
   <div class="card">
     <h2>التوقيع</h2>
+    <label class="sw"><span>خانة توقيع العميل (المستلم)</span><input type="checkbox" id="tRcv"></label>
+    <label class="sw"><span>خانة توقيع المصنع</span><input type="checkbox" id="tMgr"></label>
+    <div id="rcvWrap" style="margin-top:12px">
     <div class="seg" id="sigSeg"><button type="button" data-m="draw">توقيع على الموبايل</button><button type="button" data-m="pen">مكان فاضي للقلم</button></div>
     <div class="fld"><label for="rcv">اسم المستلم (بيتكتب تحت التوقيع)</label><input class="inp" id="rcv" autocomplete="off"></div>
     <div id="sigArea"></div>
-    <p class="hint">في الـ PDF بيظهر مكان «توقيع المستلم» و«توقيع المسؤول عن المصنع».</p>
+    </div>
+    <p class="hint">اللي مش معلّم عليه مش بيظهر في الـ PDF خالص.</p>
   </div>
 
   <div class="stack">
@@ -350,7 +360,7 @@ function merged(own, other) {
 /* ====================== الإذن الحالي (المحرر) ====================== */
 let cur;
 const newRow = unit => ({name: '', unit: unit || 'لفة', qty: '', weight: '', note: ''});
-function blankPermit() { return {id: null, no: null, ts: null, customer: '', driver: '', car: '', dph: '', items: [newRow()], sigMode: 'draw', sig: '', receiver: '', fromQuote: null}; }
+function blankPermit() { return {id: null, no: null, ts: null, customer: '', driver: '', car: '', dph: '', items: [newRow()], sigMode: 'draw', sig: '', receiver: '', fromQuote: null, measure: db.settings.lastMeasure || 'kg', showRcv: db.settings.lastRcv !== false, showMgr: db.settings.lastMgr !== false}; }
 function loadDraft() {
   try { const d = JSON.parse(localStorage.getItem(DRAFT)); if (d && Array.isArray(d.items)) return d; } catch (e) {}
   return null;
@@ -361,6 +371,10 @@ function saveDraft() {
   draftT = setTimeout(() => { try { localStorage.setItem(DRAFT, JSON.stringify(cur)); } catch (e) {} }, 300);
 }
 cur = loadDraft() || blankPermit();
+const MEAS = {kg: {col: 'الوزن (كجم)', tot: 'إجمالي الوزن (كجم)', short: 'كجم'}, m: {col: 'الطول (متر)', tot: 'إجمالي الأمتار', short: 'متر'}};
+const measOf = p => p.measure === 'm' || p.measure === 'none' ? p.measure : 'kg';
+const hasM = p => measOf(p) !== 'none';
+const rcvOn = p => p.showRcv !== false, mgrOn = p => p.showMgr !== false;
 
 function nextNo() {
   while (db.permits.some(x => x.no === db.counter)) db.counter++;
@@ -368,7 +382,7 @@ function nextNo() {
 }
 function totals(p) {
   const by = {}; let w = 0;
-  p.items.forEach(r => { const q = num(r.qty); if (q) { const u = (r.unit || 'وحدة').trim(); by[u] = (by[u] || 0) + q; } w += num(r.weight); });
+  p.items.forEach(r => { const q = num(r.qty); if (q) { const u = (r.unit || 'وحدة').trim(); by[u] = (by[u] || 0) + q; } if (hasM(p)) w += num(r.weight); });
   const names = Object.keys(by).sort((a, b) => (a === 'لفة' ? -1 : b === 'لفة' ? 1 : 0));
   return {by, names, weight: w};
 }
@@ -392,19 +406,31 @@ function renderEditor() {
     if (!(await confirmBox('تبدأ إذن جديد فاضي؟ أي حاجة مش محفوظة هتتمسح.', 'ابدأ جديد'))) return;
     cur = blankPermit(); saveDraft(); renderEditor(); window.scrollTo(0, 0);
   };
-  renderItems(); renderTotals(); renderSig();
+  applyOpts(); renderItems(); renderTotals(); renderSig();
 }
 
+function applyOpts() {
+  $$('#measSeg button').forEach(b => b.classList.toggle('on', b.dataset.m === measOf(cur)));
+  $('#tRcv').checked = rcvOn(cur); $('#tMgr').checked = mgrOn(cur);
+  $('#rcvWrap').style.display = rcvOn(cur) ? '' : 'none';
+}
+$('#measSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  cur.measure = b.dataset.m; db.settings.lastMeasure = cur.measure; saveDB(); saveDraft();
+  applyOpts(); renderItems(); renderTotals();
+});
+$('#tRcv').addEventListener('change', e => { cur.showRcv = e.target.checked; db.settings.lastRcv = cur.showRcv; saveDB(); saveDraft(); applyOpts(); });
+$('#tMgr').addEventListener('change', e => { cur.showMgr = e.target.checked; db.settings.lastMgr = cur.showMgr; saveDB(); saveDraft(); });
 function rowHTML(r, i) {
   const other = r._o || (r.unit && !UNITS.includes(r.unit));
   return `<div class="row" data-i="${i}">
     <div class="row-h"><span class="badge">${i + 1}</span>
       <button class="icon-btn" data-act="del" type="button" aria-label="مسح السطر"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7"/></svg></button></div>
     <div class="fld"><input class="inp sg" data-src="items" data-f="name" placeholder="اسم الصنف" value="${esc(r.name)}" autocomplete="off"></div>
-    <div class="g3">
+    <div class="${hasM(cur) ? 'g3' : 'g2'}">
       <div><label>الوحدة</label><select class="inp" data-f="unitsel">${UNITS.map(u => `<option ${!other && r.unit === u ? 'selected' : ''}>${u}</option>`).join('')}<option value="__o" ${other ? 'selected' : ''}>أخرى…</option></select></div>
       <div><label>العدد</label><input class="inp num" data-f="qty" inputmode="decimal" placeholder="0" value="${esc(r.qty)}"></div>
-      <div><label>الوزن (كجم)</label><input class="inp num" data-f="weight" inputmode="decimal" placeholder="0" value="${esc(r.weight)}"></div>
+      ${hasM(cur) ? `<div><label>${MEAS[measOf(cur)].col}</label><input class="inp num" data-f="weight" inputmode="decimal" placeholder="0" value="${esc(r.weight)}"></div>` : ''}
     </div>
     ${other ? `<div class="fld" style="margin-top:8px"><input class="inp" data-f="unit" placeholder="اكتب الوحدة (مثلاً: طن)" value="${esc(r.unit)}"></div>` : ''}
     <div class="fld" style="margin:8px 0 0"><input class="inp" data-f="note" placeholder="ملاحظة (اختياري)" value="${esc(r.note)}"></div>
@@ -414,7 +440,7 @@ function renderItems() { $('#items').innerHTML = cur.items.map(rowHTML).join('')
 function renderTotals() {
   const t = totals(cur);
   $('#tot').innerHTML = (t.names.length ? t.names.map(u => `<div class="l"><span>${esc(unitLabel(u))}</span><span>${fmt(t.by[u])}</span></div>`).join('') : `<div class="l"><span>إجمالي اللفات</span><span>0</span></div>`) +
-    `<div class="f"><span>إجمالي الوزن (كجم)</span><b>${fmt(t.weight)}</b></div>`;
+    (hasM(cur) ? `<div class="f"><span>${MEAS[measOf(cur)].tot}</span><b>${fmt(t.weight)}</b></div>` : '');
 }
 
 const itemsBox = $('#items');
@@ -571,12 +597,12 @@ $('#bFromQuote').onclick = () => {
 
 /* ---------- حفظ الإذن في الأرشيف ---------- */
 function validatePermit(needSig) {
-  cur.items = cur.items.filter(r => r.name.trim() || num(r.qty) || num(r.weight));
+  cur.items = cur.items.filter(r => r.name.trim() || num(r.qty) || (hasM(cur) && num(r.weight)));
   if (!cur.customer.trim()) { $('#cust').classList.add('bad'); $('#cust').focus(); toast('اكتب اسم العميل الأول'); return false; }
   if (!cur.items.length) { cur.items.push(newRow()); renderItems(); toast('ضيف صنف واحد على الأقل'); return false; }
   const bad = cur.items.findIndex(r => !r.name.trim());
   if (bad >= 0) { renderItems(); const x = $(`.row[data-i="${bad}"] [data-f="name"]`); x.classList.add('bad'); x.focus(); toast('في صنف من غير اسم'); return false; }
-  if (needSig && cur.sigMode === 'draw' && !okImg(cur.sig)) { $('#sigBox').scrollIntoView({block: 'center'}); toast('وقّع المستلم الأول، أو اختار «مكان فاضي للقلم»'); return false; }
+  if (needSig && rcvOn(cur) && cur.sigMode === 'draw' && !okImg(cur.sig)) { $('#sigBox').scrollIntoView({block: 'center'}); toast('وقّع المستلم الأول، أو اختار «مكان فاضي للقلم»'); return false; }
   return true;
 }
 function commit() {
@@ -632,14 +658,14 @@ function buildPagesD(p, dens) {
   const over = (inn, el) => el.getBoundingClientRect().bottom > inn.getBoundingClientRect().bottom - (el.classList.contains('sg2') ? -1 : 16);
   const mkTable = () => {
     const t = document.createElement('table');
-    t.innerHTML = `<colgroup><col style="width:6%"><col style="width:34%"><col style="width:10%"><col style="width:10%"><col style="width:14%"><col style="width:26%"></colgroup>
-      <thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>العدد</th><th>الوزن (كجم)</th><th>ملاحظة</th></tr></thead><tbody></tbody>`;
+    t.innerHTML = `<colgroup>${hasM(p) ? '<col style="width:6%"><col style="width:34%"><col style="width:10%"><col style="width:10%"><col style="width:14%"><col style="width:26%">' : '<col style="width:7%"><col style="width:40%"><col style="width:13%"><col style="width:14%"><col style="width:26%">'}</colgroup>
+      <thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>العدد</th>${hasM(p) ? `<th>${MEAS[measOf(p)].col}</th>` : ''}<th>ملاحظة</th></tr></thead><tbody></tbody>`;
     return t;
   };
   let pg = shell(true), tbl = mkTable(); pg.inn.appendChild(tbl);
   p.items.forEach((r, i) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.unit)}</td><td class="n">${r.qty ? fmt(r.qty) : '—'}</td><td class="n">${r.weight ? fmt(r.weight) : '—'}</td><td>${esc(r.note)}</td>`;
+    tr.innerHTML = `<td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.unit)}</td><td class="n">${r.qty ? fmt(r.qty) : '—'}</td>${hasM(p) ? `<td class="n">${r.weight ? fmt(r.weight) : '—'}</td>` : ''}<td>${esc(r.note)}</td>`;
     tbl.tBodies[0].appendChild(tr);
     if (over(pg.inn, tr) && tbl.tBodies[0].rows.length > 1) {
       tr.remove(); pg = shell(false); tbl = mkTable(); pg.inn.appendChild(tbl); tbl.tBodies[0].appendChild(tr);
@@ -647,14 +673,16 @@ function buildPagesD(p, dens) {
   });
   const tail = [], t = totals(p);
   const tt = document.createElement('div'); tt.className = 'tt';
-  tt.innerHTML = (t.names.length ? t.names : ['لفة']).map(u => `<div>${esc(unitLabel(u))}<b>${fmt(t.by[u] || 0)}</b></div>`).join('') + `<div>إجمالي الوزن (كجم)<b>${fmt(t.weight)}</b></div>`;
+  tt.innerHTML = (t.names.length ? t.names : ['لفة']).map(u => `<div>${esc(unitLabel(u))}<b>${fmt(t.by[u] || 0)}</b></div>`).join('') + (hasM(p) ? `<div>${MEAS[measOf(p)].tot}<b>${fmt(t.weight)}</b></div>` : '');
   tail.push(tt);
-  const rc = document.createElement('div'); rc.className = 'rc'; rc.textContent = 'استلمت البضاعة الموضحة أعلاه كاملة وبحالة جيدة.'; tail.push(rc);
-  const sig = document.createElement('div'); sig.className = 'sg2';
-  const mgr = (db.settings.manager || '').trim();
-  sig.innerHTML = `<div class="sb"><span>توقيع المستلم</span><i>${p.sigMode === 'draw' && okImg(p.sig) ? `<img src="${p.sig}" alt="">` : ''}</i><em>الاسم: ${p.receiver ? esc(p.receiver) : '........................'}</em></div>
-    <div class="sb"><span>توقيع المسؤول عن المصنع</span><i></i><em>الاسم: ${mgr ? esc(mgr) : '........................'}</em></div>`;
-  tail.push(sig);
+  if (rcvOn(p)) { const rc = document.createElement('div'); rc.className = 'rc'; rc.textContent = 'استلمت البضاعة الموضحة أعلاه كاملة وبحالة جيدة.'; tail.push(rc); }
+  if (rcvOn(p) || mgrOn(p)) {
+    const sig = document.createElement('div'); sig.className = 'sg2' + (rcvOn(p) && mgrOn(p) ? '' : ' one');
+    const mgr = (db.settings.manager || '').trim();
+    sig.innerHTML = (rcvOn(p) ? `<div class="sb"><span>توقيع المستلم</span><i>${p.sigMode === 'draw' && okImg(p.sig) ? `<img src="${p.sig}" alt="">` : ''}</i><em>الاسم: ${p.receiver ? esc(p.receiver) : '........................'}</em></div>` : '') +
+      (mgrOn(p) ? `<div class="sb"><span>توقيع المسؤول عن المصنع</span><i></i><em>الاسم: ${mgr ? esc(mgr) : '........................'}</em></div>` : '');
+    tail.push(sig);
+  }
   tail.forEach(el => {
     pg.inn.appendChild(el);
     if (over(pg.inn, el)) { el.remove(); pg = shell(false); pg.inn.appendChild(el); }
@@ -746,7 +774,7 @@ function renderArchive() {
       <div class="q-h"><span class="badge">${p.no}</span><span class="q-m">${dispDate(p.ts)} — ${dispTime(p.ts)}</span></div>
       <div class="q-c">${esc(p.customer)}</div>
       <div class="q-m">${p.items.length} صنف${p.driver ? ' — سواق: ' + esc(p.driver) : ''}</div>
-      <div class="q-t s">${t.names.map(u => `${fmt(t.by[u])} ${esc(u)}`).join(' + ')}${t.names.length && t.weight ? ' — ' : ''}${t.weight ? fmt(t.weight) + ' كجم' : ''}</div>
+      <div class="q-t s">${t.names.map(u => `${fmt(t.by[u])} ${esc(u)}`).join(' + ')}${t.names.length && hasM(p) && t.weight ? ' — ' : ''}${hasM(p) && t.weight ? fmt(t.weight) + ' ' + MEAS[measOf(p)].short : ''}</div>
       <div class="g2"><button class="btn green sm" data-a="share">ابعت واتساب</button><button class="btn sm" data-a="open">فتح وتعديل</button>
       <button class="btn line sm" data-a="pdf">معاينة PDF</button><button class="btn red sm" data-a="del">مسح</button></div>
     </div>`; }).join('') : `<div class="empty">${all.length ? 'مفيش نتايج للبحث ده' : 'لسه مفيش أذونات في الأرشيف'}</div>`;

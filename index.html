@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>حاسبة تكلفة كيلو الخرطوم</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f5132">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="تكلفة الكيلو">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{
+  --bg:#f3f5f4; --card:#fff; --ink:#14201a; --muted:#5d6b64; --line:#d5dcd8;
+  --green:#0f5132; --green2:#157347; --amber:#b45309; --red:#b42318; --blue:#0b5394;
+  --field:#f7f9f8;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#0e1512; --card:#18221d; --ink:#eef3f0; --muted:#9fb0a7; --line:#2c3a33; --field:#111a16;
+        --green:#1f7a4d; --green2:#2a9d64; --amber:#f0a04b; --red:#ff7b6e; --blue:#6aa9e9;}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;
+  font-size:18px;line-height:1.5;padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+.top{position:sticky;top:0;z-index:5;background:var(--green);color:#fff;
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;justify-content:space-between;align-items:center;gap:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.top small{display:block;font-size:14px;opacity:.85}
+.top b{font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.top .unit{font-size:15px;font-weight:400;opacity:.9}
+main{max-width:640px;margin:0 auto;padding:14px 14px 0}
+h2{font-size:21px;margin:0 0 12px}
+section{background:var(--card);border-radius:16px;padding:16px;margin-bottom:14px;border:1px solid var(--line)}
+label.lbl{display:block;font-size:16px;color:var(--muted);margin:12px 0 4px}
+label.lbl:first-of-type{margin-top:0}
+input[type=text],input[type=tel]{width:100%;min-height:54px;font-size:22px;padding:8px 12px;border-radius:12px;
+  border:2px solid var(--line);background:var(--field);color:var(--ink);font-family:inherit;outline:none}
+input:focus{border-color:var(--green2)}
+input.num{text-align:center;direction:ltr;font-variant-numeric:tabular-nums}
+input.name{font-size:19px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mat{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--field)}
+.mat .head{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.mat .head input{flex:1}
+.mat input[type=text].num{background:var(--card)}
+.mini{font-size:14px;color:var(--muted);margin-bottom:2px}
+.del{flex:none;width:54px;height:54px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--red);font-size:26px;font-family:inherit}
+.btn{display:block;width:100%;min-height:56px;border-radius:14px;border:0;font-size:20px;font-weight:700;font-family:inherit;cursor:pointer}
+.btn.add{background:transparent;border:2px dashed var(--green2);color:var(--green2)}
+.btn.wa{background:#1fa855;color:#fff;font-size:22px;min-height:62px}
+.btn.reset{background:transparent;color:var(--muted);border:2px solid var(--line);font-weight:400;font-size:17px}
+.btn:active{transform:scale(.98)}
+.sum{margin-top:8px;font-size:17px;padding:10px 12px;border-radius:10px;background:var(--field);display:flex;justify-content:space-between}
+.sum.bad{background:rgba(180,35,24,.12);color:var(--red);font-weight:700}
+.sum.ok{color:var(--green2);font-weight:700}
+.big{background:var(--green);color:#fff;border-radius:16px;padding:18px;margin-bottom:14px}
+.big .t{font-size:17px;opacity:.9}
+.big .v{font-size:46px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
+.big .v span{font-size:20px;font-weight:400}
+.big .s{font-size:16px;opacity:.9;margin-top:4px}
+.res{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.res .t{font-size:17px;color:var(--muted)}
+.res .v{font-size:42px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
+.res .v span{font-size:19px;font-weight:400;color:var(--muted)}
+.res .s{font-size:16px;color:var(--muted);margin-top:2px}
+.res.price .v{color:var(--blue)}
+.good{color:var(--green2)!important}.badc{color:var(--red)!important}
+.hint{font-size:15px;color:var(--muted);margin-top:8px}
+.line{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:17px}
+.line:last-child{border:0}.line b{font-variant-numeric:tabular-nums}
+.warn{background:rgba(180,83,9,.12);color:var(--amber);border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:16px;display:none}
+.pad{height:8px}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div><small>تكلفة الكيلو</small><b id="topCost">—</b> <span class="unit">جنيه/كجم</span></div>
+  <div style="text-align:left"><small>الربح/كجم</small><b id="topProfit" style="font-size:22px">—</b></div>
+</div>
+
+<main>
+
+<section>
+  <h2>١) الخامات (الخلطة)</h2>
+  <div id="mats"></div>
+  <button class="btn add" id="addMat" type="button">+ إضافة خامة</button>
+  <div class="sum" id="pctSum"><span>مجموع النسب</span><b id="pctVal">0%</b></div>
+  <div class="sum"><span>تكلفة خامات الكيلو من الخلطة</span><b id="mixCost">0</b></div>
+</section>
+
+<section>
+  <h2>٢) مصاريف الشهر (جنيه)</h2>
+  <label class="lbl" for="e_power">كهربا</label>
+  <input class="num" id="e_power" data-k="power" type="text" inputmode="decimal" placeholder="0">
+  <label class="lbl" for="e_wages">أجور</label>
+  <input class="num" id="e_wages" data-k="wages" type="text" inputmode="decimal" placeholder="0">
+  <label class="lbl" for="e_rent">إيجار</label>
+  <input class="num" id="e_rent" data-k="rent" type="text" inputmode="decimal" placeholder="0">
+  <label class="lbl" for="e_maint">صيانة</label>
+  <input class="num" id="e_maint" data-k="maint" type="text" inputmode="decimal" placeholder="0">
+  <label class="lbl" for="e_other">مصاريف تانية</label>
+  <input class="num" id="e_other" data-k="other" type="text" inputmode="decimal" placeholder="0">
+  <div class="sum"><span>إجمالي المصاريف</span><b id="opexTotal">0</b></div>
+</section>
+
+<section>
+  <h2>٣) الإنتاج</h2>
+  <label class="lbl" for="prod">إجمالي الإنتاج الشهري (كجم)</label>
+  <input class="num" id="prod" data-k="prod" type="text" inputmode="decimal" placeholder="0">
+  <label class="lbl" for="waste">نسبة الهالك (%)</label>
+  <input class="num" id="waste" data-k="waste" type="text" inputmode="decimal" placeholder="0">
+  <div class="hint">الإنتاج = كل اللي اتصنع قبل شيل الهالك. الصافي بعد الهالك: <b id="goodKg">0</b> كجم</div>
+</section>
+
+<div class="warn" id="warn"></div>
+
+<div class="big">
+  <div class="t">تكلفة الكيلو (خامة + تشغيل)</div>
+  <div class="v"><span id="rCost">—</span> <span>جنيه</span></div>
+  <div class="s">خامة: <b id="rMat">—</b> + تشغيل: <b id="rOp">—</b></div>
+</div>
+
+<div class="res price">
+  <div class="t">سعر البيع بنسبة ربح</div>
+  <label class="lbl" for="margin" style="margin-top:8px">نسبة الربح على التكلفة (%)</label>
+  <input class="num" id="margin" data-k="margin" type="text" inputmode="decimal" placeholder="مثلاً 20">
+  <div class="v" style="margin-top:10px"><span id="rSell" style="font-size:42px;color:var(--blue);font-weight:800">—</span> <span>جنيه/كجم</span></div>
+</div>
+
+<div class="res">
+  <div class="t">الربح في الكيلو لو بعت بسعر</div>
+  <label class="lbl" for="sell" style="margin-top:8px">سعر البيع اللي هبيع بيه (جنيه/كجم)</label>
+  <input class="num" id="sell" data-k="sell" type="text" inputmode="decimal" placeholder="0">
+  <div class="v" style="margin-top:10px"><span id="rProfit" style="font-size:42px;font-weight:800;color:var(--ink)">—</span> <span>جنيه/كجم</span></div>
+  <div class="s" id="rProfitPct"></div>
+  <div class="s" id="rProfitMonth"></div>
+</div>
+
+<section>
+  <h2>إرسال لشريكك</h2>
+  <label class="lbl" for="phone">رقم واتساب الشريك (اختياري)</label>
+  <input class="num" id="phone" data-k="phone" type="tel" inputmode="tel" placeholder="مثلاً 01012345678">
+  <div class="hint" style="margin-bottom:12px">لو كتبت الرقم هيفتح المحادثة معاه على طول، ولو سبته فاضي هتختار الشخص.</div>
+  <button class="btn wa" id="wa" type="button">إرسال النتيجة واتساب</button>
+</section>
+
+<section>
+  <button class="btn reset" id="reset" type="button">مسح كل الأرقام والبدء من جديد</button>
+</section>
+
+</main>
+
+<script>
+(function(){
+  var KEY='hose-cost-v1';
+  var DEFAULT_MATS=[{n:'PVC',p:'',s:''},{n:'ملدن',p:'',s:''},{n:'كربونات (فيلر)',p:'',s:''}];
+  var S=load();
+
+  function load(){
+    try{var x=JSON.parse(localStorage.getItem(KEY));if(x&&x.mats)return x;}catch(e){}
+    return fresh();
+  }
+  function fresh(){
+    return {mats:JSON.parse(JSON.stringify(DEFAULT_MATS)),power:'',wages:'',rent:'',maint:'',other:'',prod:'',waste:'',margin:'',sell:'',phone:''};
+  }
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+
+  // يقبل أرقام عربي وهندي وفاصلة عشرية عربي
+  function num(v){
+    if(v==null)return 0;
+    v=String(v).replace(/[٠-٩]/g,function(d){return d.charCodeAt(0)-1632;})
+               .replace(/[۰-۹]/g,function(d){return d.charCodeAt(0)-1776;})
+               .replace(/[٫،]/g,'.').replace(/,/g,'').replace(/\s/g,'');
+    var n=parseFloat(v);return isFinite(n)?n:0;
+  }
+  function f(n,d){
+    if(!isFinite(n))return '—';
+    d=d==null?2:d;
+    return n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+  }
+  function $(id){return document.getElementById(id);}
+
+  var matsEl=$('mats');
+  function renderMats(){
+    matsEl.innerHTML='';
+    S.mats.forEach(function(m,i){
+      var d=document.createElement('div');d.className='mat';
+      d.innerHTML=
+        '<div class="head"><input class="name" type="text" placeholder="اسم الخامة" value="">'+
+        '<button class="del" type="button" aria-label="حذف الخامة">×</button></div>'+
+        '<div class="row2"><div><div class="mini">سعر الطن (جنيه)</div>'+
+        '<input class="num p" type="text" inputmode="decimal" placeholder="0"></div>'+
+        '<div><div class="mini">نسبتها في الخلطة (%)</div>'+
+        '<input class="num s" type="text" inputmode="decimal" placeholder="0"></div></div>';
+      var nm=d.querySelector('.name'),p=d.querySelector('.p'),s=d.querySelector('.s');
+      nm.value=m.n;p.value=m.p;s.value=m.s;
+      nm.addEventListener('input',function(){m.n=nm.value;save();});
+      p.addEventListener('input',function(){m.p=p.value;save();calc();});
+      s.addEventListener('input',function(){m.s=s.value;save();calc();});
+      d.querySelector('.del').addEventListener('click',function(){
+        if(S.mats.length>1&&!confirm('تشيل خامة "'+(m.n||'بدون اسم')+'"؟'))return;
+        S.mats.splice(i,1);save();renderMats();calc();
+      });
+      matsEl.appendChild(d);
+    });
+  }
+  $('addMat').addEventListener('click',function(){
+    S.mats.push({n:'',p:'',s:''});save();renderMats();calc();
+    var ins=matsEl.querySelectorAll('.name');ins[ins.length-1].focus();
+  });
+
+  document.querySelectorAll('[data-k]').forEach(function(el){
+    el.value=S[el.dataset.k]||'';
+    el.addEventListener('input',function(){S[el.dataset.k]=el.value;save();calc();});
+  });
+
+  var R={}; // آخر نتيجة محسوبة
+  function calc(){
+    var pctSum=0,perTon=0;
+    S.mats.forEach(function(m){pctSum+=num(m.s);perTon+=num(m.p)*num(m.s);});
+    // تكلفة كيلو الخلطة = Σ(سعر الطن × النسبة) ÷ مجموع النسب ÷ 1000
+    var mix=pctSum>0?perTon/pctSum/1000:0;
+    var opex=num(S.power)+num(S.wages)+num(S.rent)+num(S.maint)+num(S.other);
+    var prod=num(S.prod),waste=Math.min(Math.max(num(S.waste),0),99.9);
+    var good=prod*(1-waste/100);
+    var matTotal=prod*mix;
+    var total=matTotal+opex;
+    var ok=good>0&&(mix>0||opex>0);
+    var cost=ok?total/good:NaN;
+    var matPerKg=ok?matTotal/good:NaN,opPerKg=ok?opex/good:NaN;
+
+    var pv=$('pctVal');pv.textContent=f(pctSum,1).replace(/\.0$/,'')+'%';
+    var box=$('pctSum');
+    box.className='sum '+(Math.abs(pctSum-100)<0.01?'ok':(pctSum>0?'bad':''));
+    $('mixCost').textContent=f(mix,2)+' جنيه';
+    $('opexTotal').textContent=f(opex,0)+' جنيه';
+    $('goodKg').textContent=f(good,0);
+
+    $('rCost').textContent=ok?f(cost):'—';
+    $('rMat').textContent=ok?f(matPerKg):'—';
+    $('rOp').textContent=ok?f(opPerKg):'—';
+    $('topCost').textContent=ok?f(cost):'—';
+
+    var mg=num(S.margin);
+    var sellCalc=ok&&S.margin!==''?cost*(1+mg/100):NaN;
+    $('rSell').textContent=isFinite(sellCalc)?f(sellCalc):'—';
+
+    var sp=num(S.sell);
+    var profit=ok&&S.sell!==''?sp-cost:NaN;
+    var pe=$('rProfit');
+    pe.textContent=isFinite(profit)?f(profit):'—';
+    pe.className=isFinite(profit)?(profit>=0?'good':'badc'):'';
+    $('rProfitPct').textContent=isFinite(profit)&&cost>0?'نسبة الربح على التكلفة: '+f(profit/cost*100,1)+'%':'';
+    $('rProfitMonth').textContent=isFinite(profit)?'ربح الشهر (على الصافي): '+f(profit*good,0)+' جنيه':'';
+    var tp=$('topProfit');
+    tp.textContent=isFinite(profit)?f(profit):'—';
+
+    var w=[];
+    if(pctSum>0&&Math.abs(pctSum-100)>=0.01)w.push('مجموع نسب الخامات '+f(pctSum,1).replace(/\.0$/,'')+'% مش 100%. الحساب بيتعمل بالتناسب، راجع النسب.');
+    if(prod>0&&num(S.waste)>=100)w.push('نسبة الهالك لازم تكون أقل من 100%.');
+    if(prod>0&&mix===0)w.push('محتاج تكتب سعر الطن ونسبة الخامات.');
+    var we=$('warn');we.style.display=w.length?'block':'none';we.innerHTML=w.join('<br>');
+
+    R={ok:ok,cost:cost,matPerKg:matPerKg,opPerKg:opPerKg,mg:mg,sellCalc:sellCalc,sp:sp,profit:profit,good:good,prod:prod,waste:num(S.waste),opex:opex,mix:mix,hasSell:S.sell!=='',hasMargin:S.margin!==''};
+  }
+
+  function message(){
+    var L=[];
+    L.push('*تكلفة كيلو الخرطوم*');
+    L.push('');
+    var named=S.mats.filter(function(m){return num(m.s)>0;});
+    if(named.length){
+      L.push('الخلطة:');
+      named.forEach(function(m){L.push('- '+(m.n||'خامة')+': '+f(num(m.s),1).replace(/\.0$/,'')+'% × '+f(num(m.p),0)+' جنيه/طن');});
+      L.push('');
+    }
+    L.push('الإنتاج الشهري: '+f(R.prod,0)+' كجم (هالك '+f(R.waste,1).replace(/\.0$/,'')+'%) = صافي '+f(R.good,0)+' كجم');
+    L.push('إجمالي مصاريف التشغيل: '+f(R.opex,0)+' جنيه');
+    L.push('');
+    L.push('*تكلفة الكيلو: '+(R.ok?f(R.cost):'—')+' جنيه*');
+    if(R.ok){L.push('(خامة '+f(R.matPerKg)+' + تشغيل '+f(R.opPerKg)+')');}
+    if(R.hasMargin&&isFinite(R.sellCalc)){
+      L.push('');
+      L.push('سعر البيع بربح '+f(R.mg,1).replace(/\.0$/,'')+'%: *'+f(R.sellCalc)+' جنيه/كجم*');
+    }
+    if(R.hasSell&&isFinite(R.profit)){
+      L.push('');
+      L.push('لو بعنا بسعر '+f(R.sp)+' جنيه: الربح *'+f(R.profit)+' جنيه/كجم*');
+      L.push('ربح الشهر تقريباً: '+f(R.profit*R.good,0)+' جنيه');
+    }
+    return L.join('\n');
+  }
+
+  $('wa').addEventListener('click',function(){
+    calc();
+    if(!R.ok){alert('اكتب الأرقام الأول عشان التكلفة تتحسب.');return;}
+    var ph=String(S.phone||'').replace(/[٠-٩]/g,function(d){return d.charCodeAt(0)-1632;}).replace(/\D/g,'');
+    if(ph){
+      if(ph.indexOf('00')===0)ph=ph.slice(2);
+      else if(ph.charAt(0)==='0')ph='20'+ph.slice(1); // مصر
+    }
+    var url='https://wa.me/'+ph+'?text='+encodeURIComponent(message());
+    window.open(url,'_blank');
+  });
+
+  $('reset').addEventListener('click',function(){
+    if(!confirm('تمسح كل الأرقام اللي كتبتها؟'))return;
+    S=fresh();save();
+    document.querySelectorAll('[data-k]').forEach(function(el){el.value='';});
+    renderMats();calc();window.scrollTo(0,0);
+  });
+
+  renderMats();calc();
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
+  }
+})();
+</script>
+</body>
+</html>

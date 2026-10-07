@@ -1,0 +1,7 @@
+# ملفات حسابات العملا والموردين متترفعش على GitHub أبداً
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+*import*.json
+flash-on-accounts*.json

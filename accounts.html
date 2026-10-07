@@ -106,6 +106,8 @@ table.lt td:first-child{text-align:right}
 table.lt th:first-child{width:36%}
 table.lt td.n{direction:ltr}
 table.lt td small{font-size:11px;color:#777}
+table.lt.rep td small{display:block}
+table.lt.rep tr.bad td{background:var(--red-l);color:var(--red)}
 .mini2{display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:13.5px;color:#ccc;font-weight:700;flex-wrap:wrap}
 .mini2 b{color:#fff;direction:ltr;unicode-bidi:isolate}
 .li{border:1.5px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;background:#FFFEFA}
@@ -250,6 +252,12 @@ nav svg{width:26px;height:26px}
   <div class="card">
     <h2>النسخة على Google Sheet</h2>
     <div id="sSheet"></div>
+  </div>
+  <div class="card">
+    <h2>نقل البيانات القديمة (الإكسيل)</h2>
+    <p class="hint" style="margin:0 0 10px">افتح هنا "ملف النقل" اللي اتعمل من ملفات الإكسيل. البرنامج بيقارن رصيد كل حساب بآخر رصيد في الإكسيل قبل ما ينقل أي حاجة.</p>
+    <button class="btn gold" id="bImport" type="button">اختار ملف النقل</button>
+    <input type="file" id="fImport" accept=".json,application/json" hidden>
   </div>
   <div class="card">
     <h2>بيانات الشركة في الـ PDF</h2>
@@ -1339,6 +1347,89 @@ $('#sPass').onclick = () => {
     await flushSave(); closeModal(); toast('اتغيرت كلمة السر ✔');
   };
 };
+
+/* ====================== نقل البيانات القديمة (ملف النقل) ====================== */
+/* ملف النقل بيتعمل من ملفات الإكسيل بره البرنامج، وبيتفتح هنا مرة واحدة. شكله:
+   {app:'flash-on-accounts-import', v:1, batch, made, parties:[{ref, sec, name, phone, expected}], entries:[{party:ref, kind, date, ...}]}
+   expected = آخر رصيد في الإكسيل بالقرش (موجب = عليه). البرنامج بيحسب الرصيد من الحركات ويقارنه، ومبيقبلش الملف لو فيه أي فرق.
+   الـ id ثابت لكل سجل (مبني على batch)، فلو الملف اتفتح مرتين أو على جهازين مفيش حاجة بتتكرر. */
+const IMP_KINDS = ['inv', 'pay', 'pur', 'ppay', 'open', 'man'];
+function readImport(d) {
+  const errs = [];
+  if (!d || d.app !== 'flash-on-accounts-import' || !Array.isArray(d.parties) || !Array.isArray(d.entries) || !d.batch) return {errs: ['الملف ده مش ملف نقل بتاع الحسابات']};
+  const bt = String(d.batch).replace(/[^\w]/g, ''), upd = +d.made || Date.now();
+  const isInt = (n, min = 0) => Number.isInteger(n) && n >= min;
+  const parties = [], byRef = new Map();
+  d.parties.forEach((x, i) => {
+    if (!x || !x.ref || !x.name || !SECS[x.sec] || !Number.isInteger(x.expected)) return errs.push(`حساب رقم ${i + 1} ناقص بيانات`);
+    if (byRef.has(x.ref)) return errs.push(`الحساب "${x.name}" متكرر في الملف`);
+    const p = {id: `p_imp${bt}_${x.ref}`, sec: x.sec, name: String(x.name).trim(), phone: String(x.phone || ''), note: String(x.note || ''), at: upd, upd, del: false, imp: bt};
+    parties.push(p); byRef.set(x.ref, {p, expected: x.expected});
+  });
+  const entries = [];
+  d.entries.forEach((x, i) => {
+    const where = `الحركة رقم ${i + 1}`;
+    if (!x || !byRef.has(x.party)) return errs.push(`${where}: على حساب مش موجود في الملف`);
+    if (!IMP_KINDS.includes(x.kind)) return errs.push(`${where}: نوع غير معروف`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(x.date || '')) return errs.push(`${where}: التاريخ غلط`);
+    const e = {id: `e_imp${bt}_${i}`, party: byRef.get(x.party).p.id, kind: x.kind, date: x.date, at: upd + i, upd, del: false, hist: [], imp: bt};
+    if (x.kind === 'inv' || x.kind === 'pur') {
+      if (!Array.isArray(x.lines) || !x.lines.length) return errs.push(`${where}: فاتورة من غير أصناف`);
+      if (x.lines.some(l => !l || !l.name || !(+l.qty > 0) || !isInt(l.price))) return errs.push(`${where}: صنف ناقص بيانات`);
+      if (x.disc !== undefined && !isInt(x.disc)) return errs.push(`${where}: الخصم غلط`);
+      Object.assign(e, {no: String(x.no ?? ''), lines: x.lines.map(l => ({name: String(l.name).trim(), unit: String(l.unit || 'وحدة'), qty: Math.round(+l.qty * 1000) / 1000, price: l.price})), disc: x.disc || 0, note: String(x.note || '')});
+    } else if (x.kind === 'pay' || x.kind === 'ppay') {
+      if (!isInt(x.amt, 1)) return errs.push(`${where}: مبلغ الدفعة غلط`);
+      Object.assign(e, {amt: x.amt, method: METHODS.includes(x.method) ? x.method : 'نقدي', note: String(x.note || '')});
+    } else {
+      if (!isInt(x.dr || 0) || !isInt(x.cr || 0) || !((x.dr || 0) + (x.cr || 0))) return errs.push(`${where}: المبلغ غلط`);
+      Object.assign(e, {dr: x.dr || 0, cr: x.cr || 0, desc: String(x.desc || (x.kind === 'open' ? 'رصيد أول المدة' : 'حركة'))});
+    }
+    applyAmounts(e);
+    if (e.kind !== 'open' && e.kind !== 'man') e.desc = docDesc(e);
+    entries.push(e);
+  });
+  /* المطابقة: الرصيد المحسوب من الحركات لازم يساوي آخر رصيد في الإكسيل بالظبط */
+  const got = new Map(parties.map(p => [p.id, 0]));
+  entries.forEach(e => got.set(e.party, got.get(e.party) + (e.dr || 0) - (e.cr || 0)));
+  const report = [...byRef.values()].map(({p, expected}) => ({p, expected, got: got.get(p.id), ok: got.get(p.id) === expected}));
+  return {errs, parties, entries, report, bt};
+}
+function importModal(r) {
+  const bad = r.report.filter(x => !x.ok), have = new Set(liveParties().filter(p => !p.imp).map(p => p.sec + '|' + norm(p.name)));
+  const clash = r.parties.filter(p => have.has(p.sec + '|' + norm(p.name)));
+  const already = r.parties.filter(p => P.has(p.id)).length;
+  const cnt = s => r.parties.filter(p => p.sec === s).length;
+  const row = x => `<tr class="${x.ok ? '' : 'bad'}"><td>${esc(x.p.name)}<small>${SEC1[x.p.sec]}</small></td><td class="n">${fmtP(Math.abs(x.expected))} <small>${balWord(x.expected)}</small></td><td class="n">${fmtP(Math.abs(x.got))} <small>${balWord(x.got)}</small></td><td>${x.ok ? '✔' : '✖'}</td></tr>`;
+  modal(`<h3>نقل البيانات القديمة</h3>
+    <div class="stm"><div><span>عملاء السوق</span><b>${cnt('mkt')}</b></div><div><span>عملاء المواقع</span><b>${cnt('site')}</b></div><div><span>الموردين</span><b>${cnt('sup')}</b></div><div><span>عدد الحركات</span><b>${r.entries.length}</b></div></div>
+    ${bad.length ? `<div class="sync warn">✖ فيه ${bad.length} حساب رصيده مش مطابق للإكسيل. الملف مش هيتنقل لحد ما الفرق يتصلّح.</div>`
+      : `<div class="sync ok">✔ كل الأرصدة (${r.report.length} حساب) مطابقة لآخر رصيد في الإكسيل بالقرش.</div>`}
+    ${already ? `<div class="sync">الملف ده اتنقل قبل كده على الجهاز ده. لو نقلته تاني مفيش حاجة هتتكرر.</div>` : ''}
+    ${clash.length ? `<div class="sync warn">⚠️ فيه ${clash.length} اسم موجود عندك قبل كده (زي "${esc(clash[0].name)}"). لو دي حسابات تجربة، شيلها بعد النقل.</div>` : ''}
+    <table class="lt rep"><thead><tr><th>الحساب</th><th>رصيد الإكسيل</th><th>رصيد البرنامج</th><th></th></tr></thead><tbody>
+      ${bad.map(row).join('')}${r.report.filter(x => x.ok).map(row).join('')}</tbody></table>
+    <div class="stack" style="margin-top:10px">${bad.length ? '' : `<button class="btn gold" id="imGo" type="button">انقل البيانات للبرنامج</button>`}<button class="btn line" id="imX" type="button">إغلاق</button></div>`, true);
+  $('#imX').onclick = closeModal;
+  if ($('#imGo')) $('#imGo').onclick = async () => {
+    if (!(await confirmBox(`هيتضاف ${r.parties.length} حساب و ${r.entries.length} حركة. تكمّل؟`, 'انقل'))) return;
+    let n = 0;
+    [['party', r.parties], ['entry', r.entries]].forEach(([kind, arr]) => arr.forEach(x => { if (mergeRow({id: x.id, kind, upd: x.upd, del: false, data: x})) { delete (kind === 'party' ? P : E).get(x.id).sy; n++; } }));
+    await flushSave(); schedSync();
+    const still = r.report.filter(x => balance(x.p.id) !== x.expected);
+    closeModal(); go('home');
+    if (still.length) toast(`⚠️ اتنقل، بس ${still.length} حساب رصيده اختلف. كلمني قبل ما تسجل حاجة.`, 9000);
+    else toast(`✔ اتنقلت البيانات (${n} سجل) وكل الأرصدة مطابقة للإكسيل. تقدر تبدأ تشتغل.`, 7000);
+  };
+}
+$('#bImport').onclick = () => $('#fImport').click();
+$('#fImport').addEventListener('change', async ev => {
+  const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
+  let d; try { d = JSON.parse(await f.text()); } catch (x) { return toast('الملف ده مش ملف نقل بتاع الحسابات'); }
+  const r = readImport(d);
+  if (r.errs.length) { modal(`<h3>الملف فيه مشكلة</h3><p style="font-size:15px">${r.errs.slice(0, 8).map(esc).join('<br>')}${r.errs.length > 8 ? `<br>و${r.errs.length - 8} كمان` : ''}</p><button class="btn line" id="imX" type="button">إغلاق</button>`); $('#imX').onclick = closeModal; return; }
+  importModal(r);
+});
 
 /* ====================== النسخة الاحتياطية (ملف متشفر) ====================== */
 $('#bBackup').onclick = async () => {

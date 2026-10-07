@@ -82,6 +82,9 @@ nav svg{width:26px;height:26px}
 .modal p{margin:0 0 14px;font-size:17px;font-weight:700;line-height:1.7}
 .modal img{width:100%;border:1px solid #ccc;margin-bottom:8px;display:block}
 #toast{position:fixed;bottom:calc(90px + env(safe-area-inset-bottom));inset-inline:16px;margin:auto;max-width:420px;background:#111;color:#fff;border:2px solid var(--gold);padding:12px 14px;border-radius:12px;text-align:center;font-weight:700;z-index:120;display:none}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#EFE9D8;border-radius:12px;padding:4px;margin-bottom:12px}
+.seg button{border:0;background:none;border-radius:9px;min-height:46px;font-weight:800;font-size:14px;cursor:pointer;color:#555}
+.seg button.on{background:#111;color:#DAAE57}
 .hint{color:#777;font-size:13px;margin:6px 0 0}
 #render{position:absolute;left:-12000px;top:0;width:794px;pointer-events:none}
 /* ============ ورقة عرض السعر (A4) ============ */
@@ -151,11 +154,12 @@ nav svg{width:26px;height:26px}
 
   <div class="card">
     <h2>الأصناف</h2>
+    <div class="seg" id="modeSeg"><button type="button" data-m="full">بالكميات والإجمالي</button><button type="button" data-m="prices">أسعار الوحدات بس</button></div>
     <div id="items"></div>
     <button class="btn gold" id="addRow" type="button">+ إضافة صنف</button>
   </div>
 
-  <div class="card">
+  <div class="card" id="discCard">
     <h2>الخصم</h2>
     <div class="g2">
       <div><label for="dtype">نوع الخصم</label>
@@ -325,7 +329,7 @@ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().
 /* ====================== العرض الحالي (المحرر) ====================== */
 let cur;
 function blankQuote() {
-  return {id: null, no: null, date: todayISO(), customer: '', items: [newRow()], discType: 'pct', discVal: '', terms: db.settings.terms, copyOf: null};
+  return {id: null, no: null, date: todayISO(), customer: '', items: [newRow()], discType: 'pct', discVal: '', terms: db.settings.terms, copyOf: null, mode: db.settings.lastMode || 'full'};
 }
 function newRow(unit) { return {name: '', unit: unit || 'لفة', qty: '', price: ''}; }
 function loadDraft() {
@@ -338,8 +342,11 @@ function saveDraft() {
   draftT = setTimeout(() => { try { localStorage.setItem('fo_draft', JSON.stringify(cur)); } catch (e) {} }, 300);
 }
 cur = loadDraft() || blankQuote();
+if (!cur.mode) cur.mode = 'full';
+const isFull = q => q.mode !== 'prices';
 
 function calc(q) {
+  if (!isFull(q)) return {sub: 0, disc: 0, total: 0};
   const sub = q.items.reduce((s, r) => s + num(r.qty) * num(r.price), 0);
   let disc = 0, v = num(q.discVal);
   if (q.discType === 'pct') disc = sub * Math.min(Math.max(v, 0), 100) / 100;
@@ -371,22 +378,34 @@ function renderEditor() {
     if (!(await confirmBox('تبدأ عرض جديد فاضي؟ أي حاجة مش محفوظة هتتمسح.', 'ابدأ جديد'))) return;
     cur = blankQuote(); saveDraft(); renderEditor(); window.scrollTo(0, 0);
   };
-  renderItems(); renderTotals();
+  applyMode(); renderItems(); renderTotals();
 }
+function applyMode() {
+  const f = isFull(cur);
+  $$('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.m === (f ? 'full' : 'prices')));
+  $('#discCard').style.display = f ? '' : 'none';
+  $('#tot').style.display = f ? '' : 'none';
+}
+$('#modeSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  cur.mode = b.dataset.m; db.settings.lastMode = cur.mode; saveDB(); saveDraft();
+  applyMode(); renderItems(); renderTotals();
+});
 
 function rowHTML(r, i) {
+  const full = isFull(cur);
   const other = r._o || (r.unit && !UNITS.includes(r.unit));
   return `<div class="row" data-i="${i}">
     <div class="row-h"><span class="badge">${i + 1}</span>
       <button class="icon-btn" data-act="del" type="button" aria-label="مسح السطر"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7"/></svg></button></div>
     <div class="fld"><input class="inp sg" data-src="items" data-f="name" placeholder="اسم الصنف" value="${esc(r.name)}" autocomplete="off"></div>
-    <div class="g3">
+    <div class="${full ? 'g3' : 'g2'}">
       <div><label>الوحدة</label><select class="inp" data-f="unitsel">${UNITS.map(u => `<option ${!other && r.unit === u ? 'selected' : ''}>${u}</option>`).join('')}<option value="__o" ${other ? 'selected' : ''}>أخرى…</option></select></div>
-      <div><label>الكمية</label><input class="inp num" data-f="qty" inputmode="decimal" placeholder="0" value="${esc(r.qty)}"></div>
+      ${full ? `<div><label>الكمية</label><input class="inp num" data-f="qty" inputmode="decimal" placeholder="0" value="${esc(r.qty)}"></div>` : ''}
       <div><label>سعر الوحدة</label><input class="inp num" data-f="price" inputmode="decimal" placeholder="0" value="${esc(r.price)}"></div>
     </div>
     ${other ? `<div class="fld" style="margin-top:8px"><input class="inp" data-f="unit" placeholder="اكتب الوحدة (مثلاً: طن، كرتونة)" value="${esc(r.unit)}"></div>` : ''}
-    <div class="row-t"><span>الإجمالي</span><b data-t>${fmt(num(r.qty) * num(r.price))}</b></div>
+    ${full ? `<div class="row-t"><span>الإجمالي</span><b data-t>${fmt(num(r.qty) * num(r.price))}</b></div>` : ''}
   </div>`;
 }
 function renderItems() {
@@ -407,7 +426,7 @@ itemsBox.addEventListener('input', e => {
   if (f === 'qty' || f === 'price') { const n = normDigits(el.value); if (n !== el.value) el.value = n; }
   if (f === 'unitsel') return;
   r[f] = el.value;
-  rowEl.querySelector('[data-t]').textContent = fmt(num(r.qty) * num(r.price));
+  const tEl = rowEl.querySelector('[data-t]'); if (tEl) tEl.textContent = fmt(num(r.qty) * num(r.price));
   renderTotals(); saveDraft();
 });
 itemsBox.addEventListener('change', e => {
@@ -528,16 +547,19 @@ function buildPages(q) {
     return {p, inn: p.querySelector('.in')};
   };
   const over = (inn, el) => el.getBoundingClientRect().bottom > inn.getBoundingClientRect().bottom - (el.classList.contains('sg2') ? -1 : 16);
+  const full = isFull(q);
   const mkTable = () => {
     const t = document.createElement('table');
-    t.innerHTML = `<colgroup><col style="width:6%"><col style="width:38%"><col style="width:12%"><col style="width:12%"><col style="width:16%"><col style="width:16%"></colgroup>
+    t.innerHTML = !full ? `<colgroup><col style="width:8%"><col style="width:52%"><col style="width:20%"><col style="width:20%"></colgroup>
+      <thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>سعر الوحدة</th></tr></thead><tbody></tbody>` : `<colgroup><col style="width:6%"><col style="width:38%"><col style="width:12%"><col style="width:12%"><col style="width:16%"><col style="width:16%"></colgroup>
       <thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody></tbody>`;
     return t;
   };
   let pg = shell(true), tbl = mkTable(); pg.inn.appendChild(tbl);
   q.items.forEach((r, i) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.unit)}</td><td class="n">${fmt(r.qty)}</td><td class="n">${fmt(r.price)}</td><td class="t">${fmt(r.qty * r.price)}</td>`;
+    tr.innerHTML = full ? `<td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.unit)}</td><td class="n">${fmt(r.qty)}</td><td class="n">${fmt(r.price)}</td><td class="t">${fmt(r.qty * r.price)}</td>`
+      : `<td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.unit)}</td><td class="t">${fmt(r.price)} ${esc(cu)}</td>`;
     tbl.tBodies[0].appendChild(tr);
     if (over(pg.inn, tr) && tbl.tBodies[0].rows.length > 1) {
       tr.remove(); pg = shell(false); tbl = mkTable(); pg.inn.appendChild(tbl); tbl.tBodies[0].appendChild(tr);
@@ -548,7 +570,7 @@ function buildPages(q) {
   sum.innerHTML = (c.disc > 0 ? `<div class="l"><span>المجموع</span><span>${fmt(c.sub)} ${esc(cu)}</span></div>
       <div class="l"><span>الخصم${q.discType === 'pct' ? ' (' + fmt(num(q.discVal)) + '%)' : ''}</span><span>- ${fmt(c.disc)} ${esc(cu)}</span></div>` : '') +
     `<div class="f"><span>الإجمالي النهائي</span><b>${fmt(c.total)} <small style="font-size:15px;color:#DAAE57">${esc(cu)}</small></b></div>`;
-  tail.push(sum);
+  if (full) tail.push(sum);
   const lines = (q.terms || '').split('\n').map(x => x.trim()).filter(Boolean);
   if (lines.length) {
     const h = document.createElement('div'); h.className = 'th'; h.textContent = 'الشروط والأحكام'; tail.push(h);
@@ -648,7 +670,7 @@ function renderArchive() {
       <div class="q-h"><span class="badge">${q.no}</span><span class="q-m">${dispDate(q.date)}</span></div>
       <div class="q-c">${esc(q.customer)}</div>
       <div class="q-m">${q.items.length} صنف</div>
-      <div class="q-t">${fmt(calc(q).total)} <small style="font-size:13px">${esc(db.settings.currency)}</small></div>
+      <div class="q-t">${isFull(q) ? `${fmt(calc(q).total)} <small style="font-size:13px">${esc(db.settings.currency)}</small>` : '<small style="font-size:14px;color:#777">أسعار وحدات</small>'}</div>
       <div class="g2"><button class="btn green sm" data-a="share">ابعت واتساب</button><button class="btn sm" data-a="open">فتح وتعديل</button>
       <button class="btn line sm" data-a="copy">نسخة جديدة</button><button class="btn red sm" data-a="del">مسح</button></div>
     </div>`).join('') : `<div class="empty">${all.length ? 'مفيش نتايج للبحث ده' : 'لسه مفيش عروض في الأرشيف'}</div>`;

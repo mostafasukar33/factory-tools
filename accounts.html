@@ -433,9 +433,10 @@ async function showLock(msg) {
   if (!vault) return renderSetup();
   $('#lockBox').innerHTML = `
     <label for="lkP">كلمة السر</label>
-    <input class="inp" id="lkP" type="password" autocomplete="current-password" style="text-align:center;font-size:22px">
+    <input class="inp" id="lkP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" style="text-align:center;font-size:22px">
     <div class="err" id="lkErr">${esc(msg || '')}</div>
     <button class="btn gold big" id="lkGo" type="button">فتح</button>
+    <button class="lnk" id="lkAbc" type="button">كلمة السر فيها حروف؟ افتح لوحة الحروف</button>
     <button class="lnk" id="lkForgot" type="button">نسيت كلمة السر؟</button>`;
   const go = async () => {
     const pw = $('#lkP').value; if (!pw) return;
@@ -453,13 +454,14 @@ async function showLock(msg) {
   $('#lkGo').onclick = go;
   $('#lkP').onkeydown = e => { if (e.key === 'Enter') go(); };
   $('#lkForgot').onclick = forgotFlow;
+  $('#lkAbc').onclick = () => { const i = $('#lkP'); const num = i.inputMode === 'numeric'; i.inputMode = num ? 'text' : 'numeric'; if (num) i.removeAttribute('pattern'); else i.setAttribute('pattern', '[0-9]*'); $('#lkAbc').textContent = num ? 'ارجع للوحة الأرقام' : 'كلمة السر فيها حروف؟ افتح لوحة الحروف'; i.blur(); setTimeout(() => i.focus(), 50); };
   setTimeout(() => $('#lkP') && $('#lkP').focus(), 100);
 }
 function renderSetup() {
   $('#lockBox').innerHTML = `
     <p style="font-weight:700;text-align:center;margin:0 0 12px">أول مرة على الجهاز ده. اعمل كلمة سر للبرنامج.<br><small style="color:#777">اكتبها في ورقة واحتفظ بيها في مكان آمن.</small></p>
-    <div class="fld"><label for="suP">كلمة السر (6 حروف أو أرقام على الأقل)</label><input class="inp" id="suP" type="password" autocomplete="new-password" style="text-align:center;font-size:20px"></div>
-    <div class="fld"><label for="suP2">اكتبها تاني للتأكيد</label><input class="inp" id="suP2" type="password" autocomplete="new-password" style="text-align:center;font-size:20px"></div>
+    <div class="fld"><label for="suP">كلمة السر (6 أرقام على الأقل)</label><input class="inp" id="suP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" style="text-align:center;font-size:20px"></div>
+    <div class="fld"><label for="suP2">اكتبها تاني للتأكيد</label><input class="inp" id="suP2" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" style="text-align:center;font-size:20px"></div>
     <div class="err" id="suErr"></div>
     <button class="btn gold big" id="suGo" type="button">ابدأ</button>`;
   $('#suGo').onclick = async () => {
@@ -1070,9 +1072,9 @@ function showHelp() {
 $('#sPhoneSave').onclick = () => { db.cfg.phone = normDigits($('#sPhone').value).trim(); saveDB(); toast('اتحفظ الرقم ✔'); };
 $('#sPass').onclick = () => {
   modal(`<h3>تغيير كلمة السر</h3>
-    <div class="fld"><label>كلمة السر الحالية</label><input class="inp" id="cpO" type="password" autocomplete="current-password"></div>
-    <div class="fld"><label>كلمة السر الجديدة (6 على الأقل)</label><input class="inp" id="cpN" type="password" autocomplete="new-password"></div>
-    <div class="fld"><label>الجديدة تاني</label><input class="inp" id="cpN2" type="password" autocomplete="new-password"></div>
+    <div class="fld"><label>كلمة السر الحالية</label><input class="inp" id="cpO" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password"></div>
+    <div class="fld"><label>كلمة السر الجديدة (6 على الأقل)</label><input class="inp" id="cpN" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password"></div>
+    <div class="fld"><label>الجديدة تاني</label><input class="inp" id="cpN2" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password"></div>
     <p class="hint">كلمة السر بتتغير على الجهاز ده بس. كل جهاز ليه كلمة السر بتاعته.</p>
     <div class="stack" style="margin-top:10px"><button class="btn gold" id="cpOk" type="button">غيّر</button><button class="btn line" id="cpX" type="button">إلغاء</button></div>`);
   $('#cpX').onclick = closeModal;
@@ -1104,7 +1106,7 @@ $('#fRestore').addEventListener('change', async ev => {
   if (!d) {
     const pw = await new Promise(res => {
       modal(`<h3>كلمة سر الملف</h3><p style="font-size:16px">الملف ده اتعمل بكلمة سر تانية. اكتب كلمة السر اللي كانت وقت ما اتعمل.</p>
-        <div class="fld"><input class="inp" id="rpP" type="password"></div><div class="g2"><button class="btn gold" id="rpOk">فتح</button><button class="btn line" id="rpX">إلغاء</button></div>`);
+        <div class="fld"><input class="inp" id="rpP" type="password" inputmode="numeric" pattern="[0-9]*"></div><div class="g2"><button class="btn gold" id="rpOk">فتح</button><button class="btn line" id="rpX">إلغاء</button></div>`);
       $('#rpOk').onclick = () => { const v = $('#rpP').value; closeModal(); res(v); }; $('#rpX').onclick = () => { closeModal(); res(null); };
     });
     if (pw === null) return;

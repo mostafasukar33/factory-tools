@@ -378,6 +378,17 @@ function saveDraft() {
   draftT = setTimeout(() => { try { localStorage.setItem(DRAFT, JSON.stringify(cur)); } catch (e) {} }, 300);
 }
 cur = loadDraft() || blankPermit();
+/* جاي من فاتورة في برنامج الحسابات: إذن جديد بأصناف الفاتورة (من غير أسعار) */
+try {
+  const inv = JSON.parse(localStorage.getItem('fo_inv_to_delivery'));
+  if (inv && Array.isArray(inv.items)) {
+    localStorage.removeItem('fo_inv_to_delivery');
+    cur = blankPermit(); cur.customer = inv.customer || ''; cur.fromInv = inv.no || '-';
+    cur.items = inv.items.map(r => ({name: r.name || '', unit: r.unit || 'لفة', qty: r.qty ? String(r.qty) : '', weight: '', note: ''}));
+    if (!cur.items.length) cur.items = [newRow()];
+    localStorage.setItem(DRAFT, JSON.stringify(cur));
+  }
+} catch (e) {}
 const MEAS = {kg: {col: 'الوزن (كجم)', tot: 'إجمالي الوزن (كجم)', short: 'كجم'}, m: {col: 'الطول (متر)', tot: 'إجمالي الأمتار', short: 'متر'}};
 const measOf = p => p.measure === 'm' || p.measure === 'none' ? p.measure : 'kg';
 const hasM = p => measOf(p) !== 'none';
@@ -408,6 +419,7 @@ function renderEditor() {
   let b;
   if (cur.id) b = `<span>تعديل إذن رقم ${cur.no} (محفوظ في الأرشيف)</span><a id="bNew">ابدأ إذن جديد فاضي</a>`;
   else if (cur.fromQuote) b = `<span>إذن جديد من عرض سعر رقم ${esc(cur.fromQuote)}</span><a id="bNew">مسح الشاشة</a>`;
+  else if (cur.fromInv) b = `<span>إذن جديد من فاتورة رقم ${esc(cur.fromInv)}</span><a id="bNew">مسح الشاشة</a>`;
   else b = `<span>إذن جديد</span><a id="bNew">مسح الشاشة</a>`;
   $('#banner').innerHTML = b;
   $('#bNew').onclick = async () => {

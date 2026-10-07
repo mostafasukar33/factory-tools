@@ -911,6 +911,7 @@ function docModal(p, kind, e) {
     <datalist id="dlItems">${[...book.values()].map(x => `<option value="${esc(x.name)}">`).join('')}</datalist>
     <div id="dcLines"></div>
     <button class="btn line sm" id="dcAdd" type="button" style="margin-bottom:10px">+ صنف كمان</button>
+    ${isNew && kind === 'inv' ? `<button class="btn line sm" id="dcQuote" type="button" style="margin-bottom:10px">📋 املا الفاتورة من عرض سعر</button><div id="dcQ" style="display:none"></div>` : ''}
     <div class="g2"><div class="fld"><label>خصم على الفاتورة (اختياري)</label><input class="inp num" id="dcDisc" placeholder="0" value="${e && e.disc ? fmtP(e.disc) : ''}"></div>
       <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="dcNote" value="${esc(e ? e.note || '' : '')}"></div></div>
     <div class="dtot"><span>${ret ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}</span><b id="dcTot">0</b></div>
@@ -919,7 +920,8 @@ function docModal(p, kind, e) {
       <div class="fld"><label>${sale ? 'دخلت خزنة' : 'من خزنة'}</label><select class="inp" id="dcPV">${(ensureVaults(), vaultOpts(defVault()))}</select></div></div>` : ''}
     ${e ? histHtml(e) : ''}
     <div class="stack" style="margin-top:8px"><button class="btn gold" id="dcOk" type="button">${isNew ? 'حفظ الفاتورة' : 'حفظ التعديل'}</button>
-    ${isNew ? '' : '<button class="btn red sm" id="dcDel" type="button">إلغاء الفاتورة</button>'}
+    ${!isNew && kind === 'inv' ? '<button class="btn line sm" id="dcDlv" type="button">🚚 اعمل إذن تسليم للفاتورة دي</button>' : ''}
+    ${isNew ? '' : `<button class="btn red sm" id="dcDel" type="button">${ret ? 'إلغاء المرتجع' : 'إلغاء الفاتورة'}</button>`}
     <button class="btn line" id="dcX" type="button">رجوع</button></div>`, true);
   const readLines = () => $$('#dcLines .li').map(el => ({name: el.querySelector('[data-f=name]').value.trim().replace(/\s+/g, ' '), unit: el.querySelector('[data-f=unit]').value, qty: el.querySelector('[data-f=qty]').value, price: el.querySelector('[data-f=price]').value}));
   const calc = () => {
@@ -958,7 +960,30 @@ function docModal(p, kind, e) {
   if ($('#dcPaid')) bindMoney($('#dcPaid'));
   $('#dcAdd').onclick = () => { const ls = readLines(); const last = ls[ls.length - 1]; ls.push({name: '', unit: last ? last.unit : 'كيلو', qty: '', price: ''}); draw(ls); const n = $$('#dcLines [data-f=name]'); n[n.length - 1].focus(); };
   $('#dcX').onclick = closeModal;
-  let warned = false;
+  let warned = false, fromQuote = '';
+  /* عرض السعر ← فاتورة: بنقرا عروض الأسعار من أداة عرض السعر (من غير ما نغيّر فيها حاجة) */
+  if ($('#dcQuote')) $('#dcQuote').onclick = () => {
+    let qs = []; try { qs = (JSON.parse(localStorage.getItem('fo_db')) || {}).quotes || []; } catch (x) {}
+    const pn = norm(p.name).replace(/^(ا|م|الحاج|شركه)\s*\/?\s*/, '');
+    qs = qs.slice().sort((a, b) => (norm(b.customer || '').includes(pn) - norm(a.customer || '').includes(pn)) || (b.no - a.no));
+    const box = $('#dcQ'); box.style.display = box.style.display === 'none' ? '' : 'none';
+    box.innerHTML = qs.length ? `<div class="card" style="max-height:40vh;overflow:auto;padding:8px">${qs.slice(0, 60).map((q, i) => `<div class="pt" data-q="${i}"><div class="m"><b>عرض سعر رقم ${esc(q.no)} — ${esc(q.customer || '')}</b><small>${dispDate(q.date)} — ${(q.items || []).length} صنف</small></div></div>`).join('')}</div>` : '<div class="empty">مفيش عروض أسعار محفوظة على الجهاز ده</div>';
+    $$('#dcQ .pt').forEach(el => el.onclick = () => {
+      const q = qs[+el.dataset.q], items = (q.items || []).filter(r => r.name);
+      draw(items.length ? items.map(r => ({name: r.name, unit: r.unit || 'وحدة', qty: r.qty ? fmtQ(num(r.qty)) : '', price: r.price ? fmtP(toP(r.price)) : ''})) : lines);
+      const sub = items.reduce((t, r) => t + Math.round(num(r.qty) * toP(r.price)), 0), dv = num(q.discVal);
+      const disc = dv > 0 ? (q.discType === 'pct' ? Math.round(sub * dv / 100) : toP(q.discVal)) : 0;
+      $('#dcDisc').value = disc ? fmtP(disc) : ''; calc();
+      fromQuote = String(q.no); if (!$('#dcNote').value.trim()) $('#dcNote').value = `من عرض سعر رقم ${q.no}`;
+      box.style.display = 'none';
+      toast(items.some(r => !num(r.qty)) ? 'اتملت من العرض. اكتب الكميات اللي ناقصة.' : 'اتملت من العرض ✔ راجعها واحفظ', 4000);
+    });
+  };
+  /* فاتورة ← إذن تسليم: بنحط الأصناف في مكان مؤقت، وأداة إذن التسليم بتاخدها أول ما تفتح */
+  if ($('#dcDlv')) $('#dcDlv').onclick = () => {
+    try { localStorage.setItem('fo_inv_to_delivery', JSON.stringify({customer: p.name, no: e.no || '', items: e.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty)}))})); } catch (x) { return toast('معرفتش أجهّز الإذن'); }
+    location.href = 'delivery.html';
+  };
   $('#dcOk').onclick = () => {
     const date = $('#dcDate').value;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');

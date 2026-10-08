@@ -1010,7 +1010,24 @@ function doGet() { return out_({ok: false, error: 'locked'}); }
 function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }`;
 
 /* طلب للشيت بالمفتاح. بيرجع رد الشيت، أو بيرمي خطأ لو الرد مش مفهوم */
+/* لو الدفتر متربط بشيت الحسابات (viaAcc): حركاته بتتخزن هناك بنوع L+النوع، وبنسحب بالمؤشر */
 async function callSheet(body, url = db.sheetUrl, key = db.sheetKey, ms = 30000) {
+  if (!(db.viaAcc && url === db.sheetUrl)) return callSheetRaw(body, url, key, ms);
+  if (body.rows) return callSheetRaw({action: 'push', rows: body.rows.map(r => Object.assign({}, r, {kind: 'L' + r.kind, view: (r.view || []).slice(0, 6)}))}, url, key, ms);
+  if (body.action === 'pull') {
+    const out = []; let more = true, next = db.accCur || 0;
+    while (more) {
+      const j = await callSheetRaw({action: 'pull', since: next}, url, key, ms);
+      if (!j || !j.ok || !Array.isArray(j.rows)) return j || {ok: false, error: 'pull'};
+      j.rows.forEach(r => { if (/^L(vault|cat|tx)$/.test(r.kind)) out.push(Object.assign({}, r, {kind: r.kind.slice(1)})); });
+      next = j.next; more = !!j.more;
+    }
+    db.accCur = next;
+    return {ok: true, rows: out};
+  }
+  return callSheetRaw(body, url, key, ms);
+}
+async function callSheetRaw(body, url = db.sheetUrl, key = db.sheetKey, ms = 30000) {
   const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
   try {
     const resp = await fetch(url, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify(Object.assign({key: key || ''}, body)), signal: ctl.signal});
@@ -1076,7 +1093,7 @@ function makeKey() {
 function renderSheetBox() {
   if (!db.sheetKey) { db.sheetKey = makeKey(); saveDB(); }   // المفتاح بيتعمل لوحده على الجهاز
   const n = pendingRecs().length;
-  $('#sSheet').innerHTML = `<p class="hint" style="margin:0 0 10px">كل حركة بتتبعت لوحدها لجدول Google بتاعك، وأي تعديل أو مسح بيتعدّل هناك كمان. الأداة بتشتغل عادي من غير الشيت.</p>
+  $('#sSheet').innerHTML = `${db.viaAcc ? '<div class="sync ok" style="margin:0 0 10px">✔ الدفتر متصل بنفس شيت الحسابات، ومفيش حاجة تظبطها. اللي تسجله هنا بيظهر في خزنة الحسابات لوحده.</div>' : ''}<p class="hint" style="margin:0 0 10px">كل حركة بتتبعت لوحدها لجدول Google بتاعك، وأي تعديل أو مسح بيتعدّل هناك كمان. الأداة بتشتغل عادي من غير الشيت.</p>
     ${db.sheetUrl && !db.sheetLocked ? `<div class="sync warn" style="margin:0 0 10px">⚠️ الشيت لسه بالكود القديم المفتوح. اضغط "خطوات قفل الشيت" تحت ونفّذها مرة واحدة.</div>` : ''}
     <div class="fld"><label>لينك الشيت (Web app URL)</label><input class="inp" id="shUrl" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" value="${esc(db.sheetUrl)}"></div>
     <details class="fld"><summary style="font-weight:700;color:#777;cursor:pointer">المفتاح السري (بيتعمل لوحده — مش محتاج تحفظه)</summary>
@@ -1085,7 +1102,7 @@ function renderSheetBox() {
       <p class="hint">ده اللي بيقفل الشيت علشان محدش يقرا حاجة حتى لو معاه اللينك. بيتعمل لوحده، وبيتنقل للحسابات وللأجهزة التانية برابط الربط، فمش محتاج تكتبه في حتة.</p>
     </details>
     <div class="stack">
-      ${db.sheetUrl && db.sheetLocked ? '<button class="btn green" id="shAcc" type="button">🔗 انسخ رابط الربط لبرنامج الحسابات</button>' : ''}
+      ${db.sheetUrl && db.sheetLocked && !db.viaAcc ? '<button class="btn green" id="shAcc" type="button">🔗 انسخ رابط الربط لبرنامج الحسابات</button>' : ''}
       <button class="btn gold" id="shSave" type="button">حفظ واختبار الاتصال</button>
       <button class="btn line" id="shNow" type="button">ابعت اللي مستني دلوقتي (${n})</button>
       <button class="btn line" id="shRestore" type="button">أرجّع كل البيانات من الشيت</button>
@@ -1102,6 +1119,7 @@ function renderSheetBox() {
   };
   $('#shEye').onclick = () => { const k = $('#shKey'); k.type = k.type === 'password' ? 'text' : 'password'; };
   $('#shSave').onclick = async () => {
+    if (db.viaAcc) return setStat('ok', '✅ الدفتر متصل بشيت الحسابات. مفيش حاجة تتغير هنا.');
     const u = $('#shUrl').value.trim(), k = $('#shKey').value.trim();
     if (u && !/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u)) return setStat('bad', '❌ اللينك مش شكل لينك Apps Script. لازم يبدأ بـ https://script.google.com ويخلص بـ /exec. راجع الخطوات.');
     if (/\/dev(\?|$)/.test(u)) return setStat('bad', '❌ اللينك ده بتاع التجربة (/dev). المطلوب اللينك اللي بيخلص بـ /exec من "نشر جديد".');
@@ -1146,6 +1164,7 @@ async function restoreFromSheet() {
   toast('بنزّل البيانات من الشيت…', 10000);
   let rows;
   try {
+    if (db.viaAcc) db.accCur = 0;
     const j = await callSheet({action: 'pull'});
     if (!j.ok) throw new Error(j.error);
     rows = j.rows;
@@ -1250,6 +1269,15 @@ function route() {
   refresh(); window.scrollTo(0, 0);
 }
 $$('nav button').forEach(b => b.onclick = () => go(b.dataset.go));
+/* رابط الربط بشيت الحسابات (acclink=...): الدفتر على الأيفون بيستخدم نفس شيت الحسابات من غير شيت تاني */
+try {
+  const m2 = location.hash.match(/^#acclink=([\w-]+)/);
+  if (m2) {
+    const o = JSON.parse(decodeURIComponent(escape(atob(m2[1].replace(/-/g, '+').replace(/_/g, '/')))));
+    history.replaceState(null, '', location.pathname);
+    if (o && o.u && o.k) { db.sheetUrl = o.u; db.sheetKey = o.k; db.sheetLocked = true; db.viaAcc = true; db.accCur = 0; saveDB(); setTimeout(() => { toast('✔ الدفتر اتربط بشيت الحسابات، وبنزّل الحركات…', 5000); autoPull().finally(() => syncNow()); }, 500); }
+  }
+} catch (e) {}
 /* رابط الربط (cashjoin=...): فيه لينك الشيت ومفتاحه، فالجهاز ده يتربط من غير ما يكتب أي حاجة */
 try {
   const m = location.hash.match(/^#cashjoin=([\w-]+)/);

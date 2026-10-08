@@ -335,6 +335,22 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     eq('أول ما تدوس على اليوم بيتسجل وبيتقفل الكليندر', [await A.inputValue('#txD'), await A.$('.dpo')], [T, null]);
     await A.click('#txX');
 
+    console.log('\n١٤ب) الدفتر على الأيفون بنفس شيت الحسابات (من غير شيت تاني)');
+    const D5 = await newDevice(browser, base, sheets);
+    const alink = await A.evaluate(() => 'cash.html#acclink=' + b64u(JSON.stringify({u: db.cfg.sheetUrl, k: db.cfg.sheetKey})));
+    const L5 = await D5.page(alink); await L5.waitForTimeout(1800);
+    eq('الدفتر اتربط بشيت الحسابات والرابط اتشال', await L5.evaluate(() => [db.viaAcc, db.sheetLocked, location.hash]), [true, true, '']);
+    await L5.evaluate(() => { const c = db.cats.find(x => x.type === 'exp' && !x.del), now = Date.now(); db.tx.push({id: 't_via_acc', type: 'exp', amt: 55, ts: now, vault: 'v_main', cat: c.id, note: 'من الأيفون', upd: now, del: false, sy: 0}); saveDB(); return syncNow(true); });
+    await L5.waitForTimeout(800);
+    await A.evaluate(() => syncNow()); await A.waitForTimeout(1500);
+    eq('حركة من الدفتر على الأيفون وصلت خزنة الحسابات عن طريق شيت الحسابات', await A.evaluate(() => { const t = IDX.tx.get('t_via_acc'); return !!t && !t.del && t.amt === 5500; }), true);
+    await A.evaluate(() => { const now = Date.now(), r = {id: 't_to_iphone', type: 'exp', amt: 4400, vault: 'v_main', to: '', cat: 'c_exp0', note: 'من الحسابات للأيفون', date: todayISO(), at: now, upd: now, del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); saveDB(); });
+    await A.evaluate(() => syncNow()); await A.waitForTimeout(1500);
+    console.log('DBGA', JSON.stringify(await A.evaluate(() => { const r = readCash().tx.find(x => x.id === 't_to_iphone'); return [r && [r.sy, r.upd, r.amt], syncErr, cashCreds() && 1]; })));
+    await L5.evaluate(() => autoPull()); await L5.waitForTimeout(800);
+    console.log('DBGL', JSON.stringify(await L5.evaluate(async () => { const j = await callSheet({action: 'pull'}); return [db.accCur, db.viaAcc, syncing, (j.rows || []).map(r => r.kind + ':' + r.id).slice(-4), db.tx.length]; })));
+    eq('حركة من الحسابات وصلت الدفتر على الأيفون', await L5.evaluate(() => { const t = db.tx.find(x => x.id === 't_to_iphone'); return !!t && !t.del && t.amt === 44; }), true);
+    eq('مفيش أخطاء في الدفتر على الأيفون', D5.errs, []);
     console.log('\n١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2.errs), []);

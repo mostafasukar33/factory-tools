@@ -1991,14 +1991,17 @@ async function syncNow(manual) {
       pushed += batch.length;
       p = pendingRecs(); renderSyncBox();
     }
-    let more = true;
+    let more = true; const lrows = [];
     while (more) {
       const j = await callSheet({action: 'pull', since: db.cfg.cursor});
       if (db !== d0) return;
       if (!j || j.ok !== true || !Array.isArray(j.rows)) { const x = new Error(j && j.error ? String(j.error) : 'الشيت مردش ok'); x.srv = true; throw x; }
-      j.rows.forEach(r => { if (mergeRow(r)) got++; });
+      j.rows.forEach(r => { if (/^L(vault|cat|tx)$/.test(r.kind)) lrows.push(r); else if (mergeRow(r)) got++; });
       db.cfg.cursor = j.next; more = !!j.more;
     }
+    /* حركات دفتر الخزنة اللي جاية على شيت الحسابات نفسه (الدفتر على الأيفون متربط بيه) */
+    if (lrows.length && cashFromRows(lrows)) got++;
+    await cashPushMain();
     /* اتأكد إن الشيت فعلاً اتملى: عدد السجلات اللي فيه لازم يساوي (أو يزيد عن) اللي على الجهاز */
     if (pushed) {
       const v = await callSheet({action: 'ping'});
@@ -3047,6 +3050,34 @@ function cashView(kind, r, c) {
   if (kind === 'vault') return ['', '', 'خزنة', r.open || 0, cell(r.name), '', 'رصيد افتتاحي'];
   return ['', '', r.type === 'exp' ? 'بند مصروف' : 'بند إيراد', '', '', cell(r.name), ''];
 }
+/* دفتر الخزنة ممكن يتربط بنفس شيت الحسابات (من غير شيت تاني): حركاته بتتخزن هناك بنوع بيبدأ بـ L (Lvault / Lcat / Ltx) وبنفس شكل الدفتر */
+function cashFromRows(rows) {
+  try {
+    const c = readCash() || {v: 1, vaults: [], cats: [], tx: [], lastSync: 0, lastVault: ''};
+    const n = cashMerge(c, rows.map(r => Object.assign({}, r, {kind: r.kind.slice(1)})));
+    if (n) { writeCash(c); bridgeIn(); bridgeOut(); }
+    return n;
+  } catch (e) { return 0; }
+}
+async function cashPushMain() {
+  try {
+    bridgeOut();
+    const c = readCash(); if (!c) return;
+    const pend = () => [...c.vaults.map(r => ['vault', r]), ...c.cats.map(r => ['cat', r]), ...c.tx.map(r => ['tx', r])].filter(([k, r]) => r.sy !== r.upd && r.upd > 1);
+    let p = pend(), n = 0;
+    while (p.length) {
+      const batch = p.slice(0, 40);
+      const rows = batch.map(([kind, r]) => { const d = Object.assign({}, r); delete d.sy; return {id: r.id, kind: 'L' + kind, upd: r.upd, del: !!r.del, view: cashView(kind, r, c).slice(0, 6), data: d}; });
+      const k = await callSheet({action: 'push', rows});
+      if (!k || k.ok !== true) break;
+      const ack = new Set(k.ack || []);
+      batch.forEach(([kk, r], i) => { if (ack.has(r.id) && r.upd === rows[i].upd) r.sy = rows[i].upd; });
+      n += batch.length; p = pend();
+      if (p.length && !batch.some(([kk, r]) => r.sy === r.upd)) break;
+    }
+    if (n) writeCash(c);
+  } catch (e) {}
+}
 let cashSyncing = false, cashSyncAt = 0, cashSyncErr = '';
 async function cashSync(force) {
   if (!db || cashSyncing) return false;
@@ -3120,7 +3151,14 @@ function renderCashLink() {
         <div class="fld" style="margin-top:6px"><label>لينك شيت الدفتر</label><input class="inp" id="scU" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" autocomplete="off"></div>
         <div class="fld"><label>المفتاح السري بتاع الدفتر (مش كلمة سر الحسابات)</label><input class="inp" id="scK" style="direction:ltr;font-size:16px" autocomplete="off" autocapitalize="off" spellcheck="false"></div></details>
       <div class="err" id="scE"></div>
-      <button class="btn gold" id="scGo" type="button">اربط</button>`}`;
+      <button class="btn gold" id="scGo" type="button">اربط</button>`}
+    ${db.cfg.sheetUrl && db.cfg.sheetKey ? `<div class="hint" style="margin-top:12px">📱 <b>على الأيفون من غير شيت تاني:</b> دفتر الخزنة يتربط بنفس شيت الحسابات. اضغط الزرار، وافتح اللينك على الموبايل مرة واحدة.</div>
+      <button class="btn gold sm" id="scAcc" type="button" style="margin-top:6px">📱 ابعت رابط ربط الدفتر (بنفس شيت الحسابات)</button>` : ''}`;
+  if ($('#scAcc')) $('#scAcc').onclick = async () => {
+    const url = location.origin + location.pathname.replace(/[^/]*$/, '') + 'cash.html#acclink=' + b64u(JSON.stringify({u: db.cfg.sheetUrl, k: db.cfg.sheetKey}));
+    try { if (navigator.share) { await navigator.share({title: 'ربط دفتر الخزنة', text: 'رابط ربط دفتر الخزنة (متبعتوش لحد):', url}); return; } } catch (e) { if (e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(url); toast('اتنسخ ✔ افتحه على الموبايل في المتصفح', 6000); } catch (e) { toast('معرفتش أنسخ الرابط'); }
+  };
   if ($('#scShare')) $('#scShare').onclick = async () => {
     const url = location.origin + location.pathname.replace(/[^/]*$/, '') + 'cash.html#cashjoin=' + b64u(JSON.stringify({u: cr.u, k: cr.k}));
     try { if (navigator.share) { await navigator.share({title: 'دفتر الخزنة', text: 'رابط ربط دفتر الخزنة (متبعتوش لحد):', url}); return; } } catch (e) { if (e.name === 'AbortError') return; }

@@ -139,7 +139,9 @@ table.lt.rep tr.bad td{background:var(--red-l);color:var(--red)}
 .ldgw{overflow-x:auto;border:1.5px solid var(--line);border-radius:12px;background:#fff;-webkit-overflow-scrolling:touch}
 table.ldg{width:100%;border-collapse:collapse;font-size:13.5px}
 .ldg th{background:#111;color:#DAAE57;font-weight:700;padding:7px 4px;position:sticky;top:0;white-space:nowrap}
-.ldg td{padding:7px 4px;border-bottom:1px solid #EEE7D6;text-align:center;vertical-align:middle;font-weight:600}
+.ldg td{padding:7px 4px;border:1px solid #DCCFAE;text-align:center;vertical-align:middle;font-weight:600}
+.ldg th{border:1px solid #333}
+.ldg td.b{background:#F7F2E4;border-inline-start:2px solid #9C7420}
 .ldg td.l{text-align:right;min-width:130px}.ldg td.l small{display:block;font-size:11px;color:#9C7420;font-weight:700}
 .ldg td.dt{white-space:nowrap;font-size:12.5px}.ldg td.q{white-space:nowrap;font-size:12.5px}
 .ldg td.n{direction:ltr;white-space:nowrap}.ldg td.b{direction:ltr;white-space:nowrap;font-weight:800}
@@ -177,7 +179,7 @@ nav .nb{position:absolute;top:6px;inset-inline-start:calc(50% + 6px);background:
 .cb.ok{background:var(--green-l);color:var(--green)}.cb.warn{background:#FFF3CD;color:#8A6200}.cb.bad{background:var(--red-l);color:var(--red)}
 .rph{font-size:19px;margin:6px 2px 8px;font-weight:800}.rph small{display:block;font-size:13px;color:#777;font-weight:700}
 .ldg.rp tr[data-p]{cursor:pointer}
-table.ldg.rp{min-width:520px}.ldg.rp td{white-space:nowrap}.ldg.rp td.l{white-space:normal;min-width:110px}
+table.ldg.rp.wide{min-width:520px}.ldg.rp td{white-space:nowrap}.ldg.rp td.l{white-space:normal;min-width:110px}
 .sech{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;font-weight:800;color:var(--gold-d)}
 .sech a{font-size:14px;text-decoration:underline;cursor:pointer}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#EFE9D8;border-radius:12px;padding:4px;margin-bottom:10px}
@@ -250,7 +252,14 @@ nav svg{width:26px;height:26px}
 .pg .cust i{font-style:normal;font-weight:700;color:#9C7420;font-size:15px}
 .pg table{width:100%;border-collapse:collapse;font-size:14.5px;table-layout:fixed;flex:none}
 .pg th{background:#111;color:#DAAE57;padding:8px 5px;font-weight:700;font-size:14.5px;text-align:center}
-.pg td{padding:7px 6px;text-align:center;border-bottom:1px solid #E4DCC8;word-wrap:break-word;vertical-align:middle}
+.pg td{padding:7px 6px;text-align:center;border:1px solid #CBBE9B;word-wrap:break-word;vertical-align:middle}
+.pg th{border:1px solid #333}
+.pg td.b{background:#F7F2E4 !important;border-inline-start:2px solid #9C7420}
+.pg .sbox{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px;margin-bottom:14px;flex:none}
+.pg .sbox div{border:2px solid #CBBE9B;border-radius:8px;padding:6px 8px;text-align:center}
+.pg .sbox span{display:block;font-size:13.5px;font-weight:700;color:#555}
+.pg .sbox b{display:block;font-size:20px;font-weight:800;direction:ltr}
+.pg .sbox .k{background:#111;border-color:#111}.pg .sbox .k span{color:#DAAE57}.pg .sbox .k b{color:#fff}
 .pg td.l{text-align:right;font-weight:600}
 .pg td.dt{white-space:nowrap;font-size:13.5px;font-weight:600}
 .pg td:first-child{white-space:nowrap;font-size:13px}
@@ -324,12 +333,6 @@ nav svg{width:26px;height:26px}
   <div class="card">
     <h2>النسخة على Google Sheet</h2>
     <div id="sSheet"></div>
-  </div>
-  <div class="card">
-    <h2>نقل البيانات القديمة (الإكسيل)</h2>
-    <p class="hint" style="margin:0 0 10px">افتح هنا "ملف النقل" اللي اتعمل من ملفات الإكسيل. البرنامج بيقارن رصيد كل حساب بآخر رصيد في الإكسيل قبل ما ينقل أي حاجة.</p>
-    <button class="btn gold" id="bImport" type="button">اختار ملف النقل</button>
-    <input type="file" id="fImport" accept=".json,application/json" hidden>
   </div>
   <div class="card">
     <h2>بيانات الشركة في الـ PDF</h2>
@@ -1225,7 +1228,8 @@ function buildStmtPages(p, s) {
     pg.innerHTML = `<div class="strip"></div><div class="in">` + (first
       ? `<div class="hd"><img src="icons/logo.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${phone ? `<em>${esc(phone)}</em>` : ''}</div>
          <div class="ti"><h3>كشف حساب</h3><div>تاريخ الإصدار: <span>${dispDate(isoOf(issued))}</span></div><div>الفترة: <span>${esc(periodText(s))}</span></div></div></div>
-         <div class="cust"><span>السادة / <b>${esc(p.name)}</b></span><i>${SEC1[p.sec]}</i></div>`
+         <div class="cust"><span>السادة / <b>${esc(p.name)}</b></span><i>${SEC1[p.sec]}</i></div>
+         ${p.sec === 'sup' ? `<div class="sbox">${s.open !== null ? `<div><span>رصيد أول المدة</span><b>${fmtP(s.open * s.sg)}</b></div>` : ''}<div><span>إجمالي المشتريات</span><b>${fmtP(s.tg)}</b></div><div><span>إجمالي المدفوعات</span><b>${fmtP(s.tp)}</b></div><div class="k"><span>الرصيد</span><b>${fmtP(s.close * s.sg)}</b></div></div>` : ''}`
       : `<div class="mini"><b>فلاش أون</b><span>كشف حساب — ${esc(p.name)} — ${esc(periodText(s))}</span></div>`) +
       `</div><div class="ft"><span>عالم متكامل من احتياجاتك الكهربائية</span><span class="pn"></span></div>`;
     box.appendChild(pg);
@@ -1660,14 +1664,7 @@ function importModal(r) {
     else toast(`✔ اتنقلت البيانات (${n} سجل) وكل الأرصدة مطابقة للإكسيل. تقدر تبدأ تشتغل.`, 7000);
   };
 }
-$('#bImport').onclick = () => $('#fImport').click();
-$('#fImport').addEventListener('change', async ev => {
-  const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
-  let d; try { d = JSON.parse(await f.text()); } catch (x) { return toast('الملف ده مش ملف نقل بتاع الحسابات'); }
-  const r = readImport(d);
-  if (r.errs.length) { modal(`<h3>الملف فيه مشكلة</h3><p style="font-size:15px">${r.errs.slice(0, 8).map(esc).join('<br>')}${r.errs.length > 8 ? `<br>و${r.errs.length - 8} كمان` : ''}</p><button class="btn line" id="imX" type="button">إغلاق</button>`); $('#imX').onclick = closeModal; return; }
-  importModal(r);
-});
+/* خانة ملف النقل اتشالت من الإعدادات بعد ما البيانات القديمة اتنقلت. readImport و importModal فاضلين للاختبارات بس */
 
 /* ====================== النسخة الاحتياطية (ملف متشفر) ====================== */
 $('#bBackup').onclick = async () => {
@@ -2232,31 +2229,17 @@ function repRange() {
   return [repFrom || t.slice(0, 8) + '01', repTo || t];
 }
 const rangeText = (f, t) => f === t ? dispDate(f) : `من ${dispDate(f)} إلى ${dispDate(t)}`;
-/* أعمار الديون: الدفعات والمرتجعات بتتخصم من أقدم مسحوبات الأول (FIFO)، واللي فاضل بيتقسم حسب عمره */
-function agingOf(p) {
-  const sg = p.sec === 'sup' ? -1 : 1, debits = []; let credits = 0;
-  partyEntries(p.id).forEach(e => { const up = ((e.dr || 0) - (e.cr || 0)) * sg; if (up > 0) debits.push({date: e.date, amt: up}); else if (up < 0) credits -= up; });
-  const b = [0, 0, 0, 0]; let oldest = '';
-  debits.forEach(d => {
-    const use = Math.min(d.amt, credits); credits -= use; const left = d.amt - use;
-    if (left <= 0) return;
-    if (!oldest) oldest = d.date;
-    const age = -daysTo(d.date);
-    b[age <= 30 ? 0 : age <= 60 ? 1 : age <= 90 ? 2 : 3] += left;
-  });
-  return {b, oldest, total: b.reduce((s, x) => s + x, 0)};
-}
 function buildReport() {
   const ps = liveParties();
   if (repKind === 'debt') {
+    /* لكل حساب: إجمالي اللي اتسحب (فواتير ورصيد أول المدة) وإجمالي اللي اتدفع (دفعات ومرتجعات وخصومات) والرصيد، زي أعمدة الكشف بالظبط */
     const sup = repSide === 'sup';
-    const list = ps.filter(p => (sup ? p.sec === 'sup' : p.sec === repSide) && !p.noTot).map(p => ({p, a: agingOf(p)})).filter(x => x.a.total > 0).sort((x, y) => y.a.total - x.a.total);
-    const t = [0, 0, 0, 0]; list.forEach(x => x.a.b.forEach((v, i) => t[i] += v));
-    const tot = t.reduce((s, x) => s + x, 0);
-    return {title: sup ? 'مديونيات الموردين' : 'المديونيات وأعمارها', period: `${SECS[repSide]} — لحد ${dispDate(todayISO())}`,
-      cols: [{h: 'الاسم', w: 24, c: 'l'}, {h: 'الرصيد', w: 14, c: 'b'}, {h: 'أقدم دين', w: 12, c: 'dt'}, {h: 'لحد 30 يوم', w: 12.5, c: 'n'}, {h: '31 – 60', w: 12.5, c: 'n'}, {h: '61 – 90', w: 12.5, c: 'n'}, {h: 'أكتر من 90', w: 12.5, c: 'n'}],
-      rows: list.map(x => ({cells: [x.p.name, fmtP(x.a.total), dispDate(x.a.oldest), ...x.a.b.map(v => v ? fmtP(v) : '')], cls: x.a.b[3] ? 'bnc' : x.a.b[2] ? 'ret' : '', id: x.p.id})),
-      sum: [['لحد 30 يوم', fmtP(t[0])], ['من 31 لـ 60 يوم', fmtP(t[1])], ['من 61 لـ 90 يوم', fmtP(t[2])], ['أكتر من 90 يوم', fmtP(t[3])]], fin: ['الإجمالي (' + list.length + ' حساب)', fmtP(tot)]};
+    const list = ps.filter(p => p.sec === repSide && !p.noTot).map(p => ({p, s: stmtData(p.id, '', '')})).filter(x => x.s.rows.length).sort((x, y) => y.s.close * y.s.sg - x.s.close * x.s.sg);
+    let tg = 0, tp = 0, tb = 0; list.forEach(x => { tg += x.s.tg; tp += x.s.tp; tb += x.s.close * x.s.sg; });
+    return {title: sup ? 'مشتريات ومدفوعات الموردين' : 'مسحوبات ومدفوعات العملا', period: `${SECS[repSide]} — لحد ${dispDate(todayISO())}`,
+      cols: [{h: 'الاسم', w: 34, c: 'l'}, {h: sup ? 'المشتريات' : 'المسحوبات', w: 22, c: 'n'}, {h: 'المدفوعات', w: 22, c: 'n'}, {h: 'الرصيد', w: 22, c: 'b'}],
+      rows: list.map(x => ({cells: [x.p.name, fmtP(x.s.tg), fmtP(x.s.tp), fmtP(x.s.close * x.s.sg)], cls: x.s.close * x.s.sg < 0 ? 'ret' : '', id: x.p.id})),
+      sum: [[sup ? 'إجمالي المشتريات' : 'إجمالي المسحوبات', fmtP(tg)], ['إجمالي المدفوعات', fmtP(tp)]], fin: [`إجمالي الرصيد (${list.length} حساب)`, fmtP(tb)]};
   }
   if (repKind === 'tot') {
     const bal = allBalances(), rows = [], sum = [];
@@ -2312,7 +2295,7 @@ function renderReports() {
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
   const needRange = repKind === 'cash' || repKind === 'item';
   $('#p-rep').innerHTML = `
-    <div class="seg s4" id="rpK">${[['debt', 'المديونيات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    <div class="seg s4" id="rpK">${[['debt', 'المسحوبات والمدفوعات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="card">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'tot' ? '<p class="hint" style="margin:0">كل الحسابات اللي ليها رصيد، والحساب الفرعي ظاهر لوحده ومش داخل في الإجمالي.</p>' : ''}
@@ -2323,7 +2306,7 @@ function renderReports() {
       ${repKind === 'cash' ? `<select class="inp" id="rpV" style="margin-top:8px"><option value="">كل الخزن</option>${vaultsL().map(v => `<option value="${esc(v.id)}" ${repVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>` : ''}
     </div>
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
-    ${R.rows.length ? `<p class="hint" style="margin:0 0 6px">لو الجدول عريض، اسحبه يمين وشمال. ودوس على أي اسم يفتحلك حسابه.</p><div class="ldgw"><table class="ldg rp"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
+    ${R.rows.length ? `<p class="hint" style="margin:0 0 6px">${R.cols.length > 5 ? 'لو الجدول عريض، اسحبه يمين وشمال. ' : ''}${R.rows.some(r => r.id) ? 'دوس على أي اسم يفتحلك حسابه.' : ''}</p><div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
       ${R.rows.map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
     <div class="card" style="margin-top:10px">${R.sum.map(([a, b]) => `<div class="bl"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
     <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>

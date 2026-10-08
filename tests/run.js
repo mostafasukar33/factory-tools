@@ -77,9 +77,9 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
   const browser = await pw.chromium.launch(CHROME ? {executablePath: CHROME} : {});
   const sheets = {acc: makeGas(), cash: makeGas()};
   const D1 = await newDevice(browser, base, sheets);
-  const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fo-test-'));
-  const impPath = path.join(tmp, 'import.json'); fs.writeFileSync(impPath, JSON.stringify(importFile()));
-  const badPath = path.join(tmp, 'bad.json'); const bad = importFile(); bad.parties[0].expected = 1; fs.writeFileSync(badPath, JSON.stringify(bad));
+  const bad = importFile(); bad.parties[0].expected = 1;
+  /* خانة ملف النقل اتشالت من الإعدادات، فبنفتح شاشة النقل مباشرة */
+  const openImport = (A, d) => A.evaluate(x => importModal(readImport(x)), d);
   try {
     console.log('\n١) كلمة السر والتشفير');
     const A = await D1.page('accounts.html');
@@ -89,13 +89,13 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await unlock(A);
 
     console.log('\n٢) نقل البيانات القديمة');
-    await A.click('nav button[data-go=set]'); await A.setInputFiles('#fImport', badPath); await A.waitForTimeout(300);
+    await openImport(A, bad); await A.waitForTimeout(300);
     eq('ملف فيه رصيد مش مطابق بيترفض', await A.$('#imGo'), null); await A.click('#imX');
-    await A.setInputFiles('#fImport', impPath); await A.waitForTimeout(300); await A.click('#imGo'); await A.click('#cOk'); await A.waitForTimeout(400);
+    await openImport(A, importFile()); await A.waitForTimeout(300); await A.click('#imGo'); await A.click('#cOk'); await A.waitForTimeout(400);
     eq('رصيد عميل 1', await bal(A, 'عميل تجربة واحد'), 270000);
     eq('رصيد عميل 2', await bal(A, 'عميل تجربة اتنين'), 0);
     eq('رصيد المورد', await bal(A, 'مورد تجربة'), -2950000);
-    await A.click('nav button[data-go=set]'); await A.setInputFiles('#fImport', impPath); await A.waitForTimeout(300); await A.click('#imGo'); await A.click('#cOk'); await A.waitForTimeout(400);
+    await openImport(A, importFile()); await A.waitForTimeout(300); await A.click('#imGo'); await A.click('#cOk'); await A.waitForTimeout(400);
     eq('النقل مرتين مبيكررش', await A.evaluate(() => [db.parties.length, db.entries.length]), [3, 8]);
     const raw = await A.evaluate(async () => JSON.stringify(await idbGet('vault')));
     eq('البيانات على الجهاز متشفرة', raw.includes('عميل تجربة'), false);
@@ -152,8 +152,11 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
 
     console.log('\n٨) التقارير');
     await A.click('nav button[data-go=rep]'); await A.waitForTimeout(200);
-    const debts = await A.evaluate(() => { repKind = 'debt'; repSide = 'mkt'; const R = buildReport(); return R.fin[1]; });
-    eq('إجمالي مديونيات السوق = رصيد العميل', debts, await A.evaluate(n => fmtP(balance(liveParties().find(x => x.name === n).id)), 'عميل تجربة واحد'));
+    const R = await A.evaluate(() => { repKind = 'debt'; repSide = 'mkt'; return buildReport(); });
+    eq('رصيد السوق في التقرير = رصيد العميل', R.fin[1], await A.evaluate(n => fmtP(balance(liveParties().find(x => x.name === n).id)), 'عميل تجربة واحد'));
+    eq('المسحوبات − المدفوعات = الرصيد', await A.evaluate(() => { const s = stmtData(liveParties().find(x => x.name === 'عميل تجربة واحد').id, '', ''); return s.tg - s.tp === s.close; }), true);
+    eq('ملخص فوق كشف المورد بس', await A.evaluate(() => { const ps = liveParties(); const sup = ps.find(p => p.sec === 'sup'), cu = ps.find(p => p.sec === 'mkt');
+      const a = buildStmtPages(sup, stmtData(sup.id, '', ''))[0].querySelector('.sbox'), b = buildStmtPages(cu, stmtData(cu.id, '', ''))[0].querySelector('.sbox'); $('#render').innerHTML = ''; return [!!a, !!b]; }), [true, false]);
 
     console.log('\n٩) قفل الفترة');
     await A.click('nav button[data-go=set]'); await A.fill('#sLockD', today); await A.click('#sLockGo'); await A.click('#cOk'); await A.waitForTimeout(200);

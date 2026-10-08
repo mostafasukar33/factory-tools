@@ -652,6 +652,20 @@ html[data-theme=dark] :is(.dtot,.ldgf) span{color:#F3EFE3}
 .amtrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.amtrow .btn{width:auto;white-space:nowrap;min-height:48px}
 .seg.dir button small{font-weight:600;font-size:12px;opacity:.85}
 .modal h3{font-size:17.5px;margin-bottom:10px}
+/* الرئيسية: شريط الأرصدة مدموج وصف البحث فوق */
+.srow{grid-template-columns:1fr 104px 44px 44px;gap:6px;margin-bottom:8px}
+html main .srow #bNewParty,html main .srow #bSearch{width:44px;min-height:46px;padding:0;font-size:19px;margin:0!important;order:0;flex:none;border-radius:10px}
+html main .srow #bNewParty{font-size:24px;font-weight:800}
+#hTots{gap:0;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:10px}
+#hTots div{border:0;border-radius:0;box-shadow:none;border-inline-start:1px solid var(--line);padding:8px 6px;background:transparent}
+#hTots div:first-child{border-inline-start:0}
+#hTots .k{background:var(--gold-l);border-bottom:0}
+#hTots div span{font-size:12px}
+.pt.neg{background:#FFF8F6}
+html[data-theme=dark] :is(.page) .pt.neg{background:#2a1c1a}
+html[data-theme=dark] #hTots{background:#1f1e19;border-color:#37342b}
+html[data-theme=dark] #hTots .k{background:var(--gold-l)}
+@media (min-width:1000px){main.split .srow{order:3;grid-template-columns:1fr 100px 40px 40px}main.split #hTots{grid-template-columns:1fr 1fr 1.15fr;gap:0;margin:2px 0 8px}}
 </style>
 </head>
 <body>
@@ -677,13 +691,13 @@ html[data-theme=dark] :is(.dtot,.ldgf) span{color:#F3EFE3}
   <div id="chk"></div>
   <div id="bkRem"></div></div>
   <div class="tots" id="hTots"></div>
-  <button class="btn gold big" id="bNewParty" type="button" style="margin-bottom:12px">+ حساب جديد</button>
-  <button class="btn line sm" id="bSearch" type="button" style="margin-bottom:10px">🔎 دوّر في كل الحركات (مبلغ، صنف، ملاحظة…)</button>
-  <div class="tabs" id="hTabs"></div>
   <div class="srow">
     <input class="inp" id="hSearch" type="search" placeholder="🔍 دوّر بالاسم أو التليفون" autocomplete="off">
-    <select class="inp" id="hSort"><option value="name">بالاسم</option><option value="bal">الأكبر رصيد</option><option value="last">آخر حركة</option></select>
+    <select class="inp" id="hSort"><option value="bal">الأكبر</option><option value="name">بالاسم</option><option value="last">الأحدث</option></select>
+    <button class="btn line" id="bSearch" type="button" title="دوّر في كل الحركات (مبلغ، صنف، ملاحظة…)">🔎</button>
+    <button class="btn gold" id="bNewParty" type="button" title="حساب جديد">＋</button>
   </div>
+  <div class="tabs" id="hTabs"></div>
   <div id="hList"></div>
 </section>
 
@@ -1109,7 +1123,7 @@ function renderHome() {
   const bal = allBalances();
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
   const net = ly - al;
-  $('#hTots').innerHTML = `<div><span>ليا (فلوس عند الناس)</span><b>${fmtP(ly)}</b></div><div class="cr"><span>عليا (فلوس للناس)</span><b>${fmtP(al)}</b></div>
+  $('#hTots').innerHTML = `<div><span>ليا (عند الناس)</span><b>${fmtP(ly)}</b></div><div class="cr"><span>عليا (للناس)</span><b>${fmtP(al)}</b></div>
     <div class="k"><span>الصافي ${net >= 0 ? 'ليا' : 'عليا'}</span><b>${fmtP(Math.abs(net))} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>`;
   const ps = liveParties();
   const cnt = s => ps.filter(p => s === 'all' || p.sec === s).length;
@@ -1132,7 +1146,7 @@ function renderList(bal) {
   $('#hList').classList.toggle('srch', !!q);
   $('#hList').innerHTML = ps.map(p => {
     const b = bal.get(p.id) || 0;
-    return `<div class="pt ${p.id === curParty ? 'cur' : ''} ${p.sec === 'sup' ? 'sup' : ''} ${b ? '' : 'zero'} ${limitClass(p, b)}" data-id="${esc(p.id)}">
+    return `<div class="pt ${p.id === curParty ? 'cur' : ''} ${p.sec === 'sup' ? 'sup' : ''} ${b ? '' : 'zero'} ${b < 0 ? 'neg' : ''} ${limitClass(p, b)}" data-id="${esc(p.id)}">
       <div class="m"><b>${esc(p.name)}</b><small><span class="tag ${p.sec === 'sup' ? 'sup' : ''}">${SEC1[p.sec]}</span>${p.noTot ? '<span class="tag off">خارج الإجمالي</span>' : ''}<span class="ph">${esc(p.phone || '')}</span></small></div>
       <div class="a"><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b><small>${balWord(b)}</small></div></div>`;
   }).join('');

@@ -932,6 +932,7 @@ function renderSheetBox() {
       <p class="hint">المفتاح ده زي قفل الشيت: من غيره محدش يقدر يقرا ولا يكتب حاجة حتى لو معاه اللينك. اكتبه في ورقة واحتفظ بيه. <a id="shGen" style="text-decoration:underline;cursor:pointer;color:var(--gold-d)">اعملي مفتاح جديد</a></p>
     </div>
     <div class="stack">
+      ${db.sheetUrl && db.sheetLocked ? '<button class="btn green" id="shAcc" type="button">🔗 انسخ رابط الربط لبرنامج الحسابات</button>' : ''}
       <button class="btn gold" id="shSave" type="button">حفظ واختبار الاتصال</button>
       <button class="btn line" id="shNow" type="button">ابعت اللي مستني دلوقتي (${n})</button>
       <button class="btn line" id="shRestore" type="button">أرجّع كل البيانات من الشيت</button>
@@ -939,6 +940,13 @@ function renderSheetBox() {
     </div>
     <div id="shStat" class="sync" style="display:none;margin:10px 0 0"></div>
     <p class="hint">${db.lastSync ? 'آخر إرسال ناجح: ' + dispDate(isoOf(db.lastSync)) + ' ' + dispTime(db.lastSync) : 'لسه مفيش إرسال ناجح.'}</p>`;
+  /* رابط فيه لينك الشيت ومفتاحه (بعد #) علشان الحسابات تتربط بالدفتر من غير ما تنسخ المفتاح بإيدك */
+  if ($('#shAcc')) $('#shAcc').onclick = async () => {
+    const b = btoa(unescape(encodeURIComponent(JSON.stringify({u: db.sheetUrl, k: db.sheetKey})))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const link = location.origin + location.pathname.replace(/[^/]*$/, '') + 'accounts.html#cashjoin=' + b;
+    try { await navigator.clipboard.writeText(link); toast('اتنسخ ✔ افتح الحسابات ← الإعدادات ← "دفتر الخزنة" والصقه', 7000); }
+    catch (e) { modal(`<h3>رابط الربط للحسابات</h3><p style="font-size:15px">اضغط مطوّل على الرابط وانسخه، وبعدين الصقه في الحسابات ← الإعدادات ← "دفتر الخزنة":</p><pre class="code" style="white-space:pre-wrap;word-break:break-all;direction:ltr">${esc(link)}</pre><button class="btn line" id="alX" type="button">تمام</button>`); $('#alX').onclick = closeModal; }
+  };
   $('#shEye').onclick = () => { const k = $('#shKey'); k.type = k.type === 'password' ? 'text' : 'password'; };
   $('#shGen').onclick = () => { $('#shKey').value = makeKey(); $('#shKey').type = 'text'; toast('ده مفتاح جديد. اكتبه في ورقة قبل ما تحفظ.', 5000); };
   $('#shSave').onclick = async () => {

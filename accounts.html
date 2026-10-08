@@ -776,7 +776,7 @@ function unlocked() {
   $('#lock').classList.remove('on'); $('#lockBox').innerHTML = '';
   lastAct = Date.now(); bridgeIn(); route(); flushSave();
   if (pendingJoin) applyJoin(); else setTimeout(() => syncNow(), 600);
-  setTimeout(() => cashSync(true), 2500);
+  if (pendingCashJoin) setTimeout(applyCashJoin, 1500); else setTimeout(() => cashSync(true), 2500);
 }
 ['pointerdown', 'keydown', 'scroll'].forEach(ev => addEventListener(ev, () => lastAct = Date.now(), {passive: true, capture: true}));
 setInterval(() => { if (db && Date.now() - lastAct > LOCK_IDLE) lockNow('اتقفل لوحده بعد 10 دقايق من غير استخدام'); }, 20000);
@@ -2628,27 +2628,53 @@ async function cashSync(force) {
 setInterval(() => cashSync(), 120000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => cashSync(), 1200); });
 addEventListener('online', () => cashSync(true));
+/* بيقرا رابط الربط اللي الدفتر بيعمله (cashjoin=...)، أو لينك + مفتاح مكتوبين */
+function parseCashJoin(txt) {
+  const m = String(txt || '').match(/cashjoin=([\w-]+)/);
+  try { const o = m && JSON.parse(unb64u(m[1])); return o && o.u && o.k ? o : null; } catch (e) { return null; }
+}
+let pendingCashJoin = null;
+if (/^#cashjoin=/.test(location.hash)) { pendingCashJoin = parseCashJoin(location.hash); history.replaceState(null, '', location.pathname); }
+async function connectCash(u, k) {
+  u = normSheetUrl(String(u || '').trim()); k = String(k || '').trim();
+  if (!/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u)) return 'لينك شيت الدفتر مش مظبوط';
+  if (!k) return 'المفتاح السري ناقص';
+  let j; try { j = await callSheet({action: 'ping'}, u, k, 30000); } catch (e) { j = null; }
+  if (!j) return 'معرفتش أوصل لشيت الدفتر. اتأكد من النت ومن اللينك.';
+  if (j.app === 'fo-acc') return 'ده لينك شيت الحسابات، مش شيت دفتر الخزنة.';
+  if (!j.ok) return j.error === 'key' ? 'المفتاح السري مش بتاع شيت الدفتر ده. استخدم زرار "انسخ رابط الربط" من الدفتر.' : 'شيت الدفتر رد بخطأ: ' + (j.error || '');
+  const d = readCash() || {v: 1, vaults: [], cats: [], tx: [], lastSync: 0, lastVault: ''};
+  Object.assign(d, {sheetUrl: u, sheetKey: k, sheetLocked: true}); writeCash(d);
+  putSet('cashSheet', {u, k});
+  await cashSync(true);
+  return '';
+}
+async function applyCashJoin() {
+  const o = pendingCashJoin; pendingCashJoin = null; if (!o || !db) return;
+  const err = await connectCash(o.u, o.k);
+  toast(err ? '❌ ' + err : '✔ اتربطت الخزنة بدفتر الخزنة', 7000); route();
+}
 function renderCashLink() {
   const box = $('#sCash'); if (!box) return;
   const cr = cashCreds(), c = readCash() || {};
   box.innerHTML = `<h2>🔗 دفتر الخزنة اللي في الأدوات</h2>
     ${cr ? `<div class="sync ${cashSyncErr ? 'warn' : 'ok'}">${cashSyncErr ? '⚠️ آخر مزامنة مع شيت الدفتر فشلت. هتتعاد لوحدها.' : `✔ الحسابات والدفتر حاجة واحدة: أي حركة تتسجل هنا أو هناك بتظهر في المكانين.${c.lastSync ? ' آخر مزامنة: ' + dispTime(c.lastSync) : ''}`}</div>
       <button class="btn line sm" id="scNow" type="button">زامن الخزنة دلوقتي</button>`
-    : `<p class="hint" style="margin:0 0 8px">علشان الخزنة هنا والدفتر يبقوا حاجة واحدة على كل الأجهزة: افتح <b>دفتر الخزنة</b> من الأدوات ← <b>الإعدادات</b>، وانسخ <b>لينك الشيت</b> و<b>المفتاح السري</b> والصقهم هنا مرة واحدة.</p>
-      <div class="fld"><label>لينك شيت الدفتر</label><input class="inp" id="scU" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" autocomplete="off"></div>
-      <div class="fld"><label>المفتاح السري بتاع الدفتر</label><input class="inp" id="scK" style="direction:ltr;font-size:16px" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+    : `<p class="hint" style="margin:0 0 8px">علشان الخزنة هنا والدفتر يبقوا حاجة واحدة: افتح <b>دفتر الخزنة</b> من الأدوات ← <b>الإعدادات</b> ← اضغط <b>"انسخ رابط الربط لبرنامج الحسابات"</b>، وارجع هنا والصقه.</p>
+      <div class="fld"><input class="inp" id="scL" style="direction:ltr;font-size:14px" placeholder="الصق رابط الربط هنا" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <details class="fld"><summary style="font-weight:700;color:#777;cursor:pointer">أو اكتب لينك الشيت والمفتاح بإيدك</summary>
+        <div class="fld" style="margin-top:6px"><label>لينك شيت الدفتر</label><input class="inp" id="scU" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" autocomplete="off"></div>
+        <div class="fld"><label>المفتاح السري بتاع الدفتر (مش كلمة سر الحسابات)</label><input class="inp" id="scK" style="direction:ltr;font-size:16px" autocomplete="off" autocapitalize="off" spellcheck="false"></div></details>
+      <div class="err" id="scE"></div>
       <button class="btn gold" id="scGo" type="button">اربط</button>`}`;
   if ($('#scNow')) $('#scNow').onclick = async () => { toast('⏳ بزامن الخزنة…'); const ok = await cashSync(true); toast(ok ? 'الخزنة متزامنة ✔' : 'معرفتش أوصل لشيت الدفتر. اتأكد من النت.'); renderCashLink(); };
   if ($('#scGo')) $('#scGo').onclick = async () => {
-    const u = normSheetUrl($('#scU').value.trim()), k = $('#scK').value.trim();
-    if (!/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u) || !k) return toast('الصق اللينك والمفتاح زي ما هم في دفتر الخزنة', 5000);
-    $('#scGo').disabled = true; $('#scGo').textContent = '⏳ بجرب…';
-    let j; try { j = await callSheet({action: 'pull'}, u, k, 30000); } catch (e) { j = null; }
-    if (!j || !j.ok || !Array.isArray(j.rows)) { $('#scGo').disabled = false; $('#scGo').textContent = 'اربط'; return toast(j && j.error === 'key' ? 'المفتاح ده مش بتاع شيت الدفتر' : 'معرفتش أوصل لشيت الدفتر. راجع اللينك والنت.', 6000); }
-    const d = readCash() || {v: 1, vaults: [], cats: [], tx: [], lastSync: 0, lastVault: ''};
-    Object.assign(d, {sheetUrl: u, sheetKey: k, sheetLocked: true}); writeCash(d);
-    putSet('cashSheet', {u, k});
-    await cashSync(true); renderCashLink(); toast('✔ اتربطت الخزنة بالدفتر', 5000);
+    const o = parseCashJoin($('#scL').value) || {u: $('#scU').value, k: $('#scK').value};
+    if (!o.u && !o.k) return $('#scE').textContent = 'الصق رابط الربط اللي نسخته من دفتر الخزنة';
+    $('#scGo').disabled = true; $('#scGo').textContent = '⏳ بجرب…'; $('#scE').textContent = '';
+    const err = await connectCash(o.u, o.k);
+    if (err) { $('#scGo').disabled = false; $('#scGo').textContent = 'اربط'; $('#scE').textContent = '❌ ' + err; return; }
+    renderCashLink(); toast('✔ اتربطت الخزنة بدفتر الخزنة', 5000);
   };
 }
 addEventListener('storage', ev => {

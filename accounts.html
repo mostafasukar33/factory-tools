@@ -1072,7 +1072,7 @@ async function showLock(msg) {
   let bio = null; try { bio = bioOk() && await idbGet('bio'); } catch (e) {}
   $('#lockBox').innerHTML = `
     <label for="lkP">كلمة السر</label>
-    <input class="inp" id="lkP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" style="text-align:center;font-size:22px">
+    <input class="inp" id="lkP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" autofocus style="text-align:center;font-size:22px">
     <div class="err" id="lkErr">${esc(msg || '')}</div>
     <button class="btn gold big" id="lkGo" type="button">فتح</button>
     ${bio ? '<button class="btn line" id="lkBio" type="button" style="margin-top:10px">🔓 فتح ببصمة الوجه</button>' : ''}
@@ -1112,8 +1112,10 @@ async function showLock(msg) {
   else {
     /* من غير بصمة: لوحة الأرقام تفتح لوحدها. الأيفون أحياناً بيرفض الفتح التلقائي، فأول لمسة في أي مكان في الشاشة بتفتحها */
     const focusPw = () => { const i = $('#lkP'); if (i && document.activeElement !== i) { try { i.focus({preventScroll: true}); } catch (e) { i.focus(); } } };
-    [100, 400, 900].forEach(ms => setTimeout(focusPw, ms));
-    $('#lock').onpointerup = e => { if (!e.target.closest('button,a,summary,input')) focusPw(); };
+    [0, 100, 400, 900, 1600].forEach(ms => setTimeout(focusPw, ms));
+    const onTap = e => { if (!$('#lock').classList.contains('on')) { ['pointerup', 'touchend', 'click'].forEach(t => document.removeEventListener(t, onTap, true)); return; } if (!e.target.closest('button,a,summary,input')) focusPw(); };
+    ['pointerup', 'touchend', 'click'].forEach(t => document.addEventListener(t, onTap, true));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && $('#lock').classList.contains('on')) focusPw(); });
   }
 }
 function renderSetup() {

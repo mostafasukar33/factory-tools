@@ -1109,7 +1109,12 @@ async function showLock(msg) {
   $('#lkAbc').onclick = () => { const i = $('#lkP'); const num = i.inputMode === 'numeric'; i.inputMode = num ? 'text' : 'numeric'; if (num) i.removeAttribute('pattern'); else i.setAttribute('pattern', '[0-9]*'); $('#lkAbc').textContent = num ? 'ارجع للوحة الأرقام' : 'كلمة السر فيها حروف؟ افتح لوحة الحروف'; i.blur(); setTimeout(() => i.focus(), 50); };
   /* أول ما الشاشة تظهر وفيه بصمة مفعّلة: بيطلب البصمة لوحده مرة واحدة. لو اتلغت أو فشلت، بتكتب كلمة السر أو تدوس الزرار */
   if (bio && !location.search.includes('nobio')) setTimeout(() => $('#lkBio') && !$('#lkP').value && $('#lkBio').click(), 350);
-  else setTimeout(() => $('#lkP') && $('#lkP').focus(), 100);
+  else {
+    /* من غير بصمة: لوحة الأرقام تفتح لوحدها. الأيفون أحياناً بيرفض الفتح التلقائي، فأول لمسة في أي مكان في الشاشة بتفتحها */
+    const focusPw = () => { const i = $('#lkP'); if (i && document.activeElement !== i) { try { i.focus({preventScroll: true}); } catch (e) { i.focus(); } } };
+    [100, 400, 900].forEach(ms => setTimeout(focusPw, ms));
+    $('#lock').onpointerup = e => { if (!e.target.closest('button,a,summary,input')) focusPw(); };
+  }
 }
 function renderSetup() {
   $('#lockBox').innerHTML = `

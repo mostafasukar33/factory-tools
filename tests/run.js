@@ -19,7 +19,7 @@ function eq(name, got, want) {
   const ok = JSON.stringify(got) === JSON.stringify(want);
   if (ok) { oks++; console.log('  ✔', name); } else { fails++; console.log('  ✖', name, '\n     المتوقع:', JSON.stringify(want), '\n     اللي طلع:', JSON.stringify(got)); }
 }
-const iso = d => d.toISOString().slice(0, 10);
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const today = iso(new Date()), inDays = n => iso(new Date(Date.now() + n * 86400000));
 
 /* ملف نقل تجريبي (نفس شكل اللي بيتعمل من الإكسيل). الأرقام بالقرش */

@@ -314,6 +314,51 @@ nav svg{width:26px;height:26px}
 .pg .note{margin-top:14px;font-size:13.5px;font-weight:600;color:#555;flex:none}
 .pg .ft{flex:none;background:#111;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 44px;height:44px;font-size:13.5px;font-weight:600;border-top:4px solid #DAAE57}
 .pg .ft span:first-child{color:#DAAE57;font-size:16px;font-weight:700}
+/* ====== تنسيق الموبايل: أصغر وأنضف، من غير ما يتغير أي حاجة في الشغل ====== */
+@media (max-width:640px){
+  body{font-size:16px}
+  main{padding:10px 10px 0}
+  .top{padding:calc(8px + env(safe-area-inset-top)) 12px 8px}
+  .top img{width:36px;height:36px}.top h1{font-size:17px}
+  .card{padding:12px;border-radius:14px;margin-bottom:10px}
+  .card h2{font-size:16px;margin-bottom:8px}
+  .sync{font-size:13px;padding:7px 10px;margin-bottom:8px;border-radius:10px}
+  .btn{min-height:50px;font-size:16px;border-radius:12px}
+  .btn.big{min-height:58px;font-size:18px;border-radius:14px}
+  .btn.sm{min-height:42px;font-size:14px}
+  .inp{min-height:50px}
+  .seg button{min-height:44px;font-size:14px}
+  /* الرئيسية: ليا وعليا والصافي في صف واحد صغير */
+  #hTots{grid-template-columns:1fr 1fr 1.15fr;gap:6px;margin-bottom:10px}
+  #hTots div{padding:8px 4px;border-radius:12px}
+  #hTots div span{font-size:11.5px;line-height:1.3}
+  #hTots div b{font-size:16px}
+  #hTots .k{grid-column:auto;border-bottom-width:3px}
+  #hTots .k b{font-size:17px}#hTots .k small{display:none}
+  #bNewParty{min-height:52px;font-size:18px;margin-bottom:8px!important}
+  #bSearch{margin-bottom:10px!important}
+  .tabs{gap:6px;margin-bottom:10px}
+  .tabs button{min-height:62px;font-size:15.5px;border-radius:12px;padding:4px}
+  .tabs button small{font-size:13px}
+  .srow{grid-template-columns:1fr 104px;gap:6px}
+  .srow .inp{min-height:48px;font-size:16px}
+  .pt{padding:9px 10px;border-radius:12px;margin-bottom:6px;border-right-width:5px}
+  .pt .m b{font-size:16.5px}.pt .a b{font-size:17px}
+  .pt .m small,.pt .a small{font-size:12px}
+  /* صفحة الحساب */
+  .phd{padding:12px 14px;border-radius:14px}
+  .phd h2{font-size:20px}.phd .bal b{font-size:26px}
+  /* الخزنة: لو خزنة واحدة تاخد السطر كله */
+  .tots .k + .vt:last-child{grid-column:1/-1}
+  .tots div b{font-size:20px}.tots .k b{font-size:26px}
+  .cm{padding:9px 10px;border-radius:12px;margin-bottom:6px}
+  #p-cash .g2 .btn.big{font-size:16px;padding:8px 6px;gap:6px}
+  /* النوافذ: بتطلع من تحت زي تطبيقات الموبايل */
+  .mask{align-items:flex-end;padding:0}
+  .modal{border-radius:18px 18px 0 0;max-height:94vh;padding:14px 14px calc(14px + env(safe-area-inset-bottom));max-width:none}
+  .modal h3{font-size:18px}
+  .rph{font-size:17px}
+}
 </style>
 </head>
 <body>
@@ -3017,7 +3062,7 @@ function route() {
 }
 let lastHash = '', wasWide = isWide();
 addEventListener('resize', () => { if (isWide() !== wasWide) { wasWide = isWide(); route(); } });
-if (!CHECKS_ON) { $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(5,1fr)'; }
+if (!CHECKS_ON) { $('#sChkDays').closest('.card').style.display = 'none'; $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(5,1fr)'; }
 $$('nav button').forEach(b => b.onclick = () => go(b.dataset.go));
 addEventListener('hashchange', () => { closeModal(); route(); if (location.hash !== lastHash) window.scrollTo(0, 0); lastHash = location.hash; });
 $('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk,#dcOk,#pyOk,#txOk,#evOk,#ecOk,#opOk,#adOk,#ccOk,#bcOk,#apOk')) closeModal(); });

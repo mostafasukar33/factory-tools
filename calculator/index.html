@@ -82,8 +82,8 @@ button:focus-visible{outline:3px solid var(--eq-top);outline-offset:2px}
 .editing{font-family:var(--ar);font-size:.85rem;color:var(--neg)}
 
 /* keys */
-.keys{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:minmax(40px,.55fr) repeat(6,minmax(52px,1fr));gap:12px 12px;direction:ltr}
-.k{position:relative;font-family:var(--ui);font-size:clamp(2rem,5.6vh,3.2rem);font-weight:400;color:var(--key-ink);border-radius:9px;border:1.5px solid var(--edge);
+.keys{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:minmax(34px,.4fr) repeat(6,minmax(52px,1fr));gap:12px 12px;direction:ltr}
+.k{position:relative;font-family:var(--ui);font-size:clamp(2.4rem,6.6vh,3.9rem);font-weight:400;color:var(--key-ink);border-radius:9px;border:1.5px solid var(--edge);
   background:linear-gradient(180deg,var(--num-top),var(--num-bot));cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;padding:0;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.25),0 3px 4px rgba(0,0,0,.55)}
 .k{transition:transform .06s,filter .06s}
@@ -91,12 +91,13 @@ button:focus-visible{outline:3px solid var(--eq-top);outline-offset:2px}
 .k.op{background:linear-gradient(180deg,var(--op-top),var(--op-bot));border-color:#1a2333}
 .k.op.on{filter:brightness(1.18);box-shadow:inset 0 0 0 3px rgba(255,255,255,.55),0 3px 4px rgba(0,0,0,.55)}
 .k.ac{background:linear-gradient(180deg,var(--ac-top),var(--ac-bot));border-color:#4a1512;font-weight:500}
-.k.eq{grid-column:span 3;background:linear-gradient(180deg,var(--eq-top),var(--eq-bot));border-color:#4d2808;font-weight:500}
+.k.zero{grid-column:span 3}
+.k.eq{background:linear-gradient(180deg,var(--eq-top),var(--eq-bot));border-color:#4d2808;font-weight:500}
 .k.fn{background:linear-gradient(180deg,var(--fn-top),var(--fn-bot));color:var(--fn-ink);font-size:clamp(1.25rem,3vh,1.6rem);font-weight:600;text-shadow:0 -1px 0 rgba(0,0,0,.5)}
 .k.fn.ar{font-family:var(--ar);font-size:clamp(1rem,2.4vh,1.2rem)}
 .k.mem{background:linear-gradient(180deg,#55585d,#36383c);color:var(--fn-ink);font-size:clamp(1.3rem,3.1vh,1.7rem);font-weight:600;text-shadow:0 -1px 0 rgba(0,0,0,.5)}
 .memtag{font-family:var(--ui);font-size:.8rem;font-weight:700;color:var(--lcd-ink);direction:ltr;white-space:nowrap;padding-bottom:.6em}
-.k.zeros{font-size:clamp(1.6rem,4.3vh,2.3rem);letter-spacing:-.02em}
+.k.zeros{font-size:clamp(1.9rem,5.2vh,2.9rem);letter-spacing:-.02em}
 .k svg{width:44%;height:auto;display:block;margin:auto}
 
 /* archive sheet */
@@ -168,11 +169,11 @@ button:focus-visible{outline:3px solid var(--eq-top);outline-offset:2px}
     <button class="k op" data-k="*">×</button>
     <button class="k" data-k="1">1</button><button class="k" data-k="2">2</button><button class="k" data-k="3">3</button>
     <button class="k op" data-k="-">−</button>
-    <button class="k" data-k="0">0</button>
     <button class="k zeros" data-k="00">00</button>
     <button class="k zeros" data-k="000">000</button>
-    <button class="k op" data-k="+">+</button>
     <button class="k" data-k=".">.</button>
+    <button class="k op" data-k="+">+</button>
+    <button class="k zero" data-k="0">0</button>
     <button class="k eq" data-k="=">=</button>
   </div>
 </div>

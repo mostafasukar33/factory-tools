@@ -46,6 +46,10 @@ textarea.inp{min-height:84px;resize:vertical;line-height:1.7}
 .btn.big{min-height:68px;font-size:22px;border-radius:16px}
 .stack{display:grid;gap:10px}
 .fld{margin-bottom:10px}
+.acts{display:flex;gap:8px;margin-bottom:10px}
+.acts .btn{flex:1;min-height:44px;font-size:15px;padding:6px 8px;white-space:nowrap;border-radius:12px}
+.fab2{display:none}
+nav .qk{display:none}
 .hint{color:#777;font-size:13px;margin:6px 0 0}
 .hint a{text-decoration:underline;cursor:pointer;color:var(--gold-d)}
 .empty{text-align:center;color:#888;padding:26px 10px}
@@ -261,7 +265,7 @@ nav svg{width:26px;height:26px}
   .ldg td.n,.ldg td.b{white-space:normal;overflow-wrap:anywhere}
   .ldg th:nth-child(1){width:12%}.ldg th:nth-child(2){width:25%}.ldg th:nth-child(3){width:12%}.ldg th:nth-child(4){width:10%}.ldg th:nth-child(5){width:13%}.ldg th:nth-child(6){width:12%}.ldg th:nth-child(7){width:16%}
   /* إجمالي الرصيد: ثابت تحت وواضح */
-  #p-party .ldgf{position:sticky;bottom:0;z-index:6;margin-top:10px;padding:14px 20px;border-radius:12px;border:3px solid var(--gold);box-shadow:0 -6px 14px #0003}
+  #p-party .ldgf{margin-top:10px;padding:14px 20px;border-radius:12px;border:3px solid var(--gold);box-shadow:0 -6px 14px #0003}
   #p-party .ldgf span{font-size:20px;color:#fff}
   #p-party .ldgf b{font-size:32px;color:var(--gold)}
   main.split .pt{padding:7px 10px;margin-bottom:5px;border-radius:11px}
@@ -282,6 +286,9 @@ nav svg{width:26px;height:26px}
   main.split #hList{order:4;flex:1;min-height:0;overflow:auto;padding-inline-end:4px}
   main.split #bNewParty{order:5;min-height:50px;font-size:18px;margin:8px 0 6px!important;flex:none}
   main.split #bSearch{order:6;flex:none;margin-bottom:0!important}
+  nav .qk{display:flex;gap:5px;margin:-1px 0 2px}
+  nav .qk button{flex:1;min-height:30px;padding:3px 4px;font-size:12.5px;justify-content:center;border:1.5px solid var(--line);background:#fff;color:#333}
+  nav .qk button.on{background:var(--gold-l);border-color:var(--gold-d);color:#111}
   .pt.cur{outline:3px solid var(--gold);outline-offset:-1px}
   .pt:hover{border-color:var(--gold)}
   .modal{max-width:560px}.modal.wide{max-width:780px}
@@ -387,6 +394,12 @@ nav svg{width:26px;height:26px}
   .pt{padding:9px 10px;border-radius:12px;margin-bottom:6px;border-right-width:5px}
   .pt .m b{font-size:16.5px}.pt .a b{font-size:17px}
   .pt .m small,.pt .a small{font-size:12px}
+  /* صفحة الحساب: فاتورة ودفعة عايمين تحت، والباقي في صف واحد صغير */
+  #ppDoc,#ppPay{display:none}
+  .acts{gap:6px}.acts .btn{min-height:42px;font-size:14px;padding:4px 4px}
+  .fab2{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:fixed;inset-inline:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:8px 10px;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:25}
+  .fab2 .btn{min-height:50px;font-size:16px;box-shadow:0 3px 10px #0004}
+  #p-party{padding-bottom:84px}
   /* صفحة الحساب */
   .phd{padding:12px 14px;border-radius:14px}
   .phd h2{font-size:20px}.phd .bal b{font-size:26px}
@@ -501,6 +514,7 @@ nav svg{width:26px;height:26px}
 
 <nav>
   <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>الحسابات</button>
+  <div class="qk"><button type="button" data-q="mkt">عملاء</button><button type="button" data-q="sup">موردين</button></div>
   <button data-go="cash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 10v5M18 10v5"/></svg>الخزنة</button>
   <button data-go="part"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3.2"/><circle cx="4.5" cy="9" r="2.4"/><circle cx="19.5" cy="9" r="2.4"/><path d="M6.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M1 19v-1a3.5 3.5 0 0 1 4.6-3.3M23 19v-1a3.5 3.5 0 0 0-4.6-3.3"/></svg>الشركاء</button>
   <button data-go="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 10h8M6 14h5M16 14h2"/></svg>الشيكات<i class="nb" id="nbChk"></i></button>
@@ -855,8 +869,9 @@ function renderHome() {
   $('#hTabs').innerHTML = [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']]
     .map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small></button>`).join('');
   $$('#hTabs button').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
-  renderList(bal);
+  renderList(bal); qkMark();
 }
+function qkMark() { const sp = $('main').classList.contains('split'); $$('nav .qk button').forEach(x => x.classList.toggle('on', sp && x.dataset.q === tab)); }
 let curParty = '';
 const isWide = () => matchMedia('(min-width:1000px)').matches;
 function renderList(bal) {
@@ -1005,21 +1020,22 @@ function renderParty(id) {
       ${limitClass(p, b) ? `<div class="limw ${limitClass(p, b)}">${limitClass(p, b) === 'lim-r' ? '🔴 رصيده فوق الحد الأحمر' : '🟡 رصيده فوق الحد الأصفر'} (${fmtP(limitClass(p, b) === 'lim-r' ? limitsOf(p).r : limitsOf(p).y)})</div>` : ''}
       <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))} <small style="font-size:14px;color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
-    <div class="g2" style="margin-bottom:10px">
-      <button class="btn big" id="ppDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button>
-      <button class="btn green big" id="ppPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button>
+    <div class="acts">
+      <button class="btn" id="ppDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button>
+      <button class="btn green" id="ppPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button>
       <button class="btn line" id="ppRet" type="button">↩ ${sup ? 'مرتجع شراء' : 'مرتجع بيع'}</button>
       <button class="btn line" id="ppAdj" type="button">✂ خصم / تسوية</button>
+      <button class="btn gold" id="ppStmt" type="button">📄 كشف حساب</button>
     </div>
-    <button class="btn gold" id="ppStmt" type="button">📄 كشف حساب</button>
-    ${nX ? `<div class="sech" style="margin-bottom:0"><span></span><a id="ppX">${showX ? 'إخفاء الملغي' : `إظهار الملغي (${nX})`}</a></div>` : ''}
+    <div class="fab2"><button class="btn big" id="fbDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button><button class="btn green big" id="fbPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button></div>
     ${ledgerTable(p)}
+    ${nX ? `<div class="sech" style="margin-top:6px"><span></span><a id="ppX">${showX ? 'إخفاء الملغي' : `إظهار الملغي (${nX})`}</a></div>` : ''}
     ${showX && nX ? `<div class="sech"><span>الحركات الملغية</span></div>${all.filter(e => e.del).reverse().map(e => entryCard(e, 0)).join('')}` : ''}`;
   $('#ppBack').onclick = () => go('home'); bindBar();
   $('#ppEdit').onclick = () => partyModal(p);
   $('#ppStmt').onclick = () => stmtModal(p);
-  $('#ppDoc').onclick = () => docModal(p, sup ? 'pur' : 'inv');
-  $('#ppPay').onclick = () => payModal(p, sup ? 'ppay' : 'pay');
+  $('#ppDoc').onclick = $('#fbDoc').onclick = () => docModal(p, sup ? 'pur' : 'inv');
+  $('#ppPay').onclick = $('#fbPay').onclick = () => payModal(p, sup ? 'ppay' : 'pay');
   $('#ppRet').onclick = () => docModal(p, sup ? 'rpur' : 'rinv');
   $('#ppAdj').onclick = () => adjModal(p);
   if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
@@ -1334,6 +1350,10 @@ function histHtml(e) {
 
 /* جدول الحساب جوه البرنامج: نفس شكل الكشف اللي بيتبعت للعميل بالظبط. الدوسة على أي سطر بتفتح الفاتورة أو الدفعة بتاعته */
 const shortDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}${RLM}/${RLM}${m}<small>${y}</small>` : ''; };   // اليوم/الشهر وتحتهم السنة علشان الجدول يدخل في الموبايل
+function ledgerHintOnce() {
+  try { if (localStorage.getItem('fo_hint_ledger')) return ''; localStorage.setItem('fo_hint_ledger', '1'); } catch (e) { return ''; }
+  return '<p class="hint">دوس على أي سطر علشان تعدّله. الدفعات أخضر، والمرتجعات والخصومات برتقاني، والشيكات المرتجعة أحمر. (الجملة دي بتظهر مرة واحدة بس)</p>';
+}
 function ledgerTable(p) {
   const s = stmtData(p.id, '', '');
   if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده</div>';
@@ -1342,7 +1362,7 @@ function ledgerTable(p) {
     ${s.rows.map(r => `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b>${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>
-    <p class="hint">دوس على أي سطر علشان تعدّله. الدفعات أخضر، والمرتجعات والخصومات برتقاني، والشيكات المرتجعة أحمر.</p>`;
+    ${ledgerHintOnce()}`;
 }
 
 /* ====================== كشف الحساب ====================== */
@@ -3272,7 +3292,13 @@ function jumpTo(toEnd) {
 let lastHash = '', wasWide = isWide();
 addEventListener('resize', () => { if (isWide() !== wasWide) { wasWide = isWide(); route(); } });
 if (!CHECKS_ON) { $('#sChkDays').closest('.card').style.display = 'none'; $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(5,1fr)'; }
-$$('nav button').forEach(b => b.onclick = () => go(b.dataset.go));
+$$('nav button[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
+$$('nav .qk button').forEach(b => b.onclick = () => {
+  tab = b.dataset.q;
+  const f = liveParties().filter(x => x.sec === tab).sort((a, c) => a.name.localeCompare(c.name, 'ar'))[0];
+  try { if (f) sessionStorage.setItem('fo_lastp', f.id); } catch (e) {}
+  go('home');
+});
 addEventListener('hashchange', () => { closeModal(); route(); if (location.hash !== lastHash) window.scrollTo(0, 0); lastHash = location.hash; });
 $('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk,#dcOk,#pyOk,#txOk,#evOk,#ecOk,#opOk,#adOk,#ccOk,#bcOk,#apOk')) closeModal(); });
 

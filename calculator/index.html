@@ -86,7 +86,8 @@ button:focus-visible{outline:3px solid var(--eq-top);outline-offset:2px}
 .k{position:relative;font-family:var(--ui);font-size:clamp(2rem,5.6vh,3.2rem);font-weight:400;color:var(--key-ink);border-radius:9px;border:1.5px solid var(--edge);
   background:linear-gradient(180deg,var(--num-top),var(--num-bot));cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;padding:0;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.25),0 3px 4px rgba(0,0,0,.55)}
-.k:active,.k.down{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 1px 2px rgba(0,0,0,.6);filter:brightness(.92)}
+.k{transition:transform .06s,filter .06s}
+.k:active,.k.down{transform:translateY(3px) scale(.94);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 0 2px rgba(0,0,0,.6);filter:brightness(1.35)}
 .k.op{background:linear-gradient(180deg,var(--op-top),var(--op-bot));border-color:#1a2333}
 .k.op.on{filter:brightness(1.18);box-shadow:inset 0 0 0 3px rgba(255,255,255,.55),0 3px 4px rgba(0,0,0,.55)}
 .k.ac{background:linear-gradient(180deg,var(--ac-top),var(--ac-bot));border-color:#4a1512;font-weight:500}
@@ -138,7 +139,6 @@ button:focus-visible{outline:3px solid var(--eq-top);outline-offset:2px}
 .mtot{font-family:var(--ui);font-weight:300;font-variant-numeric:tabular-nums;font-size:2.4rem;direction:ltr}
 .btn:disabled{opacity:.45;cursor:default}
 .actions .btn{flex:1}
-@media (prefers-reduced-motion:reduce){.k:active,.k.down{transform:none}}
 </style>
 
 </head>
@@ -366,6 +366,11 @@ function press(k){
     S.closed=true;S.pending='';archiveCurrent();render();return;}
 }
 
+(function(){const K=$('keys');let cur=null;
+  const off=()=>{if(cur){cur.classList.remove('down');cur=null}};
+  K.addEventListener('pointerdown',e=>{const b=e.target.closest('.k');if(!b)return;off();cur=b;b.classList.add('down');try{navigator.vibrate&&navigator.vibrate(8)}catch(_){}});
+  ['pointerup','pointercancel','pointerleave'].forEach(t=>K.addEventListener(t,()=>setTimeout(off,90)));
+})();
 $('keys').addEventListener('click',e=>{const b=e.target.closest('.k');if(b&&b.dataset.k)press(b.dataset.k)});
 document.addEventListener('keydown',e=>{if(!$('sheet').hidden||!$('memSheet').hidden)return;const m={Enter:'=',Backspace:'BS',Escape:'C',',':'.',n:'NEG',N:'NEG'};let k=m[e.key]||e.key;
   if(/^[0-9.+\-*/%=]$/.test(k)||k==='BS'||k==='C'||k==='NEG'){e.preventDefault();press(k)}});

@@ -841,11 +841,9 @@ function renderHome() {
   const probs = selfCheck();
   const au = db.cfg.audit;
   if (au && !au.ok) probs.unshift(au.msg);
-  const lb = db.cfg.lastBackup || 0, every = db.cfg.sheetOk ? 30 : 7, days = Math.floor((Date.now() - lb) / 86400000), bs = bkState();
-  $('#bkRem').innerHTML = bs === 'old' || bs === 'err' ? `<div class="sync warn">💾 ${bs === 'old' ? 'النسخة الاحتياطية اليومية على Google Drive لسه مش متشغلة.' : 'النسخة الاحتياطية اليومية على Google Drive واقفة.'} <a id="bkFix">شغّلها (خطوات بسيطة)</a></div>`
-    : db.parties.length && days >= every && bs !== 'ok' && bs !== 'wait' ? `<div class="sync">💾 ${lb ? `آخر نسخة احتياطية من ${days} يوم.` : 'لسه منزّلتش نسخة احتياطية.'} <a id="bkGo">نزّل واحدة دلوقتي</a></div>` : '';
+  const lb = db.cfg.lastBackup || 0, every = db.cfg.sheetOk ? 30 : 7, days = Math.floor((Date.now() - lb) / 86400000);
+  $('#bkRem').innerHTML = db.parties.length && days >= every ? `<div class="sync">💾 ${lb ? `آخر نسخة احتياطية من ${days} يوم.` : 'لسه منزّلتش نسخة احتياطية.'} <a id="bkGo">نزّل واحدة دلوقتي</a></div>` : '';
   if ($('#bkGo')) $('#bkGo').onclick = () => $('#bBackup').click();
-  if ($('#bkFix')) $('#bkFix').onclick = backupHelp;
   $('#chk').innerHTML = chkAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '');
   const bal = allBalances();
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
@@ -1522,37 +1520,11 @@ function key_(k) {
   return s === k;
 }
 function resetKey() { PropertiesService.getScriptProperties().deleteProperty('KEY'); }
-// نسخة احتياطية كل يوم من الجدول كله في فولدر على Google Drive (بيفضل آخر 30 نسخة)
-const BK_FOLDER = 'نسخ حسابات فلاش أون';
-function dailyBackup() {
-  const p = PropertiesService.getScriptProperties();
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet(), it = DriveApp.getFoldersByName(BK_FOLDER);
-    const folder = it.hasNext() ? it.next() : DriveApp.createFolder(BK_FOLDER);
-    const d = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    DriveApp.getFileById(ss.getId()).makeCopy('حسابات فلاش أون ' + d, folder);
-    const files = [], fi = folder.getFiles();
-    while (fi.hasNext()) files.push(fi.next());
-    files.sort((a, b) => b.getDateCreated() - a.getDateCreated());
-    files.slice(30).forEach(f => f.setTrashed(true));
-    p.setProperty('LASTBK', String(Date.now())); p.deleteProperty('BKERR');
-  } catch (e) { p.setProperty('BKERR', String(e).slice(0, 200)); }
-  bk_();
-}
-function bk_() {
-  const p = PropertiesService.getScriptProperties();
-  let on = false, err = '';
-  try {
-    on = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'dailyBackup');
-    if (!on) { ScriptApp.newTrigger('dailyBackup').timeBased().everyDays(1).atHour(3).create(); on = true; }
-  } catch (e) { err = String(e).slice(0, 200); }
-  return {on: on, last: Number(p.getProperty('LASTBK')) || 0, err: err || p.getProperty('BKERR') || ''};
-}
 function doPost(e) {
   let req;
   try { req = JSON.parse(e.postData.contents); } catch (x) { return out_({ok: false, error: 'bad'}); }
   if (!req || !key_(req.key)) return out_({ok: false, error: 'key'});
-  if (req.action === 'ping') return out_({ok: true, app: 'fo-acc', v: 1, bv: 1, bk: bk_(), n: Math.max(sh_().getLastRow() - 1, 0)});
+  if (req.action === 'ping') return out_({ok: true, app: 'fo-acc', v: 1, n: Math.max(sh_().getLastRow() - 1, 0)});
   if (req.action === 'push') return out_(push_(req.rows || []));
   if (req.action === 'pull') return out_(pull_(Number(req.since) || 0));
   return out_({ok: false, error: 'action'});
@@ -1636,35 +1608,52 @@ async function syncNow(manual) {
   const d0 = db;
   let got = 0;
   try {
-    let p = pendingRecs();
+    let p = pendingRecs(), pushed = 0;
     while (p.length) {
-      const batch = p.slice(0, 200);
+      const batch = p.slice(0, 50);   // دفعات صغيرة: 50 حركة كل مرة
       const rows = batch.map(([kind, r]) => ({id: r.id, kind, upd: r.upd, del: !!r.del, view: viewOf(kind, r), data: stripLocal(r)}));
-      const j = await callSheet({action: 'push', rows});
-      if (db !== d0) return;
-      if (!j.ok) throw new Error(j.error || 'خطأ من الشيت');
+      let j = null;
+      for (let t = 0; t < 3; t++) {   // لو الشيت مشغول (القفل) بنستنى ونعيد، مش بنرفض على طول
+        j = await callSheet({action: 'push', rows});
+        if (db !== d0) return;
+        if (j && j.ok === false && /lock/i.test(String(j.error)) && t < 2) { await new Promise(r => setTimeout(r, 2500)); continue; }
+        break;
+      }
+      /* "تمام" بس لو الشيت قال ok:true فعلاً وأكّد استلام كل حركة. غير كده الحركات بتفضل مستنية ويتعرض الخطأ اللي رجع */
+      if (!j || j.ok !== true) { const x = new Error(j && j.error ? String(j.error) : 'الشيت مردش ok'); x.srv = true; throw x; }
       const ack = new Set(j.ack || []);
-      if (!ack.size) throw new Error('الشيت مأكدش الاستلام');
-      batch.forEach(([k, r], i) => { if (ack.has(r.id) && r.upd === rows[i].upd) r.sy = r.upd; });
+      const miss = batch.filter(([k, r]) => !ack.has(r.id)).length;
+      if (miss) { const x = new Error(`الشيت أكد استلام ${batch.length - miss} من ${batch.length} حركة بس`); x.srv = true; throw x; }
+      batch.forEach(([k, r], i) => { if (r.upd === rows[i].upd) r.sy = r.upd; });
+      pushed += batch.length;
       p = pendingRecs(); renderSyncBox();
     }
     let more = true;
     while (more) {
       const j = await callSheet({action: 'pull', since: db.cfg.cursor});
       if (db !== d0) return;
-      if (!j.ok) throw new Error(j.error || 'خطأ من الشيت');
+      if (!j || j.ok !== true || !Array.isArray(j.rows)) { const x = new Error(j && j.error ? String(j.error) : 'الشيت مردش ok'); x.srv = true; throw x; }
       j.rows.forEach(r => { if (mergeRow(r)) got++; });
       db.cfg.cursor = j.next; more = !!j.more;
+    }
+    /* اتأكد إن الشيت فعلاً اتملى: عدد السجلات اللي فيه لازم يساوي (أو يزيد عن) اللي على الجهاز */
+    if (pushed) {
+      const v = await callSheet({action: 'ping'});
+      const total = Object.values(STORE).reduce((n, a) => n + db[a].length, 0);
+      if (!v || v.ok !== true || !(v.n >= total)) {
+        const retry = Date.now() - (db.cfg.vfAt || 0) > 180000;
+        if (retry) { db.cfg.vfAt = Date.now(); Object.values(STORE).forEach(a => db[a].forEach(r => { delete r.sy; })); }
+        const x = new Error(`الشيت فيه ${v && v.n !== undefined ? v.n : '؟'} سجل بس والجهاز فيه ${total}${retry ? '، هعيد الإرسال' : ''}`); x.srv = true; throw x;
+      }
     }
     db.cfg.lastSync = lastPullAt = Date.now();
     await flushSave();
     if (got) bridgeOut();
     if (manual) toast(got ? `اتبعت كل حاجة، ونزل ${got} سجل جديد ✔` : 'كل حاجة متسجلة على الشيت ✔');
-    if (Date.now() - ((db.cfg.bk || {}).at || 0) > 6 * 3600000) setTimeout(() => checkBackup(), 1500);
     setTimeout(() => cashSync(true), 800);
   } catch (e) {
     syncErr = e.message === 'key' ? 'key' : String(e.message || e); syncWhy = syncErr === 'key' ? '' : netWhy(e);
-    if (manual) toast(syncErr === 'key' ? 'الشيت رفض المفتاح السري. راجع المفتاح في الإعدادات.' : 'معرفتش أوصل للشيت. اتأكد من النت.', 5000);
+    if (manual) toast(syncErr === 'key' ? 'الشيت رفض المفتاح السري. راجع المفتاح في الإعدادات.' : 'المزامنة فشلت: ' + syncWhy, 7000);
     if (db === d0) flushSave();
   } finally {
     syncing = false;
@@ -1736,7 +1725,7 @@ function renderSettings() {
       <button class="btn line" id="shAudit" type="button">راجع الجهاز ده مع الشيت</button>
       <button class="btn line" id="shHelp" type="button">إزاي أعمل شيت الحسابات؟ (خطوة بخطوة)</button>
     </div>
-    ${c.sheetOk ? `<div class="sync ${bkState() === 'ok' ? 'ok' : bkState() === 'wait' ? '' : 'warn'}" style="margin:10px 0 0">💾 ${bkText()} <a id="shBk">${bkState() === 'ok' || bkState() === 'wait' ? 'التفاصيل' : 'شغّلها'}</a></div>` : ''}
+    <button class="btn line sm" id="shBk" type="button" style="margin-top:8px">💾 نسخة احتياطية يومية على Drive (اختياري)</button>
     <div id="shStat" class="sync" style="display:none;margin:10px 0 0"></div>
     <p class="hint">${c.lastSync ? 'آخر مزامنة ناجحة: ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة ناجحة.'}</p>`;
   $('#shEye').onclick = () => { const k = $('#shKey'); k.type = k.type === 'password' ? 'text' : 'password'; };
@@ -1824,6 +1813,7 @@ if (/^#join=/.test(location.hash)) {
   history.replaceState(null, '', location.pathname);
 } else { try { const h = sessionStorage.getItem('fo_join'); if (h) pendingJoin = parseJoin(h); } catch (e) {} }
 const netWhy = e => !e ? 'الشيت رد بحاجة مش مفهومة'
+  : e.srv ? 'الشيت رد: ' + e.message
   : e.name === 'AbortError' ? 'الشيت مردش في الوقت المحدد'
   : e.code === 'page' ? 'جوجل رد بصفحة بدل الشيت (غالباً بيطلب تسجيل دخول أو الوصول مش "أي شخص")'
   : 'المتصفح مش قادر يوصل لجوجل (النت، أو برنامج حماية/إضافة بتمنع script.google.com)';
@@ -1872,55 +1862,42 @@ setInterval(() => { if (db && db.cfg.joinWait && db.cfg.sheetUrl && !db.cfg.shee
 /* ---------- النسخة الاحتياطية اليومية على Google Drive ----------
    كود الشيت بيعمل نسخة كاملة من الجدول كل يوم في فولدر "نسخ حسابات فلاش أون" ويسيب آخر 30.
    البرنامج بيسأل الشيت كل كام ساعة: النسخة شغالة؟ وآخر نسخة امتى؟ ولو واقفة بيظهر تنبيه في الرئيسية. */
-async function checkBackup() {
-  if (!db || !db.cfg.sheetOk) return null;
-  let j; try { j = await callSheet({action: 'ping'}); } catch (e) { return null; }
-  if (!j || !j.ok || j.app !== 'fo-acc') return null;
-  const b = j.bk || {};
-  db.cfg.bk = {at: Date.now(), bv: j.bv || 0, on: !!b.on, last: b.last || 0, err: b.err || ''};
-  saveDB();
-  if (!$('#mask').classList.contains('on')) route();
-  return db.cfg.bk;
+/* ---------- النسخة الاحتياطية اليومية على Google Drive (اختياري، ملف لوحده) ----------
+   كود الشيت الأساسي مفيهوش أي حاجة من الدرايف. النسخة الاحتياطية ملف تاني (Backup.gs) بتضيفه لو عاوز، وبيشتغل لوحده بمؤقّت.
+   كل أسماؤه بتبدأ بـ bkp/BKP_ علشان مفيش أي تعارض مع الكود الأساسي، ولو مضفتوش الشيت بيشتغل عادي. */
+const backupScript = () => `// نسخة احتياطية يومية (اختياري) — ملف لوحده اسمه Backup
+// مفيش فيه أي اسم بيتكرر في الكود الأساسي (كله بيبدأ بـ BKP_ أو bkp)
+const BKP_FOLDER = 'نسخ حسابات فلاش أون';
+const BKP_KEEP = 30;
+function bkpRun() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet(), it = DriveApp.getFoldersByName(BKP_FOLDER);
+  const folder = it.hasNext() ? it.next() : DriveApp.createFolder(BKP_FOLDER);
+  const day = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  DriveApp.getFileById(ss.getId()).makeCopy('حسابات فلاش أون ' + day, folder);
+  const files = [], fi = folder.getFiles();
+  while (fi.hasNext()) files.push(fi.next());
+  files.sort((a, b) => b.getDateCreated() - a.getDateCreated());
+  files.slice(BKP_KEEP).forEach(f => f.setTrashed(true));
 }
-function bkState() {
-  const b = db.cfg.bk;
-  if (!db.cfg.sheetOk || !b) return '';
-  if (!b.bv) return 'old';
-  if (b.err || !b.on) return 'err';
-  if (!b.last) return 'wait';
-  return Date.now() - b.last > 3 * 86400000 ? 'err' : 'ok';
-}
-function bkText() {
-  const b = db.cfg.bk || {}, st = bkState();
-  return st === 'ok' ? `النسخة الاحتياطية اليومية شغالة ✔ آخر نسخة: ${dispDate(isoOf(b.last))} ${dispTime(b.last)}`
-    : st === 'wait' ? 'النسخة الاحتياطية اليومية اتشغلت، وأول نسخة هتتعمل الليلة.'
-    : st === 'old' ? 'النسخة الاحتياطية اليومية على Google Drive لسه مش متشغلة.'
-    : st === 'err' ? 'النسخة الاحتياطية اليومية واقفة.' : 'لسه متعرفش حالة النسخة الاحتياطية اليومية.';
-}
+// شغّلها مرة واحدة بس: بتاخد الإذن وبتعمل المؤقّت اليومي وبتاخد أول نسخة
+function bkpSetup() {
+  const has = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'bkpRun');
+  if (!has) ScriptApp.newTrigger('bkpRun').timeBased().everyDays(1).atHour(3).create();
+  bkpRun();
+}`;
 function backupHelp() {
-  const code = scriptFor(), st = bkState(), b = db.cfg.bk || {};
-  modal(`<h3>💾 نسخة احتياطية كل يوم على Google Drive</h3>
-    <div class="sync ${st === 'ok' ? 'ok' : 'warn'}">${bkText()}</div>
-    <p style="font-size:15px">كل يوم بالليل، نسخة كاملة من جدول الحسابات بتتحفظ في فولدر اسمه <b>نسخ حسابات فلاش أون</b> على Google Drive بتاعك، وبيفضل آخر 30 نسخة. لو حصل أي حاجة للجدول، الحسابات بتاعة أي يوم موجودة.</p>
-    ${st === 'ok' ? '' : `<ol class="steps">
-      <li>اضغط <b>"انسخ الكود"</b> تحت.</li>
-      <li>افتح جدول الحسابات ← <b>الإضافات (Extensions)</b> ← <b>Apps Script</b>. امسح الكود القديم كله والصق الجديد، واضغط الحفظ 💾.</li>
-      <li>فوق جنب زرار <b>تشغيل (Run) ▶</b> فيه قايمة بأسامي الدوال: اختار <b>dailyBackup</b> واضغط <b>تشغيل ▶</b>.</li>
-      <li>هيطلب إذن: <b>Review permissions</b> ← اختار حسابك ← <b>Advanced</b> ← <b>Go to ... (unsafe)</b> ← <b>Allow</b>. (ده علشان الكود يقدر يحفظ النسخة في Drive بتاعك. التحذير عادي لأن الكود بتاعك إنت.)</li>
-      <li>بعدها: <b>نشر (Deploy)</b> ← <b>إدارة عمليات النشر</b> ← ✏️ ← الإصدار: <b>إصدار جديد</b> ← <b>نشر</b>. اللينك بيفضل زي ما هو.</li>
-      <li>ارجع هنا واضغط <b>"اتأكد دلوقتي"</b>.</li>
-    </ol>`}
-    ${b.err ? `<p class="hint">رسالة جوجل: ${esc(b.err)}</p>` : ''}
-    <div class="stack" style="margin-top:12px">${st === 'ok' ? '' : '<button class="btn green" id="bkCopy" type="button">انسخ الكود</button>'}<button class="btn gold" id="bkChk" type="button">اتأكد دلوقتي</button><button class="btn line" id="bkX" type="button">إغلاق</button></div>`, true);
+  const code = backupScript();
+  modal(`<h3>💾 نسخة احتياطية يومية على Google Drive</h3>
+    <p style="font-size:15px">اختياري. كل يوم بالليل نسخة من جدول الحسابات بتتحفظ في فولدر <b>نسخ حسابات فلاش أون</b> على Drive (بيفضل آخر 30). <b>الشيت بيشتغل عادي حتى لو مضفتهاش.</b></p>
+    <ol class="steps">
+      <li>في Apps Script (اللي فيه كود الشيت) اضغط <b>+</b> جنب كلمة <b>الملفات (Files)</b> ← <b>Script</b>، وسمّيه <b>Backup</b>. <b>متلصقش الكود ده جوه ملف Code الأساسي.</b></li>
+      <li>اضغط <b>"انسخ كود النسخة الاحتياطية"</b> تحت، والصقه في ملف <b>Backup</b>، واضغط الحفظ 💾.</li>
+      <li>من القايمة جنب زرار <b>تشغيل ▶</b> اختار <b>bkpSetup</b> واضغط <b>تشغيل</b>. وافق على الإذن (Review permissions ← حسابك ← Advanced ← Go to ... ← Allow).</li>
+      <li>خلاص. <b>متعملش نشر جديد ولا إصدار جديد دلوقتي</b>، مش محتاج. هتلاقي أول نسخة في الدرايف في الفولدر ده فورًا.</li>
+    </ol>
+    <div class="stack" style="margin-top:12px"><button class="btn green" id="bkCopy" type="button">انسخ كود النسخة الاحتياطية</button><button class="btn line" id="bkX" type="button">إغلاق</button></div>`, true);
   $('#bkX').onclick = closeModal;
-  if ($('#bkCopy')) $('#bkCopy').onclick = async () => { try { await navigator.clipboard.writeText(code); toast('اتنسخ الكود ✔ دلوقتي الصقه في Apps Script', 5000); } catch (e) { closeModal(); showHelp(); } };
-  $('#bkChk').onclick = async () => {
-    $('#bkChk').disabled = true; $('#bkChk').textContent = '⏳ بسأل الشيت…';
-    const r = await checkBackup();
-    if (!r) { $('#bkChk').disabled = false; $('#bkChk').textContent = 'اتأكد دلوقتي'; return toast('معرفتش أوصل للشيت. اتأكد من النت.'); }
-    backupHelp();
-    toast(bkState() === 'ok' ? 'النسخة اليومية شغالة ✔' : bkState() === 'wait' ? 'اتشغلت ✔ أول نسخة الليلة' : bkState() === 'old' ? 'لسه الكود القديم. اتأكد إنك عملت "إصدار جديد" في النشر.' : 'لسه واقفة. اتأكد إنك شغّلت dailyBackup ووافقت على الإذن.', 6000);
-  };
+  $('#bkCopy').onclick = async () => { try { await navigator.clipboard.writeText(code); toast('اتنسخ ✔ الصقه في ملف Backup (مش في Code)', 6000); } catch (e) { toast('معرفتش أنسخ. جرّب تاني.'); } };
 }
 function showHelp() {
   if (!db.cfg.sheetKey) { db.cfg.sheetKey = makeKey(); saveDB(); }

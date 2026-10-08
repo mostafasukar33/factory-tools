@@ -1,6 +1,6 @@
 // محاكاة بسيطة لـ Google Apps Script علشان نختبر كود الشيت
 const vm = require('vm');
-function makeGas() {
+function makeGas(opts = {}) {
   const sheets = {};
   const mkSheet = name => {
     const rows = [];
@@ -24,6 +24,7 @@ function makeGas() {
     SpreadsheetApp: {getActiveSpreadsheet: () => ss},
     LockService: {getScriptLock: () => ({waitLock() {}, tryLock() { return true; }, releaseLock() {}})},
     PropertiesService: {getScriptProperties: () => ({getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = String(v); }, deleteProperty: k => { delete props[k]; }})},
+    ...(opts.noDrive ? {} : {
     ScriptApp: {getProjectTriggers: () => triggers.map(h => ({getHandlerFunction: () => h})), newTrigger: h => { const b = {timeBased: () => b, everyDays: () => b, atHour: () => b, create: () => { triggers.push(h); }}; return b; }},
     DriveApp: {
       getFoldersByName: n => { const f = folders.filter(x => x.name === n); return {hasNext: () => f.length > 0, next: () => f.shift()}; },
@@ -31,6 +32,7 @@ function makeGas() {
       getFileById: () => ({makeCopy: (name, folder) => { const t = Date.now() + folder.files.length; folder.files.push({name, trashed: false, getDateCreated: () => new Date(t), setTrashed(v) { this.trashed = v; }}); }})
     },
     Session: {getScriptTimeZone: () => 'Africa/Cairo'},
+    }),
     ContentService: {MimeType: {JSON: 'json'}, createTextOutput: t => ({t, setMimeType() { return this; }})},
     Utilities: {sleep() {}, formatDate: d => d.toISOString().slice(0, 10)},
     MailApp: {sendEmail() {}},

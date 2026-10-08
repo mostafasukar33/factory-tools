@@ -205,13 +205,37 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await A.click('nav button[data-go=set]'); await A.click('#shAudit'); await A.waitForTimeout(3000);
     eq('مراجعة الجهاز مع الشيت متطابقة', (await A.textContent('#modal .sync')).includes('متطابقين ('), true); await A.click('#saX');
 
-    await A.evaluate(() => checkBackup()); 
-    eq('النسخة اليومية: الشيت عمل المؤقت لوحده', [await A.evaluate(() => bkState()), sheets.acc.triggers], ['wait', ['dailyBackup']]);
-    for (let i = 0; i < 32; i++) sheets.acc.ctx.dailyBackup();
-    await A.evaluate(() => checkBackup());
-    eq('النسخة اليومية اتعملت في فولدر Drive وبيفضل آخر 30', [await A.evaluate(() => bkState()), sheets.acc.folders.length, sheets.acc.folders[0].files.filter(f => !f.trashed).length, sheets.acc.triggers.length], ['ok', 1, 30, 1]);
-    await A.click('nav button[data-go=home]'); await A.waitForTimeout(150);
-    eq('مفيش تنبيه نسخة احتياطية لما اليومية شغالة', (await A.textContent('#bkRem')).trim(), '');
+    console.log('\n١٠ج) كود الشيت الأساسي والنسخة الاحتياطية المنفصلة، والمزامنة بدفعات');
+    /* الكود الأساسي لوحده من غير أي خدمة درايف: لازم يشتغل ومفيهوش DriveApp ولا ScriptApp */
+    const mainCode = await A.evaluate(() => scriptFor()), bkCode = await A.evaluate(() => backupScript());
+    const G = makeGas({noDrive: true}); G.load(mainCode);
+    const gp = o => JSON.parse(G.post(JSON.stringify(Object.assign({key: 'Some-Key-1234'}, o))));
+    eq('الكود الأساسي مفيهوش درايف ولا مؤقّت، وبيشتغل من غيرهم', [/DriveApp|ScriptApp|dailyBackup/.test(mainCode), gp({action: 'ping'}).ok, gp({action: 'push', rows: [{id: 'x1', kind: 'tx', upd: 5, view: [], data: {a: 1}}]}).ack], [false, true, ['x1']]);
+    const G2 = makeGas(); G2.load(mainCode);
+    let clash = ''; try { G2.load(bkCode); } catch (e) { clash = String(e); }
+    eq('ملف النسخة الاحتياطية مبيتعارضش مع الأساسي (مفيش SHEET مكرر)', [clash, /\bSHEET\b|\bHEAD\b|\bW\b|sh_|key_|out_/.test(bkCode)], ['', false]);
+    G2.ctx.bkpSetup(); G2.ctx.bkpSetup(); for (let i = 0; i < 32; i++) G2.ctx.bkpRun();
+    eq('النسخة الاحتياطية: مؤقّت واحد وفولدر واحد وآخر 30 بس', [G2.triggers, G2.folders.length, G2.folders[0].files.filter(f => !f.trashed).length], [['bkpRun'], 1, 30]);
+    eq('الكود الأساسي لسه شغال بعد إضافة النسخة الاحتياطية', JSON.parse(G2.post(JSON.stringify({key: 'Some-Key-1234', action: 'ping'}))).ok, true);
+
+    const posts = [], origPost = sheets.acc.post.bind(sheets.acc);
+    sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push') posts.push(q.rows.length); return origPost(body); };
+    const addBulk = (X, n, tag) => X.evaluate(([n, tag]) => { for (let i = 0; i < n; i++) { const now = Date.now() + i; const r = {id: 't_' + tag + i, type: 'exp', amt: 100, vault: 'v_main', to: '', cat: 'c_exp0', note: tag, date: todayISO(), at: now, upd: now, del: true, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); } saveDB(); }, [n, tag]);
+    await addBulk(A, 130, 'bulk'); await A.evaluate(() => syncNow()); await A.waitForTimeout(500);
+    eq('المزامنة بتبعت دفعات 50 كحد أقصى (130 حركة)', [Math.max(...posts) <= 50, posts.reduce((a, b) => a + b, 0) >= 130, await A.evaluate(() => pendingRecs().length)], [true, true, 0]);
+    sheets.acc.post = body => { const q = JSON.parse(body); return q.action === 'push' ? JSON.stringify({ok: false, error: 'boom'}) : origPost(body); };
+    await addBulk(A, 3, 'fail'); await A.evaluate(() => syncNow()); await A.waitForTimeout(300);
+    eq('ok:false: بيعرض الخطأ اللي راجع والحركات تفضل مستنية ومفيش "تمام"', await A.evaluate(() => [syncErr, pendingRecs().length >= 3, $('#syncBox').textContent.includes('✔ كل حاجة')]), ['boom', true, false]);
+    let lockTry = 0;
+    sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push' && lockTry++ < 1) return JSON.stringify({ok: false, error: 'Exception: Lock timeout: another process was holding the lock for too long.'}); return origPost(body); };
+    await A.evaluate(() => syncNow()); await A.waitForTimeout(3500);
+    eq('القفل بيستنى ويعيد بدل ما يرفض: اتبعت بعد المحاولة التانية', [lockTry >= 2, await A.evaluate(() => pendingRecs().length)], [true, 0]);
+    sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push') return JSON.stringify({ok: true, ack: q.rows.map(r => r.id), seq: 1}); return origPost(body); };   // بيقول تمام وهو مكتبش حاجة
+    await addBulk(A, 2, 'ghost'); await A.evaluate(() => syncNow()); await A.waitForTimeout(500);
+    eq('شيت بيرد ok وهو فاضي: التطبيق يكتشف الفرق ومبيقولش تمام', await A.evaluate(() => [/الشيت فيه/.test(syncErr), pendingRecs().length > 0, $('#syncBox').textContent.includes('✔ كل حاجة')]), [true, true, false]);
+    sheets.acc.post = origPost;
+    await A.evaluate(() => syncNow()); await A.waitForTimeout(1500);
+    eq('بعد ما الشيت يرجع سليم كل حاجة تتبعت وتبقى تمام', await A.evaluate(() => [syncErr, pendingRecs().length]), ['', 0]);
 
     console.log('\n١١) شيت دفتر الخزنة مقفول بالمفتاح');
     const C2 = await D1.page('cash.html'); await C2.click('nav button[data-go=set]');
@@ -314,7 +338,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     console.log('\n١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2.errs), []);
-  } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); }
+  } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();
   console.log(`\n${fails ? '✖' : '✔'} ${oks} نجح، ${fails} فشل\n`);
   process.exit(fails ? 1 : 0);

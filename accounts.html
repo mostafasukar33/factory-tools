@@ -702,6 +702,14 @@ html[data-theme=dark] .cnet b{color:#F3EFE3}html[data-theme=dark] .cnet b.neg{co
   #p-cash>.card .seg{grid-column:1/-1;margin:0}#p-cash>.card #cVault{margin-top:0!important}
   #p-cash>.card #cPick:has(.g2){grid-column:1/-1}
 }
+.dnav{display:flex;align-items:center;justify-content:center;gap:6px}
+.dnav button{width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:22px;font-weight:800;line-height:1;cursor:pointer;color:var(--ink);padding:0}
+.dnav span{min-width:112px;text-align:center;border:1px solid var(--gold);background:var(--gold-l);border-radius:10px;padding:6px 10px;font-weight:800;font-size:14.5px;color:var(--gold-d);white-space:nowrap}
+.dnav button:active{transform:scale(.94)}
+html[data-theme=dark] .dnav button{background:#26251f;border-color:#4a463a;color:#ECE8DC}
+html[data-theme=dark] .dnav span{color:#F3EFE3}
+@media (max-width:640px){#p-cash>.card .dnav{grid-column:1/-1}}
+@media (min-width:1000px){#p-cash>.card{grid-template-columns:auto auto 1fr 1fr}}
 </style>
 </head>
 <body>
@@ -848,6 +856,23 @@ const num = s => { const n = parseFloat(normDigits(s).replace(/[^\d.\-]/g, ''));
 const toP = s => Math.round(num(s) * 100);                                   // جنيه → قرش
 const fmtP = p => { p = Math.round(+p || 0); const a = Math.abs(p); return (p < 0 ? '-' : '') + (a / 100).toLocaleString('en-US', {minimumFractionDigits: a % 100 ? 2 : 0, maximumFractionDigits: 2}); };
 const pad2 = n => String(n).padStart(2, '0');
+/* حركة الأرقام: لو الرقم اتغير عن آخر مرة اتعرض فيها، بيعدّ من القديم للجديد في نص ثانية */
+const numPrev = new Map();
+function runCounters(root) {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  (root || document).querySelectorAll('[data-cnt]').forEach(el => {
+    const key = el.dataset.ck, to = +el.dataset.cnt, from = numPrev.get(key); numPrev.set(key, to);
+    const tn = el.firstChild;
+    if (reduce || from === undefined || from === to || !tn || tn.nodeType !== 3) return;
+    const mt = tn.nodeValue.match(/^\s*-?[\d,.]+([\s\S]*)$/), keepTail = mt ? mt[1] : '', t0 = performance.now(), dur = 550;
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      tn.nodeValue = fmtP(Math.round(from + (to - from) * e)) + keepTail;
+      if (k < 1 && el.isConnected) requestAnimationFrame(step); else if (el.isConnected) tn.nodeValue = fmtP(to) + keepTail;
+    };
+    tn.nodeValue = fmtP(from) + keepTail; requestAnimationFrame(step);
+  });
+}
 const isoOf = ms => { const d = new Date(ms); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
 const todayISO = () => isoOf(Date.now());
 /* يوم/شهر/سنة واليوم على اليمين: علامة الاتجاه (RLM) بتفصل الأرقام فتترتب من اليمين لليسار */
@@ -1167,14 +1192,14 @@ function renderHome() {
   const bal = allBalances();
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
   const net = ly - al;
-  $('#hTots').innerHTML = `<div><span>ليا (عند الناس)</span><b>${fmtP(ly)}</b></div><div class="cr"><span>عليا (للناس)</span><b>${fmtP(al)}</b></div>
-    <div class="k"><span>الصافي ${net >= 0 ? 'ليا' : 'عليا'}</span><b>${fmtP(Math.abs(net))} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>`;
+  $('#hTots').innerHTML = `<div><span>ليا (عند الناس)</span><b data-ck="h:ly" data-cnt="${ly}">${fmtP(ly)}</b></div><div class="cr"><span>عليا (للناس)</span><b data-ck="h:al" data-cnt="${al}">${fmtP(al)}</b></div>
+    <div class="k"><span>الصافي ${net >= 0 ? 'ليا' : 'عليا'}</span><b data-ck="h:net" data-cnt="${Math.abs(net)}">${fmtP(Math.abs(net))} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>`;
   const ps = liveParties();
   const cnt = s => ps.filter(p => s === 'all' || p.sec === s).length;
   $('#hTabs').innerHTML = [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']]
     .map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small></button>`).join('');
   $$('#hTabs button').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
-  renderList(bal); qkMark();
+  renderList(bal); qkMark(); runCounters($('#hTots'));
 }
 function qkMark() { const sp = $('main').classList.contains('split'); $$('nav .qk button').forEach(x => x.classList.toggle('on', sp && x.dataset.q === tab)); }
 let curParty = '';
@@ -1324,7 +1349,7 @@ function renderParty(id) {
     <div class="sech ppbar" style="margin-top:0"><a id="ppBack">→ كل الحسابات</a><span class="jb"><button id="jUp" type="button">↑ فوق</button><button id="jDn" type="button">↓ آخر حركة</button></span><a id="ppEdit">تعديل البيانات</a></div>
     <div class="phd"><h2>${esc(p.name)}</h2><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}${p.noTot ? ' — <b style="color:var(--gold)">حساب فرعي خارج الإجماليات</b>' : ''}</small>
       ${limitClass(p, b) ? `<div class="limw ${limitClass(p, b)}">${limitClass(p, b) === 'lim-r' ? '🔴 رصيده فوق الحد الأحمر' : '🟡 رصيده فوق الحد الأصفر'} (${fmtP(limitClass(p, b) === 'lim-r' ? limitsOf(p).r : limitsOf(p).y)})</div>` : ''}
-      <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))} <small style="font-size:14px;color:var(--gold)">${CUR}</small></b></div>
+      <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}" data-ck="pb:${esc(id)}" data-cnt="${Math.abs(b)}">${fmtP(Math.abs(b))} <small style="font-size:14px;color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
     <div class="acts">
       <button class="btn" id="ppDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button>
@@ -1347,6 +1372,7 @@ function renderParty(id) {
   if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
   $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => openEntry(p, E.get(el.dataset.id)));
   if ($('#ppEnd')) $('#ppEnd').onclick = () => jumpTo(true);
+  runCounters($('#p-party'));
 }
 function entryCard(e, runB) {
   const flags = `${e.kind === 'open' ? '<span class="flag o">أول المدة</span>' : ''}${e.hist && e.hist.length ? '<span class="flag">اتعدّلت</span>' : ''}${e.del ? '<span class="flag x">ملغية</span>' : ''}`;
@@ -1678,7 +1704,7 @@ function ledgerTable(p) {
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
     ${s.rows.map(r => `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
     </tbody></table></div>
-    <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b>${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>
+    <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b data-ck="pe:${esc(p.id)}" data-cnt="${s.close * s.sg}">${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>
     ${ledgerHintOnce()}`;
 }
 
@@ -2485,8 +2511,24 @@ function cashRange() {
 /* جدول حركات الخزنة: الاسم أو الملاحظة هو الأساس، وتحته البند بخط صغير */
 function cashTable(title, arr, all, cls) {
   const tot = arr.reduce((n, m) => n + m.amt, 0);
-  return `<section class="ctab ${cls}"><div class="cth"><span>${title} (${arr.length})</span><b>${fmtP(tot)}</b></div>
+  return `<section class="ctab ${cls}"><div class="cth"><span>${title} (${arr.length})</span><b data-ck="c:t:${esc(title)}" data-cnt="${tot}">${fmtP(tot)}</b></div>
     <table class="cmt"><tbody>${arr.length ? arr.map(m => `<tr data-i="${all.indexOf(m)}"><td class="d">${shortDate(m.date)}</td><td class="w"><b>${esc(m.who)}</b>${m.what ? `<small>${esc(m.what)}</small>` : ''}</td><td class="am">${fmtP(m.amt)}</td></tr>`).join('') : '<tr><td class="e" colspan="3">مفيش حركات</td></tr>'}</tbody></table></section>`;
+}
+const AR_DAYS = ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت'];
+const AR_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+/* خانة اسم اليوم/الشهر/السنة وأسهم السابق والتالي في الخزنة */
+function cashNavLabel() {
+  const t = todayISO();
+  if (cashMode === 'day') { const d = cashDay || t; return AR_DAYS[dowOf(d)] + (d === t ? ' · النهارده' : ''); }
+  if (cashMode === 'month') { const [y, m] = (cashMonth || t.slice(0, 7)).split('-'); return AR_MONTHS[+m - 1] + ' ' + y; }
+  return cashYear || t.slice(0, 4);
+}
+function cashStep(n) {
+  const t = todayISO();
+  if (cashMode === 'day') cashDay = addDays(cashDay || t, n);
+  else if (cashMode === 'month') { const [y, m] = (cashMonth || t.slice(0, 7)).split('-').map(Number), d = new Date(y, m - 1 + n, 1); cashMonth = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`; }
+  else cashYear = String((+cashYear || +t.slice(0, 4)) + n);
+  renderCash();
 }
 function cashNoteOnce() {
   try { if (localStorage.getItem('fo_hint_cash')) return ''; localStorage.setItem('fo_hint_cash', '1'); } catch (e) { return ''; }
@@ -2519,8 +2561,8 @@ function renderCash() {
       <button class="btn redf" id="cExp" type="button">− مصروف</button>
       <button class="btn gold" id="cInc" type="button">+ إيراد</button>
     </div>
-    <div class="tots"><div class="k"><span>رصيد كل الخزن</span><b class="${total < 0 ? 'cr' : ''}">${fmtP(total)} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>
-      ${vs.length < 2 ? '' : vs.map(v => { const b = vaultBal(v.id); return `<div class="vt ${cashVault === v.id ? 'on' : ''}" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="${b < 0 ? 'cr2' : ''}">${fmtP(b)}</b></div>`; }).join('')}</div>
+    <div class="tots"><div class="k"><span>رصيد كل الخزن</span><b class="${total < 0 ? 'cr' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>
+      ${vs.length < 2 ? '' : vs.map(v => { const b = vaultBal(v.id); return `<div class="vt ${cashVault === v.id ? 'on' : ''}" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="${b < 0 ? 'cr2' : ''}" data-ck="c:v:${esc(v.id)}" data-cnt="${b}">${fmtP(b)}</b></div>`; }).join('')}</div>
     <div class="ctools">
       <button class="btn line sm" id="cOpen2" type="button">✎ الفلوس اللي معايا</button>
       ${vs.length > 1 ? '<button class="btn line sm" id="cTr" type="button">⇄ تحويل بين الخزن</button>' : ''}
@@ -2528,13 +2570,14 @@ function renderCash() {
     </div>
     <div class="card">
       <div class="seg s4" id="cMode">${[['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${cashMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+      ${cashMode === 'range' ? '' : `<div class="dnav"><button type="button" id="cPrev" title="السابق">›</button><span id="cNavL">${cashNavLabel()}</span><button type="button" id="cNext" title="التالي">‹</button></div>`}
       <div id="cPick">${cashMode === 'day' ? `<input class="inp" type="date" id="cDay" value="${cashDay || t}">`
         : cashMode === 'month' ? `<input class="inp" type="month" id="cMonth" value="${cashMonth || t.slice(0, 7)}">`
         : cashMode === 'year' ? `<input class="inp num" id="cYear" inputmode="numeric" value="${cashYear || t.slice(0, 4)}">`
         : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div>`}</div>
       <select class="inp" id="cVault" style="margin-top:8px"><option value="">كل الخزن</option>${vs.map(v => `<option value="${esc(v.id)}" ${cashVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
     </div>
-    <div class="cnet"><span>${cashMode === 'day' ? 'صافي اليوم' : 'صافي الفترة'}</span><b class="${tin - tout < 0 ? 'neg' : ''}">${fmtP(tin - tout)} ${CUR}</b></div>
+    <div class="cnet"><span>${cashMode === 'day' ? 'صافي اليوم' : 'صافي الفترة'}</span><b class="${tin - tout < 0 ? 'neg' : ''}" data-ck="c:net" data-cnt="${tin - tout}">${fmtP(tin - tout)} ${CUR}</b></div>
     <div class="cwrap">${cashTable('الإيرادات', mv.filter(m => m.sign > 0), mv, 'inc')}${cashTable('المصروفات', mv.filter(m => m.sign < 0), mv, 'exp')}</div>
     ${mv.some(m => !m.sign) ? cashTable('تحويلات', mv.filter(m => !m.sign), mv, '') : ''}
     `;
@@ -2545,6 +2588,7 @@ function renderCash() {
   $('#cInc').onclick = () => txModal('inc');
   if ($('#cTr')) $('#cTr').onclick = () => txModal('tr');
   $$('#cMode button').forEach(b => b.onclick = () => { cashMode = b.dataset.m; renderCash(); });
+  if ($('#cPrev')) { $('#cPrev').onclick = () => cashStep(-1); $('#cNext').onclick = () => cashStep(1); }
   const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); renderCash(); }; };
   bindI('#cDay', v => cashDay = v); bindI('#cMonth', v => cashMonth = v); bindI('#cYear', v => cashYear = normDigits(v).replace(/\D/g, '').slice(0, 4));
   bindI('#cFrom', v => cashFrom = v); bindI('#cTo', v => cashTo = v);
@@ -2555,6 +2599,7 @@ function renderCash() {
   });
   $('#cSet').onclick = vaultSettings;
   $('#cOpen2').onclick = openingModal;
+  runCounters(pg);
 }
 /* رصيد البداية: الفلوس اللي في كل خزنة يوم ما بدأت تشتغل على البرنامج */
 /* الفلوس اللي معايا دلوقتي: بتكتب الموجود فعلاً في كل خزنة.

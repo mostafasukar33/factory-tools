@@ -166,9 +166,12 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
 
     console.log('\n١٠) المزامنة مع الشيت وجهاز تاني');
     await A.click('nav button[data-go=set]'); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.waitForTimeout(300);
-    await A.click('#shHelp'); await A.click('#hpCopy'); sheets.acc.load(await A.evaluate(() => navigator.clipboard.readText())); await A.click('#hpX');
+    await A.click('#shHelp'); await A.click('#hpCopy'); const accCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.acc.load(accCode); await A.click('#hpX');
+    eq('كود الشيت مفيهوش المفتاح', accCode.includes(KEY), false);
+    eq('رقم تعريف النشر بيتحول للينك', await A.evaluate(() => normSheetUrl(' AKfycbxTEST1234567890abcdefghij ')), 'https://script.google.com/macros/s/AKfycbxTEST1234567890abcdefghij/exec');
     await A.click('#shSave'); await A.waitForTimeout(4000);
     eq('الشيت مقفول من غير المفتاح', JSON.parse(sheets.acc.get()).ok, false);
+    eq('الشيت اتقفل على أول مفتاح', JSON.parse(sheets.acc.post(JSON.stringify({key: 'Other-Key-123', action: 'ping'}))).error, 'key');
     eq('الشيت بيرفض مفتاح غلط', JSON.parse(sheets.acc.post(JSON.stringify({key: 'x', action: 'pull'}))).error, 'key');
     const D2 = await newDevice(browser, base, sheets), B = await D2.page('accounts.html');
     await unlock(B, true);

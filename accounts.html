@@ -1305,8 +1305,10 @@ async function exportStmt(p, s, how) {
    الكود اللي بيتحط في Apps Script بيتعمل هنا على الجهاز ومعاه المفتاح، فالمفتاح مش موجود في أي ملف على GitHub.
    كل سجل بياخد "رقم مزامنة" متزايد في الشيت، وكل جهاز بيفتكر آخر رقم نزّله، فبينزل الجديد بس.
    لو نفس السجل اتعدّل على جهازين، الأحدث تعديلاً هو اللي بيكسب. */
-const scriptFor = key => `// حسابات فلاش أون (مقفول بمفتاح سري)
-const KEY = ${JSON.stringify(key)};
+/* الكود ثابت ومفيهوش أي مفتاح، فمستحيل يختلف عن البرنامج حتى لو اتنسخ قبل أو بعد ما المفتاح يتعمل.
+   أول طلب بمفتاح بيقفل الشيت على المفتاح ده (بيتحفظ في إعدادات السكريبت جوه حساب جوجل)، وبعد كده أي مفتاح تاني بيترفض.
+   لو محتاج تفك القفل: من Apps Script شغّل الدالة resetKey مرة. */
+const scriptFor = () => `// حسابات فلاش أون (مقفول بمفتاح سري بيتحفظ أول مرة)
 const SHEET = 'السجلات';
 const HEAD = ['id','النوع','آخر تعديل','رقم المزامنة','ملغي','التاريخ','الحساب','القسم','البيان','مدين','دائن','البيانات (لا تعدّلها)'];
 const W = HEAD.length;
@@ -1317,10 +1319,21 @@ function sh_() {
   return s;
 }
 function doGet() { return out_({ok: false, error: 'locked'}); }
+function key_(k) {
+  if (typeof k !== 'string' || k.length < 8) return false;
+  const p = PropertiesService.getScriptProperties();
+  let s = p.getProperty('KEY');
+  if (!s) {
+    const l = LockService.getScriptLock(); l.waitLock(10000);
+    try { s = p.getProperty('KEY'); if (!s) { p.setProperty('KEY', k); s = k; } } finally { l.releaseLock(); }
+  }
+  return s === k;
+}
+function resetKey() { PropertiesService.getScriptProperties().deleteProperty('KEY'); }
 function doPost(e) {
   let req;
   try { req = JSON.parse(e.postData.contents); } catch (x) { return out_({ok: false, error: 'bad'}); }
-  if (!req || req.key !== KEY) return out_({ok: false, error: 'key'});
+  if (!req || !key_(req.key)) return out_({ok: false, error: 'key'});
   if (req.action === 'ping') return out_({ok: true, app: 'fo-acc', v: 1, n: Math.max(sh_().getLastRow() - 1, 0)});
   if (req.action === 'push') return out_(push_(req.rows || []));
   if (req.action === 'pull') return out_(pull_(Number(req.since) || 0));
@@ -1519,7 +1532,16 @@ function setStat(k, msg) {
   e.style.display = 'flex'; e.className = 'sync' + (k === 'ok' ? ' ok' : k === 'bad' ? ' warn' : '');
   e.textContent = msg; e.scrollIntoView({block: 'center', behavior: 'smooth'});
 }
+/* بيطلّع لينك الـ exec من أي حاجة اتلصقت: اللينك نفسه، أو "رقم تعريف عملية النشر"، أو كلام فيه مسافات */
+function normSheetUrl(t) {
+  t = String(t || '').replace(/\s+/g, '');
+  const m = t.match(/https:\/\/script\.google(?:usercontent)?\.com\/(?:a\/[^/]+\/)?macros\/s\/[\w-]+\/exec/);
+  if (m) return m[0];
+  const id = t.match(/AKfy[\w-]{20,}/);
+  return id ? `https://script.google.com/macros/s/${id[0]}/exec` : t;
+}
 async function testSheet() {
+  $('#shUrl').value = normSheetUrl($('#shUrl').value);
   const c = db.cfg, u = $('#shUrl').value.trim(), k = $('#shKey').value.trim();
   if (u && !/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u)) return setStat('bad', '❌ اللينك مش شكل لينك Apps Script. لازم يبدأ بـ https://script.google.com ويخلص بـ /exec.');
   if (/\/dev(\?|$)/.test(u)) return setStat('bad', '❌ اللينك ده بتاع التجربة (/dev). المطلوب اللينك اللي بيخلص بـ /exec.');
@@ -1536,7 +1558,7 @@ async function testSheet() {
       : e.name === 'AbortError' ? '❌ الشيت مردش في 30 ثانية. اتأكد من النت وجرّب تاني.'
       : '❌ معرفتش أوصل للشيت. الأسباب المحتملة: (1) الوصول مش "أي شخص (Anyone)" (2) اللينك ناقص أو غلط (3) عدّلت الكود ومعملتش إصدار جديد في النشر (4) مفيش نت.');
   }
-  if (!j.ok && j.error === 'key') return setStat('bad', '❌ الشيت رفض المفتاح. المفتاح اللي هنا لازم يبقى نفس اللي اتحط في الكود. لو مش متأكد، انسخ الكود تاني من الخطوات وحطه في الشيت.');
+  if (!j.ok && j.error === 'key') return setStat('bad', '❌ الشيت ده مقفول على مفتاح تاني. افتح الخطوات، واضغط "انسخ الكود"، والصقه في Apps Script مكان القديم، واحفظ، وبعدين: نشر ← إدارة عمليات النشر ← ✏️ ← إصدار جديد ← نشر. ولو لسه بيرفض: في Apps Script اختار من فوق الدالة resetKey واضغط تشغيل (Run) مرة، وجرّب تاني.');
   if (j.ok && j.app !== 'fo-acc') return setStat('bad', j.v === 2 ? '❌ ده لينك شيت دفتر الخزنة. الحسابات محتاجة شيت جديد لوحده — شوف الخطوات.' : '❌ الشيت ده عليه كود تاني مش بتاع الحسابات. اعمل الخطوات وانسخ الكود من هنا.');
   if (!j.ok) return setStat('bad', '❌ الشيت رد بخطأ: ' + (j.error || 'غير معروف'));
   c.sheetOk = true; await flushSave();
@@ -1587,7 +1609,7 @@ async function applyJoin() {
 function showHelp() {
   if (!db.cfg.sheetKey) { db.cfg.sheetKey = makeKey(); saveDB(); }
   const k = db.cfg.sheetKey;
-  const code = scriptFor(k), lines = code.split('\n').length;
+  const code = scriptFor(), lines = code.split('\n').length;
   modal(`<h3>شيت الحسابات (مرة واحدة بس)</h3>
   <ol class="steps">
     <li>افتح <b>sheets.google.com</b> بحساب جوجل بتاعك، واضغط <b>+ (فاضي)</b> علشان تعمل جدول جديد. سمّيه: <b>حسابات فلاش أون</b>.</li>
@@ -1599,8 +1621,8 @@ function showHelp() {
     <li>اضغط <b>نشر (Deploy)</b> ← <b>Authorize access</b> ← اختار حسابك ← <b>Advanced</b> ← <b>Go to ... (unsafe)</b> ← <b>Allow</b>. (التحذير عادي لأن الكود بتاعك إنت.)</li>
     <li>انسخ <b>Web app URL</b> (بيخلص بـ /exec)، والصقه هنا في خانة اللينك، واضغط <b>حفظ واختبار الاتصال</b>.</li>
   </ol>
-  <p style="font-size:14px;margin:10px 0 0;color:#555">على أي جهاز تاني: افتح البرنامج، وحط نفس اللينك ونفس المفتاح، وكل البيانات هتنزل لوحدها. متعدّلش في الجدول بإيدك.</p>
-  <p style="font-size:14px;margin:6px 0 0;color:#555">لو غيّرت المفتاح بعدين: لازم تنسخ الكود تاني وتحطه، وبعدين <b>نشر ← إدارة عمليات النشر ← ✏️ ← إصدار جديد</b>.</p>
+  <p style="font-size:14px;margin:10px 0 0;color:#555"><b>لو كنت حاطط كود قبل كده:</b> امسحه والصق الجديد، واحفظ 💾، وبعدين <b>نشر ← إدارة عمليات النشر ← ✏️ ← الإصدار: إصدار جديد ← نشر</b>. اللينك بيفضل زي ما هو.</p>
+  <p style="font-size:14px;margin:6px 0 0;color:#555">على أي جهاز تاني: افتح "رابط الربط" اللي هيظهرلك بعد ما الربط ينجح. متعدّلش في الجدول بإيدك.</p>
   <div class="stack" style="margin-top:12px"><button class="btn green" id="hpCopy" type="button">انسخ الكود</button><button class="btn line" id="hpShow" type="button">اعرض الكود</button><button class="btn line" id="hpX" type="button">إغلاق</button></div>`, true);
   $('#hpX').onclick = closeModal;
   $('#hpShow').onclick = () => { if (!$('#hpCode')) $('#hpShow').insertAdjacentHTML('afterend', `<pre class="code" id="hpCode">${esc(code)}</pre>`); };

@@ -230,7 +230,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await A.click('nav button[data-go=rep]'); await A.click('#rpK button[data-v=profit]'); await A.waitForTimeout(200);
     eq('تقرير الأرباح هو أول تقرير', [await A.getAttribute('#rpK .on', 'data-v'), (await A.textContent('#p-rep .ldgf')).includes('بعد الشركاء')], ['profit', true]);
     await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
-    eq('لوحة النهارده ظاهرة', (await A.textContent('#hDash')).includes('مبيعات النهارده'), true);
+    eq('لوحة النهارده اتشالت من الرئيسية', await A.$('#hDash'), null);
     const SR = await A.evaluate(() => [searchAll('لفة تجربة').length, searchAll('1350').map(r => r.title)[0] || '', searchAll('سلفة').length, searchAll('x').length]);
     eq('البحث بالصنف وبالمبلغ', SR, [3, 'فاتورة بيع رقم 3 — عميل تجربة واحد', 1, 0]);
     await A.click('#bSearch'); await A.fill('#saQ', 'سلفة'); await A.waitForTimeout(400);

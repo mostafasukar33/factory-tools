@@ -336,7 +336,6 @@ nav svg{width:26px;height:26px}
   <div class="sync" id="syncBox"></div>
   <div id="chk"></div>
   <div id="bkRem"></div>
-  <div id="hDash"></div>
   <div class="tots" id="hTots"></div>
   <button class="btn gold big" id="bNewParty" type="button" style="margin-bottom:12px">+ حساب جديد</button>
   <button class="btn line sm" id="bSearch" type="button" style="margin-bottom:10px">🔎 دوّر في كل الحركات (مبلغ، صنف، رقم فاتورة…)</button>
@@ -709,7 +708,6 @@ function renderHome() {
   if ($('#bkGo')) $('#bkGo').onclick = () => $('#bBackup').click();
   if ($('#bkFix')) $('#bkFix').onclick = backupHelp;
   $('#chk').innerHTML = chkAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '');
-  renderDash();
   const bal = allBalances();
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
   const net = ly - al;
@@ -2941,7 +2939,7 @@ function route() {
   curParty = pg === 'party' ? h.slice(2) : '';
   if (split) {
     const box = $('#p-home'), st = box.scrollTop; renderHome(); box.scrollTop = st;
-    if (pg === 'home') { $('#p-party').innerHTML = '<h2 class="rph">النهارده<small>' + dispDate(todayISO()) + '</small></h2><div id="hDash2"></div><div class="card empty" style="padding:50px 20px;font-size:18px">اختار حساب من القايمة علشان يظهر كشفه هنا</div>'; renderDash($('#hDash2')); }
+    if (pg === 'home') $('#p-party').innerHTML = '<div class="card empty" style="padding:60px 20px;font-size:18px">اختار حساب من القايمة علشان يظهر كشفه هنا</div>';
   }
   if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
 }

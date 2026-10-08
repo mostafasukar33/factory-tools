@@ -13,6 +13,22 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="fonts/fonts.css">
+<script>
+/* المظهر (ليلي/فاتح) وحجم الخط: إعداد على الجهاز بس، بيتطبق قبل ما الصفحة تترسم */
+function uiGet() { try { return Object.assign({theme: 'auto', fs: '1'}, JSON.parse(localStorage.getItem('fo_ui') || '{}')); } catch (e) { return {theme: 'auto', fs: '1'}; } }
+function uiSet(o) { try { localStorage.setItem('fo_ui', JSON.stringify(Object.assign(uiGet(), o))); } catch (e) {} uiApply(); }
+function uiApply() {
+  const u = uiGet(), r = document.documentElement;
+  const dark = u.theme === 'dark' || (u.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  r.dataset.theme = dark ? 'dark' : 'light';
+  r.style.setProperty('--z', u.fs); r.dataset.fs = u.fs === '1' ? '' : 'z';
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = dark ? '#0d0c0a' : '#111111';
+  const b = document.getElementById('bTheme'); if (b) b.textContent = dark ? '☀' : '🌙';
+}
+uiApply();
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', uiApply); } catch (e) {}
+</script>
+
 <style>
 :root{--gold:#DAAE57;--gold-d:#9C7420;--gold-l:#FBF5E6;--ink:#111;--bg:#F5F2EA;--line:#E4DCC8;--red:#C62828;--red-l:#FDECEA;--green:#1B8E3E;--green-l:#E6F6EB;--blue:#37474F}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -531,6 +547,86 @@ table.cmt{width:100%;border-collapse:collapse}
 .cmt td.am{width:1%;white-space:nowrap;direction:ltr;text-align:right;font-weight:800;font-size:17px;font-variant-numeric:tabular-nums}
 .ctab.inc .am{color:var(--green)}.ctab.exp .am{color:var(--red)}
 .cmt td.e{text-align:center;color:#999;padding:18px}
+/* ============ حركات خفيفة ============ */
+@keyframes foFade{from{opacity:0}to{opacity:1}}
+@keyframes foUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes foPop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+.page.on{animation:foFade .18s ease-out}
+.mask.on{animation:foFade .15s ease-out}
+.mask.on .modal{animation:foPop .18s ease-out}
+#toast{animation:foUp .2s ease-out}
+.btn,.pt,.en,.cm,.tabs button,.seg button,.cmt td,.ldg tr td,nav button,.inp{transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .1s}
+.pt:active,.en:active{transform:scale(.995)}
+#bTheme{margin-inline-start:auto}#bTheme+.lockbtn{margin-inline-start:0}
+@media (max-width:640px){.mask.on .modal{animation:foUp .22s cubic-bezier(.2,.8,.2,1)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+/* ============ حجم الخط (تكبير المحتوى بس) ============ */
+html[data-fs=z] main,html[data-fs=z] .modal{zoom:var(--z)}
+html[data-fs=z] .modal{max-height:calc(92vh/var(--z))}
+html[data-fs=z] .cbar{top:calc(var(--hh,64px)/var(--z))}
+html[data-fs=z] .ldg th{top:calc(42px/var(--z))}
+@media (max-width:640px){
+  html[data-fs=z] .modal{max-height:calc(94vh/var(--z))}
+  html[data-fs=z] .fab2,html[data-fs=z] .cbar{bottom:calc((67px + env(safe-area-inset-bottom))/var(--z));top:auto}
+}
+@media (min-width:1000px){
+  html[data-fs=z] main.split #p-party,html[data-fs=z] main.split #p-home{top:calc(84px/var(--z));height:calc((100vh - 100px)/var(--z))}
+}
+/* ============ الوضع الليلي ============ */
+html[data-theme=dark]{color-scheme:dark;--bg:#12110e;--line:#37342b;--gold-l:#2a2312;--gold-d:#DDB765;--red:#FF7B72;--red-l:#3a1d1a;--green:#4CC574;--green-l:#15291b;--shadow:0 1px 2px #0009;--blue:#9FB3BC}
+html[data-theme=dark] body{color:#ECE8DC}
+html[data-theme=dark] :is(.page,.modal) :is(.card,.pt,.en,.cm,.tots div,.dash>*,.stm div,.li,.ck,.ctab,.ldgw,.ibtn,.phd,.tabs button,.btn.line,.btn.red){background:#1f1e19;border-color:#37342b;color:#ECE8DC}
+html[data-theme=dark] .modal{background:#1f1e19;color:#ECE8DC}
+html[data-theme=dark] :is(.page,.modal) :is(.inp,select.inp,textarea.inp){background:#17160f;border-color:#4a463a;color:#ECE8DC}
+html[data-theme=dark] :is(.page,.modal) .inp::placeholder{color:#8d8776}
+html[data-theme=dark] :is(.page,.modal) .btn:not(.gold):not(.green):not(.line):not(.red):not(.redf){background:#34312a;color:#F3EFE3}
+html[data-theme=dark] :is(.page,.modal) .btn.line{border-color:#5a5546}
+html[data-theme=dark] :is(.page,.modal) .btn.gold{background:var(--gold);color:#241b00}
+html[data-theme=dark] :is(.page,.modal) .btn.redf{background:#B3261E;color:#fff}
+html[data-theme=dark] :is(.page,.modal) :is(.tots .k,.dash .k,.stm .k,.ldgf,.dtot,.phd){background:var(--gold-l);border-color:#5b4a1d}
+html[data-theme=dark] :is(.page,.modal) :is(.phd,.phd .bal b,.mini2 b,.tots .k b,.dash .k b,.stm .k b,.ldgf b,.dtot b,.dashm b,.cmt td.w b,.dr){color:#F3EFE3}
+html[data-theme=dark] :is(.page,.modal) :is(.phd .bal b.cr,.tots .k b.cr,.tots b.cr2){color:#FF8A80}
+html[data-theme=dark] :is(.page,.modal) :is(.phd small,.mini2,.pt .m small,.pt .a small,.en .dh span,.en .nt,.en .dl,.en .rb,.hint,.rph small,label,.tots div span,.stm div span,.cmt td.w small,.cmt td.d,.tabs button small,.seg button){color:#B9B3A1}
+html[data-theme=dark] :is(.page,.modal) :is(.en .dl.tot,.en .rb b,.chkrow label,.cm .m b,.pt .m b,.pt .a b,.card h2){color:#F3EFE3}
+html[data-theme=dark] :is(.page,.modal) .card h2{color:var(--gold-d)}
+html[data-theme=dark] .seg{background:#2a2820}
+html[data-theme=dark] :is(.page,.modal) .seg button.on{background:#EBC66E;color:#241b00}
+html[data-theme=dark] :is(.page,.modal) .tabs button.on{background:var(--gold-l);border-color:var(--gold-d);color:#F3EFE3}
+html[data-theme=dark] :is(.page,.modal) .tabs button[data-t=sup].on{background:#1f2a2f;border-color:#9FB3BC}
+html[data-theme=dark] .pt.lim-y{background:#3a3216!important;border-color:#8a6d1c}
+html[data-theme=dark] .pt.lim-r{background:#3a1d1a!important;border-color:#8a2f28}
+html[data-theme=dark] .pt.cur{background:var(--gold-l)!important}
+html[data-theme=dark] .ck.b{background:#3a1d1a}
+html[data-theme=dark] .ldg th{background:#0d0c0a;color:#E8CE93}
+html[data-theme=dark] .ldg td{border-color:#37342b;color:#ECE8DC}
+html[data-theme=dark] .ldg tr:nth-child(even) td{background:#25241e}
+html[data-theme=dark] .ldg td.b{background:#2a271d}
+html[data-theme=dark] .ldg tr.op td{background:#33301f}
+html[data-theme=dark] .ldg tr.pay td{background:#15291b;color:#7DDB98}
+html[data-theme=dark] .ldg tr.ret td{background:#3a2a14;color:#F0B46A}
+html[data-theme=dark] .ldg tr.bnc td{background:#3a1d1a;color:#FF8A80}
+html[data-theme=dark] .cth{background:#26251f;border-color:#37342b}
+html[data-theme=dark] .cmt td{border-color:#2d2b24}
+html[data-theme=dark] .cmt tr:hover td{background:#26251f}
+html[data-theme=dark] .sync{background:var(--gold-l);color:#ECE8DC}
+html[data-theme=dark] .sync.ok{background:var(--green-l);color:#7DDB98}
+html[data-theme=dark] .sync.warn{background:var(--red-l);color:#FF8A80}
+html[data-theme=dark] :is(.cb.warn){background:#3a3216;color:#E9C46A}
+html[data-theme=dark] .modal h3,html[data-theme=dark] .modal p{color:#F3EFE3}
+html[data-theme=dark] .mask{background:#000c}
+html[data-theme=dark] #lock{background:var(--bg);color:#ECE8DC}
+html[data-theme=dark] #lock .box{background:#1f1e19}
+html[data-theme=dark] .fab2,html[data-theme=dark] .cbar{background:linear-gradient(to top,var(--bg) 70%,transparent)}
+@media (min-width:1000px){
+  html[data-theme=dark] .cbar{background:var(--bg)}
+  html[data-theme=dark] nav{background:#17160f;border-color:#37342b}
+  html[data-theme=dark] nav button{color:#cfc9b8}
+  html[data-theme=dark] nav button:hover{background:var(--gold-l);color:#fff}
+  html[data-theme=dark] nav button.on{background:var(--gold);color:#241b00;border-color:var(--gold)}
+  html[data-theme=dark] nav button.on svg{color:#241b00}
+  html[data-theme=dark] nav .qk button{background:#1f1e19;border-color:#37342b;color:#cfc9b8}
+  html[data-theme=dark] nav .qk button.on{background:var(--gold-l);color:#fff}
+}
 </style>
 </head>
 <body>
@@ -545,6 +641,7 @@ table.cmt{width:100%;border-collapse:collapse}
 <header class="top">
   <img src="icons/logo.jpg" alt="فلاش أون">
   <div><h1>فلاش أون</h1><small>الحسابات</small></div>
+  <button class="homebtn lockbtn" id="bTheme" type="button" title="ليلي / فاتح" style="min-width:40px;justify-content:center;padding:8px 10px"></button>
   <button class="homebtn lockbtn" id="bLock" type="button" title="قفل"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>قفل</button>
 </header>
 
@@ -582,6 +679,14 @@ table.cmt{width:100%;border-collapse:collapse}
 
 <!-- ============== الإعدادات ============== -->
 <section class="page" id="p-set">
+  <div class="card">
+    <h2>المظهر</h2>
+    <label>اللون</label>
+    <div class="seg s3" id="uiTheme"><button type="button" data-v="auto">تلقائي</button><button type="button" data-v="light">فاتح</button><button type="button" data-v="dark">ليلي</button></div>
+    <label>حجم الخط</label>
+    <div class="seg s3" id="uiFs"><button type="button" data-v="1">عادي</button><button type="button" data-v="1.12">كبير</button><button type="button" data-v="1.25">أكبر</button></div>
+    <div class="hint">الإعداد ده على الجهاز ده بس، وكل جهاز ليه إعداده.</div>
+  </div>
   <div class="card">
     <h2>النسخة على Google Sheet</h2>
     <div id="sSheet"></div>
@@ -1818,7 +1923,13 @@ function makeKey() {
   const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', r = crypto.getRandomValues(new Uint8Array(12));
   return [...r].map(x => A[x % A.length]).join('').replace(/(.{4})(?!$)/g, '$1-');
 }
+function bindUI() {
+  const u = uiGet();
+  $$('#uiTheme button').forEach(b => { b.classList.toggle('on', b.dataset.v === u.theme); b.onclick = () => { uiSet({theme: b.dataset.v}); bindUI(); }; });
+  $$('#uiFs button').forEach(b => { b.classList.toggle('on', b.dataset.v === u.fs); b.onclick = () => { uiSet({fs: b.dataset.v}); bindUI(); }; });
+}
 function renderSettings() {
+  bindUI();
   refreshBio(); renderCashLink();
   const c = db.cfg;
   const lk = lockDate(), lim = limitsOf();
@@ -3425,6 +3536,8 @@ let lastHash = '', wasWide = isWide();
 addEventListener('resize', () => { if (isWide() !== wasWide) { wasWide = isWide(); route(); } });
 if (!CHECKS_ON) { $('#sChkDays').closest('.card').style.display = 'none'; $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(5,1fr)'; }
 $$('nav button[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
+$('#bTheme').onclick = () => { uiSet({theme: document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'}); if ($('#uiTheme')) bindUI(); };
+uiApply();
 $$('nav .qk button').forEach(b => b.onclick = () => {
   tab = b.dataset.q;
   const f = liveParties().filter(x => x.sec === tab).sort((a, c) => a.name.localeCompare(c.name, 'ar'))[0];

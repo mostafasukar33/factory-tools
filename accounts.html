@@ -59,8 +59,8 @@ textarea.inp{min-height:84px;resize:vertical;line-height:1.7}
 .tots .k{grid-column:1/-1;background:var(--ink);border:0;border-bottom:4px solid var(--gold)}
 .tots .k span{color:var(--gold)}.tots .k b{color:#fff;font-size:30px}
 .tots .cr b{color:var(--red)}
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.tabs button{border:2px solid var(--line);background:#fff;border-radius:14px;min-height:68px;font-weight:800;font-size:19px;cursor:pointer;color:#333;line-height:1.25;padding:6px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.tabs button{border:2px solid var(--line);background:#fff;border-radius:14px;min-height:72px;font-weight:800;font-size:17px;cursor:pointer;color:#333;line-height:1.25;padding:6px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .tabs button small{display:block;font-size:15px;font-weight:700;color:#888}
 .tabs button.on{background:#111;color:#DAAE57;border-color:#111}.tabs button.on small{color:#fff}
 .tabs button[data-t=sup]{border-color:#9AA7AD}.tabs button[data-t=sup].on{background:var(--blue);border-color:var(--blue)}
@@ -745,7 +745,7 @@ $('#bLock').onclick = () => lockNow();
 'use strict';
 /* ====================== الرئيسية: قايمة الحسابات ====================== */
 const norm = s => normDigits(s).toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
-let tab = 'all';
+let tab = 'mkt';
 function renderHome() {
   if (!db) return;
   renderSyncBox();
@@ -765,7 +765,7 @@ function renderHome() {
     <div class="k"><span>الصافي ${net >= 0 ? 'ليا' : 'عليا'}</span><b>${fmtP(Math.abs(net))} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>`;
   const ps = liveParties();
   const cnt = s => ps.filter(p => s === 'all' || p.sec === s).length;
-  $('#hTabs').innerHTML = [['all', 'الكل'], ['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']]
+  $('#hTabs').innerHTML = [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']]
     .map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small></button>`).join('');
   $$('#hTabs button').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
   renderList(bal);
@@ -775,7 +775,7 @@ const isWide = () => matchMedia('(min-width:1000px)').matches;
 function renderList(bal) {
   bal = bal || allBalances();
   const q = norm($('#hSearch').value), sort = $('#hSort').value, last = sort === 'last' ? lastDates() : null;
-  let ps = liveParties().filter(p => (tab === 'all' || p.sec === tab) && (!q || norm(p.name).includes(q) || norm(p.phone || '').includes(q)));
+  let ps = liveParties().filter(p => (q ? true : p.sec === tab) && (!q || norm(p.name).includes(q) || norm(p.phone || '').includes(q)));
   if (sort === 'bal') ps.sort((a, b) => Math.abs(bal.get(b.id)) - Math.abs(bal.get(a.id)));
   else if (sort === 'last') ps.sort((a, b) => (last.get(b.id) || '').localeCompare(last.get(a.id) || ''));
   else ps.sort((a, b) => a.name.localeCompare(b.name, 'ar'));

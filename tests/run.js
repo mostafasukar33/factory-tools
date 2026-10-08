@@ -165,19 +165,26 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await A.click('nav button[data-go=set]'); await A.click('#sUnlock'); await A.fill('#apP', PASS); await A.click('#apOk'); await A.waitForTimeout(600);
 
     console.log('\n١٠) المزامنة مع الشيت وجهاز تاني');
-    await A.click('nav button[data-go=set]'); await A.fill('#shUrl', ACC_URL); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.waitForTimeout(300);
+    await A.click('nav button[data-go=set]'); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.waitForTimeout(300);
     await A.click('#shHelp'); await A.click('#hpCopy'); sheets.acc.load(await A.evaluate(() => navigator.clipboard.readText())); await A.click('#hpX');
     await A.click('#shSave'); await A.waitForTimeout(4000);
     eq('الشيت مقفول من غير المفتاح', JSON.parse(sheets.acc.get()).ok, false);
     eq('الشيت بيرفض مفتاح غلط', JSON.parse(sheets.acc.post(JSON.stringify({key: 'x', action: 'pull'}))).error, 'key');
     const D2 = await newDevice(browser, base, sheets), B = await D2.page('accounts.html');
     await unlock(B, true);
-    await B.click('nav button[data-go=set]'); await B.fill('#shUrl', ACC_URL); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.waitForTimeout(4000);
+    await B.click('nav button[data-go=set]'); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.waitForTimeout(4000);
     const snap = X => X.evaluate(() => [liveParties().map(p => balance(p.id)).sort(), vaultBal(''), selfCheck().length]);
     eq('الجهاز التاني نزل نفس الأرصدة', await snap(B), await snap(A));
     await B.evaluate(() => syncNow()); await A.evaluate(() => syncNow()); await A.waitForTimeout(1500);
     const rows = sheets.acc.sheets['السجلات'].rows.slice(1).map(r => r[0]);
     eq('مفيش سجلات متكررة في الشيت', new Set(rows).size, rows.length);
+    const link = await A.evaluate(() => joinLink());
+    eq('رابط الربط مفيهوش المفتاح مكشوف', link.includes('Test-Key'), false);
+    const D3 = await newDevice(browser, base, sheets), J = await D3.page('accounts.html' + link.slice(link.indexOf('#')));
+    await unlock(J, true); await J.waitForTimeout(5000);
+    eq('جهاز جديد برابط الربط بس نزلت عليه كل الحسابات', await snap(J), await snap(A));
+    eq('الجهاز الجديد فضل مربوط', await J.evaluate(() => db.cfg.sheetOk), true);
+    eq('الرابط اتشال من شريط العنوان', J.url().includes('join'), false);
     await A.click('nav button[data-go=set]'); await A.click('#shAudit'); await A.waitForTimeout(3000);
     eq('مراجعة الجهاز مع الشيت متطابقة', (await A.textContent('#modal .sync')).includes('متطابقين ('), true); await A.click('#saX');
 

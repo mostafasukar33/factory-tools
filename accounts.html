@@ -640,7 +640,7 @@ function lockNow(msg) {
 function unlocked() {
   $('#lock').classList.remove('on'); $('#lockBox').innerHTML = '';
   lastAct = Date.now(); bridgeIn(); route(); flushSave();
-  setTimeout(() => syncNow(), 600);
+  if (pendingJoin) applyJoin(); else setTimeout(() => syncNow(), 600);
 }
 ['pointerdown', 'keydown', 'scroll'].forEach(ev => addEventListener(ev, () => lastAct = Date.now(), {passive: true, capture: true}));
 setInterval(() => { if (db && Date.now() - lastAct > LOCK_IDLE) lockNow('اتقفل لوحده بعد 10 دقايق من غير استخدام'); }, 20000);
@@ -1482,13 +1482,17 @@ function renderSettings() {
   $('#sChkSave').onclick = () => { const n = parseInt(normDigits($('#sChkDays').value), 10); if (!(n >= 0 && n <= 60)) return toast('اكتب عدد أيام من 0 لـ 60'); c.chkDays = n; saveDB(); toast('اتحفظ ✔'); };
   $('#sAudit').onclick = auditModal;
   $('#sPhone').value = c.phone || '';
-  $('#sSheet').innerHTML = `<p class="hint" style="margin:0 0 10px">ده شيت <b>منفصل</b> للحسابات (مش بتاع دفتر الخزنة). أي حركة بتتبعت له لوحدها، وأي جهاز تفتح منه بينزّل منه آخر حاجة.</p>
+  if (!c.sheetKey) { c.sheetKey = makeKey(); saveDB(); }   // المفتاح السري بيتعمل لوحده على الجهاز (مش في الكود)
+  $('#sSheet').innerHTML = `${c.sheetOk ? `<div class="sync ok">✔ الجهاز ده مربوط بالشيت، وحساباتك بتتحفظ عليه أول بأول.</div>
+      <button class="btn green big" id="shJoin" type="button" style="margin-bottom:10px">🔗 ابعت رابط الربط لجهاز تاني</button>
+      <p class="hint" style="margin:-4px 0 12px">ابعته لنفسك واتساب واحفظه. افتحه مرة واحدة على أي جهاز (لاب توب أو موبايل)، وهيتربط لوحده وتنزل عليه كل حساباتك. متبعتوش لحد تاني.</p>`
+    : `<p class="hint" style="margin:0 0 10px">اربط البرنامج بجدول Google بتاعك مرة واحدة، فحساباتك تتحفظ عليه أول بأول، وبعد كده أي جهاز تفتحه برابط الربط تظهر عليه حساباتك كلها.</p>`}
     <div class="fld"><label>لينك الشيت (Web app URL)</label><input class="inp" id="shUrl" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" value="${esc(c.sheetUrl)}"></div>
-    <div class="fld"><label>المفتاح السري (بتكتبه مرة واحدة على كل جهاز)</label>
-      <div class="krow"><input class="inp" id="shKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:16px" placeholder="8 حروف أو أرقام على الأقل" value="${esc(c.sheetKey)}">
+    <details class="fld"><summary style="font-weight:700;color:#777;cursor:pointer">المفتاح السري (بيتعمل لوحده — مش محتاج تلمسه)</summary>
+      <div class="krow" style="margin-top:6px"><input class="inp" id="shKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:16px" value="${esc(c.sheetKey)}">
       <button class="ibtn" id="shEye" type="button" title="إظهار">👁</button></div>
-      <p class="hint">من غير المفتاح ده محدش يقدر يقرا ولا يكتب في الشيت حتى لو معاه اللينك. اكتبه في ورقة. ممكن تستخدم نفس مفتاح دفتر الخزنة. <a id="shGen">اعملي مفتاح جديد</a></p>
-    </div>
+      <p class="hint">ده اللي بيقفل الشيت، فمحدش يقدر يقرا حاجة حتى لو معاه لينك الشيت. رابط الربط بيشيله جواه، فمش محتاج تكتبه في حتة.</p>
+    </details>
     <div class="stack">
       <button class="btn gold" id="shSave" type="button">حفظ واختبار الاتصال</button>
       <button class="btn line" id="shNow" type="button">زامن دلوقتي (${pendingRecs().length} مستني)</button>
@@ -1499,7 +1503,7 @@ function renderSettings() {
     <div id="shStat" class="sync" style="display:none;margin:10px 0 0"></div>
     <p class="hint">${c.lastSync ? 'آخر مزامنة ناجحة: ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة ناجحة.'}</p>`;
   $('#shEye').onclick = () => { const k = $('#shKey'); k.type = k.type === 'password' ? 'text' : 'password'; };
-  $('#shGen').onclick = () => { $('#shKey').value = makeKey(); $('#shKey').type = 'text'; toast('ده مفتاح جديد. اكتبه في ورقة قبل ما تحفظ.', 5000); };
+  if ($('#shJoin')) $('#shJoin').onclick = shareJoin;
   $('#shSave').onclick = testSheet;
   $('#shNow').onclick = () => syncNow(true);
   $('#shAudit').onclick = () => sheetAudit(true);
@@ -1520,7 +1524,7 @@ async function testSheet() {
   if (u && !/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u)) return setStat('bad', '❌ اللينك مش شكل لينك Apps Script. لازم يبدأ بـ https://script.google.com ويخلص بـ /exec.');
   if (/\/dev(\?|$)/.test(u)) return setStat('bad', '❌ اللينك ده بتاع التجربة (/dev). المطلوب اللينك اللي بيخلص بـ /exec.');
   if (u && !KEY_RE.test(k)) return setStat('bad', '❌ اكتب مفتاح سري من 8 لـ 64 حرف أو رقم من غير مسافات (أو اضغط "اعملي مفتاح جديد").');
-  if (u !== c.sheetUrl) { c.cursor = 0; c.sheetOk = false; db.parties.forEach(r => delete r.sy); db.entries.forEach(r => delete r.sy); }   // شيت جديد = كل حاجة تتبعت له من الأول
+  if (u !== c.sheetUrl) { c.cursor = 0; c.sheetOk = false; Object.values(STORE).forEach(a => db[a].forEach(r => delete r.sy)); }   // شيت جديد = كل حاجة تتبعت له من الأول
   if (k !== c.sheetKey) c.sheetOk = false;
   c.sheetUrl = u; c.sheetKey = u ? k : ''; await flushSave();
   if (!u) { c.sheetOk = false; await flushSave(); renderSettings(); renderSyncBox(); return toast('اتفصل الشيت'); }
@@ -1540,10 +1544,49 @@ async function testSheet() {
   await syncNow();
   setStat(syncErr ? 'bad' : 'ok', syncErr ? '⚠️ الاتصال شغال بس المزامنة وقفت: ' + syncErr : '✅ الاتصال شغال وكل حاجة اتزامنت.');
   renderSyncBox();
+  if (!syncErr) { renderSettings(); setStat('ok', '✅ اتربط واتحفظ كل حاجة. دلوقتي اضغط "ابعت رابط الربط" وابعته لنفسك علشان أي جهاز تاني.'); }
+}
+/* ---------- رابط الربط ----------
+   فيه لينك الشيت ومفتاحه (وشيت دفتر الخزنة لو مربوط) بعد علامة # ، فمبيتبعتش لأي سيرفر.
+   أول ما يتفتح على جهاز: بيتعمل كلمة سر للجهاز، والبرنامج بيتربط وينزّل كل الحسابات لوحده، ويفضل مربوط على طول. */
+const b64u = str => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64u = str => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
+function joinLink() {
+  const cs = readCash() || {}, o = {u: db.cfg.sheetUrl, k: db.cfg.sheetKey};
+  if (cs.sheetUrl && cs.sheetKey && cs.sheetLocked) { o.cu = cs.sheetUrl; o.ck = cs.sheetKey; }
+  return location.origin + location.pathname + '#join=' + b64u(JSON.stringify(o));
+}
+async function shareJoin() {
+  const url = joinLink(), text = 'رابط ربط حسابات فلاش أون (متبعتوش لحد):';
+  try { if (navigator.share) { await navigator.share({title: 'ربط حسابات فلاش أون', text, url}); return; } } catch (e) { if (e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(url); toast('اتنسخ رابط الربط ✔ الصقه لنفسك في واتساب واحفظه', 6000); }
+  catch (e) { modal(`<h3>رابط الربط</h3><p style="font-size:15px">انسخ الرابط ده وابعته لنفسك:</p><pre class="code">${esc(url)}</pre><button class="btn line" id="jlX" type="button">تمام</button>`); $('#jlX').onclick = closeModal; }
+}
+let pendingJoin = null;
+try {
+  const m = location.hash.match(/^#join=([\w-]+)/);
+  if (m) { const o = JSON.parse(unb64u(m[1])); if (o && o.u && o.k) pendingJoin = o; history.replaceState(null, '', location.pathname); }
+} catch (e) {}
+async function applyJoin() {
+  const o = pendingJoin; pendingJoin = null; if (!o || !db) return;
+  const c = db.cfg;
+  if (c.sheetOk && c.sheetUrl === o.u && c.sheetKey === o.k) return toast('الجهاز ده مربوط أصلاً ✔');
+  if (o.cu && o.ck) try {
+    const cs = readCash() || {v: 1, vaults: [], cats: [], tx: []};
+    if (!cs.sheetUrl) { Object.assign(cs, {sheetUrl: o.cu, sheetKey: o.ck, sheetLocked: true}); localStorage.setItem('fo_cash_v1', JSON.stringify(cs)); }
+  } catch (e) {}
+  if (c.sheetUrl !== o.u) { c.cursor = 0; Object.values(STORE).forEach(a => db[a].forEach(r => delete r.sy)); }
+  Object.assign(c, {sheetUrl: o.u, sheetKey: o.k, sheetOk: false}); await flushSave();
+  modal('<p style="text-align:center">⏳ بربط الجهاز وبنزّل حساباتك…</p>');
+  let j; try { j = await callSheet({action: 'ping'}); } catch (e) { j = null; }
+  if (!j || !j.ok || j.app !== 'fo-acc') { closeModal(); return toast('معرفتش أوصل للشيت. اتأكد من النت وافتح رابط الربط تاني.', 7000); }
+  c.sheetOk = true; await flushSave(); await syncNow();
+  closeModal(); route();
+  toast(syncErr ? 'اتربط، بس التنزيل وقف. هيكمّل لوحده أول ما النت يتحسن.' : `✔ الجهاز اتربط ونزلت حساباتك (${liveParties().length} حساب)`, 7000);
 }
 function showHelp() {
+  if (!db.cfg.sheetKey) { db.cfg.sheetKey = makeKey(); saveDB(); }
   const k = db.cfg.sheetKey;
-  if (!k) return toast('اكتب المفتاح السري الأول (أو اضغط "اعملي مفتاح جديد") واضغط حفظ، وبعدين افتح الخطوات.', 6000);
   const code = scriptFor(k), lines = code.split('\n').length;
   modal(`<h3>شيت الحسابات (مرة واحدة بس)</h3>
   <ol class="steps">

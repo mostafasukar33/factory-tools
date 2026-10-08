@@ -200,7 +200,23 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await C2.click('#shSave'); await C2.waitForTimeout(1500);
     eq('شيت الدفتر مقفول', JSON.parse(sheets.cash.get()).ok, false);
 
-    console.log('\n١٢) المراجعة الداخلية');
+    console.log('\n١٢) الشركاء: مرتب كل خميس ومسحوبات');
+    const vb0 = await A.evaluate(() => vaultBal(''));
+    await A.click('nav button[data-go=part]'); await A.click('#psGo'); await A.fill('#psA', '10');
+    await A.fill('#psS', await A.evaluate(() => addDays(lastThu(), -14))); await A.click('#psOk'); await A.waitForTimeout(200);
+    const autoN = X => X.evaluate(() => db.txs.filter(t => t.id.startsWith('t_ps_') && !t.del).length);
+    eq('اتسجل مرتب 3 خميسات لـ 3 شركاء بتواريخ الخميس', [await autoN(A), await A.evaluate(() => db.txs.filter(t => t.auto).every(t => dowOf(t.date) === 4)), await A.evaluate(() => vaultBal(''))], [9, true, vb0 - 9000]);
+    eq('التشغيل تاني مبيكررش', await A.evaluate(() => autoPartners(true)), 0);
+    await A.evaluate(() => syncNow()); await B.evaluate(() => syncNow()); await B.waitForTimeout(1500);
+    eq('الجهاز التاني مسجلش تاني', [await B.evaluate(() => autoPartners(true)), await autoN(B)], [0, 9]);
+    await A.click('#p-part .cm'); await A.click('#ptDel'); await A.click('#cOk'); await A.waitForTimeout(150);
+    eq('المرتب الملغي مبيرجعش يتسجل', [await A.evaluate(() => autoPartners(true)), await autoN(A)], [0, 8]);
+    await A.click('#ptNew'); await A.fill('#ptA', '50'); await A.fill('#ptN', 'سلفة'); await A.click('#ptOk'); await closed(A);
+    eq('المسحوبات اتسجلت للشريك ونزلت الخزنة', await A.evaluate(() => [db.txs.filter(t => t.cat === 'c_pdraw' && !t.del).map(t => [partName(t.pt), t.amt, t.note]), vaultBal('')]), [[['مصطفى', 5000, 'مسحوبات مصطفى — سلفة']], vb0 - 8000 - 5000]);
+    eq('حركات الشركاء ظاهرة في دفتر الخزنة', await A.evaluate(() => (bridgeOut(), readCash().tx.filter(t => t.pt && !t.del).length)), 9);
+    eq('بنود الشركاء مش في قايمة المصروفات العادية', await A.evaluate(() => catsL('exp').some(c => c.id === 'c_psal' || c.id === 'c_pdraw')), false);
+
+    console.log('\n١٣) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); }

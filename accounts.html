@@ -128,6 +128,8 @@ table.lt.rep tr.bad td{background:var(--red-l);color:var(--red)}
 .inc{color:var(--green)}.exp{color:var(--red)}
 .bl{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eee;font-weight:700}
 .bl span{flex:1}.bl b{direction:ltr;unicode-bidi:isolate}
+.bl.k{border-bottom:0;font-size:18px;color:var(--gold-d)}
+.pgrid{display:grid;gap:0 12px}@media (min-width:700px){.pgrid{grid-template-columns:repeat(3,1fr)}}
 .cm{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:7px;cursor:pointer;border-right:6px solid var(--blue)}
 .cm.inc{border-right-color:var(--green)}.cm.exp{border-right-color:var(--red)}
 .cm .m{flex:1;min-width:0}.cm .m b{display:block;font-size:16px;font-weight:800}
@@ -341,6 +343,9 @@ nav svg{width:26px;height:26px}
 <!-- ============== الخزنة ============== -->
 <section class="page" id="p-cash"></section>
 
+<!-- ============== الشركاء ============== -->
+<section class="page" id="p-part"></section>
+
 <!-- ============== الشيكات ============== -->
 <section class="page" id="p-chk"></section>
 
@@ -397,6 +402,7 @@ nav svg{width:26px;height:26px}
 <nav>
   <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>الحسابات</button>
   <button data-go="cash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 10v5M18 10v5"/></svg>الخزنة</button>
+  <button data-go="part"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3.2"/><circle cx="4.5" cy="9" r="2.4"/><circle cx="19.5" cy="9" r="2.4"/><path d="M6.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M1 19v-1a3.5 3.5 0 0 1 4.6-3.3M23 19v-1a3.5 3.5 0 0 0-4.6-3.3"/></svg>الشركاء</button>
   <button data-go="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 10h8M6 14h5M16 14h2"/></svg>الشيكات<i class="nb" id="nbChk"></i></button>
   <button data-go="rep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>التقارير</button>
   <button data-go="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>الإعدادات</button>
@@ -1921,7 +1927,7 @@ function renderCash() {
   $('#cVault').onchange = () => { cashVault = $('#cVault').value; renderCash(); };
   $$('#p-cash .cm').forEach(el => el.onclick = () => {
     const m = mv[+el.dataset.i];
-    if (m.src === 'tx') txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
+    if (m.src === 'tx') m.r.pt ? partnerTxModal(m.r) : txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
   });
   $('#cSet').onclick = vaultSettings;
   $('#cOpen2').onclick = openingModal;
@@ -2091,6 +2097,172 @@ function ensurePayCats() {
   });
   return n;
 }
+/* ---------- الشركاء: مرتب أسبوعي كل خميس + مسحوبات ----------
+   الإعدادات سجل مشترك (set) اسمه partners: {on, amt بالقرش, vault, start, list: [{id, name, from, to}]}.
+   كل خميس بيتسجل لكل شريك مصروف في بند "مرتبات الشركاء" برقم ثابت t_ps_<التاريخ>_<الشريك>،
+   فلو أكتر من جهاز سجّله مفيش تكرار، ولو اتلغى مبيرجعش يتسجل. والـ upd بتاع الخميس نفسه، فأي تعديل بعد كده يكسب. */
+const PART_CATS = {sal: ['c_psal', 'مرتبات الشركاء'], draw: ['c_pdraw', 'مسحوبات الشركاء']};
+SPECIAL_CATS.add('c_psal'); SPECIAL_CATS.add('c_pdraw');
+const PK = {sal: 'مرتب', draw: 'مسحوبات'};
+function ensurePartCats() {
+  Object.values(PART_CATS).forEach(([id, name]) => { if (!IDX.cat.get(id)) { const r = {id, type: 'exp', name, ord: 97, upd: 1, del: false}; db.cats.push(r); IDX.cat.set(id, r); } });
+}
+const addDays = (iso, n) => { const [y, m, d] = iso.split('-').map(Number); return isoOf(new Date(y, m - 1, d + n, 12).getTime()); };
+const dowOf = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d, 12).getDay(); };
+const thuOnOrAfter = iso => addDays(iso, (4 - dowOf(iso) + 7) % 7);
+const lastThu = () => addDays(todayISO(), -((dowOf(todayISO()) - 4 + 7) % 7));
+const partners = () => getSet('partners', null);
+const partName = id => { const s = partners(), p = s && s.list.find(x => x.id === id); return p ? p.name : '؟'; };
+const ptKind = t => t.cat === 'c_pdraw' ? 'draw' : 'sal';
+let apAt = 0;
+function autoPartners(force) {
+  if (!db || (!force && Date.now() - apAt < 30000)) return 0;
+  apAt = Date.now();
+  const s = partners(); if (!s || !s.on || !(s.amt > 0) || !s.start) return 0;
+  ensureVaults(); ensurePartCats();
+  const v = IDX.vault.get(s.vault), vault = v && !v.del ? s.vault : defVault();
+  const t = todayISO(); let n = 0;
+  for (let d = thuOnOrAfter(s.start); d <= t; d = addDays(d, 7)) {
+    if (isLocked(d)) continue;
+    s.list.forEach(p => {
+      if ((p.from && d < p.from) || (p.to && d > p.to)) return;
+      const id = `t_ps_${d}_${p.id}`;
+      if (IDX.tx.get(id)) return;
+      const [y, m, dd] = d.split('-').map(Number), ts = new Date(y, m - 1, dd, 9).getTime();
+      const r = {id, type: 'exp', amt: s.amt, vault, to: '', cat: 'c_psal', pt: p.id, pnote: '', note: 'مرتب ' + p.name, date: d, at: ts, upd: ts, del: false, hist: [], auto: 1};
+      db.txs.push(r); IDX.tx.set(id, r); n++;
+    });
+  }
+  if (n) saveDB();
+  return n;
+}
+function partnerSettings() {
+  ensureVaults();
+  const s = partners() || {on: false, amt: 0, vault: defVault(), start: lastThu(), list: [{id: 'pa', name: 'مصطفى'}, {id: 'pb', name: 'حسن'}, {id: 'pc', name: 'أحمد'}]};
+  const live = s.list.filter(p => !p.to);
+  modal(`<h3>👥 إعدادات الشركاء</h3>
+    <div class="fld"><label>المرتب الأسبوعي لكل شريك (نفس المبلغ للكل)</label><input class="inp num amt" id="psA" placeholder="0" value="${s.amt ? fmtP(s.amt) : ''}"></div>
+    <div class="fld"><label>بيتصرف من خزنة</label><select class="inp" id="psV">${vaultOpts(s.vault || defVault())}</select></div>
+    <div class="fld"><label>أول خميس يتسجل</label><input class="inp" type="date" id="psS" value="${s.start || lastThu()}"><p class="hint">من التاريخ ده، كل خميس المرتب بيتسجل لوحده في المصروفات. ولو البرنامج متفتحش يوم الخميس، بيتسجل أول ما يتفتح بتاريخ الخميس.</p></div>
+    <div class="sech"><span>الشركاء</span></div>
+    <div id="psL">${live.map(p => `<div class="krow fld" style="grid-template-columns:1fr auto"><input class="inp" data-p="${esc(p.id)}" value="${esc(p.name)}"><button class="btn red sm" data-rm="${esc(p.id)}" type="button" style="width:auto">شيل</button></div>`).join('')}</div>
+    <button class="btn line sm" id="psAdd" type="button">+ شريك جديد</button>
+    <div class="stack" style="margin-top:12px"><button class="btn gold" id="psOk" type="button">حفظ</button>
+    ${s.on ? '<button class="btn red sm" id="psOff" type="button">وقّف التسجيل الأوتوماتيك</button>' : ''}
+    <button class="btn line" id="psX" type="button">رجوع</button></div>`, true);
+  bindMoney($('#psA'));
+  const removed = new Set();
+  const bindRm = () => $$('#psL [data-rm]').forEach(b => b.onclick = () => { removed.add(b.dataset.rm); b.parentElement.remove(); });
+  bindRm();
+  $('#psAdd').onclick = () => { const d = document.createElement('div'); d.className = 'krow fld'; d.style.gridTemplateColumns = '1fr auto'; d.innerHTML = `<input class="inp" data-p="" placeholder="اسم الشريك"><button class="btn red sm" data-rm="" type="button" style="width:auto">شيل</button>`; $('#psL').appendChild(d); bindRm(); d.querySelector('input').focus(); };
+  $('#psX').onclick = closeModal;
+  if ($('#psOff')) $('#psOff').onclick = () => { putSet('partners', Object.assign({}, s, {on: false})); closeModal(); route(); toast('اتوقف التسجيل الأوتوماتيك. اللي اتسجل قبل كده زي ما هو.'); };
+  $('#psOk').onclick = () => {
+    const amt = toP($('#psA').value), start = $('#psS').value;
+    if (amt <= 0) return toast('اكتب المرتب الأسبوعي');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return toast('اختار أول خميس');
+    const t = todayISO(), list = s.list.map(p => Object.assign({}, p));
+    list.forEach(p => { if (removed.has(p.id) && !p.to) p.to = addDays(t, -1); });
+    let k = 0;
+    $$('#psL [data-p]').forEach(el => {
+      const name = el.value.trim(); if (!name) return;
+      const cur = list.find(p => p.id === el.dataset.p && el.dataset.p);
+      if (cur) cur.name = name;
+      else { let id; do { id = 'p' + Date.now().toString(36) + (k++); } while (list.some(p => p.id === id)); list.push({id, name, from: t}); }
+    });
+    if (!list.some(p => !p.to)) return toast('اكتب اسم شريك واحد على الأقل');
+    putSet('partners', {on: true, amt, vault: $('#psV').value, start, list});
+    const n = autoPartners(true);
+    closeModal(); route(); toast(n ? `اتحفظ ✔ واتسجل ${n} مرتب لحد النهارده` : 'اتحفظ ✔');
+  };
+}
+function partnerTxModal(t, kind = 'draw', ptId = '') {
+  ensureVaults(); ensurePartCats();
+  if (t && t.del) return cancelledModal(t);
+  if (t && isLocked(t.date)) { modal(`<h3>🔒 ${PK[ptKind(t)]} ${esc(partName(t.pt))} ${fmtP(t.amt)}</h3><div class="sync">الحركة دي في فترة مقفولة (لحد ${dispDate(lockDate())}). افتحها من الإعدادات لو محتاج تعدّل.</div><button class="btn line" id="lvX" type="button">رجوع</button>`); $('#lvX').onclick = closeModal; return; }
+  const s = partners() || {list: []}, isNew = !t;
+  if (t) { kind = ptKind(t); ptId = t.pt; }
+  const list = s.list.filter(p => !p.to || p.id === ptId);
+  modal(`<h3 class="exp">${isNew ? '− مسحوبات شريك' : 'تعديل ' + PK[kind] + ' شريك'}</h3>
+    <div class="fld"><label>الشريك</label><select class="inp" id="ptP">${list.map(p => `<option value="${esc(p.id)}" ${p.id === ptId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+    <div class="fld"><label>النوع</label><div class="seg" id="ptK">${Object.entries(PK).map(([k, n]) => `<button type="button" data-v="${k}" class="${k === kind ? 'on' : ''}">${n}</button>`).join('')}</div></div>
+    <div class="fld"><label>المبلغ</label><input class="inp num amt" id="ptA" placeholder="0" value="${t ? fmtP(t.amt) : ''}"></div>
+    <div class="fld"><label>الخزنة</label><select class="inp" id="ptV">${vaultOpts(t ? t.vault : defVault())}</select></div>
+    <div class="fld"><label>التاريخ</label><input class="inp" id="ptD" type="date" value="${t ? t.date : todayISO()}"></div>
+    <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="ptN" value="${esc(t ? t.pnote || '' : '')}" autocomplete="off"></div>
+    ${t ? histHtml(t) : ''}
+    <div class="stack" style="margin-top:8px"><button class="btn redf" id="ptOk" type="button">${isNew ? 'حفظ' : 'حفظ التعديل'}</button>
+    ${isNew ? '' : '<button class="btn red sm" id="ptDel" type="button">إلغاء الحركة</button>'}
+    <button class="btn line" id="ptX" type="button">رجوع</button></div>`);
+  bindMoney($('#ptA'));
+  $$('#ptK button').forEach(b => b.onclick = () => { kind = b.dataset.v; $$('#ptK button').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#ptX').onclick = closeModal;
+  if (isNew) setTimeout(() => $('#ptA') && $('#ptA').focus(), 50);
+  $('#ptOk').onclick = () => {
+    const amt = toP($('#ptA').value), date = $('#ptD').value, pnote = $('#ptN').value.trim(), pt = $('#ptP').value, vault = $('#ptV').value;
+    if (!pt) return toast('اختار الشريك');
+    if (amt <= 0) return toast('اكتب المبلغ');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');
+    if (isLocked(date)) return lockToast();
+    const o = {type: 'exp', amt, date, vault, to: '', cat: PART_CATS[kind][0], pt, pnote, note: `${PK[kind]} ${partName(pt)}${pnote ? ' — ' + pnote : ''}`};
+    if (isNew) { const now = Date.now(); const r = Object.assign({id: newId('t_'), at: now, upd: now, del: false, hist: []}, o); db.txs.push(r); IDX.tx.set(r.id, r); toast('اتسجلت ✔'); }
+    else {
+      if (['amt', 'date', 'vault', 'cat', 'pt', 'pnote'].every(k => (t[k] || '') === (o[k] || ''))) return closeModal();
+      (t.hist = t.hist || []).push({t: Date.now(), date: t.date, desc: `${PK[ptKind(t)]} ${partName(t.pt)} — ${vName(t.vault)}`, dr: t.amt, cr: 0});
+      Object.assign(t, o); touch(t); toast('اتعدّلت ✔');
+    }
+    saveDB(); closeModal(); route();
+  };
+  if (!isNew) $('#ptDel').onclick = async () => {
+    if (!(await confirmBox(`تلغي ${PK[kind]} ${partName(t.pt)} ${fmtP(t.amt)}؟ هتفضل محفوظة كـ "ملغية"${t.auto ? '، ومش هتتسجل تاني' : ''}.`, 'ألغيها', true))) return;
+    t.del = true; t.delAt = Date.now(); touch(t); saveDB(); closeModal(); route(); toast('اتلغت');
+  };
+}
+let partMode = 'month', partMonth = '', partYear = '';
+function partRange() {
+  const t = todayISO();
+  if (partMode === 'month') { const m = partMonth || t.slice(0, 7), [y, mo] = m.split('-').map(Number); return [m + '-01', m + '-' + pad2(new Date(y, mo, 0).getDate())]; }
+  if (partMode === 'year') { const y = partYear || t.slice(0, 4); return [y + '-01-01', y + '-12-31']; }
+  return ['', ''];
+}
+function renderPartners() {
+  const pg = $('#p-part'), s = partners();
+  if (!s || !s.on) {
+    pg.innerHTML = `<div class="card"><h2>👥 الشركاء</h2>
+      <p style="font-weight:700;margin:0 0 12px">كل خميس، مرتب كل شريك بيتسجل لوحده في مصروفات الخزنة. وتقدر تسجل مسحوبات زيادة لأي شريك، وتشوف كل واحد خد كام في الشهر والسنة.</p>
+      <button class="btn gold big" id="psGo" type="button">${s ? 'شغّل التسجيل تاني' : 'ابدأ'}</button></div>`;
+    $('#psGo').onclick = partnerSettings;
+    return;
+  }
+  const [from, to] = partRange(), t = todayISO();
+  const mv = db.txs.filter(x => !x.del && x.pt && (!from || x.date >= from) && (!to || x.date <= to)).sort((a, b) => b.date.localeCompare(a.date) || (b.at || 0) - (a.at || 0));
+  const per = new Map(s.list.map(p => [p.id, {p, sal: 0, draw: 0}]));
+  mv.forEach(x => { const r = per.get(x.pt); if (r) r[ptKind(x)] += x.amt; });
+  const rows = [...per.values()].filter(r => !r.p.to || r.sal || r.draw);
+  const tot = rows.reduce((a, r) => a + r.sal + r.draw, 0);
+  const next = thuOnOrAfter(addDays(t, dowOf(t) === 4 ? 1 : 0));
+  pg.innerHTML = `
+    <div class="sync ok">✔ مرتب ${fmtP(s.amt)} لكل شريك بيتسجل لوحده كل خميس من ${esc(vName(s.vault))}. الخميس الجاي: ${dispDate(next)}</div>
+    <div class="g2" style="margin-bottom:12px"><button class="btn redf big" id="ptNew" type="button">− مسحوبات شريك</button><button class="btn line" id="ptSet" type="button" style="min-height:68px">⚙ إعدادات الشركاء</button></div>
+    <div class="card">
+      <div class="seg s3" id="ptMode">${[['month', 'شهر'], ['year', 'سنة'], ['all', 'الكل']].map(([k, n]) => `<button type="button" data-m="${k}" class="${partMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+      ${partMode === 'month' ? `<input class="inp" type="month" id="ptMonth" value="${partMonth || t.slice(0, 7)}">` : partMode === 'year' ? `<input class="inp num" id="ptYear" inputmode="numeric" value="${partYear || t.slice(0, 4)}">` : ''}
+    </div>
+    <div class="pgrid">${rows.map(r => `<div class="card pcard"><h2>${esc(r.p.name)}${r.p.to ? ' <small style="color:#777">(مش شريك دلوقتي)</small>' : ''}</h2>
+      <div class="bl"><span>المرتبات</span><b>${fmtP(r.sal)}</b></div><div class="bl"><span>المسحوبات</span><b>${fmtP(r.draw)}</b></div>
+      <div class="bl k"><span>الإجمالي</span><b>${fmtP(r.sal + r.draw)}</b></div>
+      ${r.p.to ? '' : `<button class="btn line sm" data-dr="${esc(r.p.id)}" type="button" style="margin-top:8px">− مسحوبات لـ ${esc(r.p.name)}</button>`}</div>`).join('')}</div>
+    <div class="ldgf"><span>إجمالي اللي خده الشركاء ${partMode === 'all' ? '' : 'في الفترة'}</span><b>${fmtP(tot)} <small>${CUR}</small></b></div>
+    <div class="sech"><span>الحركات (${mv.length})</span></div>
+    ${mv.length ? mv.map((x, i) => `<div class="cm exp" data-i="${i}"><div class="m"><b>${PK[ptKind(x)]} — ${esc(partName(x.pt))}</b><small>${dispDate(x.date)} — ${esc(vName(x.vault))}${x.pnote ? ' — ' + esc(x.pnote) : ''}${x.auto ? ' — أوتوماتيك' : ''}</small></div><div class="a exp">− ${fmtP(x.amt)}</div></div>`).join('') : '<div class="empty">مفيش حركات في الفترة دي</div>'}`;
+  $('#ptNew').onclick = () => partnerTxModal(null, 'draw');
+  $('#ptSet').onclick = partnerSettings;
+  $$('#p-part [data-dr]').forEach(b => b.onclick = () => partnerTxModal(null, 'draw', b.dataset.dr));
+  $$('#ptMode button').forEach(b => b.onclick = () => { partMode = b.dataset.m; renderPartners(); });
+  if ($('#ptMonth')) $('#ptMonth').onchange = () => { partMonth = $('#ptMonth').value; renderPartners(); };
+  if ($('#ptYear')) $('#ptYear').onchange = () => { partYear = normDigits($('#ptYear').value).replace(/\D/g, '').slice(0, 4); renderPartners(); };
+  $$('#p-part .cm').forEach(el => el.onclick = () => partnerTxModal(mv[+el.dataset.i]));
+}
 const tsOfDate = (date, at) => { const [y, m, d] = date.split('-').map(Number), t = new Date(at || Date.now()); return new Date(y, m - 1, d, t.getHours(), t.getMinutes()).getTime(); };
 function payName(e) { const p = P.get(e.party); return (p ? p.name : '') + (e.note ? ' — ' + e.note : ''); }
 let bridgeBusy = false, lockedFromCash = 0;
@@ -2109,7 +2281,7 @@ function bridgeOut() {
   };
   db.vaults.forEach(v => put('vaults', {id: v.id, name: v.name, open: (v.open || 0) / 100, upd: v.upd, del: !!v.del}));
   db.cats.forEach(x => put('cats', {id: x.id, type: x.type, name: x.name, ord: x.ord || 0, upd: x.upd, del: !!x.del}));
-  db.txs.forEach(t => put('tx', Object.assign({id: t.id, type: t.type, amt: t.amt / 100, ts: tsOfDate(t.date, t.at), vault: t.vault, note: t.note || '', upd: t.upd, del: !!t.del}, t.type === 'tr' ? {to: t.to} : {cat: t.cat})));
+  db.txs.forEach(t => put('tx', Object.assign({id: t.id, type: t.type, amt: t.amt / 100, ts: tsOfDate(t.date, t.at), vault: t.vault, note: t.note || '', upd: t.upd, del: !!t.del}, t.type === 'tr' ? {to: t.to} : {cat: t.cat}, t.pt ? {pt: t.pt} : {})));
   db.entries.forEach(e => {
     if (!isPay(e) || (!e.vault && !idx.tx.has(e.id))) return;
     put('tx', {id: e.id, type: e.kind === 'pay' ? 'inc' : 'exp', amt: (e.amt || 0) / 100, ts: tsOfDate(vdate(e), e.at), vault: e.vault || '', cat: PAY_CAT[e.kind],
@@ -2154,7 +2326,10 @@ function bridgeIn() {
     } else {
       const cur = IDX.tx.get(t.id);
       if (cur && isLocked(cur.date) || isLocked(isoOf(t.ts))) { if (cur && (cur.upd || 0) < t.upd) { touch(cur); lockedFromCash++; } return; }
-      up('tx', {id: t.id, type: t.type, amt: p2(t.amt), vault: t.vault, to: t.to || '', cat: t.cat || '', note: t.note || '', date: isoOf(t.ts), at: t.ts, upd: t.upd || 1, del: !!t.del, hist: cur ? cur.hist || [] : []});
+      /* حركة الشريك: نحتفظ بالشريك وملاحظته حتى لو اتعدلت من الدفتر */
+      const pt = t.pt || (cur && cur.pt), keep = pt ? {pt, pnote: cur ? cur.pnote || '' : '', auto: cur ? cur.auto : undefined} : {};
+      if (keep.auto === undefined) delete keep.auto;
+      up('tx', Object.assign({id: t.id, type: t.type, amt: p2(t.amt), vault: t.vault, to: t.to || '', cat: t.cat || '', note: t.note || '', date: isoOf(t.ts), at: t.ts, upd: t.upd || 1, del: !!t.del, hist: cur ? cur.hist || [] : []}, keep));
     }
   });
   n += ensurePayCats();
@@ -2553,7 +2728,8 @@ function route() {
   if (!db) return;
   const h = decodeURIComponent(location.hash.slice(1));
   let pg = 'home';
-  if (h === 'set' || h === 'cash' || (h === 'chk' && CHECKS_ON) || h === 'rep') pg = h; else if (h.startsWith('p/')) pg = 'party';
+  if (h === 'set' || h === 'cash' || h === 'part' || (h === 'chk' && CHECKS_ON) || h === 'rep') pg = h; else if (h.startsWith('p/')) pg = 'party';
+  autoPartners();
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
   $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (pg === 'party' ? 'home' : pg)));
   if (CHECKS_ON) { const nd = chkDue().length; $('#nbChk').textContent = nd || ''; $('#nbChk').style.display = nd ? '' : 'none'; }
@@ -2565,11 +2741,11 @@ function route() {
     const box = $('#p-home'), st = box.scrollTop; renderHome(); box.scrollTop = st;
     if (pg === 'home') $('#p-party').innerHTML = '<div class="card empty" style="padding:60px 20px;font-size:18px">اختار حساب من القايمة علشان يظهر كشفه هنا</div>';
   }
-  if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
+  if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
 }
 let lastHash = '', wasWide = isWide();
 addEventListener('resize', () => { if (isWide() !== wasWide) { wasWide = isWide(); route(); } });
-if (!CHECKS_ON) { $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(4,1fr)'; }
+if (!CHECKS_ON) { $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(5,1fr)'; }
 $$('nav button').forEach(b => b.onclick = () => go(b.dataset.go));
 addEventListener('hashchange', () => { closeModal(); route(); if (location.hash !== lastHash) window.scrollTo(0, 0); lastHash = location.hash; });
 $('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk,#dcOk,#pyOk,#txOk,#evOk,#ecOk,#opOk,#adOk,#ccOk,#bcOk,#apOk')) closeModal(); });

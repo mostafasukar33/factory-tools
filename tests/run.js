@@ -126,6 +126,11 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await A.click('#smX');
     eq('رابط الربط الملصوق بيتقري', await A.evaluate(() => { const o = parseJoin(' https://x/accounts.html#join=' + b64u(JSON.stringify({u: 'U', k: 'K'})) + ' '); return [o.u, o.k, parseJoin('كلام غلط')]; }), ['U', 'K', null]);
 
+    await A.setViewportSize({width: 1300, height: 800}); await A.waitForTimeout(200);
+    eq('اللاب توب: الحساب مفتوح جنب القايمة', await A.evaluate(() => [$('main').classList.contains('split'), getComputedStyle($('#p-home')).display, !!$('#hList .pt.cur'), getComputedStyle($('nav')).width]), [true, 'block', true, '210px']);
+    await A.setViewportSize({width: 400, height: 860}); await A.waitForTimeout(200);
+    eq('الموبايل: صفحة واحدة', await A.evaluate(() => [$('main').classList.contains('split'), getComputedStyle($('#p-home')).display]), [false, 'none']);
+
     console.log('\n٥) الخزنة');
     await A.click('nav button[data-go=cash]'); await A.click('#cExp'); await A.fill('#txA', '30'); await A.click('#txOk'); await closed(A);
     await A.click('#cPayS'); await A.click('#pkList .pt'); await A.fill('#pyAmt', '500'); await A.click('#pyOk'); await closed(A);

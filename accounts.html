@@ -422,6 +422,96 @@ nav svg{width:26px;height:26px}
   .modal h3{font-size:18px}
   .rph{font-size:17px}
 }
+/* ============ لمسة الشكل المريح: ألوان أهدى، أزرار أصغر، أرقام ثابتة العرض ============ */
+:root{--bg:#F4F3EF;--line:#E6E2D6;--shadow:0 1px 2px #1b150a0f,0 1px 6px #1b150a08}
+body{font-size:16px}
+.top{border-bottom-width:2px}
+.card,.pt,.en,.cm,.tots div,.dash div,.stm div,.li{box-shadow:var(--shadow)}
+.card{border-radius:12px;padding:14px;margin-bottom:14px}
+.card h2{font-size:15.5px;letter-spacing:0}
+.sech{margin:18px 2px 8px;font-size:14.5px;color:#7a6a45}
+/* الأرقام: عرض ثابت وتتراص تحت بعض */
+.pt .a b,.phd .bal b,.tots b,.dash b,.stm b,.ldg td,.ldgf b,.cm .a,.en .money,.en .dl b,.bl b,.dtot b,.mini2 b,table.lt td.n,.lt2,.num{font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+/* أزرار هادية */
+.btn{min-height:44px;font-size:15px;border-radius:10px;padding:8px 14px;font-weight:700}
+.btn.big{min-height:48px;font-size:16.5px;border-radius:12px}
+.btn.sm{min-height:36px;font-size:14px;padding:5px 10px}
+.btn.gold{background:var(--gold);color:#2a2000}
+.inp{min-height:46px;font-size:16px;border-radius:10px;border-color:#D9D2BD}
+.seg button{min-height:38px;font-size:14px}
+.acts .btn{min-height:40px;font-size:14px}
+.cbar .btn{min-height:40px;font-size:14px}
+.ctools .btn{min-height:34px;font-size:13px}
+/* كروت الأرصدة الكبيرة: فاتحة بإطار رفيع بدل الأسود */
+.phd{background:#fff;color:var(--ink);border:1px solid var(--line);border-top:3px solid var(--gold);border-bottom:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.phd h2{font-size:21px}
+.phd small{color:#6b6657;font-size:13.5px}
+.phd .bal{border-top:1px solid var(--line)}
+.phd .bal span{color:var(--gold-d);font-weight:700}
+.phd .bal b{font-size:28px;color:var(--ink)}
+.phd .bal b.cr{color:var(--red)}
+.mini2{color:#6b6657}.mini2 b{color:var(--ink)}
+.tots .k{background:var(--gold-l);border:1px solid var(--gold);border-bottom:1px solid var(--gold)}
+.tots .k span{color:var(--gold-d)}.tots .k b{color:var(--ink);font-size:26px}.tots .k b.cr{color:var(--red)}
+.tots div b{font-size:21px}
+.dash .k{background:var(--gold-l);border:1px solid var(--gold)}.dash .k span{color:var(--gold-d)}.dash .k b{color:var(--ink)}
+.stm .k{background:var(--gold-l);border:1px solid var(--gold)}.stm .k span{color:var(--gold-d)}.stm .k b{color:var(--ink);font-size:24px}
+.ldgf,.dtot,#p-party .ldgf{background:var(--gold-l);color:var(--ink);border:1px solid var(--gold);box-shadow:none;border-radius:10px}
+.ldgf b,.dtot b,#p-party .ldgf b{color:var(--ink)}
+.ldgf small,#p-party .ldgf small{color:var(--gold-d)}
+#p-party .ldgf span{color:#5a4a1f;font-size:17px}
+#p-party .ldgf b{font-size:28px}
+/* التبويبات والقايمة */
+.tabs{gap:6px}
+.tabs button{min-height:50px;font-size:15px;border-width:1px;border-radius:10px;font-weight:700}
+.tabs button small{font-size:13px}
+.tabs button.on{background:var(--gold-l);color:var(--ink);border-color:var(--gold-d);box-shadow:inset 0 -3px 0 var(--gold)}
+.tabs button.on small{color:var(--gold-d)}
+.tabs button[data-t=sup].on{background:#ECEFF1;border-color:var(--blue);box-shadow:inset 0 -3px 0 var(--blue)}
+.tabs button[data-t=sup].on small{color:var(--blue)}
+.pt{border-width:1px;border-right-width:4px;border-radius:10px;padding:9px 12px;margin-bottom:6px}
+.pt .m b{font-size:16px;font-weight:700}
+.pt .a b{font-size:17px;font-weight:700}
+#hList:not(.srch) .pt .m small .ph,#hList:not(.srch) .pt .m small .tag:not(.off){display:none}
+#hList:not(.srch) .pt .m small:empty{display:none}
+.pt.cur{background:var(--gold-l)}
+.cm,.en{border-width:1px;border-right-width:4px;border-radius:10px}
+.cm .m b{font-size:15.5px;font-weight:700}.cm .a{font-size:17px}
+/* جدول الحساب */
+.ldg th{background:#2a2820;color:#E8CE93;font-weight:700;font-size:13px}
+.ldg td{font-weight:500;border-color:#E6DFC9}
+.ldg td.n,.ldg td.b{text-align:right;padding-inline:7px}
+.ldg td.b{font-weight:700;background:#F8F4E8}
+.ldg tr.pay td{font-weight:600}
+.ldg th:nth-child(n+3){text-align:right;padding-inline:7px}
+.ldgw{border-radius:10px;box-shadow:var(--shadow)}
+.hint{color:#8a8472}
+@media (max-width:640px){
+  .card{padding:12px;margin-bottom:12px}
+  .btn{min-height:42px;font-size:14.5px}
+  .btn.big{min-height:46px;font-size:16px}
+  .btn.sm{min-height:36px;font-size:13.5px}
+  .inp{min-height:46px}
+  .tabs button{min-height:48px;font-size:14.5px}
+  .tabs{gap:5px;margin-bottom:8px}
+  .phd{padding:12px 14px}.phd h2{font-size:19px}.phd .bal b{font-size:24px}
+  .tots .k b{font-size:23px}.tots div b{font-size:18px}
+  #bNewParty{min-height:42px;font-size:15px;margin-bottom:8px!important}
+  #bSearch{min-height:36px;margin-bottom:8px!important}
+  .acts .btn{min-height:38px;font-size:13.5px}
+  .fab2 .btn{min-height:44px;font-size:15px}
+  .cbar .btn{min-height:42px;font-size:14px}
+  .top h1{font-size:16px}
+  .srow .inp{min-height:42px;font-size:15px}
+  .pt{padding:8px 10px}
+  .ldg td.n,.ldg td.b{padding-inline:5px}
+}
+@media (min-width:1000px){
+  .tabs button{min-height:46px;font-size:15px}
+  main.split .tabs button{min-height:46px;font-size:15px}
+  main.split #bNewParty{min-height:42px;font-size:15px}
+  .ldg td{font-weight:500}
+}
 </style>
 </head>
 <body>
@@ -890,10 +980,11 @@ function renderList(bal) {
   else if (sort === 'last') ps.sort((a, b) => (last.get(b.id) || '').localeCompare(last.get(a.id) || ''));
   else ps.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
   if (!ps.length) { $('#hList').innerHTML = `<div class="empty">${liveParties().length ? 'مفيش حساب بالاسم ده' : 'لسه مفيش حسابات. اضغط "+ حساب جديد".'}</div>`; return; }
+  $('#hList').classList.toggle('srch', !!q);
   $('#hList').innerHTML = ps.map(p => {
     const b = bal.get(p.id) || 0;
     return `<div class="pt ${p.id === curParty ? 'cur' : ''} ${p.sec === 'sup' ? 'sup' : ''} ${b ? '' : 'zero'} ${limitClass(p, b)}" data-id="${esc(p.id)}">
-      <div class="m"><b>${esc(p.name)}</b><small><span class="tag ${p.sec === 'sup' ? 'sup' : ''}">${SEC1[p.sec]}</span>${p.noTot ? '<span class="tag off">خارج الإجمالي</span>' : ''}${esc(p.phone || '')}</small></div>
+      <div class="m"><b>${esc(p.name)}</b><small><span class="tag ${p.sec === 'sup' ? 'sup' : ''}">${SEC1[p.sec]}</span>${p.noTot ? '<span class="tag off">خارج الإجمالي</span>' : ''}<span class="ph">${esc(p.phone || '')}</span></small></div>
       <div class="a"><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b><small>${balWord(b)}</small></div></div>`;
   }).join('');
   $$('#hList .pt').forEach(el => el.onclick = () => go('p/' + el.dataset.id));
@@ -2547,7 +2638,7 @@ function renderPartners() {
   const next = thuOnOrAfter(addDays(t, dowOf(t) === 4 ? 1 : 0));
   pg.innerHTML = `
     <div class="sync ok">✔ مرتب ${fmtP(s.amt)} لكل شريك بيتسجل لوحده كل خميس من ${esc(vName(s.vault))}. الخميس الجاي: ${dispDate(next)}</div>
-    <div class="g2" style="margin-bottom:12px"><button class="btn redf big" id="ptNew" type="button">− مسحوبات شريك</button><button class="btn line" id="ptSet" type="button" style="min-height:68px">⚙ إعدادات الشركاء</button></div>
+    <div class="g2" style="margin-bottom:12px"><button class="btn redf big" id="ptNew" type="button">− مسحوبات شريك</button><button class="btn line" id="ptSet" type="button" >⚙ إعدادات الشركاء</button></div>
     <div class="card">
       <div class="seg s3" id="ptMode">${[['month', 'شهر'], ['year', 'سنة'], ['all', 'الكل']].map(([k, n]) => `<button type="button" data-m="${k}" class="${partMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
       ${partMode === 'month' ? `<input class="inp" type="month" id="ptMonth" value="${partMonth || t.slice(0, 7)}">` : partMode === 'year' ? `<input class="inp num" id="ptYear" inputmode="numeric" value="${partYear || t.slice(0, 4)}">` : ''}

@@ -238,7 +238,24 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await A.click('#bSearch'); await A.fill('#saQ', 'سلفة'); await A.waitForTimeout(400);
     eq('البحث في الحركات', (await A.textContent('#saR')).includes('مسحوبات الشركاء'), true); await A.click('#saX2');
 
-    console.log('\n١٤) المراجعة الداخلية');
+    console.log('\n١٤) التاريخ ورصيد أول المدة');
+    const OP = await A.evaluate(() => {
+      const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name: 'عميل ترتيب تجربة', phone: '', note: '', noTot: false, at: now, upd: now, del: false};
+      db.parties.push(p); P.set(p.id, p);
+      addEntry({party: p.id, kind: 'man', date: '2026-01-10', desc: 'بند قبل الرصيد', dr: 5000, cr: 0});
+      addEntry({party: p.id, kind: 'open', date: '2026-03-01', desc: 'رصيد أول المدة', dr: 20000, cr: 0});
+      const s = stmtData(p.id, '2026-02-01', '2026-12-31');
+      return [partyEntries(p.id)[0].kind, stmtData(p.id, '', '').rows[0].run, s.open, s.n];
+    });
+    eq('رصيد أول المدة أول سطر حتى لو في بند بتاريخ قبله', OP, ['open', 20000, 25000, 0]);
+    await A.click('nav button[data-go=cash]'); await A.click('#cExp'); await A.waitForTimeout(150);
+    const DP = await A.evaluate(() => { const dp = $('#txD').nextElementSibling; return [dp.className.includes('dp'), [...dp.querySelectorAll('select')].map(x => x.dataset.p).join(''), getComputedStyle(dp).direction]; });
+    eq('منتقي التاريخ: يوم شهر سنة من اليمين', DP, [true, 'dmy', 'rtl']);
+    await A.selectOption('#txD + .dp [data-p=d]', '5'); await A.selectOption('#txD + .dp [data-p=m]', '2'); await A.selectOption('#txD + .dp [data-p=y]', String(new Date().getFullYear()));
+    eq('الاختيار اتسجل على طول من غير زرار', await A.inputValue('#txD'), `${new Date().getFullYear()}-02-05`);
+    await A.click('#txX');
+
+    console.log('\n١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); }

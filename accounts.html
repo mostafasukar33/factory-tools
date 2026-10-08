@@ -422,6 +422,7 @@ nav svg{width:26px;height:26px}
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
 <div id="render"></div>
 
+<script src="lib/datepick.js"></script>
 <script src="lib/html2canvas.min.js"></script>
 <script src="lib/jspdf.umd.min.js"></script>
 <script>
@@ -560,12 +561,13 @@ function touch(r) { r.upd = Math.max(Date.now(), (r.upd || 0) + 1); }
 /* ====================== الحسابات والأرصدة ====================== */
 const liveParties = () => db.parties.filter(p => !p.del);
 const liveEntries = () => db.entries.filter(e => !e.del);
-const entCmp = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.at || 0) - (b.at || 0) || (a.id < b.id ? -1 : 1);
+/* رصيد أول المدة دايماً أول سطر في الحساب، حتى لو اتسجلت بنود بتاريخ قبله */
+const entCmp = (a, b) => (b.kind === 'open') - (a.kind === 'open') || (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.at || 0) - (b.at || 0) || (a.id < b.id ? -1 : 1));
 function partyEntries(pid, withCancelled) { return db.entries.filter(e => e.party === pid && (withCancelled || !e.del)).sort(entCmp); }
 /* رصيد حساب = مجموع (مدين - دائن) لكل الحركات الشغالة. لو اتبعت تاريخ: الحركات اللي قبله بس */
 function balance(pid, beforeDate) {
   let b = 0;
-  for (const e of db.entries) if (!e.del && e.party === pid && (!beforeDate || e.date < beforeDate)) b += (e.dr || 0) - (e.cr || 0);
+  for (const e of db.entries) if (!e.del && e.party === pid && (!beforeDate || e.date < beforeDate || e.kind === 'open')) b += (e.dr || 0) - (e.cr || 0);
   return b;
 }
 function allBalances() {
@@ -1276,7 +1278,7 @@ function stmtData(pid, from, to, fromEnt) {
   /* fromEnt = آخر فاتورة: الكشف يبدأ من الفاتورة دي (والدفعات اللي بعدها)، والرصيد قبلها بيتكتب كرصيد سابق */
   const fi = fromEnt ? all.findIndex(e => e.id === fromEnt) : -1;
   const open = fi >= 0 ? all.slice(0, fi).reduce((b, e) => b + (e.dr || 0) - (e.cr || 0), 0) : from ? balance(pid, from) : null;
-  const ents = fi >= 0 ? all.slice(fi) : all.filter(e => (!from || e.date >= from) && (!to || e.date <= to));
+  const ents = fi >= 0 ? all.slice(fi) : all.filter(e => e.kind === 'open' ? !from : (!from || e.date >= from) && (!to || e.date <= to));
   if (fi >= 0) from = all[fi].date;
   let run = open || 0, tdr = 0, tcr = 0;
   const rows = [];

@@ -668,11 +668,13 @@ async function showLock(msg) {
   if ($('#lkBio')) $('#lkBio').onclick = async () => {
     $('#lkErr').textContent = '';
     try { const pw = await bioGetPass(bio); await go(false, pw); }
-    catch (e) { $('#lkErr').textContent = e && e.name === 'NotAllowedError' ? 'اتلغت البصمة. اكتب كلمة السر.' : 'البصمة مش شغالة دلوقتي. اكتب كلمة السر.'; }
+    catch (e) { $('#lkErr').textContent = e && e.name === 'NotAllowedError' ? 'اتلغت البصمة. اكتب كلمة السر.' : 'البصمة مش شغالة دلوقتي. اكتب كلمة السر.'; if ($('#lkP')) $('#lkP').focus(); }
   };
   $('#lkForgot').onclick = forgotFlow;
   $('#lkAbc').onclick = () => { const i = $('#lkP'); const num = i.inputMode === 'numeric'; i.inputMode = num ? 'text' : 'numeric'; if (num) i.removeAttribute('pattern'); else i.setAttribute('pattern', '[0-9]*'); $('#lkAbc').textContent = num ? 'ارجع للوحة الأرقام' : 'كلمة السر فيها حروف؟ افتح لوحة الحروف'; i.blur(); setTimeout(() => i.focus(), 50); };
-  setTimeout(() => $('#lkP') && $('#lkP').focus(), 100);
+  /* أول ما الشاشة تظهر وفيه بصمة مفعّلة: بيطلب البصمة لوحده مرة واحدة. لو اتلغت أو فشلت، بتكتب كلمة السر أو تدوس الزرار */
+  if (bio && !location.search.includes('nobio')) setTimeout(() => $('#lkBio') && !$('#lkP').value && $('#lkBio').click(), 350);
+  else setTimeout(() => $('#lkP') && $('#lkP').focus(), 100);
 }
 function renderSetup() {
   $('#lockBox').innerHTML = `

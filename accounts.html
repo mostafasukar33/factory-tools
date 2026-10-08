@@ -49,6 +49,11 @@ textarea.inp{min-height:84px;resize:vertical;line-height:1.7}
 .acts{display:flex;gap:8px;margin-bottom:10px}
 .acts .btn{flex:1;min-height:44px;font-size:15px;padding:6px 8px;white-space:nowrap;border-radius:12px}
 .fab2{display:none}
+.cbar{display:flex;gap:6px;position:sticky;top:var(--hh,64px);z-index:20;background:var(--bg);padding:6px 0;margin-bottom:8px}
+.cbar .btn{flex:1;min-height:42px;font-size:14.5px;padding:4px 6px;white-space:nowrap;border-radius:11px}
+.cbar .sh{display:none}
+.ctools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.ctools .btn{width:auto;flex:1;min-height:36px;font-size:13.5px;padding:4px 8px;white-space:nowrap}
 nav .qk{display:none}
 .hint{color:#777;font-size:13px;margin:6px 0 0}
 .hint a{text-decoration:underline;cursor:pointer;color:var(--gold-d)}
@@ -399,7 +404,10 @@ nav svg{width:26px;height:26px}
   .acts{gap:6px}.acts .btn{min-height:42px;font-size:14px;padding:4px 4px}
   .fab2{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:fixed;inset-inline:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:8px 10px;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:25}
   .fab2 .btn{min-height:50px;font-size:16px;box-shadow:0 3px 10px #0004}
-  #p-party{padding-bottom:84px}
+  #p-party,#p-cash{padding-bottom:84px}
+  .cbar{position:fixed;top:auto;inset-inline:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:8px 10px;margin:0;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:25}
+  .cbar .btn{min-height:48px;font-size:15px;box-shadow:0 3px 10px #0004}
+  .cbar .lg{display:none}.cbar .sh{display:inline}
   /* صفحة الحساب */
   .phd{padding:12px 14px;border-radius:14px}
   .phd h2{font-size:20px}.phd .bal b{font-size:26px}
@@ -2157,13 +2165,17 @@ function cashRange() {
   if (cashMode === 'year') { const y = cashYear || t.slice(0, 4); return [y + '-01-01', y + '-12-31']; }
   return [cashFrom || t.slice(0, 8) + '01', cashTo || t];
 }
+function cashNoteOnce() {
+  try { if (localStorage.getItem('fo_hint_cash')) return ''; localStorage.setItem('fo_hint_cash', '1'); } catch (e) { return ''; }
+  return '<div class="sync ok">🔗 الخزنة دي هي نفسها "دفتر الخزنة" اللي في الصفحة الرئيسية. اللي بتسجله هنا أو هناك بيظهر في المكانين. (الرسالة دي بتظهر مرة واحدة)</div>';
+}
 function renderCash() {
   const pg = $('#p-cash');
   bridgeIn();
   if (!db.vaults.length) {
     pg.innerHTML = `<div class="card"><h2>الخزنة</h2>
       <p style="font-weight:700;margin:0 0 12px">من هنا هتسجل كل فلوس داخلة أو خارجة. ولما تسجل دفعة من عميل أو لمورد، بتدخل الخزنة أو تطلع منها لوحدها. وكل ده بيظهر كمان في "دفتر الخزنة" اللي في الصفحة الرئيسية.</p>
-      <button class="btn gold big" id="cNew" type="button">ابدأ الخزنة</button></div>`;
+      <button class="btn gold" id="cNew" type="button">ابدأ الخزنة</button></div>`;
     $('#cNew').onclick = () => { ensureVaults(); renderCash(); };
     return;
   }
@@ -2177,17 +2189,20 @@ function renderCash() {
     if (m.sign) { const x = by.get(k) || {n: k, i: 0, o: 0}; if (m.sign > 0) x.i += m.amt; else x.o += m.amt; by.set(k, x); } });
   const t = todayISO();
   pg.innerHTML = `
-    <div class="sync ok">🔗 الخزنة دي هي نفسها "دفتر الخزنة" اللي في الصفحة الرئيسية. اللي بتسجله هنا أو هناك بيظهر في المكانين.</div>
+    ${cashNoteOnce()}
+    <div class="cbar">
+      <button class="btn green" id="cRecv" type="button" title="استلمت من عميل">💵 <span class="lg">استلمت من عميل</span><span class="sh">استلمت</span></button>
+      <button class="btn" id="cPayS" type="button" title="دفعت لمورد">💸 <span class="lg">دفعت لمورد</span><span class="sh">دفعت</span></button>
+      <button class="btn redf" id="cExp" type="button">− مصروف</button>
+      <button class="btn gold" id="cInc" type="button">+ إيراد</button>
+    </div>
     <div class="tots"><div class="k"><span>رصيد كل الخزن</span><b class="${total < 0 ? 'cr' : ''}">${fmtP(total)} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>
       ${vs.map(v => { const b = vaultBal(v.id); return `<div class="vt ${cashVault === v.id ? 'on' : ''}" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="${b < 0 ? 'cr2' : ''}">${fmtP(b)}</b></div>`; }).join('')}</div>
-    <button class="btn gold" id="cOpen2" type="button" style="margin-bottom:12px">✎ الفلوس اللي معايا دلوقتي</button>
-    <div class="g2" style="margin-bottom:10px">
-      <button class="btn green big" id="cRecv" type="button">💵 استلمت من عميل</button>
-      <button class="btn big" id="cPayS" type="button">💸 دفعت لمورد</button>
-      <button class="btn redf" id="cExp" type="button">مصروف −</button>
-      <button class="btn gold" id="cInc" type="button">إيراد +</button>
+    <div class="ctools">
+      <button class="btn line sm" id="cOpen2" type="button">✎ الفلوس اللي معايا</button>
+      ${vs.length > 1 ? '<button class="btn line sm" id="cTr" type="button">⇄ تحويل بين الخزن</button>' : ''}
+      <button class="btn line sm" id="cSet" type="button">⚙ الخزن والبنود</button>
     </div>
-    ${vs.length > 1 ? '<button class="btn line sm" id="cTr" type="button" style="margin-bottom:12px">تحويل بين الخزن ⇄</button>' : ''}
     <div class="card">
       <div class="seg s4" id="cMode">${[['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${cashMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
       <div id="cPick">${cashMode === 'day' ? `<input class="inp" type="date" id="cDay" value="${cashDay || t}">`
@@ -2202,7 +2217,7 @@ function renderCash() {
     <div class="sech"><span>الحركات (${mv.length})</span></div>
     ${mv.length ? mv.map((m, i) => `<div class="cm ${m.cls}" data-i="${i}"><div class="m"><b>${esc(m.title)}</b><small>${dispDate(m.date)} — ${esc(m.sub)}</small></div>
       <div class="a ${m.sign > 0 ? 'inc' : m.sign < 0 ? 'exp' : ''}">${m.sign > 0 ? '+' : m.sign < 0 ? '−' : ''} ${fmtP(m.amt)}</div></div>`).join('') : '<div class="empty">مفيش حركات في الفترة دي</div>'}
-    <button class="btn line sm" id="cSet" type="button" style="margin-top:12px">⚙ الخزن والبنود</button>`;
+    `;
   $$('#p-cash .vt').forEach(el => el.onclick = () => { cashVault = cashVault === el.dataset.v ? '' : el.dataset.v; renderCash(); });
   $('#cRecv').onclick = () => pickParty('pay');
   $('#cPayS').onclick = () => pickParty('ppay');

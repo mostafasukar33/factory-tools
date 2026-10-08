@@ -216,7 +216,19 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     eq('حركات الشركاء ظاهرة في دفتر الخزنة', await A.evaluate(() => (bridgeOut(), readCash().tx.filter(t => t.pt && !t.del).length)), 9);
     eq('بنود الشركاء مش في قايمة المصروفات العادية', await A.evaluate(() => catsL('exp').some(c => c.id === 'c_psal' || c.id === 'c_pdraw')), false);
 
-    console.log('\n١٣) المراجعة الداخلية');
+    console.log('\n١٣) الأرباح ولوحة النهارده والبحث');
+    const PR = await A.evaluate(() => { const y = todayISO().slice(0, 4) + '-01-01', x = profitOf(y, todayISO()), ex = db.txs.filter(t => !t.del && t.type === 'exp' && !t.pt && !NOT_PL.has(t.cat) && t.date >= y).reduce((s, t) => s + t.amt, 0); return [x.sales, x.purch, x.part, x.exp === ex, x.before === x.sales - x.purch - x.exp + x.inc, x.after === x.before - x.part]; });
+    eq('الأرباح: المبيعات والمشتريات والشركاء لوحدهم والربح قبل وبعد', PR, [968500, 5050000, 13000, true, true, true]);
+    await A.click('nav button[data-go=rep]'); await A.click('#rpK button[data-v=profit]'); await A.waitForTimeout(200);
+    eq('تقرير الأرباح هو أول تقرير', [await A.getAttribute('#rpK .on', 'data-v'), (await A.textContent('#p-rep .ldgf')).includes('بعد الشركاء')], ['profit', true]);
+    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    eq('لوحة النهارده ظاهرة', (await A.textContent('#hDash')).includes('مبيعات النهارده'), true);
+    const SR = await A.evaluate(() => [searchAll('لفة تجربة').length, searchAll('1350').map(r => r.title)[0] || '', searchAll('سلفة').length, searchAll('x').length]);
+    eq('البحث بالصنف وبالمبلغ', SR, [3, 'فاتورة بيع رقم 3 — عميل تجربة واحد', 1, 0]);
+    await A.click('#bSearch'); await A.fill('#saQ', 'سلفة'); await A.waitForTimeout(400);
+    eq('البحث في الحركات', (await A.textContent('#saR')).includes('مسحوبات الشركاء'), true); await A.click('#saX2');
+
+    console.log('\n١٤) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); }

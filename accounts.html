@@ -128,6 +128,15 @@ table.lt.rep tr.bad td{background:var(--red-l);color:var(--red)}
 .inc{color:var(--green)}.exp{color:var(--red)}
 .bl{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eee;font-weight:700}
 .bl span{flex:1}.bl b{direction:ltr;unicode-bidi:isolate}
+.seg.s5{grid-template-columns:repeat(5,1fr)}@media (max-width:600px){.seg.s5{grid-template-columns:repeat(3,1fr)}}
+.dash{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.dash>*{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:8px 10px;text-align:center;text-decoration:none;color:inherit}
+.dash span{display:block;font-size:13px;font-weight:700;color:#666}.dash b{display:block;font-size:20px;font-weight:800;direction:ltr}
+.dash b.inc{color:var(--green)}.dash b.exp{color:var(--red)}
+.dash .k{grid-column:1/-1;background:var(--ink);border:0}.dash .k span{color:var(--gold)}.dash .k b{color:#fff}
+.dashm{font-size:13.5px;font-weight:700;color:#555;margin:0 2px 12px}.dashm b{direction:ltr;unicode-bidi:isolate;color:var(--ink)}
+.dashm i{font-style:normal;font-weight:800;margin-inline-start:4px}.dashm i.inc{color:var(--green)}.dashm i.exp{color:var(--red)}
+@media (min-width:1000px){#hDash2 .dash{grid-template-columns:repeat(5,1fr)}#hDash2 .dash .k{grid-column:auto}#hDash2 .dash b{font-size:24px}main.split #hDash{display:none}}
 .bl.k{border-bottom:0;font-size:18px;color:var(--gold-d)}
 .pgrid{display:grid;gap:0 12px}@media (min-width:700px){.pgrid{grid-template-columns:repeat(3,1fr)}}
 .cm{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:7px;cursor:pointer;border-right:6px solid var(--blue)}
@@ -327,8 +336,10 @@ nav svg{width:26px;height:26px}
   <div class="sync" id="syncBox"></div>
   <div id="chk"></div>
   <div id="bkRem"></div>
+  <div id="hDash"></div>
   <div class="tots" id="hTots"></div>
   <button class="btn gold big" id="bNewParty" type="button" style="margin-bottom:12px">+ حساب جديد</button>
+  <button class="btn line sm" id="bSearch" type="button" style="margin-bottom:10px">🔎 دوّر في كل الحركات (مبلغ، صنف، رقم فاتورة…)</button>
   <div class="tabs" id="hTabs"></div>
   <div class="srow">
     <input class="inp" id="hSearch" type="search" placeholder="🔍 دوّر بالاسم أو التليفون" autocomplete="off">
@@ -696,6 +707,7 @@ function renderHome() {
   $('#bkRem').innerHTML = db.parties.length && days >= every ? `<div class="sync">💾 ${lb ? `آخر نسخة احتياطية من ${days} يوم.` : 'لسه منزّلتش نسخة احتياطية.'} <a id="bkGo">نزّل واحدة دلوقتي</a></div>` : '';
   if ($('#bkGo')) $('#bkGo').onclick = () => $('#bBackup').click();
   $('#chk').innerHTML = chkAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '');
+  renderDash();
   const bal = allBalances();
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
   const net = ly - al;
@@ -729,6 +741,7 @@ function renderList(bal) {
 $('#hSearch').addEventListener('input', () => renderList());
 $('#hSort').addEventListener('change', () => renderList());
 $('#bNewParty').onclick = () => partyModal();
+$('#bSearch').onclick = searchModal;
 
 /* ====================== حساب جديد / تعديل حساب ====================== */
 function partyModal(p) {
@@ -2500,7 +2513,110 @@ function bounceInfo(p, e) {
 /* ====================== التقارير ====================== */
 /* كل تقرير بيرجّع نفس الشكل: {title, period, cols:[{h, w, c}], rows:[{cells, cls}], sum:[[label, value]], fin:[label, value]}
    والشكل ده بيتعرض جوه البرنامج وبيتطبع PDF بنفس شكل الكشف. */
-let repKind = 'debt', repSide = 'mkt', repMode = 'month', repDay = '', repMonth = '', repYear = '', repFrom = '', repTo = '', repVault = '', repItemKind = 'inv';
+/* ---------- الأرباح ولوحة النهارده ----------
+   صافي المبيعات = فواتير البيع − المرتجعات ± الخصومات والتسويات للعملا. صافي المشتريات بنفس الطريقة للموردين.
+   الحساب الفرعي (خارج الإجمالي) مش داخل. ومفيش مخزون، فالربح = المبيعات − المشتريات − المصروفات في نفس الفترة. */
+const SALE_K = new Set(['inv', 'rinv', 'adj']), PUR_K = new Set(['pur', 'rpur', 'adj']);
+function tradeSums(f, t) {
+  let sales = 0, purch = 0;
+  for (const e of db.entries) {
+    if (e.del || e.date < f || e.date > t) continue;
+    const p = P.get(e.party); if (!p || p.noTot) continue;
+    if (p.sec === 'sup') { if (PUR_K.has(e.kind)) purch += (e.cr || 0) - (e.dr || 0); }
+    else if (SALE_K.has(e.kind)) sales += (e.dr || 0) - (e.cr || 0);
+  }
+  return {sales, purch};
+}
+/* مصروفات وإيرادات الخزنة في الفترة (من غير التحويلات والدفعات والتحصيل القديم) */
+const NOT_PL = new Set(['c_inc0', 'c_payout']);
+function cashSums(f, t) {
+  const r = {exp: 0, inc: 0, part: 0, byCat: new Map()};
+  for (const x of db.txs) {
+    if (x.del || x.type === 'tr' || x.date < f || x.date > t || NOT_PL.has(x.cat)) continue;
+    if (x.pt || x.cat === 'c_psal' || x.cat === 'c_pdraw') { r.part += x.amt; continue; }
+    if (x.type === 'exp') r.exp += x.amt; else r.inc += x.amt;
+    const k = (x.type === 'exp' ? '− ' : '+ ') + cName(x.cat); r.byCat.set(k, (r.byCat.get(k) || 0) + x.amt);
+  }
+  return r;
+}
+function profitOf(f, t) {
+  const a = tradeSums(f, t), c = cashSums(f, t), before = a.sales - a.purch - c.exp + c.inc;
+  return {sales: a.sales, purch: a.purch, exp: c.exp, inc: c.inc, part: c.part, before, after: before - c.part, byCat: c.byCat};
+}
+const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+function profitReport(f, t) {
+  const rows = [], tot = {sales: 0, purch: 0, exp: 0, inc: 0, part: 0, before: 0, after: 0}, cats = new Map();
+  for (let m = f.slice(0, 7); m <= t.slice(0, 7);) {
+    const [y, mo] = m.split('-').map(Number), ms = m + '-01' < f ? f : m + '-01', me0 = m + '-' + pad2(new Date(y, mo, 0).getDate()), me = me0 > t ? t : me0;
+    const x = profitOf(ms, me);
+    Object.keys(tot).forEach(k => tot[k] += x[k]); x.byCat.forEach((v, k) => cats.set(k, (cats.get(k) || 0) + v));
+    rows.push({cells: [`${MONTHS[mo - 1]} ${y}`, fmtP(x.sales), fmtP(x.purch), fmtP(x.exp - x.inc), fmtP(x.before), fmtP(x.part), fmtP(x.after)], cls: x.after < 0 ? 'ret' : ''});
+    m = mo === 12 ? `${y + 1}-01` : `${y}-${pad2(mo + 1)}`;
+  }
+  const sum = [['صافي المبيعات', fmtP(tot.sales)], ['صافي المشتريات', fmtP(tot.purch)], ['المصروفات', fmtP(tot.exp)],
+    ...[...cats.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => ['   ' + k, fmtP(v)]),
+    ...(tot.inc ? [['إيرادات تانية من الخزنة', fmtP(tot.inc)]] : []),
+    ['الربح قبل الشركاء', fmtP(tot.before)], ['مرتبات ومسحوبات الشركاء', fmtP(tot.part)]];
+  return {title: 'الأرباح بالشهر', period: rangeText(f, t),
+    cols: [{h: 'الشهر', w: 16, c: 'l'}, {h: 'المبيعات', w: 14, c: 'n'}, {h: 'المشتريات', w: 14, c: 'n'}, {h: 'المصروفات', w: 13, c: 'n'}, {h: 'الربح قبل الشركاء', w: 15, c: 'n'}, {h: 'الشركاء', w: 13, c: 'n'}, {h: 'الباقي', w: 15, c: 'b'}],
+    rows, sum, fin: [tot.after >= 0 ? 'الباقي بعد الشركاء' : 'خسارة بعد الشركاء', fmtP(tot.after)],
+    note: 'الربح هنا = المبيعات − المشتريات − المصروفات في نفس الفترة، من غير حساب المخزون. المصروفات = مصروفات الخزنة ناقص إيراداتها التانية.'};
+}
+function renderDash(box = $('#hDash')) {
+  const t = todayISO(), m0 = t.slice(0, 8) + '01';
+  const [y, mo, d] = t.split('-').map(Number), pm = new Date(y, mo - 2, 1), pmDays = new Date(pm.getFullYear(), pm.getMonth() + 1, 0).getDate();
+  const pmS = isoOf(pm.getTime()), pmE = pmS.slice(0, 8) + pad2(Math.min(d, pmDays));
+  const td = tradeSums(t, t), mn = tradeSums(m0, t), pv = tradeSums(pmS, pmE);
+  let col = 0, paid = 0;
+  for (const e of db.entries) { if (e.del || !isPay(e) || e.date !== t) continue; const p = P.get(e.party); if (!p || p.noTot) continue; if (e.kind === 'pay') col += e.amt; else paid += e.amt; }
+  const cs = cashSums(t, t), diff = mn.sales - pv.sales;
+  box.innerHTML = `<div class="dash"><div><span>مبيعات النهارده</span><b>${fmtP(td.sales)}</b></div><div><span>تحصيل النهارده</span><b class="inc">${fmtP(col)}</b></div>
+    <div><span>دفعت للموردين</span><b>${fmtP(paid)}</b></div><div><span>مصروفات النهارده</span><b class="exp">${fmtP(cs.exp + cs.part)}</b></div>
+    ${db.vaults.length ? `<a href="#cash" class="k"><span>رصيد الخزن دلوقتي</span><b>${fmtP(vaultBal(''))}</b></a>` : ''}</div>
+    <div class="dashm">مبيعات الشهر ده لحد النهارده <b>${fmtP(mn.sales)}</b> — الشهر اللي فات لنفس اليوم <b>${fmtP(pv.sales)}</b>
+      ${pv.sales || mn.sales ? `<i class="${diff >= 0 ? 'inc' : 'exp'}">${diff >= 0 ? '▲' : '▼'} ${fmtP(Math.abs(diff))}</i>` : ''}</div>`;
+}
+/* ---------- البحث في كل الحركات ---------- */
+function searchAll(q) {
+  q = norm(normDigits(q || '').trim()); if (q.length < 2) return [];
+  const n = +q.replace(/,/g, ''), isNum = /^[\d.,]+$/.test(q) && n > 0, cents = Math.round(n * 100);
+  const hit = (txt, amts) => (isNum && amts.some(a => a === cents)) || norm(txt).includes(q);
+  const out = [];
+  for (const e of db.entries) {
+    if (e.del) continue;
+    const p = P.get(e.party); if (!p) continue;
+    const lines = (e.lines || []).map(l => `${l.name} ${l.unit || ''}`).join(' ');
+    const amts = [e.amt, e.dr, e.cr, e.disc, ...(e.lines || []).map(l => +l.price || 0), ...(e.lines || []).map(lineTot)].filter(Boolean);
+    if (hit(`${p.name} ${e.desc || ''} ${e.no || ''} ${e.note || ''} ${e.method || ''} ${lines}`, amts))
+      out.push({date: e.date, at: e.at || 0, title: `${KIND[e.kind] || 'حركة'}${e.no ? ' رقم ' + e.no : ''} — ${p.name}`, sub: e.desc || lines || e.note || '', amt: e.amt || e.dr || e.cr || 0, go: () => { go('p/' + p.id); setTimeout(() => openEntry(p, e), 200); }});
+  }
+  for (const x of db.txs) {
+    if (x.del) continue;
+    if (hit(`${x.note || ''} ${x.pnote || ''} ${cName(x.cat)} ${x.pt ? partName(x.pt) : ''} ${vName(x.vault)}`, [x.amt]))
+      out.push({date: x.date, at: x.at || 0, title: x.type === 'tr' ? `تحويل: ${vName(x.vault)} ← ${vName(x.to)}` : `${TXT[x.type]} — ${cName(x.cat)}`, sub: x.note || '', amt: x.amt, go: () => { closeModal(); x.pt ? partnerTxModal(x) : txModal(x.type, x); }});
+  }
+  return out.sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at);
+}
+function searchModal() {
+  modal(`<h3>🔎 دوّر في كل الحركات</h3>
+    <input class="inp" id="saQ" type="search" placeholder="مبلغ، صنف، رقم فاتورة، ملاحظة، اسم…" autocomplete="off" style="margin-bottom:8px">
+    <div id="saR" style="max-height:60vh;overflow:auto"><p class="hint">اكتب حرفين على الأقل. المبلغ لازم يبقى بالظبط (زي 1500).</p></div>
+    <button class="btn line" id="saX2" type="button" style="margin-top:10px">رجوع</button>`, true);
+  let res = [];
+  const draw = () => {
+    res = searchAll($('#saQ').value);
+    const q = $('#saQ').value.trim();
+    $('#saR').innerHTML = q.length < 2 ? '<p class="hint">اكتب حرفين على الأقل. المبلغ لازم يبقى بالظبط (زي 1500).</p>'
+      : res.length ? `<p class="hint" style="margin:0 0 6px">${res.length > 150 ? `أول 150 من ${res.length}` : res.length + ' نتيجة'}</p>` + res.slice(0, 150).map((r, i) => `<div class="cm" data-i="${i}"><div class="m"><b>${esc(r.title)}</b><small>${dispDate(r.date)}${r.sub ? ' — ' + esc(String(r.sub).slice(0, 90)) : ''}</small></div><div class="a">${fmtP(r.amt)}</div></div>`).join('')
+      : '<div class="empty">مفيش حاجة بالكلام ده</div>';
+    $$('#saR .cm').forEach(el => el.onclick = () => res[+el.dataset.i].go());
+  };
+  let tm = 0;
+  $('#saQ').oninput = () => { clearTimeout(tm); tm = setTimeout(draw, 200); };
+  $('#saX2').onclick = closeModal;
+  setTimeout(() => $('#saQ') && $('#saQ').focus(), 50);
+}
+let repKind = 'profit', repSide = 'mkt', repMode = 'year', repDay = '', repMonth = '', repYear = '', repFrom = '', repTo = '', repVault = '', repItemKind = 'inv';
 function repRange() {
   const t = todayISO();
   if (repMode === 'day') { const d = repDay || t; return [d, d]; }
@@ -2511,6 +2627,7 @@ function repRange() {
 const rangeText = (f, t) => f === t ? dispDate(f) : `من ${dispDate(f)} إلى ${dispDate(t)}`;
 function buildReport() {
   const ps = liveParties();
+  if (repKind === 'profit') { const [f, t] = repRange(); return profitReport(f, t); }
   if (repKind === 'debt') {
     /* لكل حساب: إجمالي اللي اتسحب (فواتير ورصيد أول المدة) وإجمالي اللي اتدفع (دفعات ومرتجعات وخصومات) والرصيد، زي أعمدة الكشف بالظبط */
     const sup = repSide === 'sup';
@@ -2573,9 +2690,9 @@ function buildReport() {
 }
 function renderReports() {
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
-  const needRange = repKind === 'cash' || repKind === 'item';
+  const needRange = repKind === 'cash' || repKind === 'item' || repKind === 'profit';
   $('#p-rep').innerHTML = `
-    <div class="seg s4" id="rpK">${[['debt', 'المسحوبات والمدفوعات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    <div class="seg s5" id="rpK">${[['profit', 'الأرباح'], ['debt', 'المسحوبات والمدفوعات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="card">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'tot' ? '<p class="hint" style="margin:0">كل الحسابات اللي ليها رصيد، والحساب الفرعي ظاهر لوحده ومش داخل في الإجمالي.</p>' : ''}
@@ -2583,6 +2700,7 @@ function renderReports() {
       ${needRange ? `<div class="seg s4" id="rpM">${[['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${repMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${repMode === 'day' ? `<input class="inp" type="date" id="rpDay" value="${repDay || t}">` : repMode === 'month' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">`
           : repMode === 'year' ? `<input class="inp num" id="rpYear" inputmode="numeric" value="${repYear || t.slice(0, 4)}">` : `<div class="g2"><input class="inp" type="date" id="rpFrom" value="${f}"><input class="inp" type="date" id="rpTo" value="${to}"></div>`}` : ''}
+      ${repKind === 'profit' ? `<p class="hint">${esc(R.note)}</p>` : ''}
       ${repKind === 'cash' ? `<select class="inp" id="rpV" style="margin-top:8px"><option value="">كل الخزن</option>${vaultsL().map(v => `<option value="${esc(v.id)}" ${repVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>` : ''}
     </div>
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
@@ -2591,7 +2709,7 @@ function renderReports() {
     <div class="card" style="margin-top:10px">${R.sum.map(([a, b]) => `<div class="bl"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
     <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>
     <div class="stack" style="margin-top:10px"><button class="btn green" id="rpShare" type="button">ابعت PDF واتساب</button><button class="btn gold" id="rpPdf" type="button">معاينة / تنزيل PDF</button></div>`;
-  $$('#rpK button').forEach(b => b.onclick = () => { repKind = b.dataset.v; renderReports(); });
+  $$('#rpK button').forEach(b => b.onclick = () => { repKind = b.dataset.v; if (repKind === 'profit' && repMode === 'day') repMode = 'year'; renderReports(); });
   $$('#rpSide button').forEach(b => b.onclick = () => { repSide = b.dataset.v; renderReports(); });
   $$('#rpIK button').forEach(b => b.onclick = () => { repItemKind = b.dataset.v; renderReports(); });
   $$('#rpM button').forEach(b => b.onclick = () => { repMode = b.dataset.m; renderReports(); });
@@ -2739,7 +2857,7 @@ function route() {
   curParty = pg === 'party' ? h.slice(2) : '';
   if (split) {
     const box = $('#p-home'), st = box.scrollTop; renderHome(); box.scrollTop = st;
-    if (pg === 'home') $('#p-party').innerHTML = '<div class="card empty" style="padding:60px 20px;font-size:18px">اختار حساب من القايمة علشان يظهر كشفه هنا</div>';
+    if (pg === 'home') { $('#p-party').innerHTML = '<h2 class="rph">النهارده<small>' + dispDate(todayISO()) + '</small></h2><div id="hDash2"></div><div class="card empty" style="padding:50px 20px;font-size:18px">اختار حساب من القايمة علشان يظهر كشفه هنا</div>'; renderDash($('#hDash2')); }
   }
   if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
 }

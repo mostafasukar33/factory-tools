@@ -250,7 +250,7 @@ function tapeHTML(lines,interactive){
     h+=`<div class="row${interactive&&sel===i?' sel':''}${interactive&&S.editIdx===i?' editrow':''}" data-i="${i}"><span class="op${l.op==='-'?' minus':''}">${op}</span><span class="val">${interactive&&S.editIdx===i&&S.entry?fmtEntry(S.entry):shown}${pct}</span>${run}</div>`;
     if(interactive&&sel===i)h+=`<div class="rowbar"><button data-act="edit">عدّل الرقم</button><button class="del" data-act="del">امسح السطر</button><button data-act="x">إلغاء</button></div>`;
   });
-  if(interactive&&!S.sample&&!S.closed&&S.editIdx<0&&(S.entry||(lines.length&&S.pending))){
+  if(interactive&&!S.sample&&!S.closed&&S.editIdx<0&&!S.entry&&lines.length&&S.pending){
     const op=lines.length?OPS[S.pending||'+']:'';
     h+=`<div class="row live"><span class="op${S.pending==='-'?' minus':''}">${op}</span><span class="val${S.entry[0]==='-'?' isneg':''}">${S.entry?fmtEntry(S.entry):''}</span></div>`;}
   if(!interactive&&(lines.length>1))h+=`<div class="row total"><span class="op">=</span><span class="val">${fmt(total)}</span></div>`;
@@ -265,10 +265,13 @@ function render(){
   const pv=JSON.parse(JSON.stringify(S.lines));const ev=S.entry&&S.entry!=='-'?parseFloat(S.entry):null;
   if(ev!==null&&!isNaN(ev)){ if(S.editIdx>=0)pv[S.editIdx].v=ev; else if(!S.closed)pv.push({op:pv.length?(S.pending||'+'):'',v:ev}); }
   const {total}=compute(pv);
-  $('entry').textContent=fmt(total);
+  const typing=!S.sample&&S.entry&&S.entry!=='-'||(!S.sample&&S.entry==='-');
+  if(typing){const pop=(!S.closed&&S.editIdx<0&&S.lines.length)?'<span class="pop">'+OPS[S.pending||'+']+'</span>':'';
+    $('entry').innerHTML=pop+'<span>'+fmtEntry(S.entry)+'</span>';}
+  else $('entry').textContent=fmt(total);
   $('memTag').hidden=!mem.length;$('memTag').textContent=mem.length?'M '+fmt(memSum()):'';
-  $('entry').classList.toggle('isneg',total<0);
-  $('stateLbl').innerHTML=S.editIdx>=0?'<span class="editing">بتعدّل سطر '+(S.editIdx+1)+'</span>':(S.closed?'= اتحفظ':'الناتج');
+  $('entry').classList.toggle('isneg',typing?S.entry[0]==='-':total<0);
+  $('stateLbl').innerHTML=S.editIdx>=0?'<span class="editing">بتعدّل سطر '+(S.editIdx+1)+'</span>':(S.closed?'= اتحفظ':(typing?'الرقم':'الناتج'));
   document.querySelectorAll('.k.op[data-k="+"],.k.op[data-k="-"],.k.op[data-k="*"],.k.op[data-k="/"]').forEach(b=>b.classList.toggle('on',!S.closed&&S.editIdx<0&&b.dataset.k===S.pending&&S.lines.length>0));
   save();}
 

@@ -80,10 +80,7 @@ textarea.inp{min-height:84px;resize:vertical;line-height:1.7}
 .tag.sup{background:#ECEFF1;color:var(--blue)}
 .tag.off{background:#EEE;color:#777}
 /* صفحة الحساب */
-.ppbar{position:sticky;top:var(--hh,60px);z-index:15;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg);padding:6px 0;margin:0 0 6px;font-weight:800;color:var(--gold-d);border-bottom:1px solid var(--line)}
-.ppbar a{text-decoration:underline;cursor:pointer;font-size:15px;white-space:nowrap}
-.ppbar .jb{display:flex;gap:6px}
-.ppbar .jb button{height:36px;padding:0 12px;border:2px solid var(--ink);border-radius:10px;background:var(--ink);color:var(--gold);font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap}
+.ppbar .jb{display:none}
 .phd{background:var(--ink);color:#fff;border-radius:16px;padding:14px 16px;margin-bottom:12px;border-bottom:4px solid var(--gold)}
 .phd h2{margin:0;font-size:24px;font-weight:800;line-height:1.3}
 .phd small{color:#ccc;font-weight:600;font-size:14px}
@@ -153,38 +150,34 @@ table.lt.rep tr.bad td{background:var(--red-l);color:var(--red)}
 .lrow{display:grid;grid-template-columns:1fr 46px;gap:6px;align-items:center;margin-bottom:6px;font-weight:700}
 .lrow small{color:#777;font-weight:600}
 .modal h3.exp{color:var(--red)}.modal h3.inc{color:var(--green)}
-.ldgw{overflow:visible;border:1.5px solid var(--line);border-radius:12px;background:#fff;-webkit-overflow-scrolling:touch}
-table.ldg{width:100%;border-collapse:collapse;font-size:15px;table-layout:fixed}
-.ldg th{background:#111;color:#DAAE57;font-weight:700;padding:7px 4px;position:sticky;top:calc(var(--hh,60px) + 49px);z-index:5;white-space:nowrap}
+.ldgw{overflow-x:auto;border:1.5px solid var(--line);border-radius:12px;background:#fff;-webkit-overflow-scrolling:touch}
+table.ldg{width:100%;border-collapse:collapse;font-size:13.5px}
+.ldg th{background:#111;color:#DAAE57;font-weight:700;padding:7px 4px;position:sticky;top:0;white-space:nowrap}
 .ldg td{padding:7px 4px;border:1px solid #DCCFAE;text-align:center;vertical-align:middle;font-weight:600}
 .ldg th{border:1px solid #333}
 .ldg td.b{background:#F7F2E4;border-inline-start:2px solid #9C7420}
-.ldg td.l{text-align:right}.ldg td.l .qp{display:none}
-.c1{width:13%}.c2{width:25%}.c3{width:12%}.c4{width:10%}.c5{width:13%}.c6{width:12%}.c7{width:15%}.ldg td.l small{display:block;font-size:11px;color:#9C7420;font-weight:700}
-.ldg td.dt{white-space:nowrap;font-size:14px}.ldg td.q{font-size:14px;line-height:1.25}
-.ldg td.n{direction:ltr;overflow-wrap:anywhere;font-weight:700}.ldg td.b{direction:ltr;overflow-wrap:anywhere;font-weight:800}
+.ldg td.l{text-align:right;min-width:130px}.ldg td.l small{display:block;font-size:11px;color:#9C7420;font-weight:700}
+.ldg td.dt{white-space:nowrap;font-size:12.5px}.ldg td.q{white-space:nowrap;font-size:12.5px}
+.ldg td.n{direction:ltr;white-space:nowrap}.ldg td.b{direction:ltr;white-space:nowrap;font-weight:800}
 .ldg tr{cursor:pointer}.ldg tr:nth-child(even) td{background:#FBF8EF}
 .ldg tr.f td{border-top:1.5px solid #E2D6B5}
 .ldg tr.op td{background:#EFE6CF;font-weight:800}
 .ldg tr.pay td{background:#DDF1E3;color:#14632C;font-weight:800}
 .ldg tr.ret td{background:#FFF1E0;color:#8A4B00}
 .ldg tr.bnc td{background:#FDE3E1;color:#B3261E;font-weight:800}
-.ldg td.q small{display:block;font-size:11.5px;color:#777}
+.ldg td.q small{display:block;font-size:10.5px;color:#777}
 .ldg td.dt small{display:block;font-size:10.5px;color:#888}
-@media (max-width:640px){
+@media (max-width:600px){
   #p-party{margin:0 -8px}
-  /* على الموبايل: 5 أعمدة بتدخل في الشاشة من غير سحب (الكمية والسعر تحت اسم الصنف) */
-  .ldg .hq{display:none}
-  .ldg td.l .qp{display:block}
-  .c1{width:15%}.c2{width:31%}.c5{width:17%}.c6{width:16%}.c7{width:21%}
-  .ldg th{font-size:13.5px;padding:7px 1px}
-  .ldg td{padding:8px 2px}
-  .ldg td.l{font-size:15px;font-weight:700;line-height:1.35}
-  .ldg td.l small{font-size:12.5px}
-  .ldg td.dt{font-size:13.5px}
-  .ldg td.n,.ldg td.b{font-size:14px;letter-spacing:-.2px}
-  .ldg td{padding-inline:1px}
-}
+  table.ldg{font-size:14px}
+  .ldg th{font-size:13px;padding:7px 2px}
+  .ldg td{padding:8px 1px}
+  .ldg td.l{min-width:0;font-size:14.5px;font-weight:700;line-height:1.35}
+  .ldg td.l small{font-size:12px}
+  .ldg td.dt,.ldg td.q{font-size:13px}
+  .ldg td.q small{font-size:11.5px}
+  .ldg td.b{font-size:14.5px}
+.ldg td.l .qp{display:none}
 }
 .ldgf{display:flex;justify-content:space-between;align-items:center;background:var(--ink);color:var(--gold);border-radius:12px;padding:10px 14px;margin-top:8px;font-weight:800}
 .ldgf b{color:#fff;font-size:24px;direction:ltr}.ldgf small{font-size:13px;color:var(--gold)}
@@ -236,20 +229,43 @@ nav button.on{color:var(--gold)}
 nav svg{width:26px;height:26px}
 /* شكل اللاب توب: القايمة على الجنب، والحساب بيفتح جنب قايمة الحسابات */
 @media (min-width:1000px){
-  body{padding-bottom:0;padding-inline-start:176px}
+  body{padding-bottom:0;padding-inline-start:136px}
   /* القايمة الجانبية: فاتحة وواضحة، والتاب الشغال دهبي */
-  nav{top:0;bottom:0;inset-inline-start:0;inset-inline-end:auto;width:176px;background:#fff;grid-template-columns:none!important;grid-auto-rows:min-content;align-content:start;gap:6px;border-top:0;border-inline-end:2px solid var(--line);padding:78px 10px 10px}
-  nav button{flex-direction:row;justify-content:flex-start;gap:10px;font-size:15.5px;font-weight:800;color:#333;min-height:46px;padding:8px 12px;border-radius:12px;border:2px solid transparent}
+  nav{top:0;bottom:0;inset-inline-start:0;inset-inline-end:auto;width:136px;background:#fff;grid-template-columns:none!important;grid-auto-rows:min-content;align-content:start;gap:5px;border-top:0;border-inline-end:2px solid var(--line);padding:76px 8px 10px}
+  nav button{flex-direction:row;justify-content:flex-start;gap:8px;font-size:14px;font-weight:800;color:#333;min-height:40px;padding:6px 10px;border-radius:10px;border:2px solid transparent}
   nav button svg{color:var(--gold-d)}
   nav button:hover{background:var(--gold-l);color:#111}
   nav button.on{background:var(--gold);color:#111;border-color:#111}
   nav button.on svg{color:#111}
-  nav svg{width:22px;height:22px}
+  nav svg{width:19px;height:19px}
   main{max-width:1500px;padding:18px 22px 30px}
   #p-set{max-width:820px;margin:0 auto}
   #toast{bottom:24px}
-  main.split{display:grid;grid-template-columns:430px minmax(0,1fr);gap:20px;align-items:start}
-  main.split #p-party{display:block}
+  main.split{display:grid;grid-template-columns:360px minmax(0,1fr);gap:16px;align-items:start}
+  /* الحساب المفتوح: عمود له شريط تمرير ظاهر على جنبه، والرصيد تحت ثابت */
+  main.split #p-party{display:block;position:sticky;top:84px;height:calc(100vh - 100px);overflow-y:scroll;padding-inline-end:12px;scrollbar-width:auto;scrollbar-color:var(--gold-d) #E9E2CE}
+  main.split #p-party::-webkit-scrollbar{width:14px}
+  main.split #p-party::-webkit-scrollbar-track{background:#E9E2CE;border-radius:8px}
+  main.split #p-party::-webkit-scrollbar-thumb{background:var(--gold-d);border-radius:8px;border:2px solid #E9E2CE}
+  .ppbar{position:sticky;top:0;z-index:15;background:var(--bg);padding:6px 0;margin:0 0 6px!important;border-bottom:1px solid var(--line)}
+  .ppbar a#ppBack{display:none}
+  .ppbar .jb{display:flex;gap:6px}
+  .ppbar .jb button{height:34px;padding:0 12px;border:2px solid var(--ink);border-radius:10px;background:var(--ink);color:var(--gold);font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap}
+  .ppbar a{font-size:15px}
+  /* جدول الحساب على اللاب: يدخل العرض من غير سحب، وخط واضح */
+  table.ldg{table-layout:fixed;font-size:15px}
+  .ldgw{overflow:visible}
+  .ldg th{top:42px;z-index:5;font-size:14.5px}
+  .ldg td.dt{font-size:14px}.ldg td.q{font-size:14px;white-space:normal;line-height:1.25}
+  .ldg td.l{min-width:0}
+  .ldg td.n,.ldg td.b{white-space:normal;overflow-wrap:anywhere}
+  .ldg th:nth-child(1){width:12%}.ldg th:nth-child(2){width:25%}.ldg th:nth-child(3){width:12%}.ldg th:nth-child(4){width:10%}.ldg th:nth-child(5){width:13%}.ldg th:nth-child(6){width:12%}.ldg th:nth-child(7){width:16%}
+  /* إجمالي الرصيد: ثابت تحت وواضح */
+  #p-party .ldgf{position:sticky;bottom:0;z-index:6;margin-top:10px;padding:14px 20px;border-radius:12px;border:3px solid var(--gold);box-shadow:0 -6px 14px #0003}
+  #p-party .ldgf span{font-size:20px;color:#fff}
+  #p-party .ldgf b{font-size:32px;color:var(--gold)}
+  main.split .pt{padding:7px 10px;margin-bottom:5px;border-radius:11px}
+  main.split .pt .m b{font-size:16px}main.split .pt .a b{font-size:17px}main.split .pt .m small,main.split .pt .a small{font-size:11.5px}
   /* قايمة الحسابات: التنبيهات سطر صغير، الأرقام في صف، التبويبات كبيرة فوق، والقايمة هي اللي بتتحرك */
   main.split #p-home{display:flex;flex-direction:column;position:sticky;top:84px;height:calc(100vh - 100px);overflow:hidden}
   main.split #hAlerts{order:0}
@@ -260,7 +276,8 @@ nav svg{width:26px;height:26px}
   main.split #hTots div span{font-size:12px}main.split #hTots div b{font-size:17px}
   main.split #hTots .k{grid-column:auto;border-bottom-width:3px}main.split #hTots .k b{font-size:18px}main.split #hTots .k small{display:none}
   main.split .tabs{order:2;margin-bottom:8px}
-  main.split .tabs button{min-height:66px;font-size:17px}
+  main.split .tabs{gap:6px}
+  main.split .tabs button{min-height:54px;font-size:15.5px}main.split .tabs button small{font-size:12.5px}
   main.split .srow{order:3;margin-bottom:8px}
   main.split #hList{order:4;flex:1;min-height:0;overflow:auto;padding-inline-end:4px}
   main.split #bNewParty{order:5;min-height:50px;font-size:18px;margin:8px 0 6px!important;flex:none}
@@ -972,6 +989,7 @@ function addEntry(o) {
   db.entries.push(e); E.set(e.id, e); return e;
 }
 function renderParty(id) {
+  try { sessionStorage.setItem('fo_lastp', id); } catch (e) {}
   const p = P.get(id);
   if (!p || p.del) return go('home');
   const sup = p.sec === 'sup';
@@ -984,7 +1002,7 @@ function renderParty(id) {
   });
   const nX = all.filter(e => e.del).length;
   $('#p-party').innerHTML = `
-    <div class="ppbar"><a id="ppBack">→ كل الحسابات</a><span class="jb"><button id="jUp" type="button">↑ فوق</button><button id="jDn" type="button">↓ آخر حركة</button></span><a id="ppEdit">تعديل</a></div>
+    <div class="sech ppbar" style="margin-top:0"><a id="ppBack">→ كل الحسابات</a><span class="jb"><button id="jUp" type="button">↑ فوق</button><button id="jDn" type="button">↓ آخر حركة</button></span><a id="ppEdit">تعديل البيانات</a></div>
     <div class="phd"><h2>${esc(p.name)}</h2><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}${p.noTot ? ' — <b style="color:var(--gold)">حساب فرعي خارج الإجماليات</b>' : ''}</small>
       ${limitClass(p, b) ? `<div class="limw ${limitClass(p, b)}">${limitClass(p, b) === 'lim-r' ? '🔴 رصيده فوق الحد الأحمر' : '🟡 رصيده فوق الحد الأصفر'} (${fmtP(limitClass(p, b) === 'lim-r' ? limitsOf(p).r : limitsOf(p).y)})</div>` : ''}
       <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))} <small style="font-size:14px;color:var(--gold)">${CUR}</small></b></div>
@@ -1322,7 +1340,7 @@ function ledgerTable(p) {
   const s = stmtData(p.id, '', '');
   if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده</div>';
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
-    <div class="ldgw"><table class="ldg"><colgroup><col class="c1"><col class="c2"><col class="c3 hq"><col class="c4 hq"><col class="c5"><col class="c6"><col class="c7"></colgroup><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
+    <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
     ${s.rows.map(r => `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b>${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>
@@ -3249,7 +3267,12 @@ function route() {
   curParty = pg === 'party' ? h.slice(2) : '';
   if (split) {
     const box = $('#p-home'), st = box.scrollTop; renderHome(); box.scrollTop = st;
-    if (pg === 'home') $('#p-party').innerHTML = '<div class="card empty" style="padding:60px 20px;font-size:18px">اختار حساب من القايمة علشان يظهر كشفه هنا</div>';
+    if (pg === 'home') {
+      let t = ''; try { t = sessionStorage.getItem('fo_lastp') || ''; } catch (e) {}
+      if (!(P.get(t) && !P.get(t).del)) { const f = liveParties().filter(x => x.sec === tab).sort((a, b) => a.name.localeCompare(b.name, 'ar'))[0] || liveParties()[0]; t = f ? f.id : ''; }
+      if (t) { go('p/' + t); return; }
+      $('#p-party').innerHTML = '<div class="card empty" style="padding:60px 20px;font-size:18px">لسه مفيش حسابات. اضغط "+ حساب جديد".</div>';
+    }
   }
   if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
 }

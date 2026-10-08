@@ -55,6 +55,7 @@ async function newDevice(browser, base, sheets) {
   const ctx = await browser.newContext({viewport: {width: 400, height: 860}, acceptDownloads: true, permissions: ['clipboard-read', 'clipboard-write']});
   ctx.errs = [];
   await ctx.route('https://script.google.com/**', r => {
+    if (ctx.netDown) return r.abort('failed');
     const q = r.request(), g = q.url().includes('TEST-CASH') ? sheets.cash : sheets.acc;
     if (!g.ctx.doPost) return r.fulfill({status: 200, contentType: 'text/html', body: '<html>no script</html>'});
     r.fulfill({status: 200, contentType: 'application/json', body: q.method() === 'POST' ? g.post(q.postData()) : g.get()});
@@ -213,6 +214,18 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     const cKey = await C2.evaluate(() => db.sheetKey);
     eq('مفتاح الدفتر اتعمل لوحده ومش في الكود، والشيت اتقفل عليه', [cKey.length >= 8, cashCode.includes(cKey), await C2.evaluate(() => db.sheetLocked), JSON.parse(sheets.cash.post(JSON.stringify({key: 'Other-Key-123', action: 'ping'}))).error], [true, false, true, 'key']);
     eq('شيت الدفتر مقفول', JSON.parse(sheets.cash.get()).ok, false);
+
+    console.log('\n١٠ب) رابط الربط مع نت بيقطع أو صفحة بتتعمل لها ريفرش');
+    const D4 = await newDevice(browser, base, sheets); D4.netDown = true;
+    const J2 = await D4.page('accounts.html' + link.slice(link.indexOf('#')));
+    await J2.fill('#suP', PASS); await J2.fill('#suP2', PASS);
+    await J2.reload(); await J2.waitForSelector('#suP');   // ريفرش قبل كلمة السر: الرابط لازم ميضيعش
+    await J2.fill('#suP', PASS); await J2.fill('#suP2', PASS); await J2.click('#suGo'); await J2.waitForTimeout(9000);
+    eq('النت واقع وقت الربط: الربط محفوظ ومستني وبيقول السبب', await J2.evaluate(() => [db.cfg.joinWait, db.cfg.sheetOk, !!db.cfg.sheetUrl, joinErr.length > 5]), [true, false, true, true]);
+    D4.netDown = false;
+    await J2.evaluate(() => finishJoin(false)); await J2.waitForTimeout(3000);
+    eq('النت رجع: كمّل الربط لوحده ونزّل نفس الأرصدة', [await J2.evaluate(() => [db.cfg.sheetOk, !!db.cfg.joinWait]), await snap(J2)], [[true, false], await snap(A)]);
+    eq('رابط مقطوع بيطلع رسالة', await (async () => { const X = await D4.page('accounts.html#join=AAAA'); await X.waitForTimeout(1200); return (await X.textContent('#toast')).includes('ناقص'); })(), true);
 
     console.log('\n١١ب) الخزنة واحدة حتى لو الحسابات في تخزين لوحدها (أيقونة الأيفون)');
     eq('الحسابات بتتزامن مع شيت الدفتر وبتحفظ لينكه كإعداد مشترك', [await A.evaluate(() => cashSync(true)), await A.evaluate(() => !!getSet('cashSheet', null))], [true, true]);

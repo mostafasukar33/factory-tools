@@ -1583,13 +1583,12 @@ function mergeRow(r) {
   else { db[STORE[r.kind]].push(rec); map.set(r.id, rec); }
   return true;
 }
-let syncing = false, syncT = null, syncErr = '', lastPullAt = 0;
+let syncing = false, syncT = null, syncErr = '', syncWhy = '', lastPullAt = 0;
 function schedSync() { clearTimeout(syncT); syncT = setTimeout(() => syncNow(), 1500); }
 async function syncNow(manual) {
   if (!db) return;
   if (!db.cfg.sheetUrl || !db.cfg.sheetOk) { if (manual) toast('اربط الشيت الأول من الإعدادات'); return; }
   if (syncing) return;
-  if (!navigator.onLine) { renderSyncBox(); if (manual) toast('مفيش نت دلوقتي. هيتبعت أول ما النت يرجع.'); return; }
   syncing = true; syncErr = ''; renderSyncBox();
   const d0 = db;
   let got = 0;
@@ -1621,7 +1620,7 @@ async function syncNow(manual) {
     if (Date.now() - ((db.cfg.bk || {}).at || 0) > 6 * 3600000) setTimeout(() => checkBackup(), 1500);
     setTimeout(() => cashSync(true), 800);
   } catch (e) {
-    syncErr = e.message === 'key' ? 'key' : String(e.message || e);
+    syncErr = e.message === 'key' ? 'key' : String(e.message || e); syncWhy = syncErr === 'key' ? '' : netWhy(e);
     if (manual) toast(syncErr === 'key' ? 'الشيت رفض المفتاح السري. راجع المفتاح في الإعدادات.' : 'معرفتش أوصل للشيت. اتأكد من النت.', 5000);
     if (db === d0) flushSave();
   } finally {
@@ -1632,11 +1631,12 @@ async function syncNow(manual) {
 function renderSyncBox() {
   const b = $('#syncBox'); if (!b || !db) return;
   const n = pendingRecs().length;
+  if (db.cfg.joinWait && db.cfg.sheetUrl && !db.cfg.sheetOk) { b.className = 'sync warn'; b.innerHTML = `⏳ الربط محفوظ بس لسه مش قادر يوصل للشيت${joinErr ? ' (' + esc(joinErr) + ')' : ''}. بحاول لوحدي. <a id="syRetry">جرّب دلوقتي</a>`; $('#syRetry').onclick = () => { toast('⏳ بحاول…'); finishJoin(true); }; return; }
   if (!db.cfg.sheetUrl || !db.cfg.sheetOk) { b.className = 'sync warn'; b.innerHTML = `الشيت لسه مش مربوط — البيانات على الجهاز ده بس. <a id="syGo">اربطه</a>`; $('#syGo').onclick = () => go('set'); return; }
   if (syncing) { b.className = 'sync'; b.textContent = 'جاري المزامنة مع الشيت…'; return; }
   if (syncErr === 'key') { b.className = 'sync warn'; b.innerHTML = `الشيت رفض المفتاح السري. <a id="syGo">راجع المفتاح</a>`; $('#syGo').onclick = () => go('set'); return; }
   if (!n && !syncErr) { b.className = 'sync ok'; b.textContent = '✔ كل حاجة متسجلة على Google Sheet' + (db.cfg.lastSync ? ' — آخر مزامنة ' + dispTime(db.cfg.lastSync) : ''); return; }
-  b.className = 'sync'; b.innerHTML = `${n ? n + ' سجل مستني الإرسال للشيت' : 'مستني المزامنة'}${navigator.onLine ? '' : ' (مفيش نت)'}${syncErr ? ' — فيه مشكلة في الاتصال' : ''} <a id="syNow">زامن دلوقتي</a>`;
+  b.className = 'sync'; b.innerHTML = `${n ? n + ' سجل مستني الإرسال للشيت' : 'مستني المزامنة'}${syncErr ? ' — فيه مشكلة في الاتصال' + (syncWhy ? ': ' + esc(syncWhy) : '') + '، وهيحاول تاني لوحده' : ''} <a id="syNow">زامن دلوقتي</a>`;
   $('#syNow').onclick = () => syncNow(true);
 }
 addEventListener('online', () => syncNow());
@@ -1773,29 +1773,64 @@ function parseJoin(txt) {
   const m = String(txt || '').trim().match(/join=([\w-]+)/);
   try { const o = m && JSON.parse(unb64u(m[1])); return o && o.u && o.k ? o : null; } catch (e) { return null; }
 }
-if (/^#join=/.test(location.hash)) { pendingJoin = parseJoin(location.hash); history.replaceState(null, '', location.pathname); }
+/* الرابط بيتحفظ مؤقتاً في الجلسة لحد ما يتنفذ، علشان لو الصفحة اتعمللها ريفرش قبل ما تعمل كلمة السر ميضيعش */
+if (/^#join=/.test(location.hash)) {
+  pendingJoin = parseJoin(location.hash);
+  if (pendingJoin) { try { sessionStorage.setItem('fo_join', location.hash); } catch (e) {} }
+  else setTimeout(() => toast('رابط الربط ناقص أو اتقطع وانت بتنسخه. انسخه كله من الرسالة تاني.', 9000), 800);
+  history.replaceState(null, '', location.pathname);
+} else { try { const h = sessionStorage.getItem('fo_join'); if (h) pendingJoin = parseJoin(h); } catch (e) {} }
+const netWhy = e => !e ? 'الشيت رد بحاجة مش مفهومة'
+  : e.name === 'AbortError' ? 'الشيت مردش في الوقت المحدد'
+  : e.code === 'page' ? 'جوجل رد بصفحة بدل الشيت (غالباً بيطلب تسجيل دخول أو الوصول مش "أي شخص")'
+  : 'المتصفح مش قادر يوصل لجوجل (النت، أو برنامج حماية/إضافة بتمنع script.google.com)';
+let joining = false, joinErr = '';
+/* بيكلّم الشيت ويكمّل الربط. لو فشل بيفضل الرابط محفوظ والبرنامج بيعيد المحاولة لوحده كل 20 ثانية، من غير ما تفتح الرابط تاني */
+async function finishJoin(visible) {
+  if (joining || !db) return false;
+  joining = true;
+  const c = db.cfg;
+  if (visible) modal('<p style="text-align:center">⏳ بربط الجهاز وبنزّل حساباتك…<br><small style="color:#777">ممكن ياخد لحد دقيقة أول مرة</small></p>');
+  let j = null, err = null;
+  for (let i = 0; i < 3 && !(j && j.ok); i++) {
+    try { j = await callSheet({action: 'ping'}, c.sheetUrl, c.sheetKey, 40000); err = null; } catch (e) { j = null; err = e; }
+    if (j && j.ok) break;
+    if (j && j.error === 'key') break;
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  joining = false;
+  if (!j || !j.ok || j.app !== 'fo-acc') {
+    joinErr = j && j.error === 'key' ? 'الشيت مقفول على مفتاح تاني، والرابط ده مش بتاعه' : j && j.ok ? 'ده مش شيت الحسابات' : netWhy(err);
+    c.joinWait = !(j && (j.error === 'key' || j.ok)); await flushSave();
+    if (visible) { closeModal(); toast(c.joinWait ? `الربط محفوظ بس لسه معرفتش أوصل للشيت: ${joinErr}. هحاول تاني لوحدي.` : `❌ ${joinErr}`, 10000); }
+    renderSyncBox(); return false;
+  }
+  delete c.joinWait; joinErr = ''; c.sheetOk = true; await flushSave();
+  try { sessionStorage.removeItem('fo_join'); } catch (e) {}
+  if (visible) modal('<p style="text-align:center">⏳ بنزّل حساباتك…</p>');
+  await syncNow();
+  closeModal(); route();
+  toast(syncErr ? 'اتربط، بس التنزيل وقف. هيكمّل لوحده.' : `✔ الجهاز اتربط ونزلت حساباتك (${liveParties().length} حساب)`, 7000);
+  return true;
+}
 async function applyJoin() {
   const o = pendingJoin; pendingJoin = null; if (!o || !db) return;
   const c = db.cfg;
-  if (c.sheetOk && c.sheetUrl === o.u && c.sheetKey === o.k) return toast('الجهاز ده مربوط أصلاً ✔');
+  if (c.sheetOk && c.sheetUrl === o.u && c.sheetKey === o.k) { try { sessionStorage.removeItem('fo_join'); } catch (e) {} return toast('الجهاز ده مربوط أصلاً ✔'); }
   if (o.cu && o.ck) try {
     const cs = readCash() || {v: 1, vaults: [], cats: [], tx: []};
     if (!cs.sheetUrl) { Object.assign(cs, {sheetUrl: o.cu, sheetKey: o.ck, sheetLocked: true}); localStorage.setItem('fo_cash_v1', JSON.stringify(cs)); }
   } catch (e) {}
   if (c.sheetUrl !== o.u) { c.cursor = 0; Object.values(STORE).forEach(a => db[a].forEach(r => delete r.sy)); }
-  Object.assign(c, {sheetUrl: o.u, sheetKey: o.k, sheetOk: false}); await flushSave();
-  modal('<p style="text-align:center">⏳ بربط الجهاز وبنزّل حساباتك…</p>');
-  let j; try { j = await callSheet({action: 'ping'}); } catch (e) { j = null; }
-  if (!j || !j.ok || j.app !== 'fo-acc') { closeModal(); return toast('معرفتش أوصل للشيت. اتأكد من النت وافتح رابط الربط تاني.', 7000); }
-  c.sheetOk = true; await flushSave(); await syncNow();
-  closeModal(); route();
-  toast(syncErr ? 'اتربط، بس التنزيل وقف. هيكمّل لوحده أول ما النت يتحسن.' : `✔ الجهاز اتربط ونزلت حساباتك (${liveParties().length} حساب)`, 7000);
+  Object.assign(c, {sheetUrl: o.u, sheetKey: o.k, sheetOk: false, joinWait: true}); await flushSave();
+  await finishJoin(true);
 }
+setInterval(() => { if (db && db.cfg.joinWait && db.cfg.sheetUrl && !db.cfg.sheetOk && !joining) finishJoin(false); }, 20000);
 /* ---------- النسخة الاحتياطية اليومية على Google Drive ----------
    كود الشيت بيعمل نسخة كاملة من الجدول كل يوم في فولدر "نسخ حسابات فلاش أون" ويسيب آخر 30.
    البرنامج بيسأل الشيت كل كام ساعة: النسخة شغالة؟ وآخر نسخة امتى؟ ولو واقفة بيظهر تنبيه في الرئيسية. */
 async function checkBackup() {
-  if (!db || !db.cfg.sheetOk || !navigator.onLine) return null;
+  if (!db || !db.cfg.sheetOk) return null;
   let j; try { j = await callSheet({action: 'ping'}); } catch (e) { return null; }
   if (!j || !j.ok || j.app !== 'fo-acc') return null;
   const b = j.bk || {};
@@ -2595,7 +2630,7 @@ function cashView(kind, r, c) {
 }
 let cashSyncing = false, cashSyncAt = 0, cashSyncErr = '';
 async function cashSync(force) {
-  if (!db || cashSyncing || !navigator.onLine) return false;
+  if (!db || cashSyncing) return false;
   if (!force && Date.now() - cashSyncAt < 60000) return false;
   const cr = cashCreds(); if (!cr) return false;
   cashSyncing = true; cashSyncAt = Date.now();
@@ -3117,7 +3152,7 @@ async function pagesToPdf(build, title) {
 /* بننزّل كل السجلات من الشيت (من غير ما نغيّر حاجة) ونقارن كل سجل بالنسخة اللي على الجهاز.
    بتشتغل لوحدها مرة كل يوم، ولو لقت فرق بيظهر تنبيه في الرئيسية. */
 async function sheetAudit(manual) {
-  if (!db || !db.cfg.sheetOk || !navigator.onLine || syncing) { if (manual) toast(db && db.cfg.sheetOk ? 'محتاج نت' : 'اربط الشيت الأول'); return; }
+  if (!db || !db.cfg.sheetOk || syncing) { if (manual) toast(db && db.cfg.sheetOk ? 'جاري مزامنة تانية…' : 'اربط الشيت الأول'); return; }
   if (manual) toast('بقارن الجهاز بالشيت…', 8000);
   const d0 = db, srv = new Map();
   try {

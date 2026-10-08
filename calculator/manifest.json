@@ -1,0 +1,16 @@
+{
+  "name": "حاسبة فلاش أون",
+  "short_name": "الحاسبة",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2b2d30",
+  "theme_color": "#2b2d30",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

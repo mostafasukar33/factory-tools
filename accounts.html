@@ -1024,7 +1024,7 @@ function renderParty(id) {
   $('#ppAdj').onclick = () => adjModal(p);
   if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
   $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => openEntry(p, E.get(el.dataset.id)));
-  if ($('#ppEnd')) $('#ppEnd').onclick = () => $('#ldgEnd').scrollIntoView({behavior: 'smooth', block: 'end'});
+  if ($('#ppEnd')) $('#ppEnd').onclick = () => jumpTo(true);
 }
 function entryCard(e, runB) {
   const flags = `${e.kind === 'open' ? '<span class="flag o">أول المدة</span>' : ''}${e.hist && e.hist.length ? '<span class="flag">اتعدّلت</span>' : ''}${e.del ? '<span class="flag x">ملغية</span>' : ''}`;
@@ -3260,8 +3260,14 @@ function setHdr() { const h = document.querySelector('header.top'); if (h) docum
 addEventListener('resize', setHdr); setTimeout(setHdr, 0); setTimeout(setHdr, 600);
 function bindBar() {
   const up = $('#jUp'), dn = $('#jDn'); if (!up) return;
-  up.onclick = () => window.scrollTo({top: 0, behavior: 'smooth'});
-  dn.onclick = () => { const e = $('#ldgEnd'); if (e) e.scrollIntoView({behavior: 'smooth', block: 'end'}); else window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'}); };
+  up.onclick = () => jumpTo(false);
+  dn.onclick = () => jumpTo(true);
+}
+/* اللي بيتحرك على اللاب توب هو عمود الحساب (#p-party) مش الصفحة، وعلى الموبايل الصفحة نفسها */
+function jumpTo(toEnd) {
+  const box = $('#p-party'), inBox = box && box.scrollHeight > box.clientHeight + 4 && getComputedStyle(box).overflowY !== 'visible';
+  if (inBox) box.scrollTo({top: toEnd ? box.scrollHeight : 0, behavior: 'smooth'});
+  else { const t = toEnd ? Math.max(document.documentElement.scrollHeight, document.body.scrollHeight) : 0; window.scrollTo({top: t, behavior: 'smooth'}); }
 }
 let lastHash = '', wasWide = isWide();
 addEventListener('resize', () => { if (isWide() !== wasWide) { wasWide = isWide(); route(); } });

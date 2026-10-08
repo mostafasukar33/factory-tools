@@ -138,6 +138,11 @@ table.lt.rep tr.bad td{background:var(--red-l);color:var(--red)}
 .dash .k{grid-column:1/-1;background:var(--ink);border:0}.dash .k span{color:var(--gold)}.dash .k b{color:#fff}
 .dashm{font-size:13.5px;font-weight:700;color:#555;margin:0 2px 12px}.dashm b{direction:ltr;unicode-bidi:isolate;color:var(--ink)}
 .dashm i{font-style:normal;font-weight:800;margin-inline-start:4px}.dashm i.inc{color:var(--green)}.dashm i.exp{color:var(--red)}
+/* أزرار التنقل في صفحة الحساب: فوق / تحت */
+.jump{display:none;position:fixed;inset-inline-end:12px;bottom:88px;display:flex;flex-direction:column;gap:8px;z-index:25}
+.jump button{width:54px;height:54px;border-radius:50%;border:2px solid var(--gold);background:var(--ink);color:var(--gold);font-weight:800;font-size:13px;line-height:1.1;cursor:pointer;box-shadow:0 4px 14px #0006;padding:0}
+.jump button b{display:block;font-size:20px}.jump.on{display:flex}
+@media (min-width:1000px){.jump{bottom:24px;inset-inline-end:24px}}
 @media (min-width:1000px){#hDash2 .dash{grid-template-columns:repeat(5,1fr)}#hDash2 .dash .k{grid-column:auto}#hDash2 .dash b{font-size:24px}main.split #hDash{display:none}}
 .bl.k{border-bottom:0;font-size:18px;color:var(--gold-d)}
 .pgrid{display:grid;gap:0 12px}@media (min-width:700px){.pgrid{grid-template-columns:repeat(3,1fr)}}
@@ -227,19 +232,35 @@ nav button.on{color:var(--gold)}
 nav svg{width:26px;height:26px}
 /* شكل اللاب توب: القايمة على الجنب، والحساب بيفتح جنب قايمة الحسابات */
 @media (min-width:1000px){
-  body{padding-bottom:0;padding-inline-start:210px}
-  nav{top:0;bottom:0;inset-inline-start:0;inset-inline-end:auto;width:210px;grid-template-columns:none!important;grid-auto-rows:min-content;align-content:start;gap:4px;border-top:0;border-inline-end:3px solid var(--gold);padding:76px 10px 10px}
-  nav button{flex-direction:row;justify-content:flex-start;gap:12px;font-size:16.5px;min-height:52px;padding:10px 14px;border-radius:12px}
-  nav button:hover{color:#fff}
-  nav button.on{background:#262626}
-  nav svg{width:24px;height:24px}
+  body{padding-bottom:0;padding-inline-start:176px}
+  /* القايمة الجانبية: فاتحة وواضحة، والتاب الشغال دهبي */
+  nav{top:0;bottom:0;inset-inline-start:0;inset-inline-end:auto;width:176px;background:#fff;grid-template-columns:none!important;grid-auto-rows:min-content;align-content:start;gap:6px;border-top:0;border-inline-end:2px solid var(--line);padding:78px 10px 10px}
+  nav button{flex-direction:row;justify-content:flex-start;gap:10px;font-size:15.5px;font-weight:800;color:#333;min-height:46px;padding:8px 12px;border-radius:12px;border:2px solid transparent}
+  nav button svg{color:var(--gold-d)}
+  nav button:hover{background:var(--gold-l);color:#111}
+  nav button.on{background:var(--gold);color:#111;border-color:#111}
+  nav button.on svg{color:#111}
+  nav svg{width:22px;height:22px}
   main{max-width:1500px;padding:18px 22px 30px}
   #p-set{max-width:820px;margin:0 auto}
   #toast{bottom:24px}
-  main.split{display:grid;grid-template-columns:400px minmax(0,1fr);gap:20px;align-items:start}
-  main.split #p-home,main.split #p-party{display:block}
-  main.split #p-home{position:sticky;top:84px;max-height:calc(100vh - 100px);overflow:auto;padding-inline-end:4px}
-  main.split .tots div b{font-size:20px}main.split .tots .k b{font-size:24px}
+  main.split{display:grid;grid-template-columns:430px minmax(0,1fr);gap:20px;align-items:start}
+  main.split #p-party{display:block}
+  /* قايمة الحسابات: التنبيهات سطر صغير، الأرقام في صف، التبويبات كبيرة فوق، والقايمة هي اللي بتتحرك */
+  main.split #p-home{display:flex;flex-direction:column;position:sticky;top:84px;height:calc(100vh - 100px);overflow:hidden}
+  main.split #hAlerts{order:0}
+  main.split #hAlerts .sync{font-size:12.5px;padding:3px 10px;margin-bottom:4px;border-radius:8px;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  main.split #hAlerts .sync a{margin-inline-start:8px}
+  main.split #hTots{order:1;grid-template-columns:1fr 1fr 1.15fr;gap:6px;margin:4px 0 8px}
+  main.split #hTots div{padding:6px 4px;border-radius:12px}
+  main.split #hTots div span{font-size:12px}main.split #hTots div b{font-size:17px}
+  main.split #hTots .k{grid-column:auto;border-bottom-width:3px}main.split #hTots .k b{font-size:18px}main.split #hTots .k small{display:none}
+  main.split .tabs{order:2;margin-bottom:8px}
+  main.split .tabs button{min-height:66px;font-size:17px}
+  main.split .srow{order:3;margin-bottom:8px}
+  main.split #hList{order:4;flex:1;min-height:0;overflow:auto;padding-inline-end:4px}
+  main.split #bNewParty{order:5;min-height:50px;font-size:18px;margin:8px 0 6px!important;flex:none}
+  main.split #bSearch{order:6;flex:none;margin-bottom:0!important}
   .pt.cur{outline:3px solid var(--gold);outline-offset:-1px}
   .pt:hover{border-color:var(--gold)}
   .modal{max-width:560px}.modal.wide{max-width:780px}
@@ -379,9 +400,9 @@ nav svg{width:26px;height:26px}
 <main>
 <!-- ============== الحسابات ============== -->
 <section class="page" id="p-home">
-  <div class="sync" id="syncBox"></div>
+  <div id="hAlerts"><div class="sync" id="syncBox"></div>
   <div id="chk"></div>
-  <div id="bkRem"></div>
+  <div id="bkRem"></div></div>
   <div class="tots" id="hTots"></div>
   <button class="btn gold big" id="bNewParty" type="button" style="margin-bottom:12px">+ حساب جديد</button>
   <button class="btn line sm" id="bSearch" type="button" style="margin-bottom:10px">🔎 دوّر في كل الحركات (مبلغ، صنف، ملاحظة…)</button>
@@ -981,7 +1002,7 @@ function renderParty(id) {
   $('#ppPay').onclick = () => payModal(p, sup ? 'ppay' : 'pay');
   $('#ppRet').onclick = () => docModal(p, sup ? 'rpur' : 'rinv');
   $('#ppAdj').onclick = () => adjModal(p);
-  if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
+  if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); addJump(); };
   $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => openEntry(p, E.get(el.dataset.id)));
   if ($('#ppEnd')) $('#ppEnd').onclick = () => $('#ldgEnd').scrollIntoView({behavior: 'smooth', block: 'end'});
 }
@@ -3226,8 +3247,20 @@ function route() {
     const box = $('#p-home'), st = box.scrollTop; renderHome(); box.scrollTop = st;
     if (pg === 'home') $('#p-party').innerHTML = '<div class="card empty" style="padding:60px 20px;font-size:18px">اختار حساب من القايمة علشان يظهر كشفه هنا</div>';
   }
-  if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
+  if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'party') { renderParty(h.slice(2)); addJump(); } else if (!split) renderHome();
 }
+function addJump() {
+  const pg = $('#p-party'); if (!pg || pg.querySelector('.jump')) return;
+  const d = document.createElement('div'); d.className = 'jump';
+  d.innerHTML = '<button id="jUp" type="button" aria-label="لأول الصفحة"><b>↑</b>فوق</button><button id="jDn" type="button" aria-label="لآخر حركة"><b>↓</b>تحت</button>';
+  pg.appendChild(d);
+  updJump();
+  $('#jUp').onclick = () => window.scrollTo({top: 0, behavior: 'smooth'});
+  $('#jDn').onclick = () => { const e = $('#ldgEnd'); if (e) e.scrollIntoView({behavior: 'smooth', block: 'end'}); else window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'}); };
+}
+/* بتظهر بس لو الصفحة طويلة وفيها حاجة تتنقل فيها */
+function updJump() { const d = document.querySelector('#p-party .jump'); if (d) d.classList.toggle('on', document.documentElement.scrollHeight > innerHeight + 220); }
+addEventListener('scroll', updJump, {passive: true}); addEventListener('resize', updJump);
 let lastHash = '', wasWide = isWide();
 addEventListener('resize', () => { if (isWide() !== wasWide) { wasWide = isWide(); route(); } });
 if (!CHECKS_ON) { $('#sChkDays').closest('.card').style.display = 'none'; $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(5,1fr)'; }

@@ -688,6 +688,20 @@ html[data-theme=dark] .pst th{background:#26251f;color:#B9B3A1}
 html[data-theme=dark] #lock .inp{background:#17160f;border-color:#4a463a;color:#ECE8DC}
 html[data-theme=dark] #lock label{color:#B9B3A1}
 @media (max-width:640px){#toast{bottom:calc(150px + env(safe-area-inset-bottom))}}
+@media (min-width:1000px){
+  #p-cash .tots{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}#p-cash .tots .k{grid-column:1/-1}
+  #p-cash>.card{display:grid;grid-template-columns:auto 1fr 1fr;gap:10px;align-items:center;padding:10px 12px}
+  #p-cash>.card .seg{margin:0;min-width:300px}#p-cash>.card #cVault{margin-top:0!important}
+  .ctools{justify-content:flex-start}.ctools .btn{flex:0 0 auto}
+}
+.cnet{display:flex;justify-content:space-between;align-items:center;background:var(--gold-l);border:1px solid var(--gold);border-radius:10px;padding:9px 14px;margin-bottom:12px;font-weight:800;color:var(--gold-d)}
+.cnet b{font-size:20px;color:var(--ink);direction:ltr;font-variant-numeric:tabular-nums}.cnet b.neg{color:var(--red)}
+html[data-theme=dark] .cnet b{color:#F3EFE3}html[data-theme=dark] .cnet b.neg{color:#FF8A80}
+@media (max-width:640px){
+  #p-cash>.card{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px}
+  #p-cash>.card .seg{grid-column:1/-1;margin:0}#p-cash>.card #cVault{margin-top:0!important}
+  #p-cash>.card #cPick:has(.g2){grid-column:1/-1}
+}
 </style>
 </head>
 <body>
@@ -2506,7 +2520,7 @@ function renderCash() {
       <button class="btn gold" id="cInc" type="button">+ إيراد</button>
     </div>
     <div class="tots"><div class="k"><span>رصيد كل الخزن</span><b class="${total < 0 ? 'cr' : ''}">${fmtP(total)} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>
-      ${vs.map(v => { const b = vaultBal(v.id); return `<div class="vt ${cashVault === v.id ? 'on' : ''}" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="${b < 0 ? 'cr2' : ''}">${fmtP(b)}</b></div>`; }).join('')}</div>
+      ${vs.length < 2 ? '' : vs.map(v => { const b = vaultBal(v.id); return `<div class="vt ${cashVault === v.id ? 'on' : ''}" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="${b < 0 ? 'cr2' : ''}">${fmtP(b)}</b></div>`; }).join('')}</div>
     <div class="ctools">
       <button class="btn line sm" id="cOpen2" type="button">✎ الفلوس اللي معايا</button>
       ${vs.length > 1 ? '<button class="btn line sm" id="cTr" type="button">⇄ تحويل بين الخزن</button>' : ''}
@@ -2520,9 +2534,7 @@ function renderCash() {
         : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div>`}</div>
       <select class="inp" id="cVault" style="margin-top:8px"><option value="">كل الخزن</option>${vs.map(v => `<option value="${esc(v.id)}" ${cashVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
     </div>
-    <div class="stm"><div class="i"><span>الداخل</span><b>${fmtP(tin)}</b></div><div class="e"><span>الخارج</span><b>${fmtP(tout)}</b></div>
-      <div class="k"><span>${cashMode === 'day' ? 'صافي اليوم' : 'صافي الفترة'}</span><b>${fmtP(tin - tout)}</b></div></div>
-    ${by.size ? `<div class="card"><h2>حسب البند</h2>${[...by.values()].sort((a, b) => (b.i + b.o) - (a.i + a.o)).map(x => `<div class="bl"><span>${esc(x.n)}</span>${x.i ? `<b class="inc">+ ${fmtP(x.i)}</b>` : ''}${x.o ? `<b class="exp">− ${fmtP(x.o)}</b>` : ''}</div>`).join('')}</div>` : ''}
+    <div class="cnet"><span>${cashMode === 'day' ? 'صافي اليوم' : 'صافي الفترة'}</span><b class="${tin - tout < 0 ? 'neg' : ''}">${fmtP(tin - tout)} ${CUR}</b></div>
     <div class="cwrap">${cashTable('الإيرادات', mv.filter(m => m.sign > 0), mv, 'inc')}${cashTable('المصروفات', mv.filter(m => m.sign < 0), mv, 'exp')}</div>
     ${mv.some(m => !m.sign) ? cashTable('تحويلات', mv.filter(m => !m.sign), mv, '') : ''}
     `;

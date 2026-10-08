@@ -261,10 +261,14 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
     eq('لوحة النهارده اتشالت من الرئيسية', await A.$('#hDash'), null);
     const SR = await A.evaluate(() => [searchAll('لفة تجربة').length, searchAll('1350').map(r => r.title)[0] || '', searchAll('سلفة').length, searchAll('x').length]);
-    eq('البحث بالصنف وبالمبلغ', SR, [3, 'فاتورة بيع رقم 3 — عميل تجربة واحد', 1, 0]);
+    eq('البحث بالصنف وبالمبلغ', SR, [3, 'فاتورة بيع — عميل تجربة واحد', 1, 0]);
     await A.click('#bSearch'); await A.fill('#saQ', 'سلفة'); await A.waitForTimeout(400);
     eq('البحث في الحركات', (await A.textContent('#saR')).includes('مسحوبات الشركاء'), true); await A.click('#saX2');
 
+    eq('مفيش أرقام فواتير: لا خانة ولا عرض في الكشف ولا العنوان', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv'); const f = !!$('#dcNo'); closeModal();
+      const e = partyEntries(p.id).find(x => x.kind === 'inv'); return [f, /رقم/.test(docTitle(e)), /رقم/.test(docDesc(e)), stmtData(p.id, '', '').rows.some(r => isDoc(r.e) && r.ref)]; }), [false, false, false, false]);
+    const PGN = await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); const pg = buildStmtPages(p, stmtData(p.id, '', '')); const c = pg[0].querySelectorAll('thead th').length; const fs = parseFloat(getComputedStyle(pg[0].querySelector('tbody td.l')).fontSize); $('#render').innerHTML = ''; return [c, fs >= 16]; });
+    eq('كشف الـ PDF: 7 أعمدة وخط كبير', PGN, [7, true]);
     console.log('\n١٤) التاريخ ورصيد أول المدة');
     const OP = await A.evaluate(() => {
       const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name: 'عميل ترتيب تجربة', phone: '', note: '', noTot: false, at: now, upd: now, del: false};

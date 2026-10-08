@@ -267,9 +267,9 @@ nav svg{width:26px;height:26px}
 /* ============ ورقة كشف الحساب (A4) — نفس شكل عرض السعر ============ */
 .pg{width:794px;height:1123px;background:#fff;position:relative;display:flex;flex-direction:column;color:#111;direction:rtl;overflow:hidden;font-family:'Cairo',sans-serif}
 .pg .strip{height:12px;background:linear-gradient(90deg,#111 0 30%,#DAAE57 30% 100%);flex:none}
-.pg .in{flex:1;min-height:0;display:flex;flex-direction:column;padding:26px 44px 0;overflow:hidden}
-.pg .hd{display:flex;align-items:center;gap:18px;padding-bottom:16px;border-bottom:4px solid #DAAE57;margin-bottom:16px;flex:none}
-.pg .hd img{width:110px;height:110px;object-fit:contain}
+.pg .in{flex:1;min-height:0;display:flex;flex-direction:column;padding:18px 30px 0;overflow:hidden}
+.pg .hd{display:flex;align-items:center;gap:16px;padding-bottom:10px;border-bottom:4px solid #DAAE57;margin-bottom:10px;flex:none}
+.pg .hd img{width:84px;height:84px;object-fit:contain}
 .pg .co b{display:block;font-size:36px;font-weight:800;line-height:1.2}
 .pg .co span{display:block;font-size:17px;font-weight:600;color:#444}
 .pg .co em{display:block;font-style:normal;font-size:17px;font-weight:700;margin-top:6px;color:#9C7420;direction:ltr;text-align:right}
@@ -282,9 +282,9 @@ nav svg{width:26px;height:26px}
 .pg .cust{background:#FBF5E6;border-right:6px solid #DAAE57;border-radius:6px;padding:10px 16px;margin-bottom:14px;font-size:16px;display:flex;justify-content:space-between;align-items:center;flex:none}
 .pg .cust b{font-size:22px;font-weight:800;margin-right:8px}
 .pg .cust i{font-style:normal;font-weight:700;color:#9C7420;font-size:15px}
-.pg table{width:100%;border-collapse:collapse;font-size:14.5px;table-layout:fixed;flex:none}
-.pg th{background:#111;color:#DAAE57;padding:8px 5px;font-weight:700;font-size:14.5px;text-align:center}
-.pg td{padding:7px 6px;text-align:center;border:1px solid #CBBE9B;word-wrap:break-word;vertical-align:middle}
+.pg table{width:100%;border-collapse:collapse;font-size:17px;table-layout:fixed;flex:none}
+.pg th{background:#111;color:#DAAE57;padding:7px 3px;font-weight:800;font-size:16px;text-align:center}
+.pg td{padding:5px 4px;text-align:center;border:1px solid #CBBE9B;word-wrap:break-word;vertical-align:middle;line-height:1.3;font-weight:600}
 .pg th{border:1px solid #333}
 .pg td.b{background:#F7F2E4 !important;border-inline-start:2px solid #9C7420}
 .pg .sbox{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px;margin-bottom:14px;flex:none}
@@ -293,18 +293,18 @@ nav svg{width:26px;height:26px}
 .pg .sbox b{display:block;font-size:20px;font-weight:800;direction:ltr}
 .pg .sbox .k{background:#111;border-color:#111}.pg .sbox .k span{color:#DAAE57}.pg .sbox .k b{color:#fff}
 .pg td.l{text-align:right;font-weight:600}
-.pg td.dt{white-space:nowrap;font-size:13.5px;font-weight:600}
-.pg td:first-child{white-space:nowrap;font-size:13px}
+.pg td.dt{white-space:nowrap;font-size:15.5px;font-weight:700}
+.pg td:first-child{white-space:nowrap}
 .pg tr:nth-child(even) td{background:#FBF5E6}
 .pg tr.op td{background:#EFE6CF;font-weight:800}
 .pg tr.pay td{background:#DDF1E3;color:#14632C;font-weight:800;border-bottom-color:#B9DFC4}
 .pg tr.ret td{background:#FFF1E0;color:#8A4B00}
 .pg tr.bnc td{background:#FDE3E1;color:#B3261E;font-weight:800}
-.pg td.n{direction:ltr;font-weight:700}
-.pg td.q{font-weight:600;font-size:13.5px}
-.pg td small.rf{display:block;font-size:11.5px;color:#9C7420;font-weight:700}
-.pg td.b{direction:ltr;font-weight:800}
-.pg td.b small{font-size:11.5px;font-weight:700;color:#777}
+.pg td.n{direction:ltr;font-weight:800;font-size:16.5px}
+.pg td.q{font-weight:700;font-size:15.5px}
+.pg td small.rf{display:block;font-size:13.5px;color:#9C7420;font-weight:700;line-height:1.2}
+.pg td.b{direction:ltr;font-weight:800;font-size:17px}
+.pg td.b small{font-size:13px;font-weight:700;color:#777}
 .pg td.b.cr{color:#C62828}
 .pg .sum{align-self:flex-end;width:360px;margin-top:14px;flex:none}
 .pg .sum .l{display:flex;justify-content:space-between;padding:5px 14px;font-size:16px;font-weight:600;border-bottom:1px solid #E4DCC8}
@@ -384,7 +384,7 @@ nav svg{width:26px;height:26px}
   <div id="bkRem"></div>
   <div class="tots" id="hTots"></div>
   <button class="btn gold big" id="bNewParty" type="button" style="margin-bottom:12px">+ حساب جديد</button>
-  <button class="btn line sm" id="bSearch" type="button" style="margin-bottom:10px">🔎 دوّر في كل الحركات (مبلغ، صنف، رقم فاتورة…)</button>
+  <button class="btn line sm" id="bSearch" type="button" style="margin-bottom:10px">🔎 دوّر في كل الحركات (مبلغ، صنف، ملاحظة…)</button>
   <div class="tabs" id="hTabs"></div>
   <div class="srow">
     <input class="inp" id="hSearch" type="search" placeholder="🔍 دوّر بالاسم أو التليفون" autocomplete="off">
@@ -924,9 +924,10 @@ function applyAmounts(e) {
 }
 /* تاريخ دخول الفلوس الخزنة: الشيك يوم ما اتصرف، وغير كده يوم الدفعة */
 const vdate = e => e.chk && e.chk.st === 'c' && e.chk.cdate ? e.chk.cdate : e.date;
-function nextNo(kind) { let m = 0; db.entries.forEach(e => { if (e.kind === kind && +e.no > m) m = +e.no; }); return m + 1; }
+/* أرقام الفواتير اتشالت بطلب صاحب المشروع: مبنسجلهاش ومبنعرضهاش (القديم المخزن مبيتمسحش) */
+const noRef = t => String(t || '').replace(/ رقم \d+/g, '');
 function docTitle(e) {
-  if (isDoc(e)) return `${KIND[e.kind]}${e.no ? ' رقم ' + e.no : ''}`;
+  if (isDoc(e)) return KIND[e.kind];
   if ((e.kind === 'pay' || e.kind === 'ppay') && e.chk) return `${e.kind === 'pay' ? 'شيك وارد' : 'شيك صادر'}${e.chk.no ? ' رقم ' + e.chk.no : ''} — يستحق ${dispDate(e.chk.due)}`;
   if (e.kind === 'pay' || e.kind === 'ppay') return `${e.kind === 'pay' ? 'دفعة استلمتها' : 'دفعة دفعتها'} — ${e.method || 'نقدي'}${e.vault ? ' — ' + vName(e.vault) : ''}`;
   if (e.kind === 'adj') return `${e.dir === 'dn' ? 'خصم' : 'تسوية'}: ${e.note || ''}`;
@@ -1052,8 +1053,7 @@ function docModal(p, kind, e) {
   const book = itemBook();
   modal(`<h3>${isNew ? ttl : 'تعديل ' + esc(docTitle(e))} — ${esc(p.name)}</h3>
     ${ret ? `<p class="hint" style="margin:-6px 0 10px">البضاعة اللي ${kind === 'rinv' ? 'رجعت من العميل' : 'رجعتها للمورد'}. قيمتها ${kind === 'rinv' ? 'بتنزل من اللي عليه' : 'بتنزل من اللي ليه'}.</p>` : ''}
-    <div class="g2"><div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${e ? e.date : todayISO()}"></div>
-      <div class="fld"><label>${ret ? 'رقم المرتجع' : 'رقم الفاتورة'}</label><input class="inp num" id="dcNo" inputmode="numeric" value="${esc(e ? e.no || '' : nextNo(kind))}"></div></div>
+    <div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${e ? e.date : todayISO()}"></div>
     <datalist id="dlItems">${[...book.values()].map(x => `<option value="${esc(x.name)}">`).join('')}</datalist>
     <div id="dcLines"></div>
     <button class="btn line sm" id="dcAdd" type="button" style="margin-bottom:10px">+ صنف كمان</button>
@@ -1127,7 +1127,7 @@ function docModal(p, kind, e) {
   };
   /* فاتورة ← إذن تسليم: بنحط الأصناف في مكان مؤقت، وأداة إذن التسليم بتاخدها أول ما تفتح */
   if ($('#dcDlv')) $('#dcDlv').onclick = () => {
-    try { localStorage.setItem('fo_inv_to_delivery', JSON.stringify({customer: p.name, no: e.no || '', items: e.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty)}))})); } catch (x) { return toast('معرفتش أجهّز الإذن'); }
+    try { localStorage.setItem('fo_inv_to_delivery', JSON.stringify({customer: p.name, no: '', items: e.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty)}))})); } catch (x) { return toast('معرفتش أجهّز الإذن'); }
     location.href = 'delivery.html';
   };
   $('#dcOk').onclick = () => {
@@ -1141,7 +1141,7 @@ function docModal(p, kind, e) {
       if (!(toP(l.price) > 0)) return toast(`اكتب السعر في السطر ${i + 1}`);
     }
     const ls = raw.map(l => ({name: l.name, unit: l.unit, qty: Math.round(num(l.qty) * 1000) / 1000, price: toP(l.price)}));
-    const disc = toP($('#dcDisc').value), no = normDigits($('#dcNo').value).trim(), note = $('#dcNote').value.trim();
+    const disc = toP($('#dcDisc').value), no = e ? e.no || '' : '', note = $('#dcNote').value.trim();
     const doc = {kind, date, no, lines: ls, disc, note};
     if (docTotal(doc) <= 0) return toast('الخصم أكبر من الإجمالي');
     if (isLocked(date)) return lockToast();
@@ -1152,7 +1152,6 @@ function docModal(p, kind, e) {
       if (kind === 'inv') { const nb = balance(p.id) + docTotal(doc) - toP(($('#dcPaid') || {}).value), lim = limitsOf(p); if (nb >= lim.r) w.push(`رصيد العميل هيبقى ${fmtP(nb)}، وده فوق الحد الأحمر (${fmtP(lim.r)}).`); }
       if (w.length) { warned = true; $('#dcWarn').innerHTML = `<div class="sync warn">${w.map(esc).join('<br>')}</div>`; $('#dcOk').textContent = 'متأكد، احفظ برضه'; return; }
     }
-    if (no && db.entries.some(x => x !== e && x.kind === kind && !x.del && String(x.no) === no)) return toast(`فيه ${KIND[kind]} تانية برقم ${no}. غيّر الرقم.`, 4000);
     doc.desc = docDesc(doc);
     if (isNew) {
       const ne = addEntry(Object.assign({party: p.id}, doc)); applyAmounts(ne);
@@ -1244,7 +1243,7 @@ function entryModal(p, e) {
   const isNew = !e;
   let dir = e ? (e.cr ? 'cr' : 'dr') : 'dr';
   if (e && e.del) {
-    modal(`<h3>حركة ملغية</h3><p style="font-size:16px">${dispDate(e.date)} — ${esc(e.desc)}<br>${e.cr ? 'دائن' : 'مدين'} ${fmtP(e.dr || e.cr)} ${CUR}</p>
+    modal(`<h3>حركة ملغية</h3><p style="font-size:16px">${dispDate(e.date)} — ${esc(noRef(e.desc))}<br>${e.cr ? 'دائن' : 'مدين'} ${fmtP(e.dr || e.cr)} ${CUR}</p>
       ${histHtml(e)}
       <div class="stack"><button class="btn gold" id="emBack" type="button">رجّع الحركة دي</button><button class="btn line" id="emX" type="button">إغلاق</button></div>`);
     $('#emX').onclick = closeModal;
@@ -1309,7 +1308,7 @@ function ledgerTable(p) {
 /* كل حركة بتتفرد لسطور زي شيت الإكسيل: كل صنف في الفاتورة سطر (الكمية والسعر والإجمالي)، والخصم سطر، والدفعة سطر.
    from/to بصيغة YYYY-MM-DD. لو from فاضي يبقى الحساب كله من أوله. */
 function rowsOf(e) {
-  const ref = e.no ? `${isRet(e) ? 'مرتجع' : 'فاتورة'} ${e.no}` : KIND[e.kind];
+  const ref = '';
   if (isDoc(e)) {
     const up = e.kind === 'inv' || e.kind === 'rpur', ret = isRet(e);   // up = بيتحط في المدين
     const out = (e.lines || []).map(l => ({date: e.date, desc: (ret ? 'مرتجع: ' : '') + l.name, ref, qty: `${fmtQ(l.qty)} ${l.unit}`, price: l.price, dr: up ? lineTot(l) : 0, cr: up ? 0 : lineTot(l), ret}));
@@ -1339,7 +1338,7 @@ function stmtData(pid, from, to, fromEnt) {
   return {open, rows, n: ents.length, tdr, tcr, tg, tp, sg, close: run, from, to, lastInv: fi >= 0 ? all[fi] : null};
 }
 const opLabel = s => s.lastInv ? 'الرصيد قبل الفاتورة' : 'رصيد أول المدة';
-const periodText = s => s.lastInv ? `آخر فاتورة${s.lastInv.no ? ' رقم ' + s.lastInv.no : ''} — ${dispDate(s.lastInv.date)}` : s.from ? `من ${dispDate(s.from)} إلى ${dispDate(s.to)}` : (s.to && s.to !== todayISO() ? `الحساب كله حتى ${dispDate(s.to)}` : 'الحساب كله');
+const periodText = s => s.lastInv ? `آخر فاتورة — ${dispDate(s.lastInv.date)}` : s.from ? `من ${dispDate(s.from)} إلى ${dispDate(s.to)}` : (s.to && s.to !== todayISO() ? `الحساب كله حتى ${dispDate(s.to)}` : 'الحساب كله');
 function stmtModal(p) {
   const t = todayISO(), y = t.slice(0, 4);
   const lastInv = partyEntries(p.id).filter(e => e.kind === (p.sec === 'sup' ? 'pur' : 'inv')).pop();
@@ -1388,8 +1387,8 @@ function buildStmtPages(p, s) {
   const over = (inn, el) => el.getBoundingClientRect().bottom > inn.getBoundingClientRect().bottom - 16;
   const mkTable = () => {
     const t = document.createElement('table');
-    t.innerHTML = `<colgroup><col style="width:6%"><col style="width:11.5%"><col style="width:23.5%"><col style="width:10%"><col style="width:10%"><col style="width:12%"><col style="width:12%"><col style="width:15%"></colgroup>
-      <thead><tr><th>#</th><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody></tbody>`;
+    t.innerHTML = `<colgroup><col style="width:12.5%"><col style="width:23.5%"><col style="width:14%"><col style="width:10.5%"><col style="width:13%"><col style="width:11.5%"><col style="width:15%"></colgroup>
+      <thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody></tbody>`;
     return t;
   };
   const balCell = b => `<td class="b">${fmtP(b * s.sg)}</td>`;
@@ -1398,13 +1397,13 @@ function buildStmtPages(p, s) {
     tbl.tBodies[0].appendChild(tr);
     if (over(pg.inn, tr) && tbl.tBodies[0].rows.length > 1) { tr.remove(); pg = shell(false); tbl = mkTable(); pg.inn.appendChild(tbl); tbl.tBodies[0].appendChild(tr); }
   };
-  if (s.open !== null) { const tr = document.createElement('tr'); tr.className = 'op'; tr.innerHTML = `<td></td><td class="dt">${dispDate(s.from)}</td><td class="l">${opLabel(s)}</td><td></td><td></td><td></td><td></td>${balCell(s.open)}`; put(tr); }
+  if (s.open !== null) { const tr = document.createElement('tr'); tr.className = 'op'; tr.innerHTML = `<td class="dt">${dispDate(s.from)}</td><td class="l">${opLabel(s)}</td><td></td><td></td><td></td><td></td>${balCell(s.open)}`; put(tr); }
   s.rows.forEach((r, i) => {
     const tr = document.createElement('tr'); tr.className = r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : '';
-    tr.innerHTML = `<td>${i + 1}</td><td class="dt">${dispDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td><td class="q">${esc(r.qty || '')}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td>${balCell(r.run)}`;
+    tr.innerHTML = `<td class="dt">${dispDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td><td class="q">${esc(r.qty || '')}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td>${balCell(r.run)}`;
     put(tr);
   });
-  if (!s.rows.length) { const tr = document.createElement('tr'); tr.innerHTML = `<td colspan="8">مفيش حركات في الفترة دي</td>`; put(tr); }
+  if (!s.rows.length) { const tr = document.createElement('tr'); tr.innerHTML = `<td colspan="7">مفيش حركات في الفترة دي</td>`; put(tr); }
   const sum = document.createElement('div'); sum.className = 'sum';
   sum.innerHTML = `<div class="f"><span>الرصيد</span><b>${fmtP(s.close * s.sg)} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div>`;
   const note = document.createElement('div'); note.className = 'note';
@@ -1570,7 +1569,7 @@ function viewOf(kind, r) {
   if (kind === 'set') return ['', r.id, 'إعداد', r.id === 'cashSheet' ? 'ربط دفتر الخزنة' : cell(JSON.stringify(r.val)), '', ''];
   if (kind === 'tx') return [r.date, cell(r.type === 'tr' ? vName(r.vault) + ' ← ' + vName(r.to) : vName(r.vault)), 'خزنة: ' + TXT[r.type], cell((r.type === 'tr' ? '' : cName(r.cat)) + (r.note ? ' — ' + r.note : '')), r.type === 'inc' ? r.amt / 100 : '', r.type === 'inc' ? '' : r.amt / 100];
   const p = P.get(r.party);
-  return [r.date, cell(p ? p.name : '؟'), p ? SECS[p.sec] : '', cell(r.desc), (r.dr || 0) / 100, (r.cr || 0) / 100];
+  return [r.date, cell(p ? p.name : '؟'), p ? SECS[p.sec] : '', cell(noRef(r.desc)), (r.dr || 0) / 100, (r.cr || 0) / 100];
 }
 const stripLocal = r => { const o = Object.assign({}, r); delete o.sy; return o; };
 function mergeRow(r) {
@@ -2920,8 +2919,8 @@ function searchAll(q) {
     const p = P.get(e.party); if (!p) continue;
     const lines = (e.lines || []).map(l => `${l.name} ${l.unit || ''}`).join(' ');
     const amts = [e.amt, e.dr, e.cr, e.disc, ...(e.lines || []).map(l => +l.price || 0), ...(e.lines || []).map(lineTot)].filter(Boolean);
-    if (hit(`${p.name} ${e.desc || ''} ${e.no || ''} ${e.note || ''} ${e.method || ''} ${lines}`, amts))
-      out.push({date: e.date, at: e.at || 0, title: `${KIND[e.kind] || 'حركة'}${e.no ? ' رقم ' + e.no : ''} — ${p.name}`, sub: e.desc || lines || e.note || '', amt: e.amt || e.dr || e.cr || 0, go: () => { go('p/' + p.id); setTimeout(() => openEntry(p, e), 200); }});
+    if (hit(`${p.name} ${noRef(e.desc)} ${e.note || ''} ${e.method || ''} ${lines}`, amts))
+      out.push({date: e.date, at: e.at || 0, title: `${KIND[e.kind] || 'حركة'} — ${p.name}`, sub: noRef(e.desc) || lines || e.note || '', amt: e.amt || e.dr || e.cr || 0, go: () => { go('p/' + p.id); setTimeout(() => openEntry(p, e), 200); }});
   }
   for (const x of db.txs) {
     if (x.del) continue;
@@ -2932,7 +2931,7 @@ function searchAll(q) {
 }
 function searchModal() {
   modal(`<h3>🔎 دوّر في كل الحركات</h3>
-    <input class="inp" id="saQ" type="search" placeholder="مبلغ، صنف، رقم فاتورة، ملاحظة، اسم…" autocomplete="off" style="margin-bottom:8px">
+    <input class="inp" id="saQ" type="search" placeholder="مبلغ، صنف، ملاحظة، اسم…" autocomplete="off" style="margin-bottom:8px">
     <div id="saR" style="max-height:60vh;overflow:auto"><p class="hint">اكتب حرفين على الأقل. المبلغ لازم يبقى بالظبط (زي 1500).</p></div>
     <button class="btn line" id="saX2" type="button" style="margin-top:10px">رجوع</button>`, true);
   let res = [];

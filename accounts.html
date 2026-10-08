@@ -648,6 +648,10 @@ html[data-theme=dark] .dpg button:hover{background:#34312a}
 html[data-theme=dark] .dpg button.on{background:#EBC66E;color:#241b00}
 html[data-theme=dark] .lt2{background:#26251f;color:#ECE8DC}
 html[data-theme=dark] :is(.dtot,.ldgf) span{color:#F3EFE3}
+.amt{font-size:22px;min-height:48px}
+.amtrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.amtrow .btn{width:auto;white-space:nowrap;min-height:48px}
+.seg.dir button small{font-weight:600;font-size:12px;opacity:.85}
+.modal h3{font-size:17.5px;margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -1483,23 +1487,23 @@ function payModal(p, kind, e, opts = {}) {
   ensureVaults();
   const v0 = e ? e.vault || '' : (opts.vault || defVault(method));
   modal(`<h3>💵 ${isNew ? (rec ? 'دفعة استلمتها من' : 'دفعة دفعتها لـ') : 'تعديل دفعة —'} ${esc(p.name)}</h3>
-    <div class="fld"><label>المبلغ</label><input class="inp num amt" id="pyAmt" placeholder="0" value="${e ? fmtP(e.amt) : ''}"></div>
+    <div class="fld"><label>المبلغ</label><div class="amtrow"><input class="inp num amt" id="pyAmt" placeholder="0" value="${e ? fmtP(e.amt) : ''}">${isNew && (rec ? balance(p.id) > 0 : balance(p.id) < 0) ? '<button class="btn line sm" id="pyAll" type="button">كل الرصيد</button>' : ''}</div>
+      <div class="hint" style="margin-top:4px">الرصيد الحالي: ${fmtP(Math.abs(balance(p.id)))} ${balWord(balance(p.id))}</div></div>
     <div class="fld"><label>طريقة الدفع</label><div class="seg ${CHECKS_ON || method === 'شيك' ? 's3' : 's2'}" id="pyM">${METHODS.filter(m => CHECKS_ON || m !== 'شيك' || m === method).map(m => `<button type="button" data-v="${m}" class="${m === method ? 'on' : ''}">${m}</button>`).join('')}</div></div>
-    <div class="fld" id="pyVW"><label>${rec ? 'دخلت أنهي خزنة' : 'طلعت من أنهي خزنة'}</label><select class="inp" id="pyV">${vaultOpts(v0, 'مش داخل خزنة (حركة قديمة)')}</select></div>
     <div id="pyChk" class="card" style="background:var(--gold-l);margin:0 0 10px">
       <div class="g2"><div class="fld"><label>رقم الشيك</label><input class="inp num" id="pyCn" inputmode="numeric" value="${esc(ck.no || '')}"></div>
         <div class="fld"><label>البنك</label><input class="inp" id="pyCb" value="${esc(ck.bank || '')}"></div></div>
       <div class="fld"><label>تاريخ الاستحقاق</label><input class="inp" id="pyCd" type="date" value="${esc(ck.due || '')}"></div>
       <p class="hint" style="margin:0">${ck.st === 'c' ? `✔ الشيك اتصرف يوم ${dispDate(ck.cdate)} في ${esc(vName(e.vault))}.` : ck.st === 'b' ? '✖ الشيك ده رجع.' : `الشيك ${rec ? 'بينزل من رصيد العميل' : 'بينزل من اللي ليه'} من دلوقتي، ومبيدخلش الخزنة غير لما يتصرف (من تبويب الشيكات).`}</p>
     </div>
-    <div class="fld"><label>التاريخ</label><input class="inp" id="pyDate" type="date" value="${e ? e.date : todayISO()}"></div>
+    <div class="g2"><div class="fld" id="pyVW"><label>${rec ? 'دخلت خزنة' : 'طلعت من خزنة'}</label><select class="inp" id="pyV">${vaultOpts(v0, 'مش داخل خزنة (حركة قديمة)')}</select></div>
+      <div class="fld"><label>التاريخ</label><input class="inp" id="pyDate" type="date" value="${e ? e.date : todayISO()}"></div></div>
     <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="pyNote" value="${esc(e ? e.note || '' : '')}" placeholder="مثلاً: رقم الشيك أو التحويل" autocomplete="off"></div>
-    <p class="hint">الرصيد الحالي: ${fmtP(Math.abs(balance(p.id)))} ${balWord(balance(p.id))}</p>
     <div id="pyWarn"></div>
     ${e ? histHtml(e) : ''}
-    <div class="stack" style="margin-top:8px"><button class="btn green" id="pyOk" type="button">${isNew ? 'حفظ الدفعة' : 'حفظ التعديل'}</button>
-    ${isNew ? '' : '<button class="btn red sm" id="pyDel" type="button">إلغاء الدفعة</button>'}
-    <button class="btn line" id="pyX" type="button">رجوع</button></div>`);
+    <div class="mfoot">${isNew ? '' : '<div class="msec"><button class="btn red sm" id="pyDel" type="button">إلغاء الدفعة</button></div>'}
+      <div class="mrow"><button class="btn green" id="pyOk" type="button">${isNew ? 'حفظ الدفعة' : 'حفظ التعديل'}</button><button class="btn line" id="pyX" type="button">رجوع</button></div></div>`);
+  if ($('#pyAll')) $('#pyAll').onclick = () => { $('#pyAmt').value = fmtP(Math.abs(balance(p.id))); $('#pyAmt').dispatchEvent(new Event('input')); };
   bindMoney($('#pyAmt'));
   $$('#pyM button').forEach(b => b.onclick = () => {
     method = b.dataset.v; $$('#pyM button').forEach(x => x.classList.toggle('on', x === b));
@@ -1557,14 +1561,13 @@ function entryModal(p, e) {
   }
   modal(`<h3>${isNew ? 'حركة على حساب' : 'تعديل حركة'} — ${esc(p.name)}</h3>
     <div class="seg dir" id="emDir"><button type="button" data-v="dr" class="${dir === 'dr' ? 'on' : ''}">مدين +<br><small>عليه (زوّد اللي ليا)</small></button><button type="button" data-v="cr" class="${dir === 'cr' ? 'on' : ''}">دائن −<br><small>ليه (قلّل اللي ليا)</small></button></div>
-    <div class="fld"><label>المبلغ</label><input class="inp num amt" id="emAmt" placeholder="0" value="${e ? fmtP(e.dr || e.cr) : ''}"></div>
-    <div class="fld"><label>التاريخ</label><input class="inp" id="emDate" type="date" value="${e ? e.date : todayISO()}"></div>
+    <div class="g2"><div class="fld"><label>المبلغ</label><input class="inp num amt" id="emAmt" placeholder="0" value="${e ? fmtP(e.dr || e.cr) : ''}"></div>
+      <div class="fld"><label>التاريخ</label><input class="inp" id="emDate" type="date" value="${e ? e.date : todayISO()}"></div></div>
     <div class="fld"><label>البيان</label><input class="inp" id="emDesc" value="${esc(e ? e.desc : '')}" placeholder="مثلاً: بضاعة / دفعة / فرق حساب" autocomplete="off"></div>
     <div class="chkrow"><input type="checkbox" id="emOpen" ${e && e.kind === 'open' ? 'checked' : ''}><label for="emOpen">دي رصيد أول المدة</label></div>
     ${e ? histHtml(e) : ''}
-    <div class="stack" style="margin-top:8px"><button class="btn gold" id="emOk" type="button">${isNew ? 'حفظ الحركة' : 'حفظ التعديل'}</button>
-    ${isNew ? '' : '<button class="btn red sm" id="emDel" type="button">إلغاء الحركة دي</button>'}
-    <button class="btn line" id="emX" type="button">رجوع</button></div>`);
+    <div class="mfoot">${isNew ? '' : '<div class="msec"><button class="btn red sm" id="emDel" type="button">إلغاء الحركة دي</button></div>'}
+      <div class="mrow"><button class="btn gold" id="emOk" type="button">${isNew ? 'حفظ الحركة' : 'حفظ التعديل'}</button><button class="btn line" id="emX" type="button">رجوع</button></div></div>`);
   bindMoney($('#emAmt'));
   $$('#emDir button').forEach(b => b.onclick = () => { dir = b.dataset.v; $$('#emDir button').forEach(x => x.classList.toggle('on', x === b)); });
   $('#emOpen').onchange = () => { if ($('#emOpen').checked && !$('#emDesc').value.trim()) $('#emDesc').value = 'رصيد أول المدة'; };
@@ -3059,12 +3062,12 @@ function adjModal(p, e) {
   let dir = e ? e.dir : 'dn';
   modal(`<h3>✂ ${isNew ? 'خصم / تسوية' : 'تعديل خصم / تسوية'} — ${esc(p.name)}</h3>
     <div class="seg dir" id="adDir"><button type="button" data-v="dn" class="${dir === 'dn' ? 'on' : ''}">خصم −<br><small>${sup ? 'ينزّل اللي ليه' : 'ينزّل اللي عليه'}</small></button><button type="button" data-v="up" class="${dir === 'up' ? 'on' : ''}">تسوية +<br><small>${sup ? 'يزوّد اللي ليه' : 'يزوّد اللي عليه'}</small></button></div>
-    <div class="fld"><label>المبلغ</label><input class="inp num amt" id="adAmt" placeholder="0" value="${e ? fmtP(e.amt) : ''}"></div>
-    <div class="fld"><label>التاريخ</label><input class="inp" id="adDate" type="date" value="${e ? e.date : todayISO()}"></div>
+    <div class="g2"><div class="fld"><label>المبلغ</label><input class="inp num amt" id="adAmt" placeholder="0" value="${e ? fmtP(e.amt) : ''}"></div>
+      <div class="fld"><label>التاريخ</label><input class="inp" id="adDate" type="date" value="${e ? e.date : todayISO()}"></div></div>
     <div class="fld"><label>السبب</label><input class="inp" id="adNote" value="${esc(e ? e.note || '' : '')}" placeholder="مثلاً: خصم تعجيل دفع، جبر كسور، فرق حساب" autocomplete="off"></div>
     ${e ? histHtml(e) : ''}
-    <div class="stack" style="margin-top:8px"><button class="btn gold" id="adOk" type="button">${isNew ? 'حفظ' : 'حفظ التعديل'}</button>
-    ${isNew ? '' : '<button class="btn red sm" id="adDel" type="button">إلغاء</button>'}<button class="btn line" id="adX" type="button">رجوع</button></div>`);
+    <div class="mfoot">${isNew ? '' : '<div class="msec"><button class="btn red sm" id="adDel" type="button">إلغاء الخصم</button></div>'}
+      <div class="mrow"><button class="btn gold" id="adOk" type="button">${isNew ? 'حفظ' : 'حفظ التعديل'}</button><button class="btn line" id="adX" type="button">رجوع</button></div></div>`);
   bindMoney($('#adAmt'));
   $$('#adDir button').forEach(b => b.onclick = () => { dir = b.dataset.v; $$('#adDir button').forEach(x => x.classList.toggle('on', x === b)); });
   $('#adX').onclick = closeModal;

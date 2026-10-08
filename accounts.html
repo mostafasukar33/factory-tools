@@ -1456,10 +1456,10 @@ function buildStmtPages(p, s) {
   pages.forEach((x, i) => x.querySelector('.pn').textContent = `صفحة ${i + 1} من ${pages.length}`);
   return pages;
 }
-async function makeStmtPdf(p, s) { return pagesToPdf(() => buildStmtPages(p, s), `كشف حساب - ${p.name}`); }
+async function makeStmtPdf(p, s) { return pagesToPdf(() => buildStmtPages(p, s), `كشف حساب - ${p.name}`, p.name); }   // الملف باسم الشخص بس
 async function shareFile(res, title) {
   const file = new File([res.blob], res.name, {type: 'application/pdf'});
-  const data = {files: [file], title, text: title + ' - فلاش أون'};
+  const data = {files: [file]};   // الملف بس: من غير رسالة مكتوبة قبله
   if (!(navigator.canShare && navigator.canShare(data))) {
     downloadBlob(res.blob, res.name);
     toast('الجهاز ده مش بيدعم المشاركة المباشرة. الملف اتنزّل، ابعته من واتساب بإيدك.', 6000);
@@ -3171,7 +3171,9 @@ async function exportReport(R, how) {
     <div class="stack"><button class="btn green" id="pvShare">ابعت واتساب</button><button class="btn gold" id="pvDl">تنزيل PDF</button><button class="btn line" id="pvX">إغلاق</button></div>`, true);
   $('#pvX').onclick = closeModal; $('#pvDl').onclick = () => downloadBlob(res.blob, res.name); $('#pvShare').onclick = () => { closeModal(); shareFile(res, R.title); };
 }
-async function pagesToPdf(build, title) {
+/* اسم الملف: نضيف، من غير علامات الاتجاه الخفية (اللي كانت بتلخبط الاسم) */
+const cleanName = t => String(t || '').replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+async function pagesToPdf(build, title, fileName) {
   await Promise.all(['400', '600', '700', '800'].map(w => document.fonts.load(w + ' 16px Cairo', 'نص عربي 123abc')));
   const pages = build();
   await Promise.all([...$('#render').querySelectorAll('img')].map(i => i.decode ? i.decode().catch(() => {}) : 0));
@@ -3187,7 +3189,7 @@ async function pagesToPdf(build, title) {
     cv.width = cv.height = 0;
   }
   $('#render').innerHTML = '';
-  const name = `${title} - ${dispDate(todayISO()).replace(/\//g, '-')}`.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim() + '.pdf';
+  const name = cleanName(fileName || `${title} - ${todayISO().split('-').reverse().join('-')}`) + '.pdf';
   return {blob: doc.output('blob'), imgs, name, pages: pages.length};
 }
 

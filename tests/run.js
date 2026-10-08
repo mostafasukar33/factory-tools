@@ -153,7 +153,14 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
 
     console.log('\n٧) كشف الحساب PDF');
     await openParty(A, 'عميل تجربة واحد'); await A.click('#ppStmt');
+    await A.evaluate(() => { window.__sh = null; navigator.canShare = () => true; navigator.share = d => { window.__sh = d; return Promise.resolve(); }; });
+    await A.click('#smShare'); await A.waitForFunction(() => window.__sh, null, {timeout: 90000});
+    eq('الواتساب: الملف بس باسم الشخص ومن غير رسالة مكتوبة', await A.evaluate(() => [Object.keys(__sh), __sh.files[0].name, __sh.files[0].type]), [['files'], 'عميل تجربة واحد.pdf', 'application/pdf']);
+    await A.evaluate(() => { navigator.canShare = () => false; });
+    await A.waitForTimeout(300); if (!(await A.$('#smShare'))) await A.click('#ppStmt');
+    await A.evaluate(() => { window.__dn = ''; const o = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dn = this.download; return o.call(this); }; });
     const [dl] = await Promise.all([A.waitForEvent('download', {timeout: 90000}), A.click('#smShare')]);
+    eq('لو الجهاز مبيدعمش المشاركة الملف بينزل باسم الشخص', await A.evaluate(() => __dn), 'عميل تجربة واحد.pdf');
     const pdf = fs.readFileSync(await dl.path());
     eq('الـ PDF اتعمل', pdf.slice(0, 4).toString(), '%PDF');
 

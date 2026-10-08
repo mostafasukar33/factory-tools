@@ -414,6 +414,7 @@ nav svg{width:26px;height:26px}
     <h2>النسخة على Google Sheet</h2>
     <div id="sSheet"></div>
   </div>
+  <div class="card" id="sCash"></div>
   <div class="card">
     <h2>بيانات الشركة في الـ PDF</h2>
     <div class="fld"><label>رقم التليفون</label><input class="inp" id="sPhone" inputmode="tel" style="direction:ltr;text-align:right" placeholder="01xxxxxxxxx"></div>
@@ -775,6 +776,7 @@ function unlocked() {
   $('#lock').classList.remove('on'); $('#lockBox').innerHTML = '';
   lastAct = Date.now(); bridgeIn(); route(); flushSave();
   if (pendingJoin) applyJoin(); else setTimeout(() => syncNow(), 600);
+  setTimeout(() => cashSync(true), 2500);
 }
 ['pointerdown', 'keydown', 'scroll'].forEach(ev => addEventListener(ev, () => lastAct = Date.now(), {passive: true, capture: true}));
 setInterval(() => { if (db && Date.now() - lastAct > LOCK_IDLE) lockNow('اتقفل لوحده بعد 10 دقايق من غير استخدام'); }, 20000);
@@ -1565,7 +1567,7 @@ function viewOf(kind, r) {
   if (kind === 'party') return ['', cell(r.name), SECS[r.sec] || '', cell(r.phone || ''), '', ''];
   if (kind === 'vault') return ['', cell(r.name), 'خزنة', 'رصيد افتتاحي', (r.open || 0) / 100, ''];
   if (kind === 'cat') return ['', cell(r.name), r.type === 'exp' ? 'بند مصروف' : 'بند إيراد', '', '', ''];
-  if (kind === 'set') return ['', r.id, 'إعداد', cell(JSON.stringify(r.val)), '', ''];
+  if (kind === 'set') return ['', r.id, 'إعداد', r.id === 'cashSheet' ? 'ربط دفتر الخزنة' : cell(JSON.stringify(r.val)), '', ''];
   if (kind === 'tx') return [r.date, cell(r.type === 'tr' ? vName(r.vault) + ' ← ' + vName(r.to) : vName(r.vault)), 'خزنة: ' + TXT[r.type], cell((r.type === 'tr' ? '' : cName(r.cat)) + (r.note ? ' — ' + r.note : '')), r.type === 'inc' ? r.amt / 100 : '', r.type === 'inc' ? '' : r.amt / 100];
   const p = P.get(r.party);
   return [r.date, cell(p ? p.name : '؟'), p ? SECS[p.sec] : '', cell(r.desc), (r.dr || 0) / 100, (r.cr || 0) / 100];
@@ -1618,6 +1620,7 @@ async function syncNow(manual) {
     if (got) bridgeOut();
     if (manual) toast(got ? `اتبعت كل حاجة، ونزل ${got} سجل جديد ✔` : 'كل حاجة متسجلة على الشيت ✔');
     if (Date.now() - ((db.cfg.bk || {}).at || 0) > 6 * 3600000) setTimeout(() => checkBackup(), 1500);
+    setTimeout(() => cashSync(true), 800);
   } catch (e) {
     syncErr = e.message === 'key' ? 'key' : String(e.message || e);
     if (manual) toast(syncErr === 'key' ? 'الشيت رفض المفتاح السري. راجع المفتاح في الإعدادات.' : 'معرفتش أوصل للشيت. اتأكد من النت.', 5000);
@@ -1647,7 +1650,7 @@ function makeKey() {
   return [...r].map(x => A[x % A.length]).join('').replace(/(.{4})(?!$)/g, '$1-');
 }
 function renderSettings() {
-  refreshBio();
+  refreshBio(); renderCashLink();
   const c = db.cfg;
   const lk = lockDate(), lim = limitsOf();
   $('#sLock').innerHTML = lk ? `<div class="sync ok">🔒 مقفول لحد ${dispDate(lk)}</div><div class="g2"><input class="inp" type="date" id="sLockD" value="${lk}"><button class="btn gold sm" id="sLockGo" type="button">غيّر يوم القفل</button></div><button class="btn line sm" id="sUnlock" type="button" style="margin-top:8px">افتح الفترة (محتاج كلمة السر)</button>`
@@ -2548,6 +2551,105 @@ function bridgeIn() {
   if (lockedFromCash) { toast(`فيه ${lockedFromCash} تعديل في دفتر الخزنة على فترة مقفولة، واترفض.`, 6000); lockedFromCash = 0; n++; }
   if (n) { bridgeBusy = true; try { saveDB(); } finally { bridgeBusy = false; } }
   return n;
+}
+/* ---------- مزامنة دفتر الخزنة مع شيته من جوه الحسابات ----------
+   تطبيق الحسابات لما يتنزل أيقونة على الأيفون ليه تخزين لوحده غير Safari، فدفتر الخزنة اللي في الأدوات مكانش بيشوفه.
+   علشان كده الحسابات نفسها بتتزامن مع شيت دفتر الخزنة بنفس طريقة الدفتر: بتسحب اللي اتسجل في الدفتر من أي جهاز، وبتبعت اللي اتسجل هنا.
+   لينك شيت الدفتر ومفتاحه بيتحفظوا كإعداد مشترك (cashSheet) في شيت الحسابات، فأي جهاز حسابات بياخدهم لوحده. */
+const writeCash = d => { try { localStorage.setItem('fo_cash_v1', JSON.stringify(d)); } catch (e) {} };
+function cashCreds() {
+  if (!db) return null;
+  const c = readCash() || {}, s = getSet('cashSheet', null);
+  if (c.sheetUrl && c.sheetKey && c.sheetLocked) {
+    if (!s || s.u !== c.sheetUrl || s.k !== c.sheetKey) putSet('cashSheet', {u: c.sheetUrl, k: c.sheetKey});
+    return {u: c.sheetUrl, k: c.sheetKey};
+  }
+  if (s && s.u && s.k) {
+    const d = readCash() || {v: 1, vaults: [], cats: [], tx: [], lastSync: 0, lastVault: ''};
+    Object.assign(d, {sheetUrl: s.u, sheetKey: s.k, sheetLocked: true}); writeCash(d);
+    return {u: s.u, k: s.k};
+  }
+  return null;
+}
+/* نفس دمج الدفتر: الأحدث تعديلاً يكسب */
+function cashMerge(c, rows) {
+  if (!Array.isArray(c.cats)) c.cats = [];
+  const tbl = {vault: c.vaults, cat: c.cats, tx: c.tx}, idx = {};
+  Object.keys(tbl).forEach(k => idx[k] = new Map(tbl[k].map(x => [x.id, x])));
+  let n = 0;
+  rows.forEach(r => {
+    const arr = tbl[r.kind]; if (!arr || !r.data) return;
+    const cur = idx[r.kind].get(r.id);
+    if (cur && cur.upd >= r.upd) { if (cur.upd === r.upd) cur.sy = cur.upd; return; }
+    const rec = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del, sy: r.upd});
+    if (cur) { Object.keys(cur).forEach(k => delete cur[k]); Object.assign(cur, rec); } else { arr.push(rec); idx[r.kind].set(r.id, rec); }
+    n++;
+  });
+  return n;
+}
+function cashView(kind, r, c) {
+  const vn = id => (c.vaults.find(v => v.id === id) || {name: ''}).name, cn = id => ((c.cats || []).find(x => x.id === id) || {name: ''}).name;
+  if (kind === 'tx') { const d = new Date(r.ts); return [isoOf(r.ts), `${pad2(d.getHours())}:${pad2(d.getMinutes())}`, r.type === 'exp' ? 'مصروف' : r.type === 'inc' ? 'إيراد' : 'تحويل', r.amt,
+    r.type === 'tr' ? `${vn(r.vault)} ← ${vn(r.to)}` : vn(r.vault), r.type === 'tr' ? '' : cn(r.cat), cell(r.note || '')]; }
+  if (kind === 'vault') return ['', '', 'خزنة', r.open || 0, cell(r.name), '', 'رصيد افتتاحي'];
+  return ['', '', r.type === 'exp' ? 'بند مصروف' : 'بند إيراد', '', '', cell(r.name), ''];
+}
+let cashSyncing = false, cashSyncAt = 0, cashSyncErr = '';
+async function cashSync(force) {
+  if (!db || cashSyncing || !navigator.onLine) return false;
+  if (!force && Date.now() - cashSyncAt < 60000) return false;
+  const cr = cashCreds(); if (!cr) return false;
+  cashSyncing = true; cashSyncAt = Date.now();
+  try {
+    bridgeOut();
+    const call = body => callSheet(body, cr.u, cr.k);
+    const j = await call({action: 'pull'});
+    if (!j || !j.ok || !Array.isArray(j.rows)) throw new Error(j && j.error === 'key' ? 'key' : 'pull');
+    const c = readCash(); if (!c) throw new Error('local');
+    const got = cashMerge(c, j.rows);
+    const pend = () => [...c.vaults.map(r => ['vault', r]), ...c.cats.map(r => ['cat', r]), ...c.tx.map(r => ['tx', r])].filter(([k, r]) => r.sy !== r.upd && r.upd > 1);
+    let p = pend();
+    while (p.length) {
+      const batch = p.slice(0, 40);
+      const rows = batch.map(([kind, r]) => { const d = Object.assign({}, r); delete d.sy; return {id: r.id, kind, upd: r.upd, del: !!r.del, view: cashView(kind, r, c), data: d}; });
+      const k = await call({rows});
+      if (!k || !k.ok) throw new Error(k && k.error === 'key' ? 'key' : 'push');
+      batch.forEach(([kk, r], i) => { if (r.upd === rows[i].upd) r.sy = rows[i].upd; });
+      p = pend();
+    }
+    c.lastSync = Date.now(); writeCash(c);
+    cashSyncErr = '';
+    const n = bridgeIn(); bridgeOut();
+    if ((got || n) && !$('#mask').classList.contains('on')) route();
+    return true;
+  } catch (e) { cashSyncErr = String(e.message || e); return false; }
+  finally { cashSyncing = false; }
+}
+setInterval(() => cashSync(), 120000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => cashSync(), 1200); });
+addEventListener('online', () => cashSync(true));
+function renderCashLink() {
+  const box = $('#sCash'); if (!box) return;
+  const cr = cashCreds(), c = readCash() || {};
+  box.innerHTML = `<h2>🔗 دفتر الخزنة اللي في الأدوات</h2>
+    ${cr ? `<div class="sync ${cashSyncErr ? 'warn' : 'ok'}">${cashSyncErr ? '⚠️ آخر مزامنة مع شيت الدفتر فشلت. هتتعاد لوحدها.' : `✔ الحسابات والدفتر حاجة واحدة: أي حركة تتسجل هنا أو هناك بتظهر في المكانين.${c.lastSync ? ' آخر مزامنة: ' + dispTime(c.lastSync) : ''}`}</div>
+      <button class="btn line sm" id="scNow" type="button">زامن الخزنة دلوقتي</button>`
+    : `<p class="hint" style="margin:0 0 8px">علشان الخزنة هنا والدفتر يبقوا حاجة واحدة على كل الأجهزة: افتح <b>دفتر الخزنة</b> من الأدوات ← <b>الإعدادات</b>، وانسخ <b>لينك الشيت</b> و<b>المفتاح السري</b> والصقهم هنا مرة واحدة.</p>
+      <div class="fld"><label>لينك شيت الدفتر</label><input class="inp" id="scU" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" autocomplete="off"></div>
+      <div class="fld"><label>المفتاح السري بتاع الدفتر</label><input class="inp" id="scK" style="direction:ltr;font-size:16px" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <button class="btn gold" id="scGo" type="button">اربط</button>`}`;
+  if ($('#scNow')) $('#scNow').onclick = async () => { toast('⏳ بزامن الخزنة…'); const ok = await cashSync(true); toast(ok ? 'الخزنة متزامنة ✔' : 'معرفتش أوصل لشيت الدفتر. اتأكد من النت.'); renderCashLink(); };
+  if ($('#scGo')) $('#scGo').onclick = async () => {
+    const u = normSheetUrl($('#scU').value.trim()), k = $('#scK').value.trim();
+    if (!/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u) || !k) return toast('الصق اللينك والمفتاح زي ما هم في دفتر الخزنة', 5000);
+    $('#scGo').disabled = true; $('#scGo').textContent = '⏳ بجرب…';
+    let j; try { j = await callSheet({action: 'pull'}, u, k, 30000); } catch (e) { j = null; }
+    if (!j || !j.ok || !Array.isArray(j.rows)) { $('#scGo').disabled = false; $('#scGo').textContent = 'اربط'; return toast(j && j.error === 'key' ? 'المفتاح ده مش بتاع شيت الدفتر' : 'معرفتش أوصل لشيت الدفتر. راجع اللينك والنت.', 6000); }
+    const d = readCash() || {v: 1, vaults: [], cats: [], tx: [], lastSync: 0, lastVault: ''};
+    Object.assign(d, {sheetUrl: u, sheetKey: k, sheetLocked: true}); writeCash(d);
+    putSet('cashSheet', {u, k});
+    await cashSync(true); renderCashLink(); toast('✔ اتربطت الخزنة بالدفتر', 5000);
+  };
 }
 addEventListener('storage', ev => {
   if (!db || ev.key !== 'fo_cash_v1') return;

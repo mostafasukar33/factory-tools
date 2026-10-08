@@ -212,7 +212,26 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await C2.click('#shSave'); await C2.waitForTimeout(1500);
     eq('شيت الدفتر مقفول', JSON.parse(sheets.cash.get()).ok, false);
 
+    console.log('\n١١ب) الخزنة واحدة حتى لو الحسابات في تخزين لوحدها (أيقونة الأيفون)');
+    eq('الحسابات بتتزامن مع شيت الدفتر وبتحفظ لينكه كإعداد مشترك', [await A.evaluate(() => cashSync(true)), await A.evaluate(() => !!getSet('cashSheet', null))], [true, true]);
+    await A.evaluate(() => syncNow()); await A.waitForTimeout(1200);
+    await B.evaluate(() => syncNow()); await B.waitForTimeout(3500);
+    eq('جهاز الحسابات التاني خد ربط الدفتر لوحده ونفس رصيد الخزنة', [await B.evaluate(() => !!cashCreds()), await B.evaluate(() => vaultBal(''))], [true, await A.evaluate(() => vaultBal(''))]);
+    const Saf = await D3.page('cash.html'); await Saf.waitForTimeout(300);
+    await Saf.evaluate(([u, k]) => { db.sheetUrl = u; db.sheetKey = k; db.sheetLocked = true; saveDB(); }, [CASH_URL, KEY]);
+    await Saf.evaluate(() => autoPull()); await Saf.waitForTimeout(800);
+    await Saf.evaluate(() => { const c = db.cats.find(x => x.type === 'exp' && !x.del); db.tx.push({id: 't_from_ledger', type: 'exp', amt: 77, ts: Date.now(), vault: 'v_main', cat: c.id, note: 'من الدفتر', upd: Date.now(), del: false, sy: 0}); saveDB(); return syncNow(true); });
+    await Saf.waitForTimeout(800);
+    const vB0 = await B.evaluate(() => vaultBal(''));
+    await B.evaluate(() => cashSync(true)); await B.waitForTimeout(300);
+    eq('مصروف من الدفتر (Safari) ظهر في الحسابات (الأيقونة)', [await B.evaluate(() => !!IDX.tx.get('t_from_ledger')), await B.evaluate(() => vaultBal(''))], [true, vB0 - 7700]);
+    await B.evaluate(() => { const now = Date.now(); const r = {id: 't_from_app', type: 'exp', amt: 3300, vault: 'v_main', to: '', cat: 'c_exp0', note: 'من الحسابات', date: todayISO(), at: now, upd: now, del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); saveDB(); });
+    await B.evaluate(() => cashSync(true)); await B.waitForTimeout(300);
+    await Saf.evaluate(() => autoPull()); await Saf.waitForTimeout(500);
+    eq('مصروف من الحسابات ظهر في الدفتر', await Saf.evaluate(() => !!db.tx.find(t => t.id === 't_from_app' && !t.del)), true);
+
     console.log('\n١٢) الشركاء: مرتب كل خميس ومسحوبات');
+    await A.evaluate(() => cashSync(true));   // ياخد اللي اتسجل في الدفتر من الجهاز التاني الأول
     const vb0 = await A.evaluate(() => vaultBal(''));
     await A.click('nav button[data-go=part]'); await A.click('#psGo'); await A.fill('#psA', '10');
     await A.fill('#psS', await A.evaluate(() => addDays(lastThu(), -14))); await A.click('#psOk'); await A.waitForTimeout(200);

@@ -18,20 +18,27 @@ function makeGas() {
     };
     return sh;
   };
-  const ss = {getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = mkSheet(n))};
-  const props = {};
+  const ss = {getId: () => 'ss1', getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = mkSheet(n))};
+  const props = {}, triggers = [], folders = [];
   const ctx = {
     SpreadsheetApp: {getActiveSpreadsheet: () => ss},
     LockService: {getScriptLock: () => ({waitLock() {}, tryLock() { return true; }, releaseLock() {}})},
-    PropertiesService: {getScriptProperties: () => ({getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = String(v); }})},
+    PropertiesService: {getScriptProperties: () => ({getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = String(v); }, deleteProperty: k => { delete props[k]; }})},
+    ScriptApp: {getProjectTriggers: () => triggers.map(h => ({getHandlerFunction: () => h})), newTrigger: h => { const b = {timeBased: () => b, everyDays: () => b, atHour: () => b, create: () => { triggers.push(h); }}; return b; }},
+    DriveApp: {
+      getFoldersByName: n => { const f = folders.filter(x => x.name === n); return {hasNext: () => f.length > 0, next: () => f.shift()}; },
+      createFolder: n => { const f = {name: n, files: [], getFiles() { const l = f.files.filter(x => !x.trashed); return {hasNext: () => l.length > 0, next: () => l.shift()}; }}; folders.push(f); return f; },
+      getFileById: () => ({makeCopy: (name, folder) => { const t = Date.now() + folder.files.length; folder.files.push({name, trashed: false, getDateCreated: () => new Date(t), setTrashed(v) { this.trashed = v; }}); }})
+    },
+    Session: {getScriptTimeZone: () => 'Africa/Cairo'},
     ContentService: {MimeType: {JSON: 'json'}, createTextOutput: t => ({t, setMimeType() { return this; }})},
-    Utilities: {sleep() {}},
+    Utilities: {sleep() {}, formatDate: d => d.toISOString().slice(0, 10)},
     MailApp: {sendEmail() {}},
     console, JSON, Date, Math
   };
   vm.createContext(ctx);
   return {
-    sheets, ctx,
+    sheets, ctx, triggers, folders,
     load(src) { vm.runInContext(src, ctx); },
     post(body) { return ctx.doPost({postData: {contents: body}}).t; },
     get() { return ctx.doGet({parameter: {}}).t; }

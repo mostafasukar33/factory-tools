@@ -193,6 +193,14 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await A.click('nav button[data-go=set]'); await A.click('#shAudit'); await A.waitForTimeout(3000);
     eq('مراجعة الجهاز مع الشيت متطابقة', (await A.textContent('#modal .sync')).includes('متطابقين ('), true); await A.click('#saX');
 
+    await A.evaluate(() => checkBackup()); 
+    eq('النسخة اليومية: الشيت عمل المؤقت لوحده', [await A.evaluate(() => bkState()), sheets.acc.triggers], ['wait', ['dailyBackup']]);
+    for (let i = 0; i < 32; i++) sheets.acc.ctx.dailyBackup();
+    await A.evaluate(() => checkBackup());
+    eq('النسخة اليومية اتعملت في فولدر Drive وبيفضل آخر 30', [await A.evaluate(() => bkState()), sheets.acc.folders.length, sheets.acc.folders[0].files.filter(f => !f.trashed).length, sheets.acc.triggers.length], ['ok', 1, 30, 1]);
+    await A.click('nav button[data-go=home]'); await A.waitForTimeout(150);
+    eq('مفيش تنبيه نسخة احتياطية لما اليومية شغالة', (await A.textContent('#bkRem')).trim(), '');
+
     console.log('\n١١) شيت دفتر الخزنة مقفول بالمفتاح');
     const C2 = await D1.page('cash.html'); await C2.click('nav button[data-go=set]');
     await C2.fill('#shUrl', CASH_URL); await C2.fill('#shKey', KEY); await C2.click('#shSave'); await C2.waitForTimeout(300);

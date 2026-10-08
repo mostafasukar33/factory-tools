@@ -13,6 +13,22 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="fonts/fonts.css">
+<script>
+/* المظهر (ليلي/فاتح): نفس إعداد برنامج الحسابات، بيتطبق قبل ما الصفحة تترسم */
+function uiGet() { try { return Object.assign({theme: 'auto', fs: '1'}, JSON.parse(localStorage.getItem('fo_ui') || '{}')); } catch (e) { return {theme: 'auto', fs: '1'}; } }
+function uiSet(o) { try { localStorage.setItem('fo_ui', JSON.stringify(Object.assign(uiGet(), o))); } catch (e) {} uiApply(); }
+function uiApply() {
+  const u = uiGet(), r = document.documentElement;
+  const dark = u.theme === 'dark' || (u.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  r.dataset.theme = dark ? 'dark' : 'light';
+  r.style.setProperty('--z', u.fs); r.dataset.fs = u.fs === '1' ? '' : 'z';
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = dark ? '#0d0c0a' : '#111111';
+  const b = document.getElementById('bTheme'); if (b) b.textContent = dark ? '☀' : '🌙';
+}
+uiApply();
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', uiApply); } catch (e) {}
+</script>
+
 <style>
 :root{--gold:#DAAE57;--gold-d:#9C7420;--gold-l:#FBF5E6;--ink:#111;--bg:#F5F2EA;--line:#E4DCC8;--red:#C62828;--red-l:#FDECEA;--green:#1B8E3E;--green-l:#E6F6EB;--blue:#37474F}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -163,33 +179,123 @@ ol.steps li{margin-bottom:6px}
 .pg .cols-l{flex:none}
 .pg .ft{flex:none;background:#111;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 44px;height:44px;font-size:13.5px;font-weight:600;border-top:4px solid #DAAE57}
 .pg .ft span:first-child{color:#DAAE57;font-size:16px;font-weight:700}
+/* ============ نفس تنسيق خزنة برنامج الحسابات: هادي، أزرار صغيرة، أرقام ثابتة، ليلي، حركة خفيفة ============ */
+:root{--bg:#F4F3EF;--line:#E6E2D6;--shadow:0 1px 2px #1b150a0f,0 1px 6px #1b150a08}
+body{font-size:16px}
+.top{border-bottom-width:2px}
+.card,.vault,.tx,.today div,.sum3 div,.sync{box-shadow:var(--shadow)}
+.card{border-radius:12px;margin-bottom:14px}
+.card h2{font-size:15.5px}
+.btn{min-height:44px;font-size:15px;border-radius:10px;padding:8px 14px;font-weight:700}
+.btn.sm{min-height:36px;font-size:14px;padding:5px 10px}
+.btn.gold{color:#2a2000}
+.inp{min-height:46px;font-size:16px;border-radius:10px;border-color:#D9D2BD}
+.seg button{min-height:38px;font-size:14px}
+.amt{font-size:22px;min-height:48px}
+.modal h3{font-size:17.5px;margin-bottom:10px}
+.total,.vault,.cnet{font-variant-numeric:tabular-nums lining-nums}
+.total{background:var(--gold-l);color:var(--ink);border:1px solid var(--gold);border-bottom:1px solid var(--gold);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow)}
+.total small{color:var(--gold-d);font-size:14px}
+.total b{font-size:34px;color:var(--ink)}
+.vault b{font-size:22px}
+.cbar{display:flex;gap:6px;position:sticky;top:var(--hh,64px);z-index:20;background:var(--bg);padding:6px 0;margin-bottom:8px}
+.cbar .btn{flex:1;min-height:40px;font-size:14.5px;padding:4px 6px;white-space:nowrap}
+.ctools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.ctools .btn{width:auto;flex:1;min-height:34px;font-size:13px;padding:4px 8px;white-space:nowrap}
+.dnav{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:10px}
+.dnav button{width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:22px;font-weight:800;line-height:1;cursor:pointer;color:var(--ink);padding:0}
+.dnav span{min-width:150px;text-align:center;border:1px solid var(--gold);background:var(--gold-l);border-radius:10px;padding:6px 12px;font-weight:800;font-size:14.5px;color:var(--gold-d);white-space:nowrap;cursor:pointer}
+.dnav button:active{transform:scale(.94)}
+.cnet{display:flex;justify-content:space-between;align-items:center;background:var(--gold-l);border:1px solid var(--gold);border-radius:10px;padding:9px 14px;margin-bottom:12px;font-weight:800;color:var(--gold-d)}
+.cnet b{font-size:20px;color:var(--ink);direction:ltr}.cnet b.neg{color:var(--red)}
+.cwrap{display:grid;gap:12px;margin-bottom:12px}
+.ctab{background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
+.cth{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;font-weight:800;font-size:15px;border-bottom:1px solid var(--line);background:#FAF8F2}
+.cth b{direction:ltr;font-variant-numeric:tabular-nums}
+.ctab.inc .cth{color:var(--green);border-top:3px solid var(--green)}
+.ctab.exp .cth{color:var(--red);border-top:3px solid var(--red)}
+table.cmt{width:100%;border-collapse:collapse}
+.cmt td{padding:8px 10px;border-bottom:1px solid #EFEBDD;vertical-align:middle}
+.cmt tr{cursor:pointer}.cmt tr:last-child td{border-bottom:0}
+.cmt tr:hover td{background:#FBF8EF}
+.cmt td.d{width:70px;font-size:12.5px;color:#6b6657;white-space:nowrap;text-align:center}
+.cmt td.w b{display:block;font-size:16.5px;font-weight:700;color:var(--ink);line-height:1.35;overflow-wrap:anywhere}
+.cmt td.w small{display:block;font-size:12.5px;color:#7d7765;margin-top:1px}
+.cmt td.am{width:1%;white-space:nowrap;direction:ltr;text-align:right;font-weight:800;font-size:17px;font-variant-numeric:tabular-nums}
+.ctab.inc .am{color:var(--green)}.ctab.exp .am{color:var(--red)}
+.cmt td.e{text-align:center;color:#999;padding:18px}
+@media (min-width:1000px){main{max-width:1100px}.cwrap{grid-template-columns:1fr 1fr;align-items:start}}
+@media (max-width:640px){
+  .cbar{position:fixed;top:auto;inset-inline:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:8px 10px;margin:0;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:25}
+  .cbar .btn{min-height:48px;font-size:15px;box-shadow:0 3px 10px #0004}
+  #p-home{padding-bottom:84px}
+  #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
+}
+/* فوتر النوافذ الثابت */
+.mfoot{position:sticky;bottom:-16px;margin:10px -16px -16px;padding:10px 16px 16px;background:#fff;border-top:1px solid var(--line);z-index:3}
+.mrow{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+.msec{display:flex;gap:6px;margin-bottom:8px}.msec .btn{flex:1}
+@media (max-width:640px){.mfoot{bottom:calc(-14px - env(safe-area-inset-bottom));margin:10px -14px calc(-14px - env(safe-area-inset-bottom));padding:10px 14px calc(14px + env(safe-area-inset-bottom))}}
+/* حركات خفيفة */
+@keyframes foFade{from{opacity:0}to{opacity:1}}
+@keyframes foUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes foPop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+.page.on{animation:foFade .18s ease-out}
+.mask.on{animation:foFade .15s ease-out}
+.mask.on .modal{animation:foPop .18s ease-out}
+#toast{animation:foUp .2s ease-out}
+.btn,.vault,.seg button,.cmt td,nav button,.inp{transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .1s}
+@media (max-width:640px){.mask.on .modal{animation:foUp .22s cubic-bezier(.2,.8,.2,1)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+/* الوضع الليلي */
+html[data-theme=dark]{color-scheme:dark;--bg:#12110e;--line:#37342b;--gold-l:#2a2312;--gold-d:#DDB765;--red:#FF7B72;--red-l:#3a1d1a;--green:#4CC574;--green-l:#15291b;--shadow:0 1px 2px #0009}
+html[data-theme=dark] body{color:#ECE8DC}
+html[data-theme=dark] :is(.card,.vault,.tx,.today div,.sum3 div,.ctab,.ibtn,.btn.line,.btn.red,.dnav button){background:#1f1e19;border-color:#37342b;color:#ECE8DC}
+html[data-theme=dark] .modal{background:#1f1e19;color:#ECE8DC}
+html[data-theme=dark] .modal :is(h3,p){color:#F3EFE3}
+html[data-theme=dark] :is(.inp,select.inp,textarea.inp){background:#17160f;border-color:#4a463a;color:#ECE8DC}
+html[data-theme=dark] .btn:not(.gold):not(.green):not(.line):not(.red):not(.redf){background:#34312a;color:#F3EFE3}
+html[data-theme=dark] .btn.line{border-color:#5a5546}
+html[data-theme=dark] .btn.gold{background:var(--gold);color:#241b00}
+html[data-theme=dark] .btn.redf{background:#B3261E;color:#fff}
+html[data-theme=dark] :is(.total,.cnet,.sync){background:var(--gold-l);border-color:#5b4a1d;color:#ECE8DC}
+html[data-theme=dark] .sync.ok{background:var(--green-l);color:#7DDB98}
+html[data-theme=dark] .sync.warn{background:var(--red-l);color:#FF8A80}
+html[data-theme=dark] :is(.total b,.cnet b,.cmt td.w b,.dnav span){color:#F3EFE3}
+html[data-theme=dark] .cnet b.neg{color:#FF8A80}
+html[data-theme=dark] :is(.total small,.cnet){color:var(--gold-d)}
+html[data-theme=dark] :is(label,.hint,.vault span,.cmt td.d,.cmt td.w small,.today div span,.sum3 div span){color:#B9B3A1}
+html[data-theme=dark] .seg{background:#2a2820}
+html[data-theme=dark] .seg button{color:#B9B3A1}
+html[data-theme=dark] .seg button.on{background:#EBC66E;color:#241b00}
+html[data-theme=dark] .cth{background:#26251f;border-color:#37342b}
+html[data-theme=dark] .cmt td{border-color:#2d2b24}
+html[data-theme=dark] .cmt tr:hover td{background:#26251f}
+html[data-theme=dark] .mfoot{background:#1f1e19;border-color:#37342b}
+html[data-theme=dark] .cbar{background:var(--bg)}
+html[data-theme=dark] .dnav span{background:var(--gold-l)}
+@media (max-width:640px){html[data-theme=dark] .cbar{background:linear-gradient(to top,var(--bg) 70%,transparent)}}
 </style>
 </head>
 <body>
 <header class="top">
   <img src="icons/logo.jpg" alt="فلاش أون">
   <div><h1>فلاش أون</h1><small>دفتر الخزنة</small></div>
-  <a class="homebtn" href="index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>الرئيسية</a>
+  <button class="homebtn" id="bTheme" type="button" title="ليلي / فاتح" style="min-width:40px;justify-content:center;padding:8px 10px;margin-inline-start:auto;background:#222;color:var(--gold);border-color:#444"></button>
+  <a class="homebtn" href="index.html" style="margin-inline-start:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>الرئيسية</a>
 </header>
 
 <main>
 <!-- ============== الرئيسية ============== -->
 <section class="page" id="p-home">
-  <a class="sync ok" href="accounts.html#cash" style="text-decoration:none">🔗 الدفتر ده متصل بخزنة برنامج الحسابات: اللي تسجله هنا أو هناك بيظهر في المكانين. <b style="margin-inline-start:auto;text-decoration:underline">افتح الحسابات ←</b></a>
   <div class="sync" id="syncBox"></div>
+  <div class="cbar"><button class="btn redf" id="bExp" type="button">− مصروف</button><button class="btn green" id="bInc" type="button">+ إيراد</button><button class="btn line" id="bTr" type="button">⇄ تحويل</button></div>
   <div class="total"><small>الرصيد الإجمالي</small><b id="hTotal">0</b></div>
-  <button class="btn gold" id="bCount" type="button" style="margin-bottom:12px">✎ الفلوس اللي معايا دلوقتي</button>
   <div class="vaults" id="hVaults"></div>
-  <div class="bigbtns">
-    <button class="btn redf" id="bExp" type="button">مصروف −</button>
-    <button class="btn green" id="bInc" type="button">إيراد +</button>
-  </div>
-  <button class="btn line" id="bTr" type="button" style="margin-bottom:12px">تحويل بين الخزن ⇄</button>
-  <div class="sech"><span>حركات النهارده</span></div>
-  <div class="today" id="hToday"></div>
-  <div id="hList" style="margin-top:10px"></div>
-  <div class="sech"><span>آخر الحركات</span><a id="hAll">كل الحركات</a></div>
-  <div id="hRecent"></div>
+  <div class="ctools"><button class="btn line sm" id="bCount" type="button">✎ الفلوس اللي معايا</button><button class="btn line sm" id="hAll" type="button">📋 كل الحركات</button><a class="btn line sm" href="accounts.html#cash" style="text-decoration:none">🔗 افتح في الحسابات</a></div>
+  <div class="dnav" id="hNav"></div>
+  <div class="cnet" id="hNet"></div>
+  <div class="cwrap" id="hTables"></div>
 </section>
 
 <!-- ============== التقارير ============== -->
@@ -398,9 +504,8 @@ function openTx(type, edit) {
       <div><label>الخزنة</label><select class="inp" id="tV">${vOpts(vSel)}</select></div></div>`}
     <div class="fld"><label>ملاحظة / وصف</label><textarea class="inp" id="tN" placeholder="اكتب تفاصيل لو عايز">${esc(t0.party ? t0.pnote || '' : t0.note || '')}</textarea></div>
     <div class="g2 fld"><div><label>التاريخ</label><input class="inp" type="date" id="tD" value="${when.date}"></div><div><label>الساعة</label><input class="inp" type="time" id="tT" value="${when.time}"></div></div>
-    <div class="stack"><button class="btn ${isTr ? 'gold' : type === 'exp' ? 'redf' : 'green'}" id="tSave" type="button">حفظ</button>
-    ${edit ? '<button class="btn red" id="tDel" type="button">مسح الحركة</button>' : ''}
-    <button class="btn line" id="tX" type="button">إلغاء</button></div>`);
+    <div class="mfoot">${edit ? '<div class="msec"><button class="btn red sm" id="tDel" type="button">مسح الحركة</button></div>' : ''}
+      <div class="mrow"><button class="btn ${isTr ? 'gold' : type === 'exp' ? 'redf' : 'green'}" id="tSave" type="button">حفظ</button><button class="btn line" id="tX" type="button">إلغاء</button></div></div>`);
   const amt = $('#tAmt'); bindMoney(amt); if (edit) setMoney(amt, edit.amt);
   if (isTr) {
     const fillTo = () => {
@@ -449,7 +554,7 @@ function countModal() {
     <p style="font-size:16px">اكتب الفلوس اللي موجودة فعلاً في كل خزنة دلوقتي.</p>
     ${vs.map(v => `<div class="fld"><label>${esc(v.name)} <small style="color:#777">(الدفتر شايف ${fmt(balance(v.id))})</small></label><input class="inp num amt" data-v="${v.id}" placeholder="0"></div>`).join('')}
     <p class="hint">${vs.some(moved) ? 'الخزنة اللي فيها حركات: الفرق هيتسجل النهارده "تسوية جرد"، والحركات القديمة مش هتتغير.' : 'الرقم ده هيبقى الرصيد الافتتاحي.'}</p>
-    <div class="stack"><button class="btn gold" id="cnOk" type="button">حفظ</button><button class="btn line" id="cnX" type="button">رجوع</button></div>`);
+    <div class="mfoot"><div class="mrow"><button class="btn gold" id="cnOk" type="button">حفظ</button><button class="btn line" id="cnX" type="button">رجوع</button></div></div>`);
   $$('#modal [data-v]').forEach(el => { bindMoney(el); setMoney(el, balance(el.dataset.v)); });
   $('#cnX').onclick = closeModal;
   $('#cnOk').onclick = () => {
@@ -481,20 +586,55 @@ function txCard(t, showDate) {
 }
 function bindTx(root) { root.querySelectorAll('.tx').forEach(el => el.onclick = () => { const t = db.tx.find(x => x.id === el.dataset.id); if (t) openTx(t.type, t); }); }
 
+const AR_DAYS = ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت'];
+const dowOf = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d, 12).getDay(); };
+const addDays = (iso, n) => { const [y, m, d] = iso.split('-').map(Number); return isoOf(new Date(y, m - 1, d + n, 12).getTime()); };
+/* حركة الأرقام: لو الرقم اتغير عن آخر مرة اتعرض، بيعدّ من القديم للجديد */
+const numPrev = new Map();
+function runCounters(root) {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  (root || document).querySelectorAll('[data-cnt]').forEach(el => {
+    const key = el.dataset.ck, to = +el.dataset.cnt, from = numPrev.get(key); numPrev.set(key, to);
+    const tn = el.firstChild;
+    if (reduce || from === undefined || from === to || !tn || tn.nodeType !== 3) return;
+    const mt = tn.nodeValue.match(/^\s*-?[\d,.]+([\s\S]*)$/), tail = mt ? mt[1] : '', t0 = performance.now(), dur = 550;
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      tn.nodeValue = fmt(from + (to - from) * e) + tail;
+      if (k < 1 && el.isConnected) requestAnimationFrame(step); else if (el.isConnected) tn.nodeValue = fmt(to) + tail;
+    };
+    tn.nodeValue = fmt(from) + tail; requestAnimationFrame(step);
+  });
+}
+/* جدول حركات اليوم: الاسم أو الملاحظة هو الكلمة الكبيرة */
+function txWho(t) {
+  if (t.type === 'tr') return {who: `تحويل: ${vName(t.vault)} ← ${vName(t.to)}`, what: t.note || ''};
+  if (t.party) return {who: (t.note || '').split(' — ')[0] || 'حساب', what: t.pnote || ''};
+  return {who: t.note || cName(t), what: t.note ? cName(t) : ''};
+}
+function txTable(title, arr, cls) {
+  const tot = arr.reduce((n, t) => n + t.amt, 0);
+  return `<section class="ctab ${cls}"><div class="cth"><span>${title} (${arr.length})</span><b data-ck="t:${esc(title)}" data-cnt="${tot}">${fmt(tot)}</b></div>
+    <table class="cmt"><tbody>${arr.length ? arr.map(t => { const w = txWho(t), pend = t.sy !== t.upd ? '<span class="pend" title="لسه ما اتبعتتش للشيت"></span>' : '';
+      return `<tr data-id="${t.id}"><td class="d">${dispTime(t.ts)}</td><td class="w"><b>${esc(w.who)}${pend}</b>${w.what ? `<small>${esc(w.what)}</small>` : ''}</td><td class="am">${fmt(t.amt)}</td></tr>`; }).join('') : '<tr><td class="e" colspan="3">مفيش حركات</td></tr>'}</tbody></table></section>`;
+}
+let homeDay = '';
 function renderHome() {
-  const tot = balance(null);
-  $('#hTotal').textContent = fmt(tot) + ' ' + CUR;
-  $('#hTotal').style.color = tot < 0 ? '#ff8a80' : '#fff';
-  $('#hVaults').innerHTML = vaults().map(v => { const b = balance(v.id); return `<div class="vault ${b < 0 ? 'neg' : ''}"><span>${esc(v.name)}</span><b>${fmt(b)}</b></div>`; }).join('');
-  const td = todayISO(), list = liveTx().filter(t => isoOf(t.ts) === td).sort((a, b) => b.ts - a.ts);
+  const tot = balance(null), td = todayISO(), d = homeDay || td;
+  const ht = $('#hTotal'); ht.textContent = fmt(tot) + ' ' + CUR; ht.dataset.ck = 'h:total'; ht.dataset.cnt = tot;
+  ht.style.color = tot < 0 ? '#ff8a80' : '';
+  $('#hVaults').innerHTML = vaults().length < 2 ? '' : vaults().map(v => { const b = balance(v.id); return `<div class="vault ${b < 0 ? 'neg' : ''}"><span>${esc(v.name)}</span><b data-ck="v:${esc(v.id)}" data-cnt="${b}">${fmt(b)}</b></div>`; }).join('');
+  $('#hNav').innerHTML = `<button type="button" id="hPrev" title="اليوم اللي قبله">›</button><span id="hDay" title="ارجع لليوم">${AR_DAYS[dowOf(d)]}${d === td ? ' · النهارده' : ' · ' + dispDate(d)}</span><button type="button" id="hNext" title="اليوم اللي بعده">‹</button>`;
+  $('#hPrev').onclick = () => { homeDay = addDays(d, -1); renderHome(); };
+  $('#hNext').onclick = () => { homeDay = addDays(d, 1); renderHome(); };
+  $('#hDay').onclick = () => { if (homeDay) { homeDay = ''; renderHome(); } };
+  const list = liveTx().filter(t => isoOf(t.ts) === d).sort((a, b) => b.ts - a.ts);
   const s = sums(list);
-  $('#hToday').innerHTML = `<div class="e"><span>مصروف</span><b class="exp">${fmt(s.e)}</b></div><div class="i"><span>إيراد</span><b class="inc">${fmt(s.i)}</b></div><div><span>الصافي</span><b class="${s.n < 0 ? 'exp' : s.n > 0 ? 'inc' : ''}">${fmt(s.n)}</b></div>`;
-  $('#hList').innerHTML = list.length ? list.map(t => txCard(t)).join('') : '<div class="empty">مفيش حركات النهارده</div>';
-  bindTx($('#hList'));
-  const recent = liveTx().filter(t => isoOf(t.ts) !== td).sort((a, b) => b.ts - a.ts).slice(0, 8);
-  $('#hRecent').innerHTML = recent.length ? recent.map(t => txCard(t, true)).join('') : '<div class="empty">—</div>';
-  bindTx($('#hRecent'));
-  renderSyncBox();
+  $('#hNet').innerHTML = `<span>${d === td ? 'صافي النهارده' : 'صافي اليوم'}</span><b class="${s.n < 0 ? 'neg' : ''}" data-ck="h:net" data-cnt="${s.n}">${fmt(s.n)} ${CUR}</b>`;
+  const trs = list.filter(t => t.type === 'tr');
+  $('#hTables').innerHTML = txTable('الإيرادات', list.filter(t => t.type === 'inc'), 'inc') + txTable('المصروفات', list.filter(t => t.type === 'exp'), 'exp') + (trs.length ? txTable('تحويلات', trs, '') : '');
+  $$('#hTables tr[data-id]').forEach(el => el.onclick = () => { const t = db.tx.find(x => x.id === el.dataset.id); if (t) openTx(t.type, t); });
+  renderSyncBox(); runCounters($('#p-home'));
 }
 $('#bExp').onclick = () => openTx('exp');
 $('#bInc').onclick = () => openTx('inc');
@@ -1125,6 +1265,9 @@ route();
 setTimeout(() => autoPull().finally(() => syncNow()), 1200);   // نجيب الأول وبعدين نبعت
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
+
+$('#bTheme').onclick = () => uiSet({theme: document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'});
+uiApply();
 </script>
 </body>
 </html>

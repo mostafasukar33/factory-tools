@@ -207,9 +207,11 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
 
     console.log('\n١١) شيت دفتر الخزنة مقفول بالمفتاح');
     const C2 = await D1.page('cash.html'); await C2.click('nav button[data-go=set]');
-    await C2.fill('#shUrl', CASH_URL); await C2.fill('#shKey', KEY); await C2.click('#shSave'); await C2.waitForTimeout(300);
-    await C2.click('#shHelp'); await C2.click('#hpCopy'); sheets.cash.load(await C2.evaluate(() => navigator.clipboard.readText())); await C2.click('#hpX');
+    await C2.fill('#shUrl', CASH_URL); await C2.click('#shSave'); await C2.waitForTimeout(300);
+    await C2.click('#shHelp'); await C2.click('#hpCopy'); const cashCode = await C2.evaluate(() => navigator.clipboard.readText()); sheets.cash.load(cashCode); await C2.click('#hpX');
     await C2.click('#shSave'); await C2.waitForTimeout(1500);
+    const cKey = await C2.evaluate(() => db.sheetKey);
+    eq('مفتاح الدفتر اتعمل لوحده ومش في الكود، والشيت اتقفل عليه', [cKey.length >= 8, cashCode.includes(cKey), await C2.evaluate(() => db.sheetLocked), JSON.parse(sheets.cash.post(JSON.stringify({key: 'Other-Key-123', action: 'ping'}))).error], [true, false, true, 'key']);
     eq('شيت الدفتر مقفول', JSON.parse(sheets.cash.get()).ok, false);
 
     console.log('\n١١ب) الخزنة واحدة حتى لو الحسابات في تخزين لوحدها (أيقونة الأيفون)');
@@ -217,9 +219,9 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await A.evaluate(() => syncNow()); await A.waitForTimeout(1200);
     await B.evaluate(() => syncNow()); await B.waitForTimeout(3500);
     eq('جهاز الحسابات التاني خد ربط الدفتر لوحده ونفس رصيد الخزنة', [await B.evaluate(() => !!cashCreds()), await B.evaluate(() => vaultBal(''))], [true, await A.evaluate(() => vaultBal(''))]);
-    const Saf = await D3.page('cash.html'); await Saf.waitForTimeout(300);
-    await Saf.evaluate(([u, k]) => { db.sheetUrl = u; db.sheetKey = k; db.sheetLocked = true; saveDB(); }, [CASH_URL, KEY]);
-    await Saf.evaluate(() => autoPull()); await Saf.waitForTimeout(800);
+    const cjoin = await B.evaluate(() => { const c = cashCreds(); return 'cash.html#cashjoin=' + b64u(JSON.stringify({u: c.u, k: c.k})); });
+    const Saf = await D3.page(cjoin); await Saf.waitForTimeout(1500);
+    eq('الدفتر على جهاز جديد اتربط برابط الربط بس', await Saf.evaluate(() => [db.sheetLocked, location.hash]), [true, '']);
     await Saf.evaluate(() => { const c = db.cats.find(x => x.type === 'exp' && !x.del); db.tx.push({id: 't_from_ledger', type: 'exp', amt: 77, ts: Date.now(), vault: 'v_main', cat: c.id, note: 'من الدفتر', upd: Date.now(), del: false, sy: 0}); saveDB(); return syncNow(true); });
     await Saf.waitForTimeout(800);
     eq('لينك شيت الحسابات أو مفتاح غلط بيطلع رسالة واضحة', [await B.evaluate(u => connectCash(u, 'Wrong-Key-1234'), CASH_URL), await B.evaluate(([u, k]) => connectCash(u, k), [ACC_URL, KEY])],

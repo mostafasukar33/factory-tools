@@ -817,8 +817,20 @@ $('#fRestore').addEventListener('change', async e => {
 /* الشيت مقفول بمفتاح سري. الكود اللي بيتحط في Apps Script بيتعمل هنا على الجهاز ومعاه المفتاح اللي
    صاحب المشروع كتبه، فالمفتاح مش مكتوب في أي ملف على GitHub. أي طلب من غير المفتاح الشيت بيرفضه،
    والفتح من المتصفح (GET) مبيرجعش أي بيانات. */
-const scriptFor = key => `// دفتر الخزنة - فلاش أون (مقفول بمفتاح سري)
-const KEY = ${JSON.stringify(key)};
+/* الكود ثابت ومفيهوش أي مفتاح: أول جهاز يكلّم الشيت بيقفله على المفتاح بتاعه (بيتحفظ في إعدادات السكريبت)،
+   والمفتاح بيتعمل لوحده على الجهاز ومش محتاج يتكتب ولا يتحفظ في ورقة. الأجهزة التانية بتاخده من "رابط الربط". */
+const scriptFor = () => `// دفتر الخزنة - فلاش أون (مقفول بمفتاح سري بيتحفظ أول مرة)
+function key_(k) {
+  if (typeof k !== 'string' || k.length < 8) return false;
+  const p = PropertiesService.getScriptProperties();
+  let s = p.getProperty('KEY');
+  if (!s) {
+    const l = LockService.getScriptLock(); l.waitLock(10000);
+    try { s = p.getProperty('KEY'); if (!s) { p.setProperty('KEY', k); s = k; } } finally { l.releaseLock(); }
+  }
+  return s === k;
+}
+function resetKey() { PropertiesService.getScriptProperties().deleteProperty('KEY'); }
 const SHEET = 'الحركات';
 const HEAD = ['id','النوع','آخر تعديل','ممسوحة','التاريخ','الساعة','نوع الحركة','المبلغ','الخزنة','البند','ملاحظة','البيانات (لا تعدّلها)'];
 function sh_() {
@@ -830,7 +842,7 @@ function sh_() {
 function doPost(e) {
   let req;
   try { req = JSON.parse(e.postData.contents); } catch (x) { return out_({ok: false, error: 'bad'}); }
-  if (!req || req.key !== KEY) return out_({ok: false, error: 'key'});
+  if (!req || !key_(req.key)) return out_({ok: false, error: 'key'});
   if (req.action === 'ping') return out_({ok: true, v: 2, n: Math.max(sh_().getLastRow() - 1, 0)});
   if (req.action === 'pull') return out_({ok: true, v: 2, rows: rows_()});
   const lock = LockService.getScriptLock(); lock.waitLock(30000);
@@ -922,15 +934,16 @@ function makeKey() {
   return [...r].map(x => A[x % A.length]).join('').replace(/(.{4})(?!$)/g, '$1-');
 }
 function renderSheetBox() {
+  if (!db.sheetKey) { db.sheetKey = makeKey(); saveDB(); }   // المفتاح بيتعمل لوحده على الجهاز
   const n = pendingRecs().length;
   $('#sSheet').innerHTML = `<p class="hint" style="margin:0 0 10px">كل حركة بتتبعت لوحدها لجدول Google بتاعك، وأي تعديل أو مسح بيتعدّل هناك كمان. الأداة بتشتغل عادي من غير الشيت.</p>
-    ${db.sheetUrl && !db.sheetLocked ? `<div class="sync warn" style="margin:0 0 10px">⚠️ الشيت لسه مش مقفول. اكتب مفتاح سري تحت واضغط حفظ، وبعدين افتح "خطوات قفل الشيت" ونفّذها.</div>` : ''}
+    ${db.sheetUrl && !db.sheetLocked ? `<div class="sync warn" style="margin:0 0 10px">⚠️ الشيت لسه بالكود القديم المفتوح. اضغط "خطوات قفل الشيت" تحت ونفّذها مرة واحدة.</div>` : ''}
     <div class="fld"><label>لينك الشيت (Web app URL)</label><input class="inp" id="shUrl" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" value="${esc(db.sheetUrl)}"></div>
-    <div class="fld"><label>المفتاح السري (بتكتبه مرة واحدة على كل جهاز)</label>
-      <div class="krow"><input class="inp" id="shKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:16px" placeholder="8 حروف أو أرقام على الأقل" value="${esc(db.sheetKey)}">
+    <details class="fld"><summary style="font-weight:700;color:#777;cursor:pointer">المفتاح السري (بيتعمل لوحده — مش محتاج تحفظه)</summary>
+      <div class="krow" style="margin-top:6px"><input class="inp" id="shKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:16px" value="${esc(db.sheetKey)}">
       <button class="ibtn" id="shEye" type="button" title="إظهار">👁</button></div>
-      <p class="hint">المفتاح ده زي قفل الشيت: من غيره محدش يقدر يقرا ولا يكتب حاجة حتى لو معاه اللينك. اكتبه في ورقة واحتفظ بيه. <a id="shGen" style="text-decoration:underline;cursor:pointer;color:var(--gold-d)">اعملي مفتاح جديد</a></p>
-    </div>
+      <p class="hint">ده اللي بيقفل الشيت علشان محدش يقرا حاجة حتى لو معاه اللينك. بيتعمل لوحده، وبيتنقل للحسابات وللأجهزة التانية برابط الربط، فمش محتاج تكتبه في حتة.</p>
+    </details>
     <div class="stack">
       ${db.sheetUrl && db.sheetLocked ? '<button class="btn green" id="shAcc" type="button">🔗 انسخ رابط الربط لبرنامج الحسابات</button>' : ''}
       <button class="btn gold" id="shSave" type="button">حفظ واختبار الاتصال</button>
@@ -948,12 +961,11 @@ function renderSheetBox() {
     catch (e) { modal(`<h3>رابط الربط للحسابات</h3><p style="font-size:15px">اضغط مطوّل على الرابط وانسخه، وبعدين الصقه في الحسابات ← الإعدادات ← "دفتر الخزنة":</p><pre class="code" style="white-space:pre-wrap;word-break:break-all;direction:ltr">${esc(link)}</pre><button class="btn line" id="alX" type="button">تمام</button>`); $('#alX').onclick = closeModal; }
   };
   $('#shEye').onclick = () => { const k = $('#shKey'); k.type = k.type === 'password' ? 'text' : 'password'; };
-  $('#shGen').onclick = () => { $('#shKey').value = makeKey(); $('#shKey').type = 'text'; toast('ده مفتاح جديد. اكتبه في ورقة قبل ما تحفظ.', 5000); };
   $('#shSave').onclick = async () => {
     const u = $('#shUrl').value.trim(), k = $('#shKey').value.trim();
     if (u && !/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u)) return setStat('bad', '❌ اللينك مش شكل لينك Apps Script. لازم يبدأ بـ https://script.google.com ويخلص بـ /exec. راجع الخطوات.');
     if (/\/dev(\?|$)/.test(u)) return setStat('bad', '❌ اللينك ده بتاع التجربة (/dev). المطلوب اللينك اللي بيخلص بـ /exec من "نشر جديد".');
-    if (u && !KEY_RE.test(k)) return setStat('bad', '❌ اكتب مفتاح سري من 8 لـ 64 حرف أو رقم من غير مسافات (أو اضغط "اعملي مفتاح جديد").');
+    if (u && !KEY_RE.test(k)) return setStat('bad', '❌ المفتاح السري اتلخبط. افتح "المفتاح السري" وامسحه واضغط حفظ تاني، وهيتعمل واحد جديد لوحده.');
     if (u !== db.sheetUrl || k !== db.sheetKey) db.sheetLocked = false;
     db.sheetUrl = u; db.sheetKey = u ? k : ''; saveDB();
     if (!u) { renderSettings(); return toast('اتفصل الشيت'); }
@@ -965,7 +977,7 @@ function renderSheetBox() {
         : e.name === 'AbortError' ? '❌ الشيت مردش في 30 ثانية. اتأكد من النت وجرّب تاني.'
         : '❌ معرفتش أوصل للشيت. الأسباب المحتملة: (1) الوصول مش "أي شخص (Anyone)" (2) اللينك ناقص أو غلط (3) عدّلت الكود ومعملتش نسخة جديدة في النشر (4) مفيش نت.');
     }
-    if (!j.ok && j.error === 'key') { renderSyncBox(); return setStat('bad', '❌ الشيت شغال بالكود الجديد بس رفض المفتاح. المفتاح اللي هنا لازم يبقى نفس اللي اتحط في الكود. لو مش فاكر، اعمل الخطوات تاني وانسخ الكود من هنا.'); }
+    if (!j.ok && j.error === 'key') { renderSyncBox(); return setStat('bad', '❌ الشيت ده مقفول على جهاز تاني. افتح الدفتر هنا برابط الربط: من الحسابات ← الإعدادات ← "دفتر الخزنة" ← "ابعت رابط الدفتر لجهاز تاني".'); }
     if (!j.ok) return setStat('bad', '❌ الشيت رد بخطأ: ' + (j.error || 'غير معروف'));
     if (j.v !== 2) {
       renderSyncBox();
@@ -1043,12 +1055,12 @@ window.addEventListener('online', () => syncNow());
 setInterval(() => { if (pendingRecs().length) syncNow(); }, 60000);
 
 function showHelp() {
-  const k = db.sheetKey, upd = db.sheetUrl && !db.sheetLocked;
-  if (!k) return toast('اكتب المفتاح السري الأول (أو اضغط "اعملي مفتاح جديد") واضغط حفظ، وبعدين افتح الخطوات.', 6000);
-  const code = scriptFor(k), lines = code.split('\n').length;
+  if (!db.sheetKey) { db.sheetKey = makeKey(); saveDB(); }
+  const upd = db.sheetUrl && !db.sheetLocked;
+  const code = scriptFor(), lines = code.split('\n').length;
   const paste = `اضغط جوه خانة الكود، واختار <b>تحديد الكل (Select all)</b> وامسح كل حاجة مكتوبة، لحد ما الصفحة تبقى فاضية تماماً. وارجع هنا واضغط الزرار الأخضر <b>"انسخ الكود"</b>، وبعدين الصق (Paste) <b>مرة واحدة بس</b>. الكود الصح بيخلص عند السطر رقم ${lines} ومفيش بعده أي حاجة.`;
   modal((upd ? `<h3>قفل الشيت الموجود (مرة واحدة بس)</h3>
-  <p style="font-size:15px">هتحط كود جديد في نفس الشيت، واللينك هيفضل زي ما هو. الكود الجديد فيه المفتاح بتاعك، فمن غيره محدش يقدر يقرا حاجة.</p>
+  <p style="font-size:15px">هتحط كود جديد في نفس الشيت، واللينك هيفضل زي ما هو. بعده الشيت هيتقفل لوحده على الجهاز ده، ومحدش يقدر يقرا حاجة حتى لو معاه اللينك. مش محتاج تحفظ أي مفتاح.</p>
   <ol class="steps">
     <li>افتح جدول <b>دفتر الخزنة</b> على sheets.google.com.</li>
     <li>من القايمة اللي فوق: <b>الإضافات (Extensions)</b> ← <b>Apps Script</b>.</li>
@@ -1098,6 +1110,15 @@ function route() {
   refresh(); window.scrollTo(0, 0);
 }
 $$('nav button').forEach(b => b.onclick = () => go(b.dataset.go));
+/* رابط الربط (cashjoin=...): فيه لينك الشيت ومفتاحه، فالجهاز ده يتربط من غير ما يكتب أي حاجة */
+try {
+  const m = location.hash.match(/^#cashjoin=([\w-]+)/);
+  if (m) {
+    const o = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')))));
+    history.replaceState(null, '', location.pathname);
+    if (o && o.u && o.k) { db.sheetUrl = o.u; db.sheetKey = o.k; db.sheetLocked = true; saveDB(); setTimeout(() => { toast('✔ الدفتر اتربط بالشيت، وبنزّل الحركات…', 5000); autoPull(); syncNow(); }, 500); }
+  }
+} catch (e) {}
 window.addEventListener('hashchange', route);
 $('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#tSave')) closeModal(); });
 route();

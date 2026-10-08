@@ -450,7 +450,9 @@ const fmtP = p => { p = Math.round(+p || 0); const a = Math.abs(p); return (p < 
 const pad2 = n => String(n).padStart(2, '0');
 const isoOf = ms => { const d = new Date(ms); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
 const todayISO = () => isoOf(Date.now());
-const dispDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}/${m}/${y}` : ''; };
+/* يوم/شهر/سنة واليوم على اليمين: علامة الاتجاه (RLM) بتفصل الأرقام فتترتب من اليمين لليسار */
+const RLM = '\u200F';
+const dispDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}${RLM}/${RLM}${m}${RLM}/${RLM}${y}` : ''; };
 const dispTime = ms => { const d = new Date(ms), h = d.getHours(); return `${pad2(h % 12 || 12)}:${pad2(d.getMinutes())} ${h < 12 ? 'ص' : 'م'}`; };
 const CUR = 'ج.م';
 const SECS = {mkt: 'عملاء السوق', site: 'عملاء المواقع', sup: 'الموردين'};
@@ -1243,7 +1245,7 @@ function histHtml(e) {
 }
 
 /* جدول الحساب جوه البرنامج: نفس شكل الكشف اللي بيتبعت للعميل بالظبط. الدوسة على أي سطر بتفتح الفاتورة أو الدفعة بتاعته */
-const shortDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}/${m}<small>${y}</small>` : ''; };   // اليوم/الشهر وتحتهم السنة علشان الجدول يدخل في الموبايل
+const shortDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}${RLM}/${RLM}${m}<small>${y}</small>` : ''; };   // اليوم/الشهر وتحتهم السنة علشان الجدول يدخل في الموبايل
 function ledgerTable(p) {
   const s = stmtData(p.id, '', '');
   if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده</div>';
@@ -1294,15 +1296,15 @@ function stmtModal(p) {
   const t = todayISO(), y = t.slice(0, 4);
   const lastInv = partyEntries(p.id).filter(e => e.kind === (p.sec === 'sup' ? 'pur' : 'inv')).pop();
   let mode = lastInv ? 'last' : 'all';
-  /* الشهر اللي فات بالكامل (من أوله لآخره) */
-  const pm = new Date(+y, +t.slice(5, 7) - 2, 1), pmS = isoOf(pm.getTime()), pmE = isoOf(new Date(pm.getFullYear(), pm.getMonth() + 1, 0).getTime());
+  /* آخر شهر = من نفس اليوم الشهر اللي فات لحد آخر حركة النهارده (من غير ما يسيب حاجة) */
+  const pm0 = new Date(+y, +t.slice(5, 7) - 2, 1), pmS = isoOf(new Date(pm0.getFullYear(), pm0.getMonth(), Math.min(+t.slice(8), new Date(pm0.getFullYear(), pm0.getMonth() + 1, 0).getDate())).getTime());
   modal(`<h3>كشف حساب — ${esc(p.name)}</h3>
     <div class="seg s4" id="smMode">${[['last', 'آخر فاتورة'], ['prev', 'آخر شهر'], ['all', 'الحساب كله'], ['range', 'من – إلى']].map(([k, l]) => `<button type="button" data-m="${k}" class="${k === mode ? 'on' : ''}"${k === 'last' && !lastInv ? ' disabled' : ''}>${l}</button>`).join('')}</div>
     <div class="g2" id="smRange" style="display:none;margin-bottom:6px"><div><label>من</label><input class="inp" type="date" id="smFrom" value="${y}-01-01"></div><div><label>إلى</label><input class="inp" type="date" id="smTo" value="${t}"></div></div>
     <div id="smOut"></div>
     <div class="stack" style="margin-top:6px"><button class="btn green big" id="smShare" type="button">ابعت واتساب</button>
       <button class="btn gold" id="smPdf" type="button">معاينة / تنزيل PDF</button><button class="btn line" id="smX" type="button">إغلاق</button></div>`, true);
-  const range = () => mode === 'all' || mode === 'last' ? ['', ''] : mode === 'prev' ? [pmS, pmE] : [$('#smFrom').value, $('#smTo').value];
+  const range = () => mode === 'all' || mode === 'last' ? ['', ''] : mode === 'prev' ? [pmS, t] : [$('#smFrom').value, $('#smTo').value];
   const upd = () => {
     const [f, to] = range();
     if (mode === 'range' && (!f || !to || f > to)) { $('#smOut').innerHTML = '<div class="empty">اختار تاريخ البداية قبل تاريخ النهاية</div>'; return null; }

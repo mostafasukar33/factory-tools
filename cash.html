@@ -278,7 +278,8 @@ const timeOf = ms => { const d = new Date(ms); return `${pad2(d.getHours())}:${p
 const todayISO = () => isoOf(Date.now());
 const dayStart = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
 const dayEnd = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d + 1).getTime(); };   // نهاية اليوم (حصري)
-const dispDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}/${m}/${y}` : ''; };
+const RLM = '\u200F';   // يوم/شهر/سنة واليوم على اليمين
+const dispDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}${RLM}/${RLM}${m}${RLM}/${RLM}${y}` : ''; };
 const dispTime = ms => { const d = new Date(ms), h = d.getHours(); return `${pad2(h % 12 || 12)}:${pad2(d.getMinutes())} ${h < 12 ? 'ص' : 'م'}`; };
 const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 const sgn = (n, t) => t === 'exp' ? '−' : t === 'inc' ? '+' : '';

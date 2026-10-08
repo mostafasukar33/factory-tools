@@ -512,6 +512,25 @@ body{font-size:16px}
   main.split #bNewParty{min-height:42px;font-size:15px}
   .ldg td{font-weight:500}
 }
+/* جداول الخزنة */
+.cwrap{display:grid;gap:12px;margin-bottom:12px}
+@media (min-width:1000px){.cwrap{grid-template-columns:1fr 1fr;align-items:start}}
+.ctab{background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
+.cth{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;font-weight:800;font-size:15px;border-bottom:1px solid var(--line);background:#FAF8F2}
+.cth b{direction:ltr;font-variant-numeric:tabular-nums}
+.ctab.inc .cth{color:var(--green);border-top:3px solid var(--green)}
+.ctab.exp .cth{color:var(--red);border-top:3px solid var(--red)}
+table.cmt{width:100%;border-collapse:collapse}
+.cmt td{padding:8px 10px;border-bottom:1px solid #EFEBDD;vertical-align:middle}
+.cmt tr{cursor:pointer}.cmt tr:last-child td{border-bottom:0}
+.cmt tr:hover td{background:#FBF8EF}
+.cmt td.d{width:62px;font-size:13px;color:#6b6657;white-space:nowrap;text-align:center;line-height:1.2}
+.cmt td.d small{display:block;font-size:10.5px;color:#999}
+.cmt td.w b{display:block;font-size:16.5px;font-weight:700;color:var(--ink);line-height:1.35;overflow-wrap:anywhere}
+.cmt td.w small{display:block;font-size:12.5px;color:#7d7765;margin-top:1px}
+.cmt td.am{width:1%;white-space:nowrap;direction:ltr;text-align:right;font-weight:800;font-size:17px;font-variant-numeric:tabular-nums}
+.ctab.inc .am{color:var(--green)}.ctab.exp .am{color:var(--red)}
+.cmt td.e{text-align:center;color:#999;padding:18px}
 </style>
 </head>
 <body>
@@ -2237,13 +2256,15 @@ function vaultMoves(vid, from, to) {
     const sign = t.type === 'inc' ? 1 : t.type === 'exp' ? -1 : (!vid ? 0 : t.to === vid ? 1 : -1);
     out.push({src: 'tx', r: t, date: t.date, at: t.at || 0, sign, amt: t.amt,
       title: t.type === 'tr' ? `تحويل: ${vName(t.vault)} ← ${vName(t.to)}` : `${TXT[t.type]} — ${cName(t.cat)}`,
-      sub: (t.type === 'tr' ? '' : vName(t.vault)) + (t.note ? (t.type === 'tr' ? '' : ' — ') + t.note : ''), cls: t.type});
+      sub: (t.type === 'tr' ? '' : vName(t.vault)) + (t.note ? (t.type === 'tr' ? '' : ' — ') + t.note : ''), cls: t.type,
+      who: t.type === 'tr' ? `تحويل: ${vName(t.vault)} ← ${vName(t.to)}` : (t.note || cName(t.cat)), what: t.type === 'tr' ? '' : (t.note ? cName(t.cat) : '')});
   });
   db.entries.forEach(e => {
     if (e.del || !isPay(e) || !e.vault || !inR(vdate(e)) || (vid && e.vault !== vid)) return;
     const p = P.get(e.party);
     out.push({src: 'pay', r: e, date: vdate(e), at: e.at || 0, sign: e.kind === 'pay' ? 1 : -1, amt: e.amt,
-      title: `${e.kind === 'pay' ? 'تحصيل من' : 'دفع لـ'} ${p ? p.name : '؟'}`, sub: `${vName(e.vault)} — ${e.chk ? 'شيك' + (e.chk.no ? ' رقم ' + e.chk.no : '') + ' اتصرف' : e.method || 'نقدي'}${e.note ? ' — ' + e.note : ''}`, cls: e.kind === 'pay' ? 'inc' : 'exp'});
+      title: `${e.kind === 'pay' ? 'تحصيل من' : 'دفع لـ'} ${p ? p.name : '؟'}`, sub: `${vName(e.vault)} — ${e.chk ? 'شيك' + (e.chk.no ? ' رقم ' + e.chk.no : '') + ' اتصرف' : e.method || 'نقدي'}${e.note ? ' — ' + e.note : ''}`, cls: e.kind === 'pay' ? 'inc' : 'exp',
+      who: p ? p.name : '؟', what: [e.chk ? 'شيك' + (e.chk.no ? ' رقم ' + e.chk.no : '') : (e.method && e.method !== 'نقدي' ? e.method : ''), e.note || ''].filter(Boolean).join(' — ')});
   });
   return out.sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at);
 }
@@ -2255,6 +2276,12 @@ function cashRange() {
   if (cashMode === 'month') { const m = cashMonth || t.slice(0, 7), [y, mo] = m.split('-').map(Number); return [m + '-01', m + '-' + pad2(new Date(y, mo, 0).getDate())]; }
   if (cashMode === 'year') { const y = cashYear || t.slice(0, 4); return [y + '-01-01', y + '-12-31']; }
   return [cashFrom || t.slice(0, 8) + '01', cashTo || t];
+}
+/* جدول حركات الخزنة: الاسم أو الملاحظة هو الأساس، وتحته البند بخط صغير */
+function cashTable(title, arr, all, cls) {
+  const tot = arr.reduce((n, m) => n + m.amt, 0);
+  return `<section class="ctab ${cls}"><div class="cth"><span>${title} (${arr.length})</span><b>${fmtP(tot)}</b></div>
+    <table class="cmt"><tbody>${arr.length ? arr.map(m => `<tr data-i="${all.indexOf(m)}"><td class="d">${shortDate(m.date)}</td><td class="w"><b>${esc(m.who)}</b>${m.what ? `<small>${esc(m.what)}</small>` : ''}</td><td class="am">${fmtP(m.amt)}</td></tr>`).join('') : '<tr><td class="e" colspan="3">مفيش حركات</td></tr>'}</tbody></table></section>`;
 }
 function cashNoteOnce() {
   try { if (localStorage.getItem('fo_hint_cash')) return ''; localStorage.setItem('fo_hint_cash', '1'); } catch (e) { return ''; }
@@ -2305,9 +2332,8 @@ function renderCash() {
     <div class="stm"><div class="i"><span>الداخل</span><b>${fmtP(tin)}</b></div><div class="e"><span>الخارج</span><b>${fmtP(tout)}</b></div>
       <div class="k"><span>${cashMode === 'day' ? 'صافي اليوم' : 'صافي الفترة'}</span><b>${fmtP(tin - tout)}</b></div></div>
     ${by.size ? `<div class="card"><h2>حسب البند</h2>${[...by.values()].sort((a, b) => (b.i + b.o) - (a.i + a.o)).map(x => `<div class="bl"><span>${esc(x.n)}</span>${x.i ? `<b class="inc">+ ${fmtP(x.i)}</b>` : ''}${x.o ? `<b class="exp">− ${fmtP(x.o)}</b>` : ''}</div>`).join('')}</div>` : ''}
-    <div class="sech"><span>الحركات (${mv.length})</span></div>
-    ${mv.length ? mv.map((m, i) => `<div class="cm ${m.cls}" data-i="${i}"><div class="m"><b>${esc(m.title)}</b><small>${dispDate(m.date)} — ${esc(m.sub)}</small></div>
-      <div class="a ${m.sign > 0 ? 'inc' : m.sign < 0 ? 'exp' : ''}">${m.sign > 0 ? '+' : m.sign < 0 ? '−' : ''} ${fmtP(m.amt)}</div></div>`).join('') : '<div class="empty">مفيش حركات في الفترة دي</div>'}
+    <div class="cwrap">${cashTable('الإيرادات', mv.filter(m => m.sign > 0), mv, 'inc')}${cashTable('المصروفات', mv.filter(m => m.sign < 0), mv, 'exp')}</div>
+    ${mv.some(m => !m.sign) ? cashTable('تحويلات', mv.filter(m => !m.sign), mv, '') : ''}
     `;
   $$('#p-cash .vt').forEach(el => el.onclick = () => { cashVault = cashVault === el.dataset.v ? '' : el.dataset.v; renderCash(); });
   $('#cRecv').onclick = () => pickParty('pay');
@@ -2320,7 +2346,7 @@ function renderCash() {
   bindI('#cDay', v => cashDay = v); bindI('#cMonth', v => cashMonth = v); bindI('#cYear', v => cashYear = normDigits(v).replace(/\D/g, '').slice(0, 4));
   bindI('#cFrom', v => cashFrom = v); bindI('#cTo', v => cashTo = v);
   $('#cVault').onchange = () => { cashVault = $('#cVault').value; renderCash(); };
-  $$('#p-cash .cm').forEach(el => el.onclick = () => {
+  $$('#p-cash tr[data-i]').forEach(el => el.onclick = () => {
     const m = mv[+el.dataset.i];
     if (m.src === 'tx') m.r.pt ? partnerTxModal(m.r) : txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
   });

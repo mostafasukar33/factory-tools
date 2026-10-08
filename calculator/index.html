@@ -421,7 +421,7 @@ $('memClear').onclick=()=>{if(!mcArmed){mcArmed=true;$('memClear').textContent='
   mcArmed=false;$('memClear').textContent='امسح الذاكرة';mem=[];store.set('tape_mem',mem);renderMem();render();};
 render();
 
-if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{})})}
 </script>
 </body>
 </html>

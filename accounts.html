@@ -420,7 +420,7 @@ nav svg{width:26px;height:26px}
   .acts{gap:6px}.acts .btn{min-height:42px;font-size:14px;padding:4px 4px}
   .fab2{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:fixed;inset-inline:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:8px 10px;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:25}
   .fab2 .btn{min-height:50px;font-size:16px;box-shadow:0 3px 10px #0004}
-  #p-party,#p-cash{padding-bottom:84px}
+  #p-party,#p-cash,#p-part{padding-bottom:84px}
   .cbar{position:fixed;top:auto;inset-inline:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:8px 10px;margin:0;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:25}
   .cbar .btn{min-height:48px;font-size:15px;box-shadow:0 3px 10px #0004}
   .cbar .lg{display:none}.cbar .sh{display:inline}
@@ -555,6 +555,8 @@ table.cmt{width:100%;border-collapse:collapse}
 .mask.on{animation:foFade .15s ease-out}
 .mask.on .modal{animation:foPop .18s ease-out}
 #toast{animation:foUp .2s ease-out}
+#toast.act{pointer-events:auto}
+#toast button{background:var(--gold);color:#241b00;border:0;border-radius:8px;padding:4px 12px;font-weight:800;font-size:14px;margin-inline-start:10px;cursor:pointer}
 .btn,.pt,.en,.cm,.tabs button,.seg button,.cmt td,.ldg tr td,nav button,.inp{transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .1s}
 .pt:active,.en:active{transform:scale(.995)}
 #bTheme{margin-inline-start:auto}#bTheme+.lockbtn{margin-inline-start:0}
@@ -667,6 +669,25 @@ html[data-theme=dark] :is(.page) .pt.neg{background:#2a1c1a}
 html[data-theme=dark] #hTots{background:#1f1e19;border-color:#37342b}
 html[data-theme=dark] #hTots .k{background:var(--gold-l)}
 @media (min-width:1000px){main.split .srow{order:3;grid-template-columns:1fr 100px 40px 40px}main.split #hTots{grid-template-columns:1fr 1fr 1.15fr;gap:0;margin:2px 0 8px}}
+.pst th{font-size:12.5px;font-weight:700;color:#7d7765;padding:6px 8px;text-align:right;background:#FAF8F2;border-bottom:1px solid var(--line)}
+.pst td.n{width:1%;white-space:nowrap;direction:ltr;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;font-size:15px}.pst td.t{font-weight:800}
+.cmt tr.nohov{cursor:default}.cmt tr.nohov:hover td{background:transparent}
+a.lnk{color:var(--gold-d);text-decoration:underline;cursor:pointer;font-weight:700}
+html[data-theme=dark] .pst th{background:#26251f;color:#B9B3A1}
+.card.fold>h2{cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
+.card.fold>h2::after{content:'▾';font-size:15px;color:#9a8f73}
+.card.fold.shut>h2{margin-bottom:0}.card.fold.shut>h2::after{content:'◂'}
+.card.fold.shut>*:not(h2){display:none}
+/* شاشة القفل: كارت نضيف وخفيف */
+#lock img{width:84px;border-radius:16px;box-shadow:0 2px 12px #0002}
+#lock h2{font-size:22px;margin:10px 0 0}
+#lock .box{background:#fff;border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:14px;padding:18px 18px 14px;box-shadow:var(--shadow);margin-top:18px}
+#lock #lkP,#lock #suP,#lock #suP2{font-size:20px!important;letter-spacing:.25em;min-height:50px}
+#lock .btn{margin-top:4px}
+#lock .lnk{margin-top:10px;font-size:14px}
+html[data-theme=dark] #lock .inp{background:#17160f;border-color:#4a463a;color:#ECE8DC}
+html[data-theme=dark] #lock label{color:#B9B3A1}
+@media (max-width:640px){#toast{bottom:calc(150px + env(safe-area-inset-bottom))}}
 </style>
 </head>
 <body>
@@ -827,8 +848,14 @@ const balWord = b => b > 0 ? 'عليه' : b < 0 ? 'ليه' : 'خالص';
 
 let toastT;
 function toast(msg, ms = 2800) {
-  const t = $('#toast'); t.textContent = msg; t.style.display = 'block';
+  const t = $('#toast'); t.classList.remove('act'); t.textContent = msg; t.style.display = 'block';
   clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms);
+}
+/* رسالة فيها زرار "تراجع" بدل سؤال "متأكد؟" */
+function toastUndo(msg, fn, ms = 7000) {
+  const t = $('#toast'); t.innerHTML = `${esc(msg)} <button id="tUndo" type="button">↩ تراجع</button>`; t.classList.add('act'); t.style.display = 'block';
+  clearTimeout(toastT); toastT = setTimeout(() => { t.style.display = 'none'; t.classList.remove('act'); }, ms);
+  $('#tUndo').onclick = () => { clearTimeout(toastT); t.style.display = 'none'; t.classList.remove('act'); fn(); };
 }
 function modal(html, wide) { $('#modal').className = 'modal' + (wide ? ' wide' : ''); $('#modal').innerHTML = html; $('#mask').classList.add('on'); }
 function closeModal() { $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; }
@@ -1092,7 +1119,9 @@ function lockNow(msg) {
 }
 function unlocked() {
   $('#lock').classList.remove('on'); $('#lockBox').innerHTML = '';
-  lastAct = Date.now(); bridgeIn(); route(); flushSave();
+  lastAct = Date.now(); bridgeIn();
+  try { const lp = localStorage.getItem('fo_lastpg'); if (lp && !location.hash && /^(cash|part|rep|set)$/.test(lp)) location.hash = '#' + lp; } catch (e) {}
+  route(); flushSave();
   if (pendingJoin) applyJoin(); else setTimeout(() => syncNow(), 600);
   if (pendingCashJoin) setTimeout(applyCashJoin, 1500); else setTimeout(() => cashSync(true), 2500);
 }
@@ -1341,13 +1370,20 @@ function cancelledModal(e) {
 /* حفظ التعديل: النسخة القديمة بتتحفظ في hist */
 function snapshot(e) { const s = {t: Date.now(), kind: e.kind, date: e.date, desc: e.desc, dr: e.dr || 0, cr: e.cr || 0}; ['no', 'lines', 'disc', 'amt', 'method', 'note', 'vault', 'chk', 'dir'].forEach(k => { if (e[k] !== undefined) s[k] = JSON.parse(JSON.stringify(e[k])); }); return s; }
 async function cancelEntry(e) {
-  if (!(await confirmBox(`تلغي "${docDesc(e)}" (${fmtP(e.dr || e.cr)})؟ هتفضل ظاهرة كـ "ملغية" وتقدر ترجّعها.`, 'ألغيها', true))) return;
   if (isLocked(e.date)) return lockToast();
+  const aff = [e];
+  if (e.chk && e.chk.bnc) { const b = E.get(e.chk.bnc); if (b && !b.del) aff.push(b); }
+  if (e.kind === 'bnc') { const o = E.get(e.ref); if (o && o.chk && o.chk.st === 'b') aff.push(o); }
+  const snap = aff.map(x => ({x, del: x.del, delAt: x.delAt, chk: x.chk ? JSON.parse(JSON.stringify(x.chk)) : undefined}));
   e.del = true; e.delAt = Date.now(); touch(e);
   /* الدفعة اللي بشيك مرتجع: الشيك المرتجع بيتلغي معاها. والشيك المرتجع لو اتلغى، الشيك بيرجع "لسه" */
   if (e.chk && e.chk.bnc) { const b = E.get(e.chk.bnc); if (b && !b.del) { b.del = true; b.delAt = Date.now(); touch(b); } }
   if (e.kind === 'bnc') { const o = E.get(e.ref); if (o && o.chk && o.chk.st === 'b') { o.chk = Object.assign({}, o.chk, {st: 'p', bnc: ''}); touch(o); } }
-  saveDB(); route(); toast('اتلغت');
+  saveDB(); closeModal(); route();
+  toastUndo('اتلغت "' + docDesc(e) + '"', () => {
+    snap.forEach(o => { o.x.del = o.del; if (o.delAt === undefined) delete o.x.delAt; else o.x.delAt = o.delAt; if (o.chk) o.x.chk = o.chk; touch(o.x); });
+    saveDB(); route(); toast('رجعت الحركة ✔');
+  });
 }
 
 /* ---------- أسماء الأصناف: من عرض السعر + اللي اتكتب قبل كده في الحسابات ---------- */
@@ -1603,8 +1639,9 @@ function entryModal(p, e) {
     saveDB(); closeModal(); route();
   };
   if (!isNew) $('#emDel').onclick = async () => {
-    if (!(await confirmBox(`تلغي الحركة دي؟ (${fmtP(e.dr || e.cr)} — ${e.desc}). هتفضل ظاهرة كـ "ملغية" وتقدر ترجّعها.`, 'ألغيها', true))) return;
-    e.del = true; e.delAt = Date.now(); touch(e); saveDB(); route(); toast('اتلغت الحركة');
+    if (isLocked(e.date)) return lockToast();
+    e.del = true; e.delAt = Date.now(); touch(e); saveDB(); closeModal(); route();
+    toastUndo('اتلغت الحركة', () => { e.del = false; delete e.delAt; touch(e); saveDB(); route(); toast('رجعت الحركة ✔'); });
   };
 }
 function histHtml(e) {
@@ -1622,7 +1659,7 @@ function ledgerHintOnce() {
 }
 function ledgerTable(p) {
   const s = stmtData(p.id, '', '');
-  if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده</div>';
+  if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده.<br><small style="color:#9a937f">ابدأ بفاتورة أو دفعة من الأزرار اللي فوق.</small></div>';
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
     ${s.rows.map(r => `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
@@ -2817,26 +2854,25 @@ function renderPartners() {
   const tot = rows.reduce((a, r) => a + r.sal + r.draw, 0);
   const next = thuOnOrAfter(addDays(t, dowOf(t) === 4 ? 1 : 0));
   pg.innerHTML = `
-    <div class="sync ok">✔ مرتب ${fmtP(s.amt)} لكل شريك بيتسجل لوحده كل خميس من ${esc(vName(s.vault))}. الخميس الجاي: ${dispDate(next)}</div>
-    <div class="g2" style="margin-bottom:12px"><button class="btn redf big" id="ptNew" type="button">− مسحوبات شريك</button><button class="btn line" id="ptSet" type="button" >⚙ إعدادات الشركاء</button></div>
+    <div class="cbar"><button class="btn redf" id="ptNew" type="button">− مسحوبات شريك</button><button class="btn line" id="ptSet" type="button">⚙ إعدادات الشركاء</button></div>
+    <div class="hint" style="margin:0 2px 8px">✔ مرتب ${fmtP(s.amt)} لكل شريك بيتسجل لوحده كل خميس من ${esc(vName(s.vault))}. الخميس الجاي: ${dispDate(next)}</div>
     <div class="card">
       <div class="seg s3" id="ptMode">${[['month', 'شهر'], ['year', 'سنة'], ['all', 'الكل']].map(([k, n]) => `<button type="button" data-m="${k}" class="${partMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
       ${partMode === 'month' ? `<input class="inp" type="month" id="ptMonth" value="${partMonth || t.slice(0, 7)}">` : partMode === 'year' ? `<input class="inp num" id="ptYear" inputmode="numeric" value="${partYear || t.slice(0, 4)}">` : ''}
     </div>
-    <div class="pgrid">${rows.map(r => `<div class="card pcard"><h2>${esc(r.p.name)}${r.p.to ? ' <small style="color:#777">(مش شريك دلوقتي)</small>' : ''}</h2>
-      <div class="bl"><span>المرتبات</span><b>${fmtP(r.sal)}</b></div><div class="bl"><span>المسحوبات</span><b>${fmtP(r.draw)}</b></div>
-      <div class="bl k"><span>الإجمالي</span><b>${fmtP(r.sal + r.draw)}</b></div>
-      ${r.p.to ? '' : `<button class="btn line sm" data-dr="${esc(r.p.id)}" type="button" style="margin-top:8px">− مسحوبات لـ ${esc(r.p.name)}</button>`}</div>`).join('')}</div>
-    <div class="ldgf"><span>إجمالي اللي خده الشركاء ${partMode === 'all' ? '' : 'في الفترة'}</span><b>${fmtP(tot)} <small>${CUR}</small></b></div>
-    <div class="sech"><span>الحركات (${mv.length})</span></div>
-    ${mv.length ? mv.map((x, i) => `<div class="cm exp" data-i="${i}"><div class="m"><b>${PK[ptKind(x)]} — ${esc(partName(x.pt))}</b><small>${dispDate(x.date)} — ${esc(vName(x.vault))}${x.pnote ? ' — ' + esc(x.pnote) : ''}${x.auto ? ' — أوتوماتيك' : ''}</small></div><div class="a exp">− ${fmtP(x.amt)}</div></div>`).join('') : '<div class="empty">مفيش حركات في الفترة دي</div>'}`;
+    <section class="ctab"><div class="cth"><span>الشركاء ${partMode === 'all' ? '' : 'في الفترة'}</span><b>${fmtP(tot)} ${CUR}</b></div>
+      <table class="cmt pst"><thead><tr><th></th><th>مرتبات</th><th>مسحوبات</th><th>الإجمالي</th></tr></thead><tbody>
+      ${rows.map(r => `<tr class="nohov"><td class="w"><b>${esc(r.p.name)}</b>${r.p.to ? '<small>مش شريك دلوقتي</small>' : `<small><a class="lnk" data-dr="${esc(r.p.id)}">− سجّل مسحوبات</a></small>`}</td><td class="n">${fmtP(r.sal)}</td><td class="n">${fmtP(r.draw)}</td><td class="n t">${fmtP(r.sal + r.draw)}</td></tr>`).join('')}
+      </tbody></table></section>
+    <div style="height:12px"></div>
+    ${(() => { const items = mv.map(x => ({date: x.date, who: `${PK[ptKind(x)]} — ${partName(x.pt)}`, what: [x.pnote, x.auto ? 'أوتوماتيك' : ''].filter(Boolean).join(' — '), amt: x.amt})); return cashTable('الحركات', items, items, 'exp'); })()}`;
   $('#ptNew').onclick = () => partnerTxModal(null, 'draw');
   $('#ptSet').onclick = partnerSettings;
-  $$('#p-part [data-dr]').forEach(b => b.onclick = () => partnerTxModal(null, 'draw', b.dataset.dr));
+  $$('#p-part [data-dr]').forEach(b => b.onclick = ev => { ev.stopPropagation(); partnerTxModal(null, 'draw', b.dataset.dr); });
   $$('#ptMode button').forEach(b => b.onclick = () => { partMode = b.dataset.m; renderPartners(); });
   if ($('#ptMonth')) $('#ptMonth').onchange = () => { partMonth = $('#ptMonth').value; renderPartners(); };
   if ($('#ptYear')) $('#ptYear').onchange = () => { partYear = normDigits($('#ptYear').value).replace(/\D/g, '').slice(0, 4); renderPartners(); };
-  $$('#p-part .cm').forEach(el => el.onclick = () => partnerTxModal(mv[+el.dataset.i]));
+  $$('#p-part tr[data-i]').forEach(el => el.onclick = () => partnerTxModal(mv[+el.dataset.i]));
 }
 const tsOfDate = (date, at) => { const [y, m, d] = date.split('-').map(Number), t = new Date(at || Date.now()); return new Date(y, m - 1, d, t.getHours(), t.getMinutes()).getTime(); };
 function payName(e) { const p = P.get(e.party); return (p ? p.name : '') + (e.note ? ' — ' + e.note : ''); }
@@ -3541,6 +3577,7 @@ function route() {
   if (!db) return;
   const h = decodeURIComponent(location.hash.slice(1));
   let pg = 'home';
+  try { localStorage.setItem('fo_lastpg', /^(cash|part|rep|set)$/.test(h) ? h : 'home'); } catch (e) {}
   if (h === 'set' || h === 'cash' || h === 'part' || (h === 'chk' && CHECKS_ON) || h === 'rep') pg = h; else if (h.startsWith('p/')) pg = 'party';
   autoPartners();
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
@@ -3575,6 +3612,21 @@ function jumpTo(toEnd) {
   if (inBox) box.scrollTo({top: toEnd ? box.scrollHeight : 0, behavior: 'smooth'});
   else { const t = toEnd ? Math.max(document.documentElement.scrollHeight, document.body.scrollHeight) : 0; window.scrollTo({top: t, behavior: 'smooth'}); }
 }
+/* الإعدادات: كل كارت يتطوي بدوسة على عنوانه، والحالة بتتحفظ على الجهاز. أول كارتين مفتوحين لأول مرة */
+function initSetCards() {
+  let st = null; try { st = JSON.parse(localStorage.getItem('fo_setopen') || 'null'); } catch (e) {}
+  $$('#p-set > .card').forEach((c, i) => {
+    const h = c.querySelector('h2'); if (!h) return;
+    const key = h.textContent.trim();
+    c.classList.add('fold'); c.classList.toggle('shut', st && key in st ? !st[key] : i > 1);
+    h.onclick = () => {
+      c.classList.toggle('shut');
+      try { const o = JSON.parse(localStorage.getItem('fo_setopen') || '{}'); o[key] = !c.classList.contains('shut'); localStorage.setItem('fo_setopen', JSON.stringify(o)); } catch (e) {}
+    };
+  });
+}
+function setOpenAll() { $$('#p-set > .card').forEach(c => c.classList.remove('shut')); }
+initSetCards();
 let lastHash = '', wasWide = isWide();
 addEventListener('resize', () => { if (isWide() !== wasWide) { wasWide = isWide(); route(); } });
 if (!CHECKS_ON) { $('#sChkDays').closest('.card').style.display = 'none'; $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(5,1fr)'; }

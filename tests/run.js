@@ -1,0 +1,195 @@
+/*
+  اختبارات برنامج الحسابات ودفتر الخزنة (بيانات تجريبية بس، مفيهاش أي اسم عميل حقيقي).
+  التشغيل:  node tests/run.js
+  بيشغّل الموقع على جهازك، ويفتحه في متصفح من غير شاشة، ويجرب كل حاجة ويقارن الأرقام بالأرقام المتوقعة بالقرش.
+  لو أي اختبار فشل بيطبع ✖ وبيخرج بخطأ، فمتترفعش أي تعديل غير لما كله يبقى ✔.
+  محتاج Playwright و Chromium (موجودين في بيئة Claude Code). المتصفح ممكن يتحدد بـ PW_CHROMIUM.
+*/
+'use strict';
+const http = require('http'), fs = require('fs'), path = require('path');
+const {makeGas} = require('./gasmock');
+let pw; try { pw = require('playwright'); } catch (e) { pw = require('/opt/node-tools/node_modules/playwright'); }
+const ROOT = path.join(__dirname, '..');
+const CHROME = process.env.PW_CHROMIUM || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find(f => fs.existsSync(f));
+const ACC_URL = 'https://script.google.com/macros/s/TEST-ACC/exec', CASH_URL = 'https://script.google.com/macros/s/TEST-CASH/exec';
+const PASS = '246810', KEY = 'Test-Key-2026';
+
+let fails = 0, oks = 0;
+function eq(name, got, want) {
+  const ok = JSON.stringify(got) === JSON.stringify(want);
+  if (ok) { oks++; console.log('  ✔', name); } else { fails++; console.log('  ✖', name, '\n     المتوقع:', JSON.stringify(want), '\n     اللي طلع:', JSON.stringify(got)); }
+}
+const iso = d => d.toISOString().slice(0, 10);
+const today = iso(new Date()), inDays = n => iso(new Date(Date.now() + n * 86400000));
+
+/* ملف نقل تجريبي (نفس شكل اللي بيتعمل من الإكسيل). الأرقام بالقرش */
+function importFile() {
+  return {app: 'flash-on-accounts-import', v: 1, batch: 'TST1', made: Date.UTC(2026, 0, 1),
+    parties: [
+      {ref: 'c1', sec: 'mkt', name: 'عميل تجربة واحد', expected: 270000},
+      {ref: 'c2', sec: 'site', name: 'عميل تجربة اتنين', expected: 0},
+      {ref: 's1', sec: 'sup', name: 'مورد تجربة', expected: -2950000}],
+    entries: [
+      {party: 'c1', kind: 'open', date: '2026-01-01', dr: 100000},
+      {party: 'c1', kind: 'inv', date: '2026-01-05', no: '1', lines: [{name: 'لفة تجربة 16 مم', unit: 'لفة', qty: 10, price: 35000}, {name: 'كابل تجربة', unit: 'كيلو', qty: 2.5, price: 8000}]},
+      {party: 'c1', kind: 'pay', date: '2026-01-06', amt: 200000, method: 'نقدي'},
+      {party: 'c2', kind: 'inv', date: '2026-01-07', no: '2', lines: [{name: 'شكارة تجربة', unit: 'شكارة', qty: 1, price: 500000}]},
+      {party: 'c2', kind: 'pay', date: '2026-01-08', amt: 500000, method: 'تحويل'},
+      {party: 's1', kind: 'open', date: '2026-01-01', cr: 900000},
+      {party: 's1', kind: 'pur', date: '2026-01-02', no: '1', lines: [{name: 'خامة تجربة', unit: 'كيلو', qty: 1000, price: 5050}]},
+      {party: 's1', kind: 'ppay', date: '2026-01-03', amt: 3000000, method: 'نقدي'}]};
+}
+
+function serve() {
+  const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json'};
+  return new Promise(res => {
+    const srv = http.createServer((q, r) => {
+      const f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0]).replace(/^\/+/, '') || 'index.html');
+      if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); }
+      r.writeHead(200, {'Content-Type': types[path.extname(f)] || 'application/octet-stream'}); fs.createReadStream(f).pipe(r);
+    }).listen(0, () => res(srv));
+  });
+}
+
+async function newDevice(browser, base, sheets) {
+  const ctx = await browser.newContext({viewport: {width: 400, height: 860}, acceptDownloads: true, permissions: ['clipboard-read', 'clipboard-write']});
+  ctx.errs = [];
+  await ctx.route('https://script.google.com/**', r => {
+    const q = r.request(), g = q.url().includes('TEST-CASH') ? sheets.cash : sheets.acc;
+    if (!g.ctx.doPost) return r.fulfill({status: 200, contentType: 'text/html', body: '<html>no script</html>'});
+    r.fulfill({status: 200, contentType: 'application/json', body: q.method() === 'POST' ? g.post(q.postData()) : g.get()});
+  });
+  ctx.page = async url => { const p = await ctx.newPage(); p.on('pageerror', e => ctx.errs.push(e.message)); await p.goto(base + url); return p; };
+  return ctx;
+}
+async function unlock(A, first) {
+  if (first) { await A.fill('#suP', PASS); await A.fill('#suP2', PASS); await A.click('#suGo'); }
+  else { await A.fill('#lkP', PASS); await A.click('#lkGo'); }
+  await A.waitForSelector('#lock', {state: 'hidden'});
+}
+const closed = A => A.waitForSelector('#mask', {state: 'hidden'});
+const bal = (A, name) => A.evaluate(n => { const p = liveParties().find(x => x.name === n); return p ? balance(p.id) : null; }, name);
+const vbal = (A, vid) => A.evaluate(v => vaultBal(v), vid || '');
+const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParties().find(x => x.name === n).id), name); await A.waitForTimeout(150); };
+
+(async () => {
+  const srv = await serve(), base = `http://localhost:${srv.address().port}/`;
+  const browser = await pw.chromium.launch(CHROME ? {executablePath: CHROME} : {});
+  const sheets = {acc: makeGas(), cash: makeGas()};
+  const D1 = await newDevice(browser, base, sheets);
+  const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fo-test-'));
+  const impPath = path.join(tmp, 'import.json'); fs.writeFileSync(impPath, JSON.stringify(importFile()));
+  const badPath = path.join(tmp, 'bad.json'); const bad = importFile(); bad.parties[0].expected = 1; fs.writeFileSync(badPath, JSON.stringify(bad));
+  try {
+    console.log('\n١) كلمة السر والتشفير');
+    const A = await D1.page('accounts.html');
+    await unlock(A, true);
+    await A.click('#bLock'); await A.waitForSelector('#lkP'); await A.fill('#lkP', '999999'); await A.click('#lkGo'); await A.waitForTimeout(1500);
+    eq('كلمة سر غلط بترفض', await A.textContent('#lkErr'), 'كلمة السر غلط');
+    await unlock(A);
+
+    console.log('\n٢) نقل البيانات القديمة');
+    await A.click('nav button[data-go=set]'); await A.setInputFiles('#fImport', badPath); await A.waitForTimeout(300);
+    eq('ملف فيه رصيد مش مطابق بيترفض', await A.$('#imGo'), null); await A.click('#imX');
+    await A.setInputFiles('#fImport', impPath); await A.waitForTimeout(300); await A.click('#imGo'); await A.click('#cOk'); await A.waitForTimeout(400);
+    eq('رصيد عميل 1', await bal(A, 'عميل تجربة واحد'), 270000);
+    eq('رصيد عميل 2', await bal(A, 'عميل تجربة اتنين'), 0);
+    eq('رصيد المورد', await bal(A, 'مورد تجربة'), -2950000);
+    await A.click('nav button[data-go=set]'); await A.setInputFiles('#fImport', impPath); await A.waitForTimeout(300); await A.click('#imGo'); await A.click('#cOk'); await A.waitForTimeout(400);
+    eq('النقل مرتين مبيكررش', await A.evaluate(() => [db.parties.length, db.entries.length]), [3, 8]);
+    const raw = await A.evaluate(async () => JSON.stringify(await idbGet('vault')));
+    eq('البيانات على الجهاز متشفرة', raw.includes('عميل تجربة'), false);
+
+    console.log('\n٣) فاتورة ودفعة ومرتجع وخصم');
+    await A.click('nav button[data-go=cash]'); await A.click('#cNew'); await A.click('#cOpen2'); await A.fill('#modal [data-v]', '1000'); await A.click('#opOk'); await A.waitForTimeout(200);
+    eq('رصيد بداية الخزنة', await vbal(A, 'v_main'), 100000);
+    await openParty(A, 'عميل تجربة واحد');
+    await A.click('#ppDoc'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.dispatchEvent('.li [data-f=name]', 'change');
+    eq('آخر سعر للعميل بيتكتب لوحده', await A.inputValue('.li [data-f=price]'), '350');
+    await A.fill('.li [data-f=qty]', '4'); await A.fill('#dcDisc', '50'); await A.fill('#dcPaid', '400'); await A.click('#dcOk'); await closed(A);
+    eq('بعد فاتورة 1400−50 ودفع 400', await bal(A, 'عميل تجربة واحد'), 270000 + 135000 - 40000);
+    eq('الدفعة دخلت الخزنة', await vbal(A, 'v_main'), 140000);
+    await A.click('#ppRet'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.fill('.li [data-f=qty]', '1'); await A.fill('.li [data-f=price]', '350'); await A.click('#dcOk'); await closed(A);
+    await A.click('#ppAdj'); await A.fill('#adAmt', '15'); await A.fill('#adNote', 'جبر كسور'); await A.click('#adOk'); await closed(A);
+    eq('بعد مرتجع 350 وخصم 15', await bal(A, 'عميل تجربة واحد'), 365000 - 35000 - 1500);
+    await A.click('#ppPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await closed(A);
+    await A.click('#ppPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await A.waitForTimeout(150);
+    eq('تنبيه الدفعة المكررة', (await A.textContent('#pyWarn')).includes('بنفس المبلغ'), true); await A.click('#pyX');
+
+    console.log('\n٤) الشيكات');
+    await A.click('#ppPay'); await A.fill('#pyAmt', '2000'); await A.click('#pyM button[data-v=شيك]'); await A.fill('#pyCn', '555'); await A.fill('#pyCd', inDays(2)); await A.click('#pyOk'); await closed(A);
+    const b0 = await bal(A, 'عميل تجربة واحد');
+    eq('الشيك نزّل الرصيد ومدخلش الخزنة', [b0, await vbal(A, 'v_main')], [328500 - 10000 - 200000, 150000]);
+    await A.click('nav button[data-go=chk]'); await A.waitForTimeout(150);
+    eq('تنبيه الشيك قبل ميعاده', !!(await A.$('#chkAlert')), true);
+    await A.click('.ck [data-a=cash]'); await A.click('#ccOk'); await closed(A);
+    eq('بعد الصرف دخل الخزنة', await vbal(A, 'v_main'), 350000);
+    await A.click('#ckSt button[data-v=all]'); await A.click('.ck [data-a=undo]'); await A.click('#cOk'); await A.waitForTimeout(150);
+    eq('الرجوع "لسه" طلّعه من الخزنة', await vbal(A, 'v_main'), 150000);
+    await A.click('#ckSt button[data-v=p]'); await A.click('.ck [data-a=bnc]'); await A.click('#bcOk'); await closed(A);
+    eq('الشيك المرتجع رجّع الرصيد', await bal(A, 'عميل تجربة واحد'), b0 + 200000);
+
+    console.log('\n٥) الخزنة');
+    await A.click('nav button[data-go=cash]'); await A.click('#cExp'); await A.fill('#txA', '30'); await A.click('#txOk'); await closed(A);
+    await A.click('#cPayS'); await A.click('#pkList .pt'); await A.fill('#pyAmt', '500'); await A.click('#pyOk'); await closed(A);
+    eq('مصروف 30 ودفعة مورد 500', await vbal(A, 'v_main'), 150000 - 3000 - 50000);
+    eq('رصيد المورد نزل', await bal(A, 'مورد تجربة'), -2950000 + 50000);
+    await A.click('#cOpen2'); await A.fill('#modal [data-v]', '960'); await A.click('#opOk'); await A.waitForTimeout(200);
+    eq('الجرد سجّل الفرق تسوية', await vbal(A, 'v_main'), 96000);
+
+    console.log('\n٦) دفتر الخزنة متصل بالحسابات');
+    const C = await D1.page('cash.html'); await C.waitForTimeout(400);
+    eq('الدفتر شايف نفس الرصيد', await C.evaluate(() => Math.round(balance(null) * 100)), 96000);
+    await C.click('#bInc'); await C.fill('#tAmt', '70'); await C.selectOption('#tP', {label: 'عميل تجربة اتنين'}); await C.click('#tSave'); await C.waitForTimeout(800);
+    eq('دفعة من الدفتر نزلت على العميل', await bal(A, 'عميل تجربة اتنين'), -7000);
+    eq('ودخلت خزنة الحسابات', await vbal(A, 'v_main'), 103000);
+
+    console.log('\n٧) كشف الحساب PDF');
+    await openParty(A, 'عميل تجربة واحد'); await A.click('#ppStmt');
+    const [dl] = await Promise.all([A.waitForEvent('download', {timeout: 90000}), A.click('#smShare')]);
+    const pdf = fs.readFileSync(await dl.path());
+    eq('الـ PDF اتعمل', pdf.slice(0, 4).toString(), '%PDF');
+
+    console.log('\n٨) التقارير');
+    await A.click('nav button[data-go=rep]'); await A.waitForTimeout(200);
+    const debts = await A.evaluate(() => { repKind = 'debt'; repSide = 'mkt'; const R = buildReport(); return R.fin[1]; });
+    eq('إجمالي مديونيات السوق = رصيد العميل', debts, await A.evaluate(n => fmtP(balance(liveParties().find(x => x.name === n).id)), 'عميل تجربة واحد'));
+
+    console.log('\n٩) قفل الفترة');
+    await A.click('nav button[data-go=set]'); await A.fill('#sLockD', today); await A.click('#sLockGo'); await A.click('#cOk'); await A.waitForTimeout(200);
+    await openParty(A, 'عميل تجربة واحد'); await A.click('#ppPay'); await A.fill('#pyAmt', '1'); await A.click('#pyOk'); await A.waitForTimeout(150);
+    eq('مينفعش تسجل في فترة مقفولة', (await A.textContent('#toast')).includes('مقفولة'), true); await A.click('#pyX');
+    await A.click('nav button[data-go=set]'); await A.click('#sUnlock'); await A.fill('#apP', PASS); await A.click('#apOk'); await A.waitForTimeout(600);
+
+    console.log('\n١٠) المزامنة مع الشيت وجهاز تاني');
+    await A.click('nav button[data-go=set]'); await A.fill('#shUrl', ACC_URL); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.waitForTimeout(300);
+    await A.click('#shHelp'); await A.click('#hpCopy'); sheets.acc.load(await A.evaluate(() => navigator.clipboard.readText())); await A.click('#hpX');
+    await A.click('#shSave'); await A.waitForTimeout(4000);
+    eq('الشيت مقفول من غير المفتاح', JSON.parse(sheets.acc.get()).ok, false);
+    eq('الشيت بيرفض مفتاح غلط', JSON.parse(sheets.acc.post(JSON.stringify({key: 'x', action: 'pull'}))).error, 'key');
+    const D2 = await newDevice(browser, base, sheets), B = await D2.page('accounts.html');
+    await unlock(B, true);
+    await B.click('nav button[data-go=set]'); await B.fill('#shUrl', ACC_URL); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.waitForTimeout(4000);
+    const snap = X => X.evaluate(() => [liveParties().map(p => balance(p.id)).sort(), vaultBal(''), selfCheck().length]);
+    eq('الجهاز التاني نزل نفس الأرصدة', await snap(B), await snap(A));
+    await B.evaluate(() => syncNow()); await A.evaluate(() => syncNow()); await A.waitForTimeout(1500);
+    const rows = sheets.acc.sheets['السجلات'].rows.slice(1).map(r => r[0]);
+    eq('مفيش سجلات متكررة في الشيت', new Set(rows).size, rows.length);
+    await A.click('nav button[data-go=set]'); await A.click('#shAudit'); await A.waitForTimeout(3000);
+    eq('مراجعة الجهاز مع الشيت متطابقة', (await A.textContent('#modal .sync')).includes('متطابقين ('), true); await A.click('#saX');
+
+    console.log('\n١١) شيت دفتر الخزنة مقفول بالمفتاح');
+    const C2 = await D1.page('cash.html'); await C2.click('nav button[data-go=set]');
+    await C2.fill('#shUrl', CASH_URL); await C2.fill('#shKey', KEY); await C2.click('#shSave'); await C2.waitForTimeout(300);
+    await C2.click('#shHelp'); await C2.click('#hpCopy'); sheets.cash.load(await C2.evaluate(() => navigator.clipboard.readText())); await C2.click('#hpX');
+    await C2.click('#shSave'); await C2.waitForTimeout(1500);
+    eq('شيت الدفتر مقفول', JSON.parse(sheets.cash.get()).ok, false);
+
+    console.log('\n١٢) المراجعة الداخلية');
+    eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
+    eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2.errs), []);
+  } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n')[0]); }
+  await browser.close(); srv.close();
+  console.log(`\n${fails ? '✖' : '✔'} ${oks} نجح، ${fails} فشل\n`);
+  process.exit(fails ? 1 : 0);
+})();

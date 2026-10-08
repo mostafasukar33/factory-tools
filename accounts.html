@@ -631,6 +631,7 @@ html[data-theme=dark] .fab2,html[data-theme=dark] .cbar{background:linear-gradie
 .mfoot{position:sticky;bottom:-16px;margin:10px -16px -16px;padding:10px 16px 16px;background:#fff;border-top:1px solid var(--line);z-index:3}
 .mfoot .dtot{margin:0 0 8px;padding:8px 12px}
 .mrow{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+.mrow3{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}
 .msec{display:flex;gap:6px;margin-bottom:8px}.msec .btn{flex:1}
 .mtools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.mtools .btn{width:auto;flex:1;white-space:nowrap}
 .mmore{margin:0 0 10px}.mmore summary{cursor:pointer;font-weight:700;color:var(--gold-d);font-size:14.5px;padding:4px 0;list-style:none}
@@ -1675,8 +1676,8 @@ function stmtModal(p) {
     <div class="seg s4" id="smMode">${[['last', 'آخر فاتورة'], ['prev', 'آخر شهر'], ['all', 'الحساب كله'], ['range', 'من – إلى']].map(([k, l]) => `<button type="button" data-m="${k}" class="${k === mode ? 'on' : ''}"${k === 'last' && !lastInv ? ' disabled' : ''}>${l}</button>`).join('')}</div>
     <div class="g2" id="smRange" style="display:none;margin-bottom:6px"><div><label>من</label><input class="inp" type="date" id="smFrom" value="${y}-01-01"></div><div><label>إلى</label><input class="inp" type="date" id="smTo" value="${t}"></div></div>
     <div id="smOut"></div>
-    <div class="stack" style="margin-top:6px"><button class="btn green big" id="smShare" type="button">ابعت واتساب</button>
-      <button class="btn gold" id="smPdf" type="button">معاينة / تنزيل PDF</button><button class="btn line" id="smX" type="button">إغلاق</button></div>`, true);
+    <div class="mfoot"><div class="mrow3"><button class="btn green" id="smShare" type="button">📲 واتساب</button>
+      <button class="btn gold" id="smPdf" type="button">📄 معاينة PDF</button><button class="btn line" id="smX" type="button">إغلاق</button></div></div>`, true);
   const range = () => mode === 'all' || mode === 'last' ? ['', ''] : mode === 'prev' ? [pmS, t] : [$('#smFrom').value, $('#smTo').value];
   const upd = () => {
     const [f, to] = range();
@@ -3400,7 +3401,7 @@ function renderReports() {
       ${R.rows.map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
     <div class="card" style="margin-top:10px">${R.sum.map(([a, b]) => `<div class="bl"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
     <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>
-    <div class="stack" style="margin-top:10px"><button class="btn green" id="rpShare" type="button">ابعت PDF واتساب</button><button class="btn gold" id="rpPdf" type="button">معاينة / تنزيل PDF</button></div>`;
+    <div class="mrow3" style="margin-top:10px;grid-template-columns:1fr 1fr"><button class="btn green" id="rpShare" type="button">📲 ابعت PDF واتساب</button><button class="btn gold" id="rpPdf" type="button">معاينة / تنزيل PDF</button></div>`;
   $$('#rpK button').forEach(b => b.onclick = () => { repKind = b.dataset.v; if (repKind === 'profit' && repMode === 'day') repMode = 'year'; renderReports(); });
   $$('#rpSide button').forEach(b => b.onclick = () => { repSide = b.dataset.v; renderReports(); });
   $$('#rpIK button').forEach(b => b.onclick = () => { repItemKind = b.dataset.v; renderReports(); });

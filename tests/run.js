@@ -59,7 +59,7 @@ async function newDevice(browser, base, sheets) {
     if (!g.ctx.doPost) return r.fulfill({status: 200, contentType: 'text/html', body: '<html>no script</html>'});
     r.fulfill({status: 200, contentType: 'application/json', body: q.method() === 'POST' ? g.post(q.postData()) : g.get()});
   });
-  ctx.page = async url => { const p = await ctx.newPage(); p.on('pageerror', e => ctx.errs.push(e.message)); await p.goto(base + url); return p; };
+  ctx.page = async url => { const p = await ctx.newPage(); p.on('pageerror', e => (ctx.errs.push(e.message), process.env.DBG && console.log('PAGEERR', e.message))); await p.goto(base + url); return p; };
   return ctx;
 }
 async function unlock(A, first) {
@@ -116,18 +116,15 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await A.click('#ppPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await A.waitForTimeout(150);
     eq('تنبيه الدفعة المكررة', (await A.textContent('#pyWarn')).includes('بنفس المبلغ'), true); await A.click('#pyX');
 
-    console.log('\n٤) الشيكات');
-    await A.click('#ppPay'); await A.fill('#pyAmt', '2000'); await A.click('#pyM button[data-v=شيك]'); await A.fill('#pyCn', '555'); await A.fill('#pyCd', inDays(2)); await A.click('#pyOk'); await closed(A);
-    const b0 = await bal(A, 'عميل تجربة واحد');
-    eq('الشيك نزّل الرصيد ومدخلش الخزنة', [b0, await vbal(A, 'v_main')], [328500 - 10000 - 200000, 150000]);
-    await A.click('nav button[data-go=chk]'); await A.waitForTimeout(150);
-    eq('تنبيه الشيك قبل ميعاده', !!(await A.$('#chkAlert')), true);
-    await A.click('.ck [data-a=cash]'); await A.click('#ccOk'); await closed(A);
-    eq('بعد الصرف دخل الخزنة', await vbal(A, 'v_main'), 350000);
-    await A.click('#ckSt button[data-v=all]'); await A.click('.ck [data-a=undo]'); await A.click('#cOk'); await A.waitForTimeout(150);
-    eq('الرجوع "لسه" طلّعه من الخزنة', await vbal(A, 'v_main'), 150000);
-    await A.click('#ckSt button[data-v=p]'); await A.click('.ck [data-a=bnc]'); await A.click('#bcOk'); await closed(A);
-    eq('الشيك المرتجع رجّع الرصيد', await bal(A, 'عميل تجربة واحد'), b0 + 200000);
+    console.log('\n٤) الشيكات مقفولة واختيارات كشف الحساب');
+    eq('مفيش زرار شيكات ولا طريقة دفع شيك', [!!(await A.$('nav button[data-go=chk]')), (await A.click('#ppPay'), !!(await A.$('#pyM button[data-v=شيك]')))], [false, false]); await A.click('#pyX');
+    await A.click('#ppStmt'); await A.waitForTimeout(150);
+    eq('الكشف بيفتح على آخر فاتورة والرصيد قبلها', [await A.getAttribute('#smMode .on', 'data-m'), (await A.textContent('#smOut')).includes('الرصيد قبل الفاتورة')], ['last', true]);
+    eq('آخر فاتورة: الرصيد قبل وبعد', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), l = partyEntries(p.id).filter(e => e.kind === 'inv').pop(), s = stmtData(p.id, '', '', l.id); return [s.open, s.close, s.rows[0].kind || s.lastInv.kind]; }), [270000, 318500, 'inv']);
+    await A.click('#smMode button[data-m=prev]'); await A.waitForTimeout(100);
+    eq('آخر شهر = الشهر اللي فات كله', (await A.textContent('#smOut')).includes('رصيد أول المدة'), true);
+    await A.click('#smX');
+    eq('رابط الربط الملصوق بيتقري', await A.evaluate(() => { const o = parseJoin(' https://x/accounts.html#join=' + b64u(JSON.stringify({u: 'U', k: 'K'})) + ' '); return [o.u, o.k, parseJoin('كلام غلط')]; }), ['U', 'K', null]);
 
     console.log('\n٥) الخزنة');
     await A.click('nav button[data-go=cash]'); await A.click('#cExp'); await A.fill('#txA', '30'); await A.click('#txOk'); await closed(A);
@@ -201,7 +198,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     console.log('\n١٢) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2.errs), []);
-  } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n')[0]); }
+  } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); }
   await browser.close(); srv.close();
   console.log(`\n${fails ? '✖' : '✔'} ${oks} نجح، ${fails} فشل\n`);
   process.exit(fails ? 1 : 0);

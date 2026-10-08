@@ -396,6 +396,7 @@ nav svg{width:26px;height:26px}
     <h2>كلمة السر</h2>
     <p class="hint" style="margin:0 0 10px">البرنامج بيتقفل لوحده بعد 10 دقايق من غير استخدام، أو لو قفلت الشاشة أكتر من 5 دقايق.</p>
     <button class="btn line" id="sPass" type="button">تغيير كلمة السر</button>
+    <button class="btn line" id="sBio" type="button" style="display:none;margin-top:8px"></button>
   </div>
   <div class="card">
     <h2>النسخة الاحتياطية (ملف)</h2>
@@ -598,6 +599,34 @@ function selfCheck() {
 /* ====================== شاشة القفل ====================== */
 const LOCK_IDLE = 10 * 60 * 1000, LOCK_HIDDEN = 5 * 60 * 1000;
 let lastAct = Date.now(), hiddenAt = 0;
+/* ---------- فتح ببصمة الوجه / الإصبع ----------
+   بنستخدم مفتاح المرور (passkey) اللي على الجهاز مع خاصية PRF: الموبايل بيدّينا سر ما بيخرجش غير بعد البصمة،
+   وبيه بنقفل كلمة السر ونخزنها. فكلمة السر مش بتتخزن مكشوفة، والبصمة هي اللي بتفتحها.
+   لو الجهاز أو المتصفح مش بيدعم PRF، الميزة مش بتظهر وبتفضل كلمة السر. تغيير كلمة السر بيمسح البصمة وتفعّلها تاني. */
+const bioOk = () => !!(window.PublicKeyCredential && navigator.credentials && window.isSecureContext);
+const BIO_RP = () => ({name: 'حسابات فلاش أون'});
+async function bioKey(prfOut) { return crypto.subtle.importKey('raw', prfOut, 'AES-GCM', false, ['encrypt', 'decrypt']); }
+async function bioAssert(cid, salt) {
+  const a = await navigator.credentials.get({publicKey: {challenge: crypto.getRandomValues(new Uint8Array(32)), allowCredentials: [{type: 'public-key', id: cid}], userVerification: 'required', timeout: 60000,
+    extensions: {prf: {eval: {first: salt}}}}});
+  const r = a.getClientExtensionResults().prf;
+  if (!r || !r.results || !r.results.first) throw new Error('noprf');
+  return new Uint8Array(r.results.first);
+}
+async function bioEnable(pass) {
+  const salt = crypto.getRandomValues(new Uint8Array(32)), uid = crypto.getRandomValues(new Uint8Array(16));
+  const c = await navigator.credentials.create({publicKey: {challenge: crypto.getRandomValues(new Uint8Array(32)), rp: BIO_RP(), user: {id: uid, name: 'accounts', displayName: 'الحسابات'},
+    pubKeyCredParams: [{type: 'public-key', alg: -7}, {type: 'public-key', alg: -257}], authenticatorSelection: {authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred'},
+    timeout: 60000, extensions: {prf: {}}}});
+  if (!c.getClientExtensionResults().prf || !c.getClientExtensionResults().prf.enabled) throw new Error('noprf');
+  const cid = new Uint8Array(c.rawId), out = await bioAssert(cid, salt), iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name: 'AES-GCM', iv}, await bioKey(out), new TextEncoder().encode(pass));
+  await idbPut('bio', {cid: b64(cid), salt: b64(salt), iv: b64(iv), ct: b64(ct)});
+}
+async function bioGetPass(b) {
+  const out = await bioAssert(unb64(b.cid), unb64(b.salt));
+  return new TextDecoder().decode(await crypto.subtle.decrypt({name: 'AES-GCM', iv: unb64(b.iv)}, await bioKey(out), unb64(b.ct)));
+}
 async function showLock(msg) {
   $('#lock').classList.add('on'); closeModal();
   let vault = null;
@@ -605,28 +634,42 @@ async function showLock(msg) {
     $('#lockBox').innerHTML = `<div class="err">المتصفح ده مش سامح بالحفظ (ممكن تكون فاتح "تصفح خفي"). افتح الصفحة من المتصفح العادي.</div>`; return;
   }
   if (!vault) return renderSetup();
+  let bio = null; try { bio = bioOk() && await idbGet('bio'); } catch (e) {}
   $('#lockBox').innerHTML = `
     <label for="lkP">كلمة السر</label>
     <input class="inp" id="lkP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" style="text-align:center;font-size:22px">
     <div class="err" id="lkErr">${esc(msg || '')}</div>
     <button class="btn gold big" id="lkGo" type="button">فتح</button>
+    ${bio ? '<button class="btn line" id="lkBio" type="button" style="margin-top:10px">🔓 فتح ببصمة الوجه</button>' : ''}
     <button class="lnk" id="lkAbc" type="button">كلمة السر فيها حروف؟ افتح لوحة الحروف</button>
     <button class="lnk" id="lkForgot" type="button">نسيت كلمة السر؟</button>`;
-  const go = async () => {
-    const pw = $('#lkP').value; if (!pw) return;
-    $('#lkGo').disabled = true; $('#lkErr').textContent = '⏳ بفتح…';
+  let busy = false, tm = 0;
+  /* silent = فتح تلقائي أثناء الكتابة: لو كلمة السر لسه ناقصة أو غلط مفيش رسالة ولا مسح */
+  const go = async (silent, pwIn) => {
+    const pw = pwIn || $('#lkP').value; if (!pw || busy) return;
+    busy = true;
+    if (!silent) { $('#lkGo').disabled = true; $('#lkErr').textContent = '⏳ بفتح…'; }
     try {
       const salt = unb64(vault.salt), key = await deriveKey(pw, salt);
       const d = await unseal(key, vault);
       db = Object.assign(defaults(), d); db.cfg = Object.assign(defaults().cfg, d.cfg || {});
       cryptoKey = key; saltU8 = salt; reindex(); unlocked();
     } catch (e) {
+      busy = false;
+      if (silent) return;
       $('#lkGo').disabled = false; $('#lkErr').textContent = 'كلمة السر غلط'; $('#lkP').value = '';
       $('#lockBox').classList.remove('shake'); void $('#lockBox').offsetWidth; $('#lockBox').classList.add('shake'); $('#lkP').focus();
     }
   };
-  $('#lkGo').onclick = go;
-  $('#lkP').onkeydown = e => { if (e.key === 'Enter') go(); };
+  $('#lkGo').onclick = () => go(false);
+  $('#lkP').onkeydown = e => { if (e.key === 'Enter') go(false); };
+  /* أول ما توقف كتابة (نص ثانية) وهي 6 حروف أو أكتر، بيجرب يفتح لوحده */
+  $('#lkP').oninput = () => { clearTimeout(tm); if ($('#lkP').value.length >= 6) tm = setTimeout(() => go(true), 450); };
+  if ($('#lkBio')) $('#lkBio').onclick = async () => {
+    $('#lkErr').textContent = '';
+    try { const pw = await bioGetPass(bio); await go(false, pw); }
+    catch (e) { $('#lkErr').textContent = e && e.name === 'NotAllowedError' ? 'اتلغت البصمة. اكتب كلمة السر.' : 'البصمة مش شغالة دلوقتي. اكتب كلمة السر.'; }
+  };
   $('#lkForgot').onclick = forgotFlow;
   $('#lkAbc').onclick = () => { const i = $('#lkP'); const num = i.inputMode === 'numeric'; i.inputMode = num ? 'text' : 'numeric'; if (num) i.removeAttribute('pattern'); else i.setAttribute('pattern', '[0-9]*'); $('#lkAbc').textContent = num ? 'ارجع للوحة الأرقام' : 'كلمة السر فيها حروف؟ افتح لوحة الحروف'; i.blur(); setTimeout(() => i.focus(), 50); };
   setTimeout(() => $('#lkP') && $('#lkP').focus(), 100);
@@ -669,7 +712,7 @@ async function forgotFlow() {
   $('#fgX').onclick = closeModal;
   $('#fgGo').onclick = async () => {
     if ($('#fgW').value.trim() !== 'امسح') return toast('اكتب كلمة "امسح" الأول');
-    await idbDel('vault'); await idbDel('meta'); closeModal(); renderSetup();
+    await idbDel('vault'); await idbDel('meta'); try { await idbDel('bio'); } catch (e) {} closeModal(); renderSetup();
   };
 }
 function lockNow(msg) {
@@ -1552,6 +1595,7 @@ function makeKey() {
   return [...r].map(x => A[x % A.length]).join('').replace(/(.{4})(?!$)/g, '$1-');
 }
 function renderSettings() {
+  refreshBio();
   const c = db.cfg;
   const lk = lockDate(), lim = limitsOf();
   $('#sLock').innerHTML = lk ? `<div class="sync ok">🔒 مقفول لحد ${dispDate(lk)}</div><div class="g2"><input class="inp" type="date" id="sLockD" value="${lk}"><button class="btn gold sm" id="sLockGo" type="button">غيّر يوم القفل</button></div><button class="btn line sm" id="sUnlock" type="button" style="margin-top:8px">افتح الفترة (محتاج كلمة السر)</button>`
@@ -1775,6 +1819,26 @@ function showHelp() {
   };
 }
 $('#sPhoneSave').onclick = () => { db.cfg.phone = normDigits($('#sPhone').value).trim(); saveDB(); toast('اتحفظ الرقم ✔'); };
+async function refreshBio() {
+  const b = $('#sBio'); if (!b) return;
+  if (!bioOk()) { b.style.display = 'none'; return; }
+  let on = false; try { on = !!(await idbGet('bio')); } catch (e) {}
+  b.style.display = ''; b.textContent = on ? '🔓 البصمة شغالة — اضغط لإيقافها' : '🔓 فعّل الفتح ببصمة الوجه';
+  b.onclick = on ? async () => { await idbDel('bio'); toast('اتوقفت البصمة'); refreshBio(); } : () => {
+    modal(`<h3>🔓 فتح ببصمة الوجه</h3><p style="font-size:15px">اكتب كلمة السر مرة علشان البصمة تحفظها بأمان، وبعدين الموبايل هيطلب بصمة الوجه.</p>
+      <div class="fld"><input class="inp" id="bioP" type="password" inputmode="numeric" autocomplete="current-password" style="text-align:center;font-size:20px"></div>
+      <div class="err" id="bioE"></div>
+      <div class="stack"><button class="btn gold" id="bioOk" type="button">تفعيل</button><button class="btn line" id="bioX" type="button">إلغاء</button></div>`);
+    $('#bioX').onclick = closeModal;
+    $('#bioOk').onclick = async () => {
+      const pw = $('#bioP').value; if (!pw) return;
+      $('#bioOk').disabled = true; $('#bioE').textContent = '⏳ لحظة…';
+      try { await unseal(await deriveKey(pw, saltU8), await idbGet('vault')); } catch (e) { $('#bioOk').disabled = false; return $('#bioE').textContent = 'كلمة السر غلط'; }
+      try { await bioEnable(pw); closeModal(); toast('البصمة اشتغلت ✔ المرة الجاية هتلاقي زرار "فتح ببصمة الوجه"', 6000); refreshBio(); }
+      catch (e) { $('#bioOk').disabled = false; $('#bioE').textContent = e && e.message === 'noprf' ? 'الموبايل أو المتصفح ده مش بيدعم الميزة دي. كمّل بكلمة السر.' : e && e.name === 'NotAllowedError' ? 'اتلغى التفعيل.' : 'معرفتش أفعّل البصمة على الجهاز ده.'; }
+    };
+  };
+}
 $('#sPass').onclick = () => {
   modal(`<h3>تغيير كلمة السر</h3>
     <div class="fld"><label>كلمة السر الحالية</label><input class="inp" id="cpO" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password"></div>
@@ -1791,7 +1855,8 @@ $('#sPass').onclick = () => {
     try { await unseal(await deriveKey(o, saltU8), await idbGet('vault')); }
     catch (e) { $('#cpOk').disabled = false; return toast('كلمة السر الحالية غلط'); }
     saltU8 = crypto.getRandomValues(new Uint8Array(16)); cryptoKey = await deriveKey(n, saltU8);
-    await flushSave(); closeModal(); toast('اتغيرت كلمة السر ✔');
+    await flushSave(); let hadBio = false; try { hadBio = !!(await idbGet('bio')); await idbDel('bio'); } catch (e) {}
+    closeModal(); toast('اتغيرت كلمة السر ✔' + (hadBio ? ' — فعّل البصمة تاني من الإعدادات' : ''), 5000);
   };
 };
 

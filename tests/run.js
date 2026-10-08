@@ -64,7 +64,7 @@ async function newDevice(browser, base, sheets) {
 }
 async function unlock(A, first) {
   if (first) { await A.fill('#suP', PASS); await A.fill('#suP2', PASS); await A.click('#suGo'); }
-  else { await A.fill('#lkP', PASS); await A.click('#lkGo'); }
+  else { await A.fill('#lkP', PASS); await A.waitForSelector('#lock:not(.on)', {state: 'attached', timeout: 15000}); }
   await A.waitForSelector('#lock', {state: 'hidden'});
 }
 const closed = A => A.waitForSelector('#mask', {state: 'hidden'});
@@ -84,7 +84,9 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     console.log('\n١) كلمة السر والتشفير');
     const A = await D1.page('accounts.html');
     await unlock(A, true);
-    await A.click('#bLock'); await A.waitForSelector('#lkP'); await A.fill('#lkP', '999999'); await A.click('#lkGo'); await A.waitForTimeout(1500);
+    await A.click('#bLock'); await A.waitForSelector('#lkP'); await A.fill('#lkP', '999999'); await A.waitForTimeout(2000);
+    eq('كلمة سر غلط وقت الكتابة مفيهاش رسالة ولا بتفتح', [await A.textContent('#lkErr'), await A.evaluate(() => $('#lock').classList.contains('on'))], ['', true]);
+    await A.click('#lkGo'); await A.waitForTimeout(1500);
     eq('كلمة سر غلط بترفض', await A.textContent('#lkErr'), 'كلمة السر غلط');
     await unlock(A);
 

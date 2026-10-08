@@ -59,10 +59,12 @@ textarea.inp{min-height:84px;resize:vertical;line-height:1.7}
 .tots .k{grid-column:1/-1;background:var(--ink);border:0;border-bottom:4px solid var(--gold)}
 .tots .k span{color:var(--gold)}.tots .k b{color:#fff;font-size:30px}
 .tots .cr b{color:var(--red)}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:#EFE9D8;border-radius:12px;padding:4px;margin-bottom:10px}
-.tabs button{border:0;background:none;border-radius:9px;min-height:50px;font-weight:800;font-size:14px;cursor:pointer;color:#555;line-height:1.25;padding:4px 2px}
-.tabs button small{display:block;font-size:12px;font-weight:700;opacity:.8}
-.tabs button.on{background:#111;color:#DAAE57}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.tabs button{border:2px solid var(--line);background:#fff;border-radius:14px;min-height:68px;font-weight:800;font-size:19px;cursor:pointer;color:#333;line-height:1.25;padding:6px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tabs button small{display:block;font-size:15px;font-weight:700;color:#888}
+.tabs button.on{background:#111;color:#DAAE57;border-color:#111}.tabs button.on small{color:#fff}
+.tabs button[data-t=sup]{border-color:#9AA7AD}.tabs button[data-t=sup].on{background:var(--blue);border-color:var(--blue)}
+@media (min-width:1000px){.tabs button{min-height:58px;font-size:17px}}
 .srow{display:grid;grid-template-columns:1fr 128px;gap:8px;margin-bottom:10px}
 /* قايمة الحسابات */
 .pt{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--line);border-radius:13px;padding:11px 12px;margin-bottom:8px;cursor:pointer;border-right:6px solid var(--gold)}

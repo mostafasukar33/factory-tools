@@ -1329,7 +1329,7 @@ function buildStmtPages(p, s) {
       ? `<div class="hd"><img src="icons/logo.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${phone ? `<em>${esc(phone)}</em>` : ''}</div>
          <div class="ti"><h3>كشف حساب</h3><div>تاريخ الإصدار: <span>${dispDate(isoOf(issued))}</span></div><div>الفترة: <span>${esc(periodText(s))}</span></div></div></div>
          <div class="cust"><span>السادة / <b>${esc(p.name)}</b></span><i>${SEC1[p.sec]}</i></div>
-         ${p.sec === 'sup' ? `<div class="sbox">${s.open !== null ? `<div><span>${opLabel(s)}</span><b>${fmtP(s.open * s.sg)}</b></div>` : ''}<div><span>إجمالي المشتريات</span><b>${fmtP(s.tg)}</b></div><div><span>إجمالي المدفوعات</span><b>${fmtP(s.tp)}</b></div><div class="k"><span>الرصيد</span><b>${fmtP(s.close * s.sg)}</b></div></div>` : ''}`
+         ${p.sec === 'sup' ? `<div class="sbox"><div><span>إجمالي المشتريات</span><b>${fmtP(s.tg)}</b></div><div><span>إجمالي المدفوعات</span><b>${fmtP(s.tp)}</b></div><div class="k"><span>الرصيد</span><b>${fmtP(s.close * s.sg)}</b></div></div>` : ''}`
       : `<div class="mini"><b>فلاش أون</b><span>كشف حساب — ${esc(p.name)} — ${esc(periodText(s))}</span></div>`) +
       `</div><div class="ft"><span>عالم متكامل من احتياجاتك الكهربائية</span><span class="pn"></span></div>`;
     box.appendChild(pg);

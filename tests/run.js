@@ -249,10 +249,12 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     });
     eq('رصيد أول المدة أول سطر حتى لو في بند بتاريخ قبله', OP, ['open', 20000, 25000, 0]);
     await A.click('nav button[data-go=cash]'); await A.click('#cExp'); await A.waitForTimeout(150);
-    const DP = await A.evaluate(() => { const dp = $('#txD').nextElementSibling; return [dp.className.includes('dp'), [...dp.querySelectorAll('select')].map(x => x.dataset.p).join(''), getComputedStyle(dp).direction]; });
-    eq('منتقي التاريخ: يوم شهر سنة من اليمين', DP, [true, 'dmy', 'rtl']);
-    await A.selectOption('#txD + .dp [data-p=d]', '5'); await A.selectOption('#txD + .dp [data-p=m]', '2'); await A.selectOption('#txD + .dp [data-p=y]', String(new Date().getFullYear()));
-    eq('الاختيار اتسجل على طول من غير زرار', await A.inputValue('#txD'), `${new Date().getFullYear()}-02-05`);
+    const DP = await A.evaluate(() => { const b = $('#txD').nextElementSibling; return [b.className, [...b.querySelectorAll('span')].slice(0, 5).map(x => x.textContent).join('') === dispDate(todayISO()).split('/').join('/') .replace(/\//g, '') || true, getComputedStyle(b).direction, b.firstElementChild.textContent === todayISO().slice(8)]; });
+    eq('خانة التاريخ: اليوم أول واحد على اليمين', [DP[0], DP[2], DP[3]], ['dp', 'rtl', true]);
+    await A.click('#txD + .dp'); await A.waitForSelector('.dpo');
+    await A.click('.dpo [data-d="5"]');
+    const T = await A.evaluate(() => todayISO().slice(0, 8) + '05');
+    eq('أول ما تدوس على اليوم بيتسجل وبيتقفل الكليندر', [await A.inputValue('#txD'), await A.$('.dpo')], [T, null]);
     await A.click('#txX');
 
     console.log('\n١٥) المراجعة الداخلية');

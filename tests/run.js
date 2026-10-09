@@ -351,7 +351,9 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     const mkRows = kind => sheets.mkt.sheets['الحركات'].rows.slice(1).filter(r => r[1] === kind);
     eq('الشيت فيه عملاء السوق بس بأرصدتهم (من غير مواقع ولا موردين)', mkRows('cust').map(r => JSON.parse(r[10]).name).sort(), ['عميل ترتيب تجربة', C1].sort());
 
-    await A.fill('#tgTok', '123456:ABCDEFGHIJKLMNOPQRSTUVWX'); await A.click('#tgSave'); await A.waitForTimeout(800);
+    await A.fill('#tgTok', 'كلام مش توكن'); await A.click('#tgSave'); await A.waitForTimeout(300);
+    eq('تليجرام: لو اللي اتلصق مش شكل توكن بيقول كده ومبيتحفظش', [sheets.mkt.props.TG_TOKEN || '', (await A.textContent('#tgSt')).includes('مش شكل توكن')], ['', true]);
+    await A.fill('#tgTok', '\u200F' + 'التوكن بتاعك:\n١٢٣٤٥٦' + ':ABCDEFGHIJKLMNOPQRSTUVWX\u200F'); await A.click('#tgSave'); await A.waitForTimeout(800);
     sheets.mkt.tg.updates = [{update_id: 1, message: {chat: {id: 777}, text: 'ابدأ'}}];
     await A.click('#tgTest'); await A.waitForTimeout(800);
     eq('تليجرام: التوكن في الشيت بس، والـ chat id اتجاب لوحده من "ابدأ"', [sheets.mkt.props.TG_TOKEN, sheets.mkt.props.TG_CHAT, await A.evaluate(() => JSON.stringify(db).includes('ABCDEFGHIJ')), (await A.textContent('#tgSt')).includes('شغالة')], ['123456:ABCDEFGHIJKLMNOPQRSTUVWX', '777', false, true]);

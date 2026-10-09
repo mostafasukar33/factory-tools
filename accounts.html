@@ -4423,7 +4423,10 @@ function renderMktSettings() {
   if (tgInfo) showTg(tgInfo);
   tgCall('tgstate').then(showTg);
   $('#tgSave').onclick = async () => {
-    const t = $('#tgTok').value.trim(); if (!t) return toast('الصق التوكن الأول');
+    const raw = $('#tgTok').value; if (!raw.trim()) return toast('الصق التوكن الأول');
+    /* بنطلّع التوكن من أي حاجة اتلصقت: بنشيل علامات الاتجاه الخفية (بتيجي مع النسخ في صفحة عربي)، والأرقام العربي، والنقطتين العريضة، وأي كلام زيادة جنبه */
+    const t = ((raw.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[：﹕꞉]/g, ':').replace(/[​-‏‪-‮⁦-⁩﻿]/g, '').match(/\d{5,}:[A-Za-z0-9_-]{20,}/)) || [''])[0];
+    if (!t) { $('#tgSt').innerHTML = '<b style="color:var(--red)">❌ اللي لصقته مش شكل توكن. المفروض رقم وبعده : وبعده حروف وأرقام (من رسالة BotFather).</b>'; return; }
     $('#tgSave').disabled = true; $('#tgSt').textContent = '⏳ بجرب التوكن…';
     const j = await tgCall('tg', {token: t});
     if (!$('#tgSave')) return; $('#tgSave').disabled = false;

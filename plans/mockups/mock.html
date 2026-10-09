@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../fonts/fonts.css">
+<style>
+:root{--gold:#DAAE57;--gold-d:#9C7420;--gold-l:#FBF5E6;--ink:#111;--bg:#F5F2EA;--line:#E4DCC8;--red:#C62828;--red-l:#FDECEA;--green:#1B8E3E;--green-l:#E6F6EB}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Cairo',sans-serif;background:#ddd;color:var(--ink)}
+.scr{width:390px;height:800px;background:var(--bg);position:relative;overflow:hidden;display:none}
+.scr.on{display:block}
+.top{background:var(--ink);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:3px solid var(--gold)}
+.top img{width:40px;height:40px;border-radius:8px;background:#fff}
+.top h1{font-size:19px;margin:0;font-weight:800;line-height:1.2}
+.top small{color:var(--gold);font-size:12px;display:block;font-weight:600}
+.dot{margin-inline-start:auto;font-size:12px;font-weight:700;color:#8fd19e;display:flex;align-items:center;gap:5px}
+.dot i{width:9px;height:9px;border-radius:50%;background:#3ccf6a;display:inline-block}
+main{padding:10px 12px}
+.money{direction:ltr;unicode-bidi:isolate;font-weight:800;white-space:nowrap}
+.search{width:100%;height:48px;border:1.5px solid #D6CDB5;border-radius:11px;background:#fff;padding:0 14px;font-size:17px;color:#999;display:flex;align-items:center;gap:8px;font-family:inherit}
+.lbl{font-size:13px;font-weight:700;color:#888;margin:12px 4px 4px}
+.list{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:52px;border-bottom:1px solid #EFE9DA}
+.row:last-child{border-bottom:0}
+.row b{font-size:17px;font-weight:700}
+.row .money{font-size:18px}
+.row .money.z{color:#999;font-weight:600;font-size:15px}
+.bar{position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:2px solid var(--gold);padding:10px 14px 18px;display:flex;align-items:center;gap:10px}
+.bar .t{flex:1}
+.bar .t span{font-size:13px;color:#666;font-weight:700;display:block}
+.bar .t .money{font-size:24px;color:var(--green)}
+.sbtn{border:1.5px solid var(--ink);background:#fff;border-radius:10px;height:44px;padding:0 12px;font-weight:800;font-size:15px;font-family:inherit;display:flex;align-items:center}
+.back{background:none;border:0;color:#fff;font-size:16px;font-weight:800;font-family:inherit;padding:0}
+.cust{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
+.cust b{font-size:20px;font-weight:800}
+.cust div span{font-size:13px;color:#777;font-weight:700;display:block;text-align:left}
+.cust div .money{font-size:24px;color:var(--ink)}
+.amt{margin-top:12px;background:#fff;border:2px solid var(--gold);border-radius:14px;height:86px;display:flex;align-items:center;justify-content:center;gap:10px}
+.amt .money{font-size:44px}
+.amt em{font-style:normal;font-size:18px;color:#888;font-weight:700}
+.big{width:100%;height:66px;border:0;border-radius:14px;font-family:inherit;font-size:21px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px}
+.b-cash{background:var(--green);color:#fff}
+.b-insta{background:#5B3FA8;color:#fff}
+.b-voda{background:#C8102E;color:#fff}
+.hint{text-align:center;font-size:13px;color:#888;margin:8px 0 0;font-weight:600}
+.mini{margin-top:14px}
+.mini .row{height:46px}
+.mini .row b{font-size:15px}
+.st{font-size:13px;font-weight:800}
+.ok{color:var(--green)}.wait{color:#B7791F}
+.done{padding:40px 22px 0;text-align:center}
+.chk{width:110px;height:110px;border-radius:50%;background:var(--green);color:#fff;font-size:64px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-weight:800}
+.done h2{font-size:28px;margin:0;color:var(--green);font-weight:800}
+.sent{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:16px;font-size:21px;font-weight:700;line-height:1.7}
+.sent .money{font-size:26px}
+.sent small{display:block;font-size:14px;color:var(--green);font-weight:800;margin-top:6px}
+.b-again{background:var(--ink);color:#fff;margin-top:22px}
+.b-home{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+.oops{display:block;text-align:center;color:var(--red);font-weight:800;font-size:15px;margin-top:18px}
+/* شاشة الوارد */
+.inbox{background:var(--gold-l);border:1.5px solid var(--gold);border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+.inbox b{font-size:17px;font-weight:800}
+.inbox .n{background:var(--ink);color:var(--gold);border-radius:20px;min-width:34px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;padding:0 10px}
+.ic{background:#fff;border:1px solid var(--line);border-radius:12px;margin-top:10px;overflow:hidden}
+.ich{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid #EFE9DA}
+.ich b{font-size:17px;font-weight:800}
+.ich .money{font-size:19px}
+.il{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px dashed #EFE9DA;font-size:15px;font-weight:700}
+.il .m{display:flex;align-items:center;gap:8px}
+.il .money{font-size:17px}
+.tag{font-size:12px;font-weight:800;border-radius:6px;padding:1px 7px}
+.t-cash{background:var(--green-l);color:var(--green)}
+.t-insta{background:#EEE8FA;color:#5B3FA8}
+.t-voda{background:var(--red-l);color:#C8102E}
+.tm{font-size:12px;color:#999;font-weight:600}
+.vbtn{border:1.5px solid #B7791F;color:#B7791F;background:#fff;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;height:30px;padding:0 10px}
+.vok{color:var(--green);font-size:13px;font-weight:800}
+.ifoot{display:flex;gap:8px;padding:8px 14px}
+.ifoot button{flex:1;height:42px;border-radius:10px;font-family:inherit;font-weight:800;font-size:15px}
+.go{background:var(--ink);color:#fff;border:0}
+.rt{background:#fff;color:var(--red);border:1.5px solid var(--red)}
+.go.dis{background:#ccc;color:#fff}
+.moved{opacity:.55}
+.moved .ich b::after{content:'  ✓ اتنقلت';color:var(--green);font-size:13px}
+.newc{font-size:12px;background:var(--ink);color:var(--gold);border-radius:6px;padding:1px 7px;margin-inline-start:6px}
+.cap{position:absolute;top:0}
+</style>
+</head>
+<body>
+
+<!-- 1: قايمة العملاء عند الشريك -->
+<div class="scr" id="s1">
+  <div class="top"><img src="../../icons/icon-192.png"><div><h1>حركة السوق</h1><small>فلاش أون</small></div><div class="dot"><i></i>متصل</div></div>
+  <main>
+    <div class="search">🔍 دوّر على عميل...</div>
+    <div class="lbl">آخر زيارات</div>
+    <div class="list">
+      <div class="row"><b>الحاج محمود السيد</b><span class="money">عليه 25,000</span></div>
+      <div class="row"><b>أبو حسن للأدوات الكهربائية</b><span class="money">عليه 18,750</span></div>
+      <div class="row"><b>معرض النور</b><span class="money">عليه 7,200</span></div>
+      <div class="row"><b>شريف عبد العال</b><span class="money">عليه 12,400</span></div>
+    </div>
+    <div class="lbl">كل العملاء</div>
+    <div class="list">
+      <div class="row"><b>أحمد فتحي</b><span class="money">عليه 3,500</span></div>
+      <div class="row"><b>الأمانة للكهرباء</b><span class="money">عليه 41,000</span></div>
+      <div class="row"><b>جمال الشاذلي</b><span class="money z">مفيش عليه</span></div>
+      <div class="row"><b>رضا الصعيدي</b><span class="money">عليه 9,850</span></div>
+      <div class="row"><b>سعد للتوريدات</b><span class="money">عليه 6,000</span></div>
+    </div>
+  </main>
+  <div class="bar"><div class="t"><span>معاك النهارده كاش</span><span class="money">15,000</span></div><div class="sbtn">+ عميل جديد</div></div>
+</div>
+
+<!-- 2: تسجيل دفعة -->
+<div class="scr" id="s2">
+  <div class="top"><button class="back">→ رجوع</button><div class="dot"><i></i>متصل</div></div>
+  <main>
+    <div class="cust"><b>الحاج محمود السيد</b><div><span>عليه</span><span class="money">20,000</span></div></div>
+    <div class="amt"><span class="money">5,000</span><em>جنيه</em></div>
+    <button class="big b-cash">💵 كاش معايا</button>
+    <button class="big b-insta">📱 إنستا لمصطفى</button>
+    <button class="big b-voda">📱 فودافون لمصطفى</button>
+    <p class="hint">دوسة على الزرار بتحفظ على طول</p>
+    <div class="lbl">اتسجل للعميل ده النهارده</div>
+    <div class="list mini">
+      <div class="row"><b>إنستا لمصطفى</b><span class="money">3,000</span><span class="st ok">✓ اتنقلت</span></div>
+      <div class="row"><b>كاش معايا</b><span class="money">2,000</span><span class="st wait">⏳ عند مصطفى</span></div>
+    </div>
+  </main>
+</div>
+
+<!-- 3: تم الحفظ -->
+<div class="scr" id="s3">
+  <div class="top"><img src="../../icons/icon-192.png"><div><h1>حركة السوق</h1><small>فلاش أون</small></div><div class="dot"><i></i>متصل</div></div>
+  <div class="done">
+    <div class="chk">✓</div>
+    <h2>اتسجلت</h2>
+    <div class="sent">الحاج محمود السيد<br>دفع <span class="money">5,000</span> جنيه كاش<small>✓ وصلت لمصطفى</small></div>
+    <button class="big b-again">في فلوس تانية من نفس العميل</button>
+    <button class="big b-home">رجوع للعملاء</button>
+    <span class="oops">غلطت، امسحها</span>
+  </div>
+</div>
+
+<!-- 4: الوارد عند مصطفى جوه الحسابات -->
+<div class="scr" id="s4">
+  <div class="top"><img src="../../icons/icon-192.png"><div><h1>وارد السوق</h1><small>الحسابات</small></div><div class="dot"><i></i>متصل</div></div>
+  <main>
+    <div class="inbox"><b>عمليات متنقلتش</b><span class="n">4</span></div>
+
+    <div class="ic">
+      <div class="ich"><b>الحاج محمود السيد</b><span class="money">8,000</span></div>
+      <div class="il"><div class="m"><span class="tag t-cash">كاش</span><span class="money">5,000</span></div><span class="tm">2:40 م</span></div>
+      <div class="il"><div class="m"><span class="tag t-insta">إنستا</span><span class="money">3,000</span></div><button class="vbtn">🔔 وصل؟</button></div>
+      <div class="ifoot"><button class="go dis">انقل للحساب</button><button class="rt">رجّعها</button></div>
+    </div>
+
+    <div class="ic">
+      <div class="ich"><b>معرض النور</b><span class="money">4,500</span></div>
+      <div class="il"><div class="m"><span class="tag t-voda">فودافون</span><span class="money">4,500</span></div><span class="vok">✓ وصل</span></div>
+      <div class="ifoot"><button class="go">انقل للحساب</button><button class="rt">رجّعها</button></div>
+    </div>
+
+    <div class="ic">
+      <div class="ich"><b>سيد الأقصري<span class="newc">عميل جديد</span></b><span class="money">1,500</span></div>
+      <div class="il"><div class="m"><span class="tag t-cash">كاش</span><span class="money">1,500</span></div><span class="tm">4:05 م</span></div>
+      <div class="ifoot"><button class="go">اربطه بحساب وانقل</button></div>
+    </div>
+
+    <div class="ic moved">
+      <div class="ich"><b>أبو حسن</b><span class="money">6,250</span></div>
+      <div class="il"><div class="m"><span class="tag t-cash">كاش</span><span class="money">6,250</span></div><span class="tm">11:20 ص</span></div>
+    </div>
+  </main>
+  <div class="bar"><div class="t"><span>كاش مع شريكك لسه متسلمش</span><span class="money">15,000</span></div><div class="sbtn">استلمت</div></div>
+</div>
+
+</body>
+</html>

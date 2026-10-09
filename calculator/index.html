@@ -276,8 +276,16 @@ function render(){
   $('entry').classList.toggle('isneg',typing?S.entry[0]==='-':total<0);
   $('stateLbl').innerHTML=S.editIdx>=0?'<span class="editing">بتعدّل سطر '+(S.editIdx+1)+'</span>':(S.closed?'= اتحفظ':(typing?'الرقم':'الناتج'));
   document.querySelectorAll('.k.op[data-k="+"],.k.op[data-k="-"],.k.op[data-k="*"],.k.op[data-k="/"]').forEach(b=>b.classList.toggle('on',!S.closed&&S.editIdx<0&&b.dataset.k===S.pending&&S.lines.length>0));
-  save();}
-
+  fit();save();}
+/* الرقم الكبير يصغر بس لما ميبقاش واسع، ولو مناسب يفضل بحجمه الكبير */
+function fit(){
+  const e=$('entry');if(!e||e.clientWidth<=0)return;
+  e.style.fontSize='';e.style.overflowX='hidden';
+  let px=parseFloat(getComputedStyle(e).fontSize),n=0;
+  while(e.scrollWidth>e.clientWidth+1&&px>16&&n++<60){px=Math.floor(px*0.94);e.style.fontSize=px+'px';}
+  document.querySelectorAll('#tape .row').forEach(rw=>{rw.style.fontSize='';let f=parseFloat(getComputedStyle(rw).fontSize),m=0;
+    while(rw.scrollWidth>rw.clientWidth+1&&f>10&&m++<30){f-=1;rw.style.fontSize=f+'px';}});}
+addEventListener('resize',fit);
 function clearSample(){if(S.sample){S={lines:[],pending:'',entry:'',closed:false,sample:false,editIdx:-1}}}
 
 function archiveCurrent(){

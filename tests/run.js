@@ -19,7 +19,7 @@ function eq(name, got, want) {
   const ok = JSON.stringify(got) === JSON.stringify(want);
   if (ok) { oks++; console.log('  ✔', name); } else { fails++; console.log('  ✖', name, '\n     المتوقع:', JSON.stringify(want), '\n     اللي طلع:', JSON.stringify(got)); }
 }
-const iso = d => d.toISOString().slice(0, 10);
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const today = iso(new Date()), inDays = n => iso(new Date(Date.now() + n * 86400000));
 
 /* ملف نقل تجريبي (نفس شكل اللي بيتعمل من الإكسيل). الأرقام بالقرش */
@@ -107,20 +107,20 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await A.click('nav button[data-go=cash]'); await A.click('#cNew'); await A.click('#cOpen2'); await A.fill('#modal [data-v]', '1000'); await A.click('#opOk'); await A.waitForTimeout(200);
     eq('رصيد بداية الخزنة', await vbal(A, 'v_main'), 100000);
     await openParty(A, 'عميل تجربة واحد');
-    await A.click('#ppDoc'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.dispatchEvent('.li [data-f=name]', 'change');
+    await A.click('#fbDoc'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.dispatchEvent('.li [data-f=name]', 'change');
     eq('آخر سعر للعميل بيتكتب لوحده', await A.inputValue('.li [data-f=price]'), '350');
-    await A.fill('.li [data-f=qty]', '4'); await A.fill('#dcDisc', '50'); await A.fill('#dcPaid', '400'); await A.click('#dcOk'); await closed(A);
+    await A.fill('.li [data-f=qty]', '4'); await A.click('.mmore summary'); await A.fill('#dcDisc', '50'); await A.fill('#dcPaid', '400'); await A.click('#dcOk'); await closed(A);
     eq('بعد فاتورة 1400−50 ودفع 400', await bal(A, 'عميل تجربة واحد'), 270000 + 135000 - 40000);
     eq('الدفعة دخلت الخزنة', await vbal(A, 'v_main'), 140000);
     await A.click('#ppRet'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.fill('.li [data-f=qty]', '1'); await A.fill('.li [data-f=price]', '350'); await A.click('#dcOk'); await closed(A);
     await A.click('#ppAdj'); await A.fill('#adAmt', '15'); await A.fill('#adNote', 'جبر كسور'); await A.click('#adOk'); await closed(A);
     eq('بعد مرتجع 350 وخصم 15', await bal(A, 'عميل تجربة واحد'), 365000 - 35000 - 1500);
-    await A.click('#ppPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await closed(A);
-    await A.click('#ppPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await A.waitForTimeout(150);
+    await A.click('#fbPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await closed(A);
+    await A.click('#fbPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await A.waitForTimeout(150);
     eq('تنبيه الدفعة المكررة', (await A.textContent('#pyWarn')).includes('بنفس المبلغ'), true); await A.click('#pyX');
 
     console.log('\n٤) الشيكات مقفولة واختيارات كشف الحساب');
-    eq('مفيش زرار شيكات ولا طريقة دفع شيك', [!!(await A.$('nav button[data-go=chk]')), (await A.click('#ppPay'), !!(await A.$('#pyM button[data-v=شيك]')))], [false, false]); await A.click('#pyX');
+    eq('مفيش زرار شيكات ولا طريقة دفع شيك', [!!(await A.$('nav button[data-go=chk]')), (await A.click('#fbPay'), !!(await A.$('#pyM button[data-v=شيك]')))], [false, false]); await A.click('#pyX');
     await A.click('#ppStmt'); await A.waitForTimeout(150);
     eq('الكشف بيفتح على آخر فاتورة والرصيد قبلها', [await A.getAttribute('#smMode .on', 'data-m'), (await A.textContent('#smOut')).includes('الرصيد قبل الفاتورة')], ['last', true]);
     eq('آخر فاتورة: الرصيد قبل وبعد', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), l = partyEntries(p.id).filter(e => e.kind === 'inv').pop(), s = stmtData(p.id, '', '', l.id); return [s.open, s.close, s.rows[0].kind || s.lastInv.kind]; }), [270000, 318500, 'inv']);
@@ -173,13 +173,13 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
       const a = buildStmtPages(sup, stmtData(sup.id, '', ''))[0].querySelector('.sbox'), b = buildStmtPages(cu, stmtData(cu.id, '', ''))[0].querySelector('.sbox'); $('#render').innerHTML = ''; return [!!a, !!b]; }), [true, false]);
 
     console.log('\n٩) قفل الفترة');
-    await A.click('nav button[data-go=set]'); await A.fill('#sLockD', today); await A.click('#sLockGo'); await A.click('#cOk'); await A.waitForTimeout(200);
-    await openParty(A, 'عميل تجربة واحد'); await A.click('#ppPay'); await A.fill('#pyAmt', '1'); await A.click('#pyOk'); await A.waitForTimeout(150);
+    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.fill('#sLockD', today); await A.click('#sLockGo'); await A.click('#cOk'); await A.waitForTimeout(200);
+    await openParty(A, 'عميل تجربة واحد'); await A.click('#fbPay'); await A.fill('#pyAmt', '1'); await A.click('#pyOk'); await A.waitForTimeout(150);
     eq('مينفعش تسجل في فترة مقفولة', (await A.textContent('#toast')).includes('مقفولة'), true); await A.click('#pyX');
-    await A.click('nav button[data-go=set]'); await A.click('#sUnlock'); await A.fill('#apP', PASS); await A.click('#apOk'); await A.waitForTimeout(600);
+    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.click('#sUnlock'); await A.fill('#apP', PASS); await A.click('#apOk'); await A.waitForTimeout(600);
 
     console.log('\n١٠) المزامنة مع الشيت وجهاز تاني');
-    await A.click('nav button[data-go=set]'); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.waitForTimeout(300);
+    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.waitForTimeout(300);
     await A.click('#shHelp'); await A.click('#hpCopy'); const accCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.acc.load(accCode); await A.click('#hpX');
     eq('كود الشيت مفيهوش المفتاح', accCode.includes(KEY), false);
     eq('رقم تعريف النشر بيتحول للينك', await A.evaluate(() => normSheetUrl(' AKfycbxTEST1234567890abcdefghij ')), 'https://script.google.com/macros/s/AKfycbxTEST1234567890abcdefghij/exec');
@@ -189,7 +189,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     eq('الشيت بيرفض مفتاح غلط', JSON.parse(sheets.acc.post(JSON.stringify({key: 'x', action: 'pull'}))).error, 'key');
     const D2 = await newDevice(browser, base, sheets), B = await D2.page('accounts.html');
     await unlock(B, true);
-    await B.click('nav button[data-go=set]'); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.waitForTimeout(4000);
+    await B.click('nav button[data-go=set]'); await B.evaluate(() => setOpenAll()); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.waitForTimeout(4000);
     const snap = X => X.evaluate(() => [liveParties().map(p => balance(p.id)).sort(), vaultBal(''), selfCheck().length]);
     eq('الجهاز التاني نزل نفس الأرصدة', await snap(B), await snap(A));
     await B.evaluate(() => syncNow()); await A.evaluate(() => syncNow()); await A.waitForTimeout(1500);
@@ -202,7 +202,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     eq('جهاز جديد برابط الربط بس نزلت عليه كل الحسابات', await snap(J), await snap(A));
     eq('الجهاز الجديد فضل مربوط', await J.evaluate(() => db.cfg.sheetOk), true);
     eq('الرابط اتشال من شريط العنوان', J.url().includes('join'), false);
-    await A.click('nav button[data-go=set]'); await A.click('#shAudit'); await A.waitForTimeout(3000);
+    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.click('#shAudit'); await A.waitForTimeout(3000);
     eq('مراجعة الجهاز مع الشيت متطابقة', (await A.textContent('#modal .sync')).includes('متطابقين ('), true); await A.click('#saX');
 
     console.log('\n١٠ج) كود الشيت الأساسي والنسخة الاحتياطية المنفصلة، والمزامنة بدفعات');
@@ -290,7 +290,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     eq('التشغيل تاني مبيكررش', await A.evaluate(() => autoPartners(true)), 0);
     await A.evaluate(() => syncNow()); await B.evaluate(() => syncNow()); await B.waitForTimeout(1500);
     eq('الجهاز التاني مسجلش تاني', [await B.evaluate(() => autoPartners(true)), await autoN(B)], [0, 9]);
-    await A.click('#p-part .cm'); await A.click('#ptDel'); await A.click('#cOk'); await A.waitForTimeout(150);
+    await A.click('#p-part tr[data-i]'); await A.click('#ptDel'); await A.click('#cOk'); await A.waitForTimeout(150);
     eq('المرتب الملغي مبيرجعش يتسجل', [await A.evaluate(() => autoPartners(true)), await autoN(A)], [0, 8]);
     await A.click('#ptNew'); await A.fill('#ptA', '50'); await A.fill('#ptN', 'سلفة'); await A.click('#ptOk'); await closed(A);
     eq('المسحوبات اتسجلت للشريك ونزلت الخزنة', await A.evaluate(() => [db.txs.filter(t => t.cat === 'c_pdraw' && !t.del).map(t => [partName(t.pt), t.amt, t.note]), vaultBal('')]), [[['مصطفى', 5000, 'مسحوبات مصطفى — سلفة']], vb0 - 8000 - 5000]);

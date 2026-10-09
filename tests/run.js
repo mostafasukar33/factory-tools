@@ -339,6 +339,8 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
 
     console.log('\n١٦) حركة السوق: تطبيق الشريك ووارد السوق');
     const C1 = 'عميل تجربة واحد', bal0 = await bal(A, C1), pid1 = await A.evaluate(n => liveParties().find(x => x.name === n).id, C1);
+    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    eq('قبل الربط: سطر "حركة السوق لسه متربطتش" في الرئيسية بيفتح الإعدادات على كارتها', [(await A.textContent('#mkRem')).includes('لسه متربطتش'), (await A.click('#mkGo'), await A.waitForTimeout(400), await A.evaluate(() => [location.hash, !!$('#sMkt #smHelp')]))], [true, ['#set', true]]);
     await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll());
     await A.click('#smHelp'); await A.click('#mhCopy'); const mkCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.mkt.load(mkCode); await A.click('#mhX');
     await A.fill('#smUrl', MKT_URL); await A.click('#smGo'); await A.waitForTimeout(2500);

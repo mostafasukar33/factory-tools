@@ -4108,10 +4108,17 @@ function mkAlert(list) {
   b.onclick = () => { b.classList.remove('on'); go('mkt'); };
   clearTimeout(mkBarT); mkBarT = setTimeout(() => b.classList.remove('on'), 12000);
 }
+/* يفتح الإعدادات على كارت حركة السوق */
+function mkGoSettings() {
+  go('set');
+  setTimeout(() => { const c = $('#sMkt'); if (!c) return; c.classList.remove('shut'); c.scrollIntoView({block: 'start', behavior: 'smooth'}); }, 150);
+}
 /* العداد على الشاشة الرئيسية من أول ما البرنامج يفتح */
 function renderMkHome() {
   const box = $('#mkRem'); if (!box) return;
-  if (!db || !mkCreds()) { box.innerHTML = ''; return; }
+  if (!db) { box.innerHTML = ''; return; }
+  /* لسه متربطش: سطر واضح في الرئيسية بيوديه للإعدادات على طول */
+  if (!mkCreds()) { box.innerHTML = '<div class="sync mkrem" id="mkGo">📥 حركة السوق (تطبيق شريكك) لسه متربطتش <a>اربطها</a></div>'; $('#mkGo').onclick = mkGoSettings; return; }
   const n = mkPending().length;
   box.innerHTML = `<div class="sync mkrem ${n ? '' : 'ok'}" id="mkGo">📥 وارد السوق: ${n ? `<b>${n}</b> ${n === 1 ? 'عملية متنقلتش' : 'عمليات متنقلتش'}` : 'مفيش حاجة مستنية'} <a>افتح</a></div>`;
   $('#mkGo').onclick = () => go('mkt');
@@ -4147,7 +4154,7 @@ function mkGroups() {
 let mkView = 'in', mkDay = '';
 function renderMkt() {
   const box = $('#p-mkt'); if (!box || !db) return;
-  if (!mkCreds()) { box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a></div><div class="card empty">حركة السوق لسه متربطتش.<br><a class="lnk" id="mkSet">اربطها من الإعدادات</a></div>`; $('#mkBack').onclick = () => go('home'); $('#mkSet').onclick = () => go('set'); return; }
+  if (!mkCreds()) { box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a></div><div class="card empty">حركة السوق لسه متربطتش.<br><a class="lnk" id="mkSet">اربطها من الإعدادات</a></div>`; $('#mkBack').onclick = () => go('home'); $('#mkSet').onclick = mkGoSettings; return; }
   const n = mkPending().length;
   box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a><b style="font-size:17px;color:var(--ink)">📥 وارد السوق</b><span class="mkdot ${mkErr ? 'w' : ''}"><i></i>${mkErr === 'key' ? 'الشيت رفض المفتاح' : mkErr ? 'مش قادر يوصل للشيت' : mkLastOk ? 'متصل' : '…'}</span></div>
     <div class="seg s2" id="mkTabs"><button type="button" data-v="in" class="${mkView === 'in' ? 'on' : ''}">الوارد${n ? ` (${n})` : ''}</button><button type="button" data-v="arch" class="${mkView === 'arch' ? 'on' : ''}">الأرشيف</button></div>

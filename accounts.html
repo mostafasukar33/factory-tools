@@ -4368,6 +4368,23 @@ function mktHelp() {
   };
 }
 let tgInfo = null;
+/* بنطلّع التوكن من أي حاجة اتلصقت: علامات الاتجاه الخفية، الأرقام العربي، النقطتين العريضة، والكلام اللي حواليه.
+   خانة الكتابة بتشيل سطور الرسالة، فكلمة "Keep your token…" بتلزق في آخر التوكن. التوكن بتاع تليجرام آخره 35 حرف بالظبط، فبنجرب ده الأول */
+function tgCands(raw) {
+  const s = String(raw || '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[：﹕꞉]/g, ':').replace(/[​-‏‪-‮⁦-⁩﻿]/g, '');
+  const m = s.match(/(\d{5,}):([A-Za-z0-9_-]{20,})/); if (!m) return [];
+  const out = [];
+  if (m[2].length > 35) out.push(m[1] + ':' + m[2].slice(0, 35));
+  out.push(m[1] + ':' + m[2]);
+  return out;
+}
+const tgMask = t => t.length > 14 ? t.slice(0, t.indexOf(':') + 4) + '…' + t.slice(-4) : t;
+/* سؤال تليجرام مباشرة (getMe). لو الجهاز مقدرش يوصل لتليجرام بيرجع null ونكمل على الشيت عادي */
+async function tgCheck(t) {
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
+  try { const r = await fetch('https://api.telegram.org/bot' + t + '/getMe', {signal: ctl.signal}); const j = await r.json(); return j && typeof j.ok === 'boolean' ? j : null; }
+  catch (e) { return null; } finally { clearTimeout(tm); }
+}
 async function tgCall(action, extra) {
   const c = mkCreds(); if (!c) return null;
   try { return await callSheet(Object.assign({action}, extra || {}), c.u, c.k, 30000); } catch (e) { return null; }
@@ -4385,7 +4402,7 @@ function renderMktSettings() {
       <details class="fld" id="tgHow"><summary style="font-weight:700;color:var(--gold-d);cursor:pointer">إزاي أعمل البوت؟ (من الموبايل، 3 دقايق)</summary>
         <ol class="steps"><li>افتح تليجرام ودوّر على <b>@BotFather</b> وافتحه.</li><li>ابعتله <b>/newbot</b>، واكتب أي اسم (مثلاً: تنبيهات السوق)، وبعدين اسم بيخلص بـ <b>bot</b> (مثلاً: flashon_souq_bot).</li>
         <li>هيبعتلك رسالة فيها <b>التوكن</b> (رقم وبعده : وحروف). انسخه والصقه هنا تحت، واضغط <b>حفظ التوكن</b>.</li><li>افتح البوت بتاعك (اللينك اللي في رسالة BotFather) واضغط <b>Start</b> أو ابعتله <b>ابدأ</b>.</li><li>ارجع هنا واضغط <b>جرّب التنبيه</b>.</li></ol></details>
-      <div class="krow" style="grid-template-columns:1fr auto"><input class="inp" id="tgTok" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:14px" placeholder="الصق توكن البوت هنا"><button class="btn gold" id="tgSave" type="button" style="width:auto;padding:0 14px">حفظ التوكن</button></div>
+      <div class="krow" style="grid-template-columns:1fr auto"><textarea class="inp" id="tgTok" rows="2" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:14px;min-height:54px;resize:none" placeholder="الصق توكن البوت هنا"></textarea><button class="btn gold" id="tgSave" type="button" style="width:auto;padding:0 14px">حفظ التوكن</button></div>
       <button class="btn line sm" id="tgTest" type="button" style="margin-top:8px">جرّب التنبيه</button>
       <p class="hint">التوكن بيتحفظ جوه شيت السوق بس (مش في البرنامج ولا على الجهاز). شريكك ملوش دعوة بتليجرام.</p>
       <details class="fld" style="margin-top:8px"><summary style="font-weight:700;color:#777;cursor:pointer">لينك شيت السوق</summary>
@@ -4424,13 +4441,16 @@ function renderMktSettings() {
   tgCall('tgstate').then(showTg);
   $('#tgSave').onclick = async () => {
     const raw = $('#tgTok').value; if (!raw.trim()) return toast('الصق التوكن الأول');
-    /* بنطلّع التوكن من أي حاجة اتلصقت: بنشيل علامات الاتجاه الخفية (بتيجي مع النسخ في صفحة عربي)، والأرقام العربي، والنقطتين العريضة، وأي كلام زيادة جنبه */
-    const t = ((raw.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[：﹕꞉]/g, ':').replace(/[​-‏‪-‮⁦-⁩﻿]/g, '').match(/\d{5,}:[A-Za-z0-9_-]{20,}/)) || [''])[0];
-    if (!t) { $('#tgSt').innerHTML = '<b style="color:var(--red)">❌ اللي لصقته مش شكل توكن. المفروض رقم وبعده : وبعده حروف وأرقام (من رسالة BotFather).</b>'; return; }
+    const cands = tgCands(raw);
+    if (!cands.length) { $('#tgSt').innerHTML = '<b style="color:var(--red)">❌ اللي لصقته مش شكل توكن. المفروض رقم وبعده : وبعده حروف وأرقام (من رسالة BotFather).</b>'; return; }
     $('#tgSave').disabled = true; $('#tgSt').textContent = '⏳ بجرب التوكن…';
+    /* بنسأل تليجرام نفسه من الجهاز الأول: أنهي شكل من التوكن هو الصح (لو اتلزق فيه كلام من الرسالة) */
+    let t = cands[0], seen = null;
+    for (const c of cands) { const r = await tgCheck(c); if (r && r.ok) { t = c; seen = r; break; } if (r && seen === null) seen = r; }
+    if (seen && !seen.ok) { $('#tgSave').disabled = false; $('#tgSt').innerHTML = `<b style="color:var(--red)">❌ تليجرام بيقول إن التوكن ده غلط أو اتلغى (${esc(tgMask(cands[0]))}).</b><br><small>افتح BotFather ← ابعتله <b>/mybots</b> ← اختار البوت ← <b>API Token</b>، واضغط على التوكن نفسه (هيتنسخ لوحده) والصقه هنا.</small>`; return; }
     const j = await tgCall('tg', {token: t});
     if (!$('#tgSave')) return; $('#tgSave').disabled = false;
-    if (!j || !j.ok) { $('#tgSt').innerHTML = `<b style="color:var(--red)">❌ ${!j ? 'معرفتش أوصل لشيت السوق.' : j.error === 'token' ? 'التوكن ده مش شغال. انسخه تاني من رسالة BotFather كله.' : 'تليجرام مردش. جرّب تاني.'}</b>`; return; }
+    if (!j || !j.ok) { $('#tgSt').innerHTML = `<b style="color:var(--red)">❌ ${!j ? 'معرفتش أوصل لشيت السوق.' : j.error === 'token' && seen && seen.ok ? 'التوكن سليم (تليجرام عرفه)، بس شيت السوق مش قادر يكلم تليجرام. افتح Apps Script بتاع شيت السوق ← اختار الدالة tgState_ واضغط تشغيل (Run) ووافق على الإذن، وجرّب تاني.' : j.error === 'token' ? 'التوكن ده مش شغال. افتح BotFather ← /mybots ← البوت ← API Token، واضغط على التوكن والصقه هنا.' : 'تليجرام مردش. جرّب تاني.'}</b>`; return; }
     $('#tgTok').value = ''; showTg(Object.assign({token: true}, j)); toast('اتحفظ التوكن ✔');
   };
   $('#tgTest').onclick = async () => {

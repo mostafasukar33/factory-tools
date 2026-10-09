@@ -60,6 +60,11 @@ async function newDevice(browser, base, sheets) {
     if (!g.ctx.doPost) return r.fulfill({status: 200, contentType: 'text/html', body: '<html>no script</html>'});
     r.fulfill({status: 200, contentType: 'application/json', body: q.method() === 'POST' ? g.post(q.postData()) : g.get()});
   });
+  /* تليجرام من الجهاز نفسه (getMe): نفس الردود بتاعة الشيت التجريبي */
+  await ctx.route('https://api.telegram.org/**', r => {
+    const tok = (r.request().url().match(/bot([^/]+)\//) || [])[1] || '', v = sheets.mkt.tg.valid;
+    r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: JSON.stringify(v && !v.includes(decodeURIComponent(tok)) ? {ok: false, error_code: 401, description: 'Unauthorized'} : {ok: true, result: {username: 'test_souq_bot'}})});
+  });
   ctx.page = async url => { const p = await ctx.newPage(); p.on('pageerror', e => (ctx.errs.push(e.message), process.env.DBG && console.log('PAGEERR', e.message))); await p.goto(base + url); return p; };
   return ctx;
 }
@@ -353,10 +358,16 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
 
     await A.fill('#tgTok', 'كلام مش توكن'); await A.click('#tgSave'); await A.waitForTimeout(300);
     eq('تليجرام: لو اللي اتلصق مش شكل توكن بيقول كده ومبيتحفظش', [sheets.mkt.props.TG_TOKEN || '', (await A.textContent('#tgSt')).includes('مش شكل توكن')], ['', true]);
-    await A.fill('#tgTok', '\u200F' + 'التوكن بتاعك:\n١٢٣٤٥٦' + ':ABCDEFGHIJKLMNOPQRSTUVWX\u200F'); await A.click('#tgSave'); await A.waitForTimeout(800);
+    const TOK = '123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi';   // آخره 35 حرف زي تليجرام
+    sheets.mkt.tg.valid = [TOK];
+    await A.fill('#tgTok', '123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghX'); await A.click('#tgSave'); await A.waitForTimeout(600);
+    eq('تليجرام: توكن غلط فعلاً تليجرام بيرفضه ومبيتحفظش، والرسالة بتقول يجيبه منين', [sheets.mkt.props.TG_TOKEN || '', (await A.textContent('#tgSt')).includes('/mybots')], ['', true]);
+    /* رسالة BotFather كلها اتلصقت في الخانة من غير سطور: "Keep" بتلزق في آخر التوكن */
+    await A.evaluate(t => { $('#tgTok').value = '\u200F' + 'Use this token to access the HTTP API:' + t.replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[d]).replace(/[A-Za-z:]/g, x => x) + 'Keep your token secure and store it safely'; }, TOK.split(':')[0] + ':' + TOK.split(':')[1]);
+    await A.click('#tgSave'); await A.waitForTimeout(800);
     sheets.mkt.tg.updates = [{update_id: 1, message: {chat: {id: 777}, text: 'ابدأ'}}];
     await A.click('#tgTest'); await A.waitForTimeout(800);
-    eq('تليجرام: التوكن في الشيت بس، والـ chat id اتجاب لوحده من "ابدأ"', [sheets.mkt.props.TG_TOKEN, sheets.mkt.props.TG_CHAT, await A.evaluate(() => JSON.stringify(db).includes('ABCDEFGHIJ')), (await A.textContent('#tgSt')).includes('شغالة')], ['123456:ABCDEFGHIJKLMNOPQRSTUVWX', '777', false, true]);
+    eq('تليجرام: التوكن في الشيت بس، والـ chat id اتجاب لوحده من "ابدأ"', [sheets.mkt.props.TG_TOKEN, sheets.mkt.props.TG_CHAT, await A.evaluate(() => JSON.stringify(db).includes('ABCDEFGHIJ')), (await A.textContent('#tgSt')).includes('شغالة')], [TOK, '777', false, true]);
     const tgTexts = () => sheets.mkt.tg.calls.filter(c => c.url.endsWith('/sendMessage')).map(c => c.body.text);
 
     const mlink = await A.evaluate(() => mktLink());

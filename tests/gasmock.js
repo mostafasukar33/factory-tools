@@ -40,7 +40,8 @@ function makeGas(opts = {}) {
     UrlFetchApp: {fetch: (url, o) => {
       tg.calls.push({url, body: o && o.payload ? JSON.parse(o.payload) : null});
       const m = String(url).split('/').pop();
-      const body = !/bot\d{5,}:[\w-]{20,}\//.test(url) ? {ok: false} : m === 'getMe' ? {ok: true, result: {username: 'test_souq_bot'}} : m === 'getUpdates' ? {ok: true, result: tg.updates} : {ok: true, result: {}};
+      const tok = (String(url).match(/bot([^/]+)\//) || [])[1] || '';
+      const body = !/^\d{5,}:[\w-]{20,}$/.test(tok) || (tg.valid && !tg.valid.includes(tok)) ? {ok: false, error_code: 401, description: 'Unauthorized'} : m === 'getMe' ? {ok: true, result: {username: 'test_souq_bot'}} : m === 'getUpdates' ? {ok: true, result: tg.updates} : {ok: true, result: {}};
       return {getContentText: () => JSON.stringify(body), getResponseCode: () => 200};
     }},
     console, JSON, Date, Math

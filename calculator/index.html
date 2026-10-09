@@ -96,7 +96,7 @@ button:focus-visible{outline:3px solid var(--eq-top);outline-offset:2px}
 .k.fn{background:linear-gradient(180deg,var(--fn-top),var(--fn-bot));color:var(--fn-ink);font-size:clamp(1.25rem,3vh,1.6rem);font-weight:600;text-shadow:0 -1px 0 rgba(0,0,0,.5)}
 .k.fn.ar{font-family:var(--ar);font-size:clamp(1rem,2.4vh,1.2rem)}
 .k.mem{background:linear-gradient(180deg,#55585d,#36383c);color:var(--fn-ink);font-size:clamp(1.3rem,3.1vh,1.7rem);font-weight:600;text-shadow:0 -1px 0 rgba(0,0,0,.5)}
-.memtag{font-family:var(--ui);font-size:.8rem;font-weight:700;color:var(--lcd-ink);direction:ltr;white-space:nowrap;padding-bottom:.6em}
+.memtag{cursor:pointer;-webkit-tap-highlight-color:transparent;font-family:var(--ui);font-size:.8rem;font-weight:700;color:var(--lcd-ink);direction:ltr;white-space:nowrap;padding-bottom:.6em}
 .k.zeros{font-size:clamp(1.9rem,5.2vh,2.9rem);letter-spacing:-.02em}
 .k svg{width:44%;height:auto;display:block;margin:auto}
 
@@ -304,7 +304,7 @@ function currentResult(){const pv=JSON.parse(JSON.stringify(S.lines));const ev=S
 function memSum(){return mem.reduce((a,m)=>r(a+m.sign*m.total),0)}
 function memKey(k){
   if(k==='MC'){ if(!mem.length)return; mem=[];store.set('tape_mem',mem);flash('الذاكرة اتمسحت');render();return;}
-  if(k==='MR'){openMem();return;}
+  if(k==='MR'){useMem();return;}
   // M+ / M-
   if(S.sample)clearSample();
   if(S.editIdx>=0){press('=');}
@@ -337,6 +337,11 @@ function renderMem(){
   $('memTotal').textContent=fmt(tot);$('memTotal').classList.toggle('isneg',tot<0);
   $('memCount').textContent=mem.length?mem.length+(mem.length===1?' حسبة':mem.length===2?' حسبتين':' حسابات'):'';
   $('memUse').disabled=!mem.length;$('memClear').disabled=!mem.length;}
+function useMem(){
+  if(!mem.length){flash('الذاكرة فاضية');return;}
+  if(S.sample)clearSample();
+  if(S.closed)S={lines:[],pending:'',entry:'',closed:false,sample:false,editIdx:-1};
+  S.entry=String(memSum());sel=-1;render();}
 function openMem(){memOpen=-1;renderMem();$('memSheet').hidden=false;}
 function press(k){
   if(k==='MC'||k==='M+'||k==='M-'||k==='MR'){if(S.sample&&k==='MR')clearSample();return memKey(k);}
@@ -424,6 +429,12 @@ $('reopen').onclick=()=>{if(!S.sample&&S.lines.length&&!S.closed)archiveCurrent(
   const a=archive[viewing];S={lines:JSON.parse(JSON.stringify(a.lines)),pending:'+',entry:'',closed:false,sample:false,editIdx:-1,archId:a.id};
   sel=-1;$('sheet').hidden=true;render();};
 
+$('memTag').onclick=openMem;
+(function(){const b=document.querySelector('[data-k="MR"]');let t=null,long=false;
+  b.addEventListener('pointerdown',()=>{long=false;clearTimeout(t);t=setTimeout(()=>{long=true;if(navigator.vibrate)try{navigator.vibrate(25)}catch(_){}openMem();},550)});
+  ['pointerup','pointercancel','pointerleave'].forEach(n=>b.addEventListener(n,()=>clearTimeout(t)));
+  b.addEventListener('click',e=>{if(long){e.stopImmediatePropagation();e.preventDefault();long=false}},true);
+  b.addEventListener('contextmenu',e=>e.preventDefault());})();
 $('memClose').onclick=()=>{$('memSheet').hidden=true};
 $('memList').addEventListener('click',e=>{
   const d=e.target.closest('[data-mdel]');if(d){mem.splice(+d.dataset.mdel,1);store.set('tape_mem',mem);memOpen=-1;renderMem();render();return;}

@@ -11,7 +11,7 @@ const {makeGas} = require('./gasmock');
 let pw; try { pw = require('playwright'); } catch (e) { pw = require('/opt/node-tools/node_modules/playwright'); }
 const ROOT = path.join(__dirname, '..');
 const CHROME = process.env.PW_CHROMIUM || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find(f => fs.existsSync(f));
-const ACC_URL = 'https://script.google.com/macros/s/TEST-ACC/exec', CASH_URL = 'https://script.google.com/macros/s/TEST-CASH/exec';
+const ACC_URL = 'https://script.google.com/macros/s/TEST-ACC/exec', CASH_URL = 'https://script.google.com/macros/s/TEST-CASH/exec', MKT_URL = 'https://script.google.com/macros/s/TEST-MKT/exec';
 const PASS = '246810', KEY = 'Test-Key-2026';
 
 let fails = 0, oks = 0;
@@ -56,7 +56,7 @@ async function newDevice(browser, base, sheets) {
   ctx.errs = [];
   await ctx.route('https://script.google.com/**', r => {
     if (ctx.netDown) return r.abort('failed');
-    const q = r.request(), g = q.url().includes('TEST-CASH') ? sheets.cash : sheets.acc;
+    const q = r.request(), g = q.url().includes('TEST-CASH') ? sheets.cash : q.url().includes('TEST-MKT') ? sheets.mkt : sheets.acc;
     if (!g.ctx.doPost) return r.fulfill({status: 200, contentType: 'text/html', body: '<html>no script</html>'});
     r.fulfill({status: 200, contentType: 'application/json', body: q.method() === 'POST' ? g.post(q.postData()) : g.get()});
   });
@@ -76,7 +76,8 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
 (async () => {
   const srv = await serve(), base = `http://localhost:${srv.address().port}/`;
   const browser = await pw.chromium.launch(CHROME ? {executablePath: CHROME} : {});
-  const sheets = {acc: makeGas(), cash: makeGas()};
+  const sheets = {acc: makeGas(), cash: makeGas(), mkt: makeGas()};
+  let DM = null;
   const D1 = await newDevice(browser, base, sheets);
   const bad = importFile(); bad.parties[0].expected = 1;
   /* خانة ملف النقل اتشالت من الإعدادات، فبنفتح شاشة النقل مباشرة */
@@ -335,9 +336,111 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     eq('أول ما تدوس على اليوم بيتسجل وبيتقفل الكليندر', [await A.inputValue('#txD'), await A.$('.dpo')], [T, null]);
     await A.click('#txX');
 
+
+    console.log('\n١٦) حركة السوق: تطبيق الشريك ووارد السوق');
+    const C1 = 'عميل تجربة واحد', bal0 = await bal(A, C1), pid1 = await A.evaluate(n => liveParties().find(x => x.name === n).id, C1);
+    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll());
+    await A.click('#smHelp'); await A.click('#mhCopy'); const mkCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.mkt.load(mkCode); await A.click('#mhX');
+    await A.fill('#smUrl', MKT_URL); await A.click('#smGo'); await A.waitForTimeout(2500);
+    const mkc = await A.evaluate(() => getSet('mktSheet', null));
+    eq('شيت السوق اتربط ومقفول على مفتاح اتعمل لوحده ومش في الكود', [!!(mkc && mkc.k), mkCode.includes(mkc.k) || /TEST-|script\.google\.com\/macros/.test(mkCode), JSON.parse(sheets.mkt.post(JSON.stringify({key: 'Other-Key-123', action: 'ping'}))).error, JSON.parse(sheets.mkt.get()).ok], [true, false, 'key', false]);
+    eq('كود شيت الحسابات الأساسي متلمسش (مفيش تليجرام ولا إذن زيادة)', await A.evaluate(() => /UrlFetchApp|telegram|DriveApp|ScriptApp/.test(scriptFor())), false);
+    eq('خزنة السوق اتعملت مرة واحدة', await A.evaluate(() => db.vaults.filter(v => v.name === 'خزنة السوق' && !v.del).map(v => v.id)), ['v_mkt']);
+    const mkRows = kind => sheets.mkt.sheets['الحركات'].rows.slice(1).filter(r => r[1] === kind);
+    eq('الشيت فيه عملاء السوق بس بأرصدتهم (من غير مواقع ولا موردين)', mkRows('cust').map(r => JSON.parse(r[10]).name).sort(), ['عميل ترتيب تجربة', C1].sort());
+
+    await A.fill('#tgTok', '123456:ABCDEFGHIJKLMNOPQRSTUVWX'); await A.click('#tgSave'); await A.waitForTimeout(800);
+    sheets.mkt.tg.updates = [{update_id: 1, message: {chat: {id: 777}, text: 'ابدأ'}}];
+    await A.click('#tgTest'); await A.waitForTimeout(800);
+    eq('تليجرام: التوكن في الشيت بس، والـ chat id اتجاب لوحده من "ابدأ"', [sheets.mkt.props.TG_TOKEN, sheets.mkt.props.TG_CHAT, await A.evaluate(() => JSON.stringify(db).includes('ABCDEFGHIJ')), (await A.textContent('#tgSt')).includes('شغالة')], ['123456:ABCDEFGHIJKLMNOPQRSTUVWX', '777', false, true]);
+    const tgTexts = () => sheets.mkt.tg.calls.filter(c => c.url.endsWith('/sendMessage')).map(c => c.body.text);
+
+    const mlink = await A.evaluate(() => mktLink());
+    DM = await newDevice(browser, base, sheets);
+    const M = await DM.page('market.html' + mlink.slice(mlink.indexOf('#'))); await M.waitForTimeout(1500);
+    eq('تطبيق الشريك اتربط بالرابط بس، والرابط اتشال من العنوان', [M.url().includes('marketjoin'), await M.evaluate(() => !!S.u && !!S.k)], [false, true]);
+    eq('العملاء: عملاء السوق بس بأرصدتهم', await M.evaluate(() => [...customers().values()].map(c => [c.name, c.bal]).sort()), (await A.evaluate(() => liveParties().filter(p => p.sec === 'mkt').map(p => [p.name, balance(p.id)]))).sort());
+    eq('الشريط تحت: معاك النهارده كاش 0', await M.textContent('#cashT'), '0');
+    await M.click(`#lists .row[data-c="${pid1}"]`);
+    eq('شاشة الدفعة: خانة المبلغ مفتوحة على لوحة الأرقام', await M.evaluate(() => [document.activeElement.id, $('#amt').inputMode]), ['amt', 'numeric']);
+    await M.fill('#amt', '5000'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(1500);
+    eq('اتسجلت: الكلام بالعربي ووصلت لمصطفى', [(await M.innerText('.sent')).replace(/\s+/g, ' ').trim(), await M.textContent('#top')], [`${C1} دفع 5,000 جنيه كاش ✓ وصلت لمصطفى`, 'حركة السوقفلاش أونمتصل']);
+    eq('تليجرام: رسالة لمصطفى مع الحركة', tgTexts().pop(), `💵 ${C1} دفع 5,000 كاش`);
+    await M.click('#sAgain'); await M.fill('#amt', '3000'); await M.click('.big[data-m=insta]'); await M.waitForTimeout(400);
+    await M.click('#sAgain'); await M.fill('#amt', '3000'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(300);
+    eq('حماية من التكرار: نفس المبلغ في دقيقتين بيسأل', (await M.textContent('#modal')).includes('دي دفعة تانية؟'), true);
+    await M.click('#aN'); await M.waitForTimeout(200);
+    eq('لما قال لأ متسجلتش', await M.evaluate(() => liveOps().length), 2);
+    eq('الرصيد عند الشريك = رصيد الحسابات − اللي اتسجل ولسه متنقلش', await M.evaluate(id => customers().get(id).bal, pid1), bal0 - 800000);
+    eq('اتسجل للعميل ده النهارده بحالته', (await M.textContent('#tdy')).replace(/\s+/g, ' ').includes('إنستا لمصطفى3,000⏳ عند مصطفى'), true);
+    await M.click('#bBack'); await M.waitForTimeout(150);
+    eq('آخر زيارات فوق', await M.evaluate(() => $('#lists .lbl').textContent + '|' + $('#lists .list .row b').textContent), 'آخر زيارات|' + C1);
+
+    DM.netDown = true;
+    await M.click('#bNew'); await M.fill('#ncN', 'عميل سوق جديد'); await M.click('#ncOk'); await M.fill('#amt', '1500'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(1500);
+    eq('من غير نت: اتحفظت على الموبايل ومستنية', [(await M.textContent('#sSt')).includes('هتتبعت أول ما النت يرجع'), (await M.textContent('#top')).includes('1 مستنية تتبعت')], [true, true]);
+    DM.netDown = false; await M.evaluate(() => sync()); await M.waitForTimeout(1200);
+    eq('النت رجع: اتبعتت لوحدها', [await M.evaluate(() => pending().length), (await M.textContent('#sSt')).includes('وصلت لمصطفى')], [0, true]);
+    eq('مفيش اعتماد على navigator.onLine في تطبيق الشريك', /navigator\.onLine/.test(fs.readFileSync(path.join(ROOT, 'market.html'), 'utf8')), false);
+
+    await A.evaluate(() => mkSync()); await A.waitForTimeout(800);
+    eq('تنبيه فوري في الحسابات (شريط فوق)', await A.evaluate(() => $('#mkBar').classList.contains('on')), true);
+    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    eq('عداد الوارد على الشاشة الرئيسية', (await A.textContent('#mkRem')).replace(/\s+/g, ' ').includes('3 عمليات متنقلتش'), true);
+    eq('مفيش حاجة دخلت الحسابات لوحدها', [await bal(A, C1), await vbal(A, 'v_mkt'), await A.evaluate(() => db.entries.filter(e => e.id.startsWith('e_mk_')).length)], [bal0, 0, 0]);
+    await A.click('#mkGo'); await A.waitForTimeout(200);
+    const card = `#p-mkt [data-mv="${pid1}"]`;
+    eq('الوارد متجمع بالعميل: 5,000 كاش + 3,000 إنستا = 8,000، والنقل مقفول لحد "وصل"', [(await A.textContent(`#p-mkt .ic:has([data-mv="${pid1}"])`)).replace(/\s+/g, ' ').includes('5,000 كاش + 3,000 إنستا = 8,000'), await A.isDisabled(card)], [true, true]);
+    await A.click('#p-mkt [data-ok]'); await A.click('#arOk'); await A.waitForTimeout(200);
+    eq('بعد "وصل" زرار النقل اشتغل', await A.isDisabled(card), false);
+    await A.click(card); await A.waitForTimeout(200);
+    eq('شاشة التأكيد: الكاش ← خزنة السوق والتاريخ لوحده', await A.evaluate(() => [$$('#modal .mvr [data-f=v]').map(x => x.value)[0], $$('#modal .mvr [data-f=d]')[0].value, $('#modal').textContent.includes('دفعات من')]), ['v_mkt', today, true]);
+    await A.evaluate(() => { const s = $$('#modal .mvr [data-f=v]')[1]; s.value = ''; });   // التحويل: من غير خزنة (في حساب العميل بس)
+    await A.click('#mvOk'); await A.waitForTimeout(300);
+    eq('النقل: العميل نزل 8,000، وخزنة السوق دخلها الكاش بس', [await bal(A, C1), await vbal(A, 'v_mkt')], [bal0 - 800000, 500000]);
+    const twice = await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(x => x.m === 'cash' && x.amt === 500000); const r = mkMove(o, {pid: o.cid, amt: o.amt, date: todayISO(), vault: 'v_mkt'}); return [r, db.entries.filter(e => e.id.startsWith('e_mk_') && !e.del).length]; });
+    eq('مستحيل تتنقل مرتين', twice, [false, 2]);
+    await A.evaluate(() => mkSync()); await M.evaluate(() => sync()); await M.waitForTimeout(800);
+    eq('الشريك شاف ✓ اتنقلت، والرصيد عنده اتظبط', await M.evaluate(id => [liveOps().filter(o => opState(o) === 'done').length, customers().get(id).bal], pid1), [2, bal0 - 800000]);
+    eq('بعد النقل مفيش "امسحها" عند الشريك', await M.evaluate(() => { const o = liveOps().find(x => opState(x) === 'done'); nav('ok/' + o.id); return !!$('#sDel'); }), false);
+
+    await A.click('#p-mkt [data-mv^="n:"]'); await A.waitForTimeout(200); await A.click('#lkNew'); await A.waitForTimeout(150); await A.click('#mvOk'); await A.waitForTimeout(300);
+    eq('عميل جديد: اتفتحله حساب في عملاء السوق واتنقلت الدفعة', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل سوق جديد'); return p ? [p.sec, balance(p.id)] : null; }), ['mkt', -150000]);
+    await A.evaluate(() => mkSync()); await M.evaluate(() => sync()); await M.waitForTimeout(800);
+    eq('عند الشريك: العميل الجديد بقى تحت الحساب الحقيقي', await M.evaluate(() => [...customers().values()].filter(c => c.name === 'عميل سوق جديد').map(c => [!!c.nw, c.id.startsWith('n_')])), [[false, false]]);
+
+    await A.evaluate(() => cancelEntry(E.get('e_mk_' + Object.values(db.mkt.ops).find(x => x.m === 'cash' && x.amt === 500000).id))); await A.waitForTimeout(200);
+    await A.evaluate(() => mkSync()); await A.waitForTimeout(400);
+    eq('مسح الحركة المنقولة من الحسابات: العملية رجعت "متنقلتش"', [await A.evaluate(() => mkPending().length), await bal(A, C1)], [1, bal0 - 300000]);
+    await M.evaluate(() => sync()); await M.waitForTimeout(500);
+    eq('والشريك شافها ⏳ عند مصطفى تاني', await M.evaluate(() => opState(liveOps().find(x => x.m === 'cash' && x.amt === 500000))), 'wait');
+
+    await A.click('nav button[data-go=home]'); await A.click('#mkGo'); await A.waitForTimeout(200);
+    await A.click(`#p-mkt [data-bk="${pid1}"]`); await A.fill('#rtN', 'المبلغ 4,500 مش 5,000'); await A.click('#rtOk'); await A.waitForTimeout(300);
+    await A.evaluate(() => mkSync()); await M.evaluate(() => sync()); await M.waitForTimeout(600);
+    await M.evaluate(() => nav('')); await M.waitForTimeout(150);
+    eq('رجّعها: الشريك شاف 🔴 والملاحظة', [await M.evaluate(() => backs().length), (await M.textContent('#bk')).includes('رجّعلك')], [1, true]);
+    await M.click('#bk'); await M.waitForTimeout(200);
+    eq('شاشة التصليح فيها ملاحظة مصطفى', (await M.textContent('#main')).includes('المبلغ 4,500 مش 5,000'), true);
+    await M.fill('#amt', '4500'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(1200);
+    eq('تليجرام: رسالة التعديل', tgTexts().pop(), `✏️ اتعدلت: ${C1} دفع 5,000 كاش\nبقت: ${C1} دفع 4,500 كاش`);
+    await A.evaluate(() => mkSync()); await A.waitForTimeout(300);
+    eq('بعد التصليح رجعت لمصطفى تاني وعليها "اتصلحت"', [await A.evaluate(() => mkPending().length), (await A.textContent('#p-mkt')).includes('اتصلحت')], [1, true]);
+
+    await M.evaluate(() => nav('')); await M.click(`#lists .row[data-c="${pid1}"]`); await M.fill('#amt', '200'); await M.click('.big[data-m=voda]'); await M.waitForTimeout(800);
+    await M.click('#sDel'); await M.click('#aY'); await M.waitForTimeout(1000);
+    eq('تليجرام: رسالة المسح', tgTexts().pop(), `🗑 اتمسحت: ${C1} دفع 200 فودافون كاش`);
+    await A.evaluate(() => mkSync()); await A.waitForTimeout(300);
+    eq('اللي اتمسح مش في الوارد', await A.evaluate(() => mkPending().map(o => o.amt)), [450000]);
+
+    await B.evaluate(() => syncNow()); await B.waitForTimeout(1500); await B.evaluate(() => mkSync()); await B.waitForTimeout(800);
+    await A.evaluate(() => syncNow()); await A.waitForTimeout(1500);
+    eq('جهاز حسابات تاني: خد ربط السوق لوحده ونفس الوارد، ومفيش خزنة سوق مكررة', [await B.evaluate(() => mkPending().map(o => o.amt)), await B.evaluate(() => db.vaults.filter(v => v.name === 'خزنة السوق').length), await A.evaluate(() => db.vaults.filter(v => v.name === 'خزنة السوق').length)], [[450000], 1, 1]);
+    eq('الشيت: كل عملية مرة واحدة', new Set(mkRows('op').map(r => r[0])).size, mkRows('op').length);
+
     console.log('\n١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
-    eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2.errs), []);
+    eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2.errs, DM ? DM.errs : []), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();
   console.log(`\n${fails ? '✖' : '✔'} ${oks} نجح، ${fails} فشل\n`);

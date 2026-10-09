@@ -714,6 +714,42 @@ html[data-theme=dark] .dnav button{background:#26251f;border-color:#4a463a;color
 html[data-theme=dark] .dnav span{color:#F3EFE3}
 @media (max-width:640px){#p-cash>.card .dnav{grid-column:1/-1}}
 @media (min-width:1000px){#p-cash>.card{grid-template-columns:auto auto 1fr 1fr}}
+/* ============ وارد السوق ============ */
+#mkBar{position:fixed;top:calc(var(--hh,64px) + 6px);inset-inline:10px;margin:auto;max-width:560px;z-index:125;background:#111;color:#fff;border:2px solid var(--gold);border-radius:12px;padding:10px 14px;font-weight:700;font-size:15px;box-shadow:0 6px 22px #0006;cursor:pointer;display:none;animation:foUp .2s ease-out}
+#mkBar.on{display:block}#mkBar b{color:var(--gold)}#mkBar u{color:var(--gold);margin-inline-start:6px}
+.sync.mkrem{cursor:pointer;background:var(--gold-l);border-style:solid;color:var(--ink)}.sync.mkrem b{font-size:16px}.sync.mkrem.ok{color:var(--green)}
+.mkdot{font-size:13px;font-weight:700;color:var(--green);display:flex;align-items:center;gap:5px}.mkdot i{width:9px;height:9px;border-radius:50%;background:var(--green)}
+.mkdot.w{color:#B7791F}.mkdot.w i{background:#E9B930}
+.mkh{background:var(--gold-l);border:1.5px solid var(--gold);border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.mkh b{font-size:17px;font-weight:800}
+.mkh .n{background:#111;color:var(--gold);border-radius:20px;min-width:34px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;padding:0 10px}
+.ic{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow)}
+.ic.dn{opacity:.6}
+.ich{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #EFE9DA}
+.ich b{font-size:17px;font-weight:800}.ich .money{font-size:19px}
+.nwt{display:inline-block;font-size:12px;font-weight:800;background:#111;color:var(--gold);border-radius:6px;padding:0 7px;vertical-align:middle}
+.il{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 14px;border-bottom:1px dashed #EFE9DA;font-size:15px;font-weight:700;cursor:pointer}
+.il .m{display:flex;align-items:center;gap:8px}.il .money{font-size:17px}
+.il.dn{opacity:.45}
+.il .fx{font-size:11.5px;font-weight:800;color:var(--gold-d);background:var(--gold-l);border-radius:5px;padding:0 5px}
+.ilnote{font-size:13px;color:var(--red);font-weight:700;padding:2px 14px 6px;border-bottom:1px dashed #EFE9DA}
+.ilsum{font-size:13.5px;color:#666;font-weight:700;padding:6px 14px;text-align:left;direction:rtl}.ilsum b{direction:ltr;unicode-bidi:isolate;color:var(--ink)}
+.mtag{font-size:12px;font-weight:800;border-radius:6px;padding:1px 8px}
+.mtag.cash{background:var(--green-l);color:var(--green)}.mtag.insta{background:#EEE8FA;color:#5B3FA8}.mtag.voda{background:var(--red-l);color:#C8102E}
+.il .tm{font-size:12px;color:#999;font-weight:600}
+.vbtn{border:1.5px solid #B7791F;color:#B7791F;background:#fff;border-radius:8px;font-weight:800;font-size:13px;height:32px;padding:0 10px;cursor:pointer;font-family:inherit}
+.vok{color:var(--green);font-size:13px;font-weight:800}.vbk{color:var(--red);font-size:13px;font-weight:800}
+.ifoot{display:flex;gap:8px;padding:8px 14px 10px}.ifoot .btn{flex:1;min-height:42px}
+.ifoot .btn.off,.ifoot .btn:disabled{background:#CFCFCF;color:#fff;cursor:not-allowed}
+.mkbal .bl b{font-size:18px}
+.mvr{border:1px solid var(--line);border-radius:12px;padding:8px 10px 0;margin-bottom:8px;background:#FFFEFA}
+.mvh{margin-bottom:6px}.mvh small{color:#777;font-weight:700;margin-inline-start:6px}
+html[data-theme=dark] :is(.ic,.mvr,.vbtn){background:#1f1e19;border-color:#37342b;color:#ECE8DC}
+html[data-theme=dark] :is(.ich,.il,.ilnote){border-color:#2d2b24}
+html[data-theme=dark] .mkh .n,html[data-theme=dark] .nwt{background:#0d0c0a}
+html[data-theme=dark] .ilsum{color:#B9B3A1}html[data-theme=dark] .ilsum b{color:#F3EFE3}
+html[data-theme=dark] .mtag.insta{background:#2a2240;color:#B9A6F0}html[data-theme=dark] .mtag.voda{color:#FF8A80}
+html[data-theme=dark] .ifoot .btn.off,html[data-theme=dark] .ifoot .btn:disabled{background:#3a3833;color:#8d8776}
 </style>
 </head>
 <body>
@@ -737,7 +773,8 @@ html[data-theme=dark] .dnav span{color:#F3EFE3}
 <section class="page" id="p-home">
   <div id="hAlerts"><div class="sync" id="syncBox"></div>
   <div id="chk"></div>
-  <div id="bkRem"></div></div>
+  <div id="bkRem"></div>
+  <div id="mkRem"></div></div>
   <div class="tots" id="hTots"></div>
   <div class="srow">
     <input class="inp" id="hSearch" type="search" placeholder="🔍 دوّر بالاسم أو التليفون" autocomplete="off">
@@ -761,6 +798,9 @@ html[data-theme=dark] .dnav span{color:#F3EFE3}
 <!-- ============== الشيكات ============== -->
 <section class="page" id="p-chk"></section>
 
+<!-- ============== وارد السوق ============== -->
+<section class="page" id="p-mkt"></section>
+
 <!-- ============== التقارير ============== -->
 <section class="page" id="p-rep"></section>
 
@@ -779,6 +819,7 @@ html[data-theme=dark] .dnav span{color:#F3EFE3}
     <div id="sSheet"></div>
   </div>
   <div class="card" id="sCash"></div>
+  <div class="card" id="sMkt"></div>
   <div class="card">
     <h2>بيانات الشركة في الـ PDF</h2>
     <div class="fld"><label>رقم التليفون</label><input class="inp" id="sPhone" inputmode="tel" style="direction:ltr;text-align:right" placeholder="01xxxxxxxxx"></div>
@@ -831,6 +872,7 @@ html[data-theme=dark] .dnav span{color:#F3EFE3}
   <button data-go="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>الإعدادات</button>
 </nav>
 <div id="toast"></div>
+<div id="mkBar"></div>
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
 <div id="render"></div>
 
@@ -1186,6 +1228,7 @@ function unlocked() {
   route(); flushSave();
   if (pendingJoin) applyJoin(); else setTimeout(() => syncNow(), 600);
   if (pendingCashJoin) setTimeout(applyCashJoin, 1500); else setTimeout(() => cashSync(true), 2500);
+  setTimeout(() => mkSync(), 1800);
 }
 ['pointerdown', 'keydown', 'scroll'].forEach(ev => addEventListener(ev, () => lastAct = Date.now(), {passive: true, capture: true}));
 setInterval(() => { if (db && Date.now() - lastAct > LOCK_IDLE) lockNow('اتقفل لوحده بعد 10 دقايق من غير استخدام'); }, 20000);
@@ -1222,7 +1265,7 @@ function renderHome() {
   $('#hTabs').innerHTML = [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']]
     .map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small></button>`).join('');
   $$('#hTabs button').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
-  renderList(bal); qkMark(); runCounters($('#hTots'));
+  renderMkHome(); renderList(bal); qkMark(); runCounters($('#hTots'));
 }
 function qkMark() { const sp = $('main').classList.contains('split'); $$('nav .qk button').forEach(x => x.classList.toggle('on', sp && x.dataset.q === tab)); }
 let curParty = '';
@@ -2073,7 +2116,7 @@ function bindUI() {
 }
 function renderSettings() {
   bindUI();
-  refreshBio(); renderCashLink();
+  refreshBio(); renderCashLink(); renderMktSettings();
   const c = db.cfg;
   const lk = lockDate(), lim = limitsOf();
   $('#sLock').innerHTML = lk ? `<div class="sync ok">🔒 مقفول لحد ${dispDate(lk)}</div><div class="g2"><input class="inp" type="date" id="sLockD" value="${lk}"><button class="btn gold sm" id="sLockGo" type="button">غيّر يوم القفل</button></div><button class="btn line sm" id="sUnlock" type="button" style="margin-top:8px">افتح الفترة (محتاج كلمة السر)</button>`
@@ -3658,10 +3701,10 @@ function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   let pg = 'home';
   try { localStorage.setItem('fo_lastpg', /^(cash|part|rep|set)$/.test(h) ? h : 'home'); } catch (e) {}
-  if (h === 'set' || h === 'cash' || h === 'part' || (h === 'chk' && CHECKS_ON) || h === 'rep') pg = h; else if (h.startsWith('p/')) pg = 'party';
+  if (h === 'set' || h === 'cash' || h === 'part' || (h === 'chk' && CHECKS_ON) || h === 'rep' || h === 'mkt') pg = h; else if (h.startsWith('p/')) pg = 'party';
   autoPartners();
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
-  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (pg === 'party' ? 'home' : pg)));
+  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (pg === 'party' || pg === 'mkt' ? 'home' : pg)));
   if (CHECKS_ON) { const nd = chkDue().length; $('#nbChk').textContent = nd || ''; $('#nbChk').style.display = nd ? '' : 'none'; }
   /* على اللاب توب: قايمة الحسابات على جنب والحساب المفتوح جنبها */
   const split = isWide() && (pg === 'home' || pg === 'party');
@@ -3676,7 +3719,7 @@ function route() {
       $('#p-party').innerHTML = '<div class="card empty" style="padding:60px 20px;font-size:18px">لسه مفيش حسابات. اضغط "+ حساب جديد".</div>';
     }
   }
-  if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
+  if (pg === 'mkt') { $('#mkBar').classList.remove('on'); renderMkt(); } else if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
 }
 /* شريط أعلى صفحة الحساب ثابت (مبيخبّيش وانت بتنزل): رجوع، فوق، تحت، تعديل */
 function setHdr() { const h = document.querySelector('header.top'); if (h) document.documentElement.style.setProperty('--hh', h.offsetHeight + 'px'); }
@@ -3720,10 +3763,597 @@ $$('nav .qk button').forEach(b => b.onclick = () => {
   go('home');
 });
 addEventListener('hashchange', () => { closeModal(); route(); if (location.hash !== lastHash) window.scrollTo(0, 0); lastHash = location.hash; });
-$('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk,#dcOk,#pyOk,#txOk,#evOk,#ecOk,#opOk,#adOk,#ccOk,#bcOk,#apOk')) closeModal(); });
+$('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk,#dcOk,#pyOk,#txOk,#evOk,#ecOk,#opOk,#adOk,#ccOk,#bcOk,#apOk,#mvOk,#rtOk')) closeModal(); });
 
 showLock();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
+</script>
+<script>
+'use strict';
+/* ====================== وارد السوق (تطبيق "حركة السوق" بتاع الشريك) ======================
+   - الشريك بيسجل اللي حصّله في market.html، وده بيروح لشيت جوجل منفصل اسمه "حركة السوق" (كود لوحده: marketScript).
+     الشيت ده مفيهوش أي حاجة من شيت الحسابات غير أسامي عملاء السوق وأرصدتهم.
+   - القاعدة الذهبية: مفيش أي حاجة بتدخل الحسابات لوحدها. كل اللي الشريك بيسجله بيقعد هنا في الوارد،
+     ومبيتنقلش غير لما مصطفى يدوس "انقل" ويأكد من شاشة التأكيد.
+   - النقل = دفعة عادية (pay) بـ id ثابت e_mk_<id العملية>، فمستحيل تتنقل مرتين. ولو اتمسحت من الحسابات، العملية بترجع "متنقلتش".
+   - حالة كل عملية سجل لوحده st_<id> (اللي بيكتبه مصطفى بس): ok/ov وصل التحويل، done/dv اتنقلت، back/bv رجّعها بملاحظة، pid الحساب اللي اتربط بيه.
+     ov/bv/dv = نسخة العملية (upd) وقت القرار، فلو الشريك عدّلها بعد كده القرار القديم بيتلغي لوحده.
+   - ربط الشيت إعداد مشترك (set) اسمه mktSheet = {u, k}، فكل أجهزة الحسابات بتاخده لوحدها. والوارد نفسه نسخة محلية في db.mkt (مش في شيت الحسابات).
+   - توكن تليجرام مش في الكود ولا في الجهاز: بيتحفظ في Script Properties بتاعة شيت السوق. */
+const marketScript = () => `// حركة السوق — فلاش أون (مقفول بمفتاح سري بيتحفظ أول مرة). شيت منفصل عن الحسابات.
+const SHEET = 'الحركات';
+const HEAD = ['id','النوع','آخر تعديل','رقم المزامنة','ملغي','الوقت','الاسم','المبلغ','الطريقة','الحالة','البيانات (لا تعدّلها)'];
+const W = HEAD.length;
+const TG = 'https://api.telegram.org/bot';
+const MW = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون كاش'};
+function sh_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let s = ss.getSheetByName(SHEET);
+  if (!s) { s = ss.insertSheet(SHEET); s.appendRow(HEAD); s.setFrozenRows(1); }
+  return s;
+}
+function doGet() { return out_({ok: false, error: 'locked'}); }
+function key_(k) {
+  if (typeof k !== 'string' || k.length < 8) return false;
+  const p = PropertiesService.getScriptProperties();
+  let s = p.getProperty('KEY');
+  if (!s) {
+    const l = LockService.getScriptLock(); l.waitLock(10000);
+    try { s = p.getProperty('KEY'); if (!s) { p.setProperty('KEY', k); s = k; } } finally { l.releaseLock(); }
+  }
+  return s === k;
+}
+function resetKey() { PropertiesService.getScriptProperties().deleteProperty('KEY'); }
+function doPost(e) {
+  let req;
+  try { req = JSON.parse(e.postData.contents); } catch (x) { return out_({ok: false, error: 'bad'}); }
+  if (!req || !key_(req.key)) return out_({ok: false, error: 'key'});
+  const p = PropertiesService.getScriptProperties();
+  if (req.action === 'ping') return out_({ok: true, app: 'fo-mkt', v: 1, n: Math.max(sh_().getLastRow() - 1, 0), seq: Number(p.getProperty('SEQ')) || 0});
+  if (req.action === 'push') return out_(push_(req.rows || [], req.who));
+  if (req.action === 'pull') return out_(pull_(Number(req.since) || 0));
+  if (req.action === 'tg') return out_(tgSet_(req.token));
+  if (req.action === 'tgtest') return out_(tgTest_());
+  if (req.action === 'tgstate') return out_(tgState_());
+  return out_({ok: false, error: 'action'});
+}
+function push_(rows, who) {
+  const lock = LockService.getScriptLock(); lock.waitLock(30000);
+  const msgs = [];
+  let res;
+  try {
+    const s = sh_(), last = s.getLastRow();
+    const cur = last > 1 ? s.getRange(2, 1, last - 1, 3).getValues() : [];
+    const pos = {}; cur.forEach((r, i) => pos[String(r[0])] = i);
+    const props = PropertiesService.getScriptProperties();
+    let seq = Number(props.getProperty('SEQ')) || 0;
+    const add = [], addAt = {}, ack = [];
+    rows.forEach(r => {
+      const i = pos[r.id];
+      ack.push(r.id);
+      if (i !== undefined && Number(cur[i][2]) >= Number(r.upd)) return;
+      if (addAt[r.id] !== undefined && Number(add[addAt[r.id]][2]) >= Number(r.upd)) return;
+      /* تنبيه تليجرام لكل حركة جديدة أو تعديل أو مسح من الشريك */
+      if (r.kind === 'op' && who === 'm') {
+        let old = null;
+        if (i !== undefined) { try { old = JSON.parse(s.getRange(i + 2, W, 1, 1).getValues()[0][0]); old.del = s.getRange(i + 2, 5, 1, 1).getValues()[0][0] === 'نعم'; } catch (x) { old = null; } }
+        const m = opMsg_(old, r.data || {}, !!r.del); if (m) msgs.push(m);
+      }
+      seq++;
+      const v = (r.view || []).concat(['', '', '', '', '']).slice(0, 5);
+      const line = [r.id, r.kind, r.upd, seq, r.del ? 'نعم' : ''].concat(v, [JSON.stringify(r.data)]);
+      if (i !== undefined) { s.getRange(i + 2, 1, 1, W).setValues([line]); cur[i][2] = r.upd; }
+      else if (addAt[r.id] !== undefined) add[addAt[r.id]] = line;
+      else { addAt[r.id] = add.length; add.push(line); }
+    });
+    if (add.length) s.getRange(last + 1, 1, add.length, W).setValues(add);
+    props.setProperty('SEQ', String(seq));
+    res = {ok: true, ack: ack, seq: seq};
+  } catch (err) { res = {ok: false, error: String(err)}; }
+  finally { lock.releaseLock(); }
+  if (res.ok && msgs.length) tgSend_(msgs.length > 4 ? msgs.join('\\n') : msgs);
+  return res;
+}
+function pull_(since) {
+  /* أسرع رد: لو مفيش جديد من آخر مرة مبنقراش الشيت خالص */
+  const seq = Number(PropertiesService.getScriptProperties().getProperty('SEQ')) || 0;
+  if (since >= seq) return {ok: true, rows: [], next: since, more: false};
+  const s = sh_(), last = s.getLastRow();
+  if (last < 2) return {ok: true, rows: [], next: since, more: false};
+  const v = s.getRange(2, 1, last - 1, W).getValues().filter(r => Number(r[3]) > since);
+  v.sort((a, b) => Number(a[3]) - Number(b[3]));
+  const page = v.slice(0, 1500);
+  const rows = page.map(r => { try { return {id: String(r[0]), kind: String(r[1]), upd: Number(r[2]), del: r[4] === 'نعم', data: JSON.parse(r[W - 1])}; } catch (e) { return null; } }).filter(Boolean);
+  return {ok: true, rows: rows, next: page.length ? Number(page[page.length - 1][3]) : since, more: v.length > page.length};
+}
+function money_(q) {
+  const n = Math.round(Number(q) || 0) / 100, t = String(Math.floor(n)).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ','), f = Math.round((n % 1) * 100);
+  return t + (f ? '.' + (f < 10 ? '0' : '') + f : '');
+}
+/* نص الحركة بالعربي (كل الأنواع: دفعة عميل، مصروف، دفعة مورد، تسليم لمصطفى) */
+function opText_(d) {
+  const a = money_(d.amt);
+  if (d.t === 'pay') return (d.cname || 'عميل') + (d.newc ? ' (عميل جديد)' : '') + ' دفع ' + a + ' ' + (MW[d.m] || '');
+  if (d.t === 'exp') return 'مصروف' + (d.cat ? ' ' + d.cat : '') + ': ' + a + (d.note ? ' — ' + d.note : '');
+  if (d.t === 'spay') return 'دفع للمورد ' + (d.sname || '') + ' ' + a;
+  if (d.t === 'hand') return 'سلّمك ' + a + ' كاش';
+  return 'حركة ' + a;
+}
+const ICON = {pay: '💵', exp: '⛽', spay: '🏭', hand: '🤝'};
+function opMsg_(old, d, del) {
+  const ic = ICON[d.t] || '•';
+  if (del) return old && !old.del ? '🗑 اتمسحت: ' + opText_(old) : '';
+  if (!old || old.del) return ic + ' ' + opText_(d);
+  const a = opText_(old), b = opText_(d);
+  return a === b ? '' : '✏️ اتعدلت: ' + a + '\\nبقت: ' + b;
+}
+function tgGet_(t, method, payload) {
+  const o = {muteHttpExceptions: true};
+  if (payload) { o.method = 'post'; o.contentType = 'application/json'; o.payload = JSON.stringify(payload); }
+  return JSON.parse(UrlFetchApp.fetch(TG + t + '/' + method, o).getContentText());
+}
+/* الـ chat id بيتجاب لوحده من آخر رسالة اتبعتت للبوت (زي "ابدأ") */
+function tgChat_(t) {
+  const p = PropertiesService.getScriptProperties();
+  let c = p.getProperty('TG_CHAT');
+  if (c) return c;
+  try {
+    const u = (tgGet_(t, 'getUpdates').result || []).filter(x => x.message && x.message.chat).pop();
+    if (u) { c = String(u.message.chat.id); p.setProperty('TG_CHAT', c); return c; }
+  } catch (x) {}
+  return '';
+}
+function tgSend_(texts) {
+  const t = PropertiesService.getScriptProperties().getProperty('TG_TOKEN');
+  if (!t) return false;
+  const c = tgChat_(t); if (!c) return false;
+  let ok = true;
+  [].concat(texts).forEach(x => { try { const r = tgGet_(t, 'sendMessage', {chat_id: c, text: x}); ok = ok && !!(r && r.ok); } catch (e) { ok = false; } });
+  return ok;
+}
+function tgSet_(token) {
+  token = String(token || '').trim();
+  if (!/^\\d{5,}:[\\w-]{20,}$/.test(token)) return {ok: false, error: 'token'};
+  let me; try { me = tgGet_(token, 'getMe'); } catch (e) { return {ok: false, error: 'net'}; }
+  if (!me || !me.ok) return {ok: false, error: 'token'};
+  const p = PropertiesService.getScriptProperties();
+  p.setProperty('TG_TOKEN', token); p.setProperty('TG_BOT', me.result.username || ''); p.deleteProperty('TG_CHAT');
+  return {ok: true, bot: me.result.username || '', chat: !!tgChat_(token)};
+}
+function tgState_() {
+  const p = PropertiesService.getScriptProperties(), t = p.getProperty('TG_TOKEN');
+  return {ok: true, token: !!t, bot: p.getProperty('TG_BOT') || '', chat: !!(t && tgChat_(t))};
+}
+function tgTest_() {
+  const st = tgState_();
+  if (!st.token || !st.chat) return Object.assign(st, {sent: false});
+  return Object.assign(st, {sent: tgSend_('✅ تنبيهات حركة السوق شغالة. أي حاجة شريكك يسجلها هتوصلك هنا.')});
+}
+function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }`;
+
+const MK_M = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون'};
+const mkCreds = () => { const s = db && getSet('mktSheet', null); return s && s.u && s.k ? s : null; };
+function mkDb() { return db.mkt = db.mkt || {u: '', cursor: 0, ops: {}, st: {}, cs: {}}; }
+const mkSt = id => mkDb().st['st_' + id];
+/* اتنقلت؟ الحركة في الحسابات هي الأصل. لو لسه منزلتش على الجهاز ده من المزامنة، بنصدق حالة الشيت */
+function mkMoved(o) { const e = E.get('e_mk_' + o.id); if (e) return !e.del; const s = mkSt(o.id); return !!(s && s.done); }
+function mkState(o) { if (mkMoved(o)) return 'done'; const s = mkSt(o.id); return s && s.back && s.bv === o.upd ? 'back' : 'new'; }
+const mkArrived = o => o.m === 'cash' || !!(mkSt(o.id) && mkSt(o.id).ok && mkSt(o.id).ov === o.upd);
+function mkAlias() { const d = mkDb(), a = {}; Object.values(d.st).forEach(s => { const o = d.ops[s.op]; if (s.pid && o && o.cid) a[o.cid] = s.pid; }); return a; }
+/* الحساب اللي العملية بتاعته: العميل نفسه، أو الحساب اللي العميل الجديد اتربط بيه. فاضي = لسه محتاج ربط */
+const mkPid = (o, al) => { const p = (al || mkAlias())[o.cid] || o.cid, x = P.get(p); return x && !x.del ? p : ''; };
+const mkLive = () => Object.values(mkDb().ops).filter(o => !o.del && o.t === 'pay');
+const mkPending = () => mkLive().filter(o => mkState(o) === 'new');
+function mkSetSt(opId, ch) {
+  const d = mkDb(), id = 'st_' + opId;
+  const s = d.st[id] = d.st[id] || {id, op: opId, ok: false, ov: 0, done: false, dv: 0, back: '', bv: 0, pid: '', upd: 0};
+  Object.assign(s, ch); s.upd = Math.max(Date.now(), (s.upd || 0) + 1); s.sy = 0;
+}
+/* "خزنة السوق" = الفلوس اللي مع الشريك. id ثابت علشان متتعملش مرتين من جهازين */
+function ensureMktVault() {
+  ensureVaults();
+  if (IDX.vault.get('v_mkt')) return;
+  const r = {id: 'v_mkt', name: 'خزنة السوق', open: 0, ord: vaultsL().length, at: Date.now(), upd: 2, del: false};
+  db.vaults.push(r); IDX.vault.set(r.id, r); saveDB();
+}
+/* الاقتراح الجاهز: الكاش ← خزنة السوق، الإنستا ← خزنة إنستا، الفودافون ← خزنة فودافون (أو آخر اختيار) */
+function mkVaultFor(m) {
+  const ok = id => id && IDX.vault.get(id) && !IDX.vault.get(id).del;
+  if (m === 'cash' && ok('v_mkt')) return 'v_mkt';
+  const re = m === 'insta' ? /انستا|إنستا|insta/i : m === 'voda' ? /فودافون|vodafone|voda/i : null;
+  const v = re && vaultsL().find(x => re.test(x.name)); if (v) return v.id;
+  const r = (db.cfg.mkv || {})[m]; if (r === '' || ok(r)) return r;
+  return (vaultsL()[0] || {}).id || '';
+}
+/* النقل للحساب: نفس طريقة الدفعة العادية، بـ id ثابت مبني على id العملية */
+function mkMove(o, f) {
+  const id = 'e_mk_' + o.id;
+  let e = E.get(id);
+  if (e && !e.del) return false;
+  const x = {party: f.pid, kind: 'pay', date: f.date, amt: f.amt, method: o.m === 'cash' ? 'نقدي' : 'تحويل', vault: f.vault, note: 'حركة السوق' + (o.m === 'cash' ? '' : ' — ' + MK_M[o.m])};
+  x.desc = docDesc(x);
+  if (e) { (e.hist = e.hist || []).push(snapshot(e)); Object.assign(e, x, {del: false}); delete e.delAt; applyAmounts(e); touch(e); }
+  else { e = addEntry(Object.assign({id}, x)); applyAmounts(e); }
+  mkSetSt(o.id, {done: true, dv: o.upd, back: '', bv: 0, pid: f.pid});
+  return true;
+}
+/* حالة "اتنقلت" في الشيت لازم تمشي مع الحسابات: لو الحركة اتمسحت من الحسابات العملية بترجع، والعكس */
+function mkReconcile() {
+  let n = 0;
+  Object.values(mkDb().ops).forEach(o => {
+    const e = E.get('e_mk_' + o.id), s = mkSt(o.id); if (!e) return;
+    if (e.del && s && s.done) { mkSetSt(o.id, {done: false, dv: 0}); n++; }
+    else if (!e.del && !(s && s.done)) { mkSetSt(o.id, {done: true, dv: o.upd, pid: e.party}); n++; }
+  });
+  return n;
+}
+/* أرصدة عملاء السوق بس (اسم + رصيد) بتتبعت للشيت علشان الشريك يشوفها. اللي اتبعت قبل كده بيتحفظ علشان مبعتش نفس الحاجة تاني */
+function mkCustRows() {
+  const d = mkDb(), bal = allBalances(), out = [], seen = new Set(), now = Date.now();
+  liveParties().filter(p => p.sec === 'mkt').forEach(p => {
+    seen.add(p.id);
+    const b = bal.get(p.id) || 0, sig = p.name + '|' + b;
+    if (d.cs[p.id] !== sig) out.push({row: {id: p.id, kind: 'cust', upd: now, del: false, view: ['', cell(p.name), b / 100, 'رصيد عميل', ''], data: {name: p.name, bal: b}}, sig});
+  });
+  Object.keys(d.cs).forEach(id => { if (!seen.has(id) && d.cs[id] !== '-') out.push({row: {id, kind: 'cust', upd: now, del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-'}); });
+  return out;
+}
+const mkStView = s => { const o = mkDb().ops[s.op] || {}; return ['', cell(o.cname || ''), o.amt ? o.amt / 100 : '', 'حالة', cell([s.done ? 'اتنقلت' : '', s.ok ? 'وصل' : '', s.back ? 'راجعة: ' + s.back : ''].filter(Boolean).join(' — '))]; };
+let mkBusy = false, mkErr = '', mkLastOk = 0;
+async function mkSync() {
+  const cr = mkCreds(); if (!db || !cr || mkBusy) return false;
+  mkBusy = true; const d0 = db;
+  let fresh = [], ch = false;
+  try {
+    const d = mkDb();
+    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}}); ch = true; }
+    ensureMktVault();
+    if (mkReconcile()) ch = true;
+    const call = body => callSheet(body, cr.u, cr.k, 30000);
+    const sts = Object.values(d.st).filter(s => s.sy !== s.upd), cus = mkCustRows();
+    const all = sts.map(s => ({row: {id: s.id, kind: 'st', upd: s.upd, del: false, view: mkStView(s), data: stripLocal(s)}, s})).concat(cus);
+    for (let i = 0; i < all.length; i += 100) {
+      const part = all.slice(i, i + 100);
+      const j = await call({action: 'push', who: 'a', rows: part.map(x => x.row)});
+      if (db !== d0) return false;
+      if (!j || j.ok !== true) throw new Error(j && j.error === 'key' ? 'key' : j && j.error ? String(j.error) : 'push');
+      const ack = new Set(j.ack || []);
+      part.forEach(x => { if (!ack.has(x.row.id)) return; if (x.s) { if (x.s.upd === x.row.upd) x.s.sy = x.s.upd; } else d.cs[x.row.id] = x.sig; });
+      ch = true;
+    }
+    const first = !d.cursor;
+    let more = true;
+    while (more) {
+      const j = await call({action: 'pull', since: d.cursor});
+      if (db !== d0) return false;
+      if (!j || j.ok !== true || !Array.isArray(j.rows)) throw new Error(j && j.error === 'key' ? 'key' : 'pull');
+      j.rows.forEach(r => {
+        if (!r || !r.id || !r.data) return;
+        const box = r.kind === 'op' ? d.ops : r.kind === 'st' ? d.st : null; if (!box) return;
+        const cur = box[r.id];
+        if (cur && cur.upd >= r.upd) { if (cur.upd === r.upd && r.kind === 'st') cur.sy = cur.upd; return; }
+        box[r.id] = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del}, r.kind === 'st' ? {sy: r.upd} : {});
+        if (r.kind === 'op' && !cur && !r.del && !first) fresh.push(box[r.id]);
+        ch = true;
+      });
+      d.cursor = j.next || d.cursor; more = !!j.more;
+    }
+    if (mkReconcile()) ch = true;
+    mkErr = ''; mkLastOk = Date.now();
+  } catch (e) { mkErr = String(e.message || e); }
+  finally {
+    mkBusy = false;
+    if (db === d0) {
+      if (ch) flushSave();
+      if (fresh.length) mkAlert(fresh);
+      if (ch || fresh.length) mkRefresh();
+    }
+  }
+  return !mkErr;
+}
+/* طول ما البرنامج مفتوح بيسحب الجديد كل 8 ثواني */
+setInterval(() => { if (db && mkCreds() && !document.hidden) mkSync(); }, 8000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && db && mkCreds()) setTimeout(mkSync, 700); });
+function mkRefresh() {
+  if (!db) return;
+  const h = location.hash.slice(1), open = $('#mask').classList.contains('on');
+  if (h === 'mkt' && !open) renderMkt();
+  else { renderMkHome(); if (h === 'set' && !open) renderMktSettings(); }
+}
+
+/* ---------- التنبيه الفوري: صوت + شريط فوق ---------- */
+let mkAudio = null;
+function mkBeep() {
+  try {
+    mkAudio = mkAudio || new (window.AudioContext || window.webkitAudioContext)();
+    const a = mkAudio, t = a.currentTime;
+    [[880, 0], [1320, 0.16]].forEach(([f, d]) => { const o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; o.type = 'sine'; g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.25, t + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.22); o.connect(g); g.connect(a.destination); o.start(t + d); o.stop(t + d + 0.25); });
+  } catch (e) {}
+}
+const mkLine = o => `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${fmtP(o.amt)} ${MK_M[o.m] || ''}`;
+let mkBarT;
+function mkAlert(list) {
+  const b = $('#mkBar'); if (!b) return;
+  if (location.hash === '#mkt') { mkBeep(); return; }   // الوارد مفتوح قدامه: صوت بس
+  b.innerHTML = `<b>📥 حركة السوق</b> ${esc(list.length === 1 ? mkLine(list[0]) : `${list.length} عمليات جديدة — آخرها: ${mkLine(list[list.length - 1])}`)} <u>افتح الوارد</u>`;
+  b.classList.add('on'); mkBeep();
+  b.onclick = () => { b.classList.remove('on'); go('mkt'); };
+  clearTimeout(mkBarT); mkBarT = setTimeout(() => b.classList.remove('on'), 12000);
+}
+/* العداد على الشاشة الرئيسية من أول ما البرنامج يفتح */
+function renderMkHome() {
+  const box = $('#mkRem'); if (!box) return;
+  if (!db || !mkCreds()) { box.innerHTML = ''; return; }
+  const n = mkPending().length;
+  box.innerHTML = `<div class="sync mkrem ${n ? '' : 'ok'}" id="mkGo">📥 وارد السوق: ${n ? `<b>${n}</b> ${n === 1 ? 'عملية متنقلتش' : 'عمليات متنقلتش'}` : 'مفيش حاجة مستنية'} <a>افتح</a></div>`;
+  $('#mkGo').onclick = () => go('mkt');
+}
+
+/* ---------- شاشة وارد السوق ---------- */
+const mkTag = m => `<span class="mtag ${m}">${MK_M[m] || m}</span>`;
+function mkGroups() {
+  const al = mkAlias(), g = new Map(), old = Date.now() - 3 * 86400000;
+  mkLive().forEach(o => {
+    const st = mkState(o);
+    if (st === 'done' && o.ts < old) return;   // اللي اتنقل بيفضل باهت 3 أيام بس
+    const pid = mkPid(o, al), k = pid || 'n:' + o.cid;
+    if (!g.has(k)) g.set(k, {k, pid, cid: o.cid, name: pid ? P.get(pid).name : o.cname, nw: !pid, ops: []});
+    g.get(k).ops.push(o);
+  });
+  const arr = [...g.values()];
+  arr.forEach(x => { x.ops.sort((a, b) => a.ts - b.ts); x.pend = x.ops.filter(o => mkState(o) === 'new'); x.last = Math.max(...x.ops.map(o => o.ts)); });
+  return arr.sort((a, b) => (b.pend.length > 0) - (a.pend.length > 0) || b.last - a.last);
+}
+function renderMkt() {
+  const box = $('#p-mkt'); if (!box || !db) return;
+  if (!mkCreds()) { box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a></div><div class="card empty">حركة السوق لسه متربطتش.<br><a class="lnk" id="mkSet">اربطها من الإعدادات</a></div>`; $('#mkBack').onclick = () => go('home'); $('#mkSet').onclick = () => go('set'); return; }
+  const gs = mkGroups(), n = mkPending().length;
+  const cashOps = mkLive().filter(o => o.m === 'cash');
+  const withP = cashOps.reduce((s, o) => s + o.amt, 0), pendCash = cashOps.filter(o => mkState(o) !== 'done').reduce((s, o) => s + o.amt, 0);
+  const vb = IDX.vault.get('v_mkt') && !IDX.vault.get('v_mkt').del ? vaultBal('v_mkt') : null, diff = vb === null ? 0 : withP - vb;
+  box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a><b style="font-size:17px;color:var(--ink)">📥 وارد السوق</b><span class="mkdot ${mkErr ? 'w' : ''}"><i></i>${mkErr === 'key' ? 'الشيت رفض المفتاح' : mkErr ? 'مش قادر يوصل للشيت' : mkLastOk ? 'متصل' : '…'}</span></div>
+    <div class="mkh"><b>عمليات متنقلتش</b><span class="n">${n}</span></div>
+    ${gs.length ? gs.map(mkCard).join('') : '<div class="card empty">لسه شريكك مسجلش حاجة.</div>'}
+    <div class="card mkbal">
+      <div class="bl"><span>💵 مع شريكك حسب تسجيله</span><b>${fmtP(withP)}</b></div>
+      <div class="bl"><span>🗄️ رصيد خزنة السوق في الحسابات</span><b>${vb === null ? '—' : fmtP(vb)}</b></div>
+      ${vb !== null && diff ? `<p class="hint" style="margin:6px 0 0">الفرق ${fmtP(Math.abs(diff))}${diff > 0 && diff === pendCash ? ' = عمليات كاش لسه متنقلتش.' : diff > 0 && pendCash ? ` — منهم ${fmtP(pendCash)} عمليات كاش لسه متنقلتش، والباقي حركات اتعملت في خزنة السوق بإيدك.` : ' — غالباً حركات اتعملت في خزنة السوق بإيدك، أو عمليات كاش نقلتها على خزنة تانية.'}</p>` : vb !== null ? '<p class="hint" style="margin:6px 0 0">✓ متطابقين.</p>' : ''}
+      <p class="hint" style="margin:6px 0 0">التحويلات (إنستا/فودافون) مش على شريكك، لأنها وصلتلك على طول.</p>
+    </div>`;
+  $('#mkBack').onclick = () => go('home');
+  $$('#p-mkt [data-op]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkOpMenu(mkDb().ops[el.dataset.op]); });
+  $$('#p-mkt [data-ok]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkArrive(mkDb().ops[el.dataset.ok]); });
+  $$('#p-mkt [data-mv]').forEach(el => el.onclick = () => { const g = gs.find(x => x.k === el.dataset.mv); if (g) mkMoveFlow(g, g.pend); });
+  $$('#p-mkt [data-bk]').forEach(el => el.onclick = () => { const g = gs.find(x => x.k === el.dataset.bk); if (g) mkReturn(g.pend.length ? g.pend : g.ops.filter(o => mkState(o) === 'back'), g.name); });
+}
+function mkCard(g) {
+  const tot = (g.pend.length ? g.pend : g.ops).reduce((s, o) => s + o.amt, 0), blocked = g.pend.some(o => !mkArrived(o));
+  const line = o => {
+    const st = mkState(o), s = mkSt(o.id);
+    const right = st === 'done' ? `<span class="vok">✓ اتنقلت${o.del || (s && s.dv && s.dv !== o.upd) ? ' <small class="cr">(اتعدلت بعد النقل)</small>' : ''}</span>`
+      : st === 'back' ? '<span class="vbk">🔴 راجعة للشريك</span>'
+      : o.m !== 'cash' ? (mkArrived(o) ? '<span class="vok">✓ وصل</span>' : `<button class="vbtn" data-ok="${esc(o.id)}" type="button">🔔 وصل؟</button>`)
+      : `<span class="tm">${dispTime(o.ts)}${dayOfMs(o.ts) !== todayISO() ? ' — ' + dispDate(dayOfMs(o.ts)) : ''}</span>`;
+    const fixed = st === 'new' && s && s.back && s.bv !== o.upd ? ' <small class="fx">اتصلحت</small>' : '';
+    return `<div class="il ${st === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkTag(o.m)}<b class="money">${fmtP(o.amt)}</b>${fixed}</span>${right}</div>
+      ${st === 'back' && s ? `<div class="ilnote">ملاحظتك: ${esc(s.back)}</div>` : ''}`;
+  };
+  const sum = g.pend.length > 1 ? `<div class="ilsum">${['cash', 'insta', 'voda'].map(m => { const t = g.pend.filter(o => o.m === m).reduce((a, o) => a + o.amt, 0); return t ? `${fmtP(t)} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ')} = <b>${fmtP(tot)}</b></div>` : '';
+  const foot = !g.pend.length ? ''
+    : g.nw ? `<div class="ifoot"><button class="btn ${blocked ? 'off' : ''}" data-mv="${esc(g.k)}" type="button" ${blocked ? 'disabled' : ''}>اربطه بحساب وانقل</button><button class="btn red" data-bk="${esc(g.k)}" type="button" style="flex:.55">رجّعها</button></div>`
+    : `<div class="ifoot"><button class="btn ${blocked ? 'off' : ''}" data-mv="${esc(g.k)}" type="button" ${blocked ? 'disabled' : ''}>انقل للحساب</button><button class="btn red" data-bk="${esc(g.k)}" type="button">رجّعها</button></div>`;
+  return `<div class="ic ${g.pend.length ? '' : 'dn'}"><div class="ich"><b>${esc(g.name)}${g.nw ? ' <span class="nwt">عميل جديد</span>' : ''}</b><b class="money">${fmtP(tot)}</b></div>
+    ${g.ops.map(line).join('')}${sum}${blocked ? '<p class="hint" style="margin:4px 14px 0">اتأكد إن التحويل وصلك (من رسالة التحويل) ودوس "وصل؟" الأول.</p>' : ''}${foot}</div>`;
+}
+const dayOfMs = ms => isoOf(ms);
+function mkArrive(o) {
+  if (!o) return;
+  modal(`<h3>🔔 التحويل ده وصلك؟</h3><p>${esc(o.cname)} — <b class="money">${fmtP(o.amt)}</b> ${MK_M[o.m]}<br><small style="color:#777">اتأكد من رسالة التحويل عندك (${MK_M[o.m]}) قبل ما تدوس "وصل".</small></p>
+    <div class="g2"><button class="btn green" id="arOk" type="button">✓ وصل</button><button class="btn line" id="arX" type="button">لسه</button></div>`);
+  $('#arX').onclick = closeModal;
+  $('#arOk').onclick = () => { mkSetSt(o.id, {ok: true, ov: o.upd}); flushSave(); closeModal(); renderMkt(); mkSync(); };
+}
+function mkOpMenu(o) {
+  if (!o) return;
+  const st = mkState(o), al = mkAlias(), pid = mkPid(o, al);
+  if (st === 'done') {
+    const e = E.get('e_mk_' + o.id);
+    modal(`<h3>✓ اتنقلت</h3><p>${esc(o.cname)} — <b class="money">${fmtP(o.amt)}</b> ${MK_M[o.m]}<br><small style="color:#777">اتسجلت عند الشريك ${dispDate(isoOf(o.ts))} ${dispTime(o.ts)}. أي تصحيح من الحساب نفسه.</small></p>
+      <div class="stack">${e && P.get(e.party) ? '<button class="btn gold" id="omP" type="button">افتح الحساب</button>' : ''}<button class="btn line" id="omX" type="button">إغلاق</button></div>`);
+    $('#omX').onclick = closeModal; if ($('#omP')) $('#omP').onclick = () => { closeModal(); go('p/' + e.party); };
+    return;
+  }
+  modal(`<h3>${esc(o.cname)} — <span class="money">${fmtP(o.amt)}</span> ${MK_M[o.m]}</h3>
+    <p class="hint" style="margin:-6px 0 12px">اتسجلت عند الشريك ${dispDate(isoOf(o.ts))} ${dispTime(o.ts)}${st === 'back' ? ` — 🔴 راجعة للشريك: ${esc(mkSt(o.id).back)}` : ''}</p>
+    <div class="stack">
+      ${o.m !== 'cash' && !mkArrived(o) ? '<button class="btn green" id="omA" type="button">🔔 التحويل وصل؟</button>' : ''}
+      ${st === 'new' ? `<button class="btn gold" id="omM" type="button" ${mkArrived(o) ? '' : 'disabled style="opacity:.5"'}>${pid ? 'انقل الدفعة دي بس' : 'اربطها بحساب وانقلها'}</button>` : ''}
+      ${st === 'new' ? '<button class="btn red" id="omB" type="button">رجّعها للشريك</button>' : ''}
+      <button class="btn line" id="omX" type="button">إغلاق</button></div>`);
+  $('#omX').onclick = closeModal;
+  if ($('#omA')) $('#omA').onclick = () => mkArrive(o);
+  if ($('#omM')) $('#omM').onclick = () => { if (!mkArrived(o)) return; const g = mkGroups().find(x => x.ops.includes(o)); mkMoveFlow(g || {pid, nw: !pid, name: o.cname, cid: o.cid}, [o]); };
+  if ($('#omB')) $('#omB').onclick = () => mkReturn([o], o.cname);
+}
+function mkReturn(ops, name) {
+  if (!ops.length) return;
+  modal(`<h3>رجّعها لشريكك</h3><p style="font-size:15.5px">${esc(name)}: ${ops.map(o => `${fmtP(o.amt)} ${MK_M[o.m]}`).join(' + ')}</p>
+    <div class="fld"><label>اكتبله إيه الغلط (هيظهرله عنده)</label><input class="inp" id="rtN" autocomplete="off" placeholder="مثلاً: المبلغ 4,500 مش 5,000"></div>
+    <div class="g2"><button class="btn red" id="rtOk" type="button">رجّعها</button><button class="btn line" id="rtX" type="button">إلغاء</button></div>`);
+  $('#rtX').onclick = closeModal;
+  setTimeout(() => $('#rtN') && $('#rtN').focus(), 60);
+  $('#rtOk').onclick = () => {
+    const note = $('#rtN').value.trim() || 'راجعها';
+    ops.forEach(o => { if (mkState(o) === 'new') mkSetSt(o.id, {back: note, bv: o.upd}); });
+    flushSave(); closeModal(); renderMkt(); mkSync(); toast('رجعت للشريك ✔');
+  };
+}
+/* العميل الجديد: يتربط بحساب موجود في عملاء السوق أو يتفتحله حساب جديد، وبعدين شاشة التأكيد */
+function mkMoveFlow(g, ops) {
+  ops = ops.filter(o => mkState(o) === 'new');
+  if (!ops.length) return;
+  if (ops.some(o => !mkArrived(o))) return toast('اتأكد إن التحويل وصلك ودوس "وصل" الأول');
+  if (g.pid) return mkConfirm(ops, {pid: g.pid});
+  const ps = liveParties().filter(p => p.sec === 'mkt').sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  modal(`<h3>اربط "${esc(g.name)}" بحساب</h3>
+    <button class="btn gold" id="lkNew" type="button" style="margin-bottom:10px">＋ افتحله حساب جديد في عملاء السوق باسم "${esc(g.name)}"</button>
+    <input class="inp" id="lkQ" type="search" placeholder="🔍 أو دوّر على حساب موجود" autocomplete="off" style="margin-bottom:8px">
+    <div id="lkL" style="max-height:45vh;overflow:auto"></div>
+    <button class="btn line" id="lkX" type="button" style="margin-top:10px">إلغاء</button>`, true);
+  const draw = () => {
+    const q = norm($('#lkQ').value), l = ps.filter(p => !q || norm(p.name).includes(q)).sort((a, b) => (norm(b.name) === norm(g.name)) - (norm(a.name) === norm(g.name)));
+    $('#lkL').innerHTML = l.length ? l.slice(0, 80).map(p => `<div class="pt" data-p="${esc(p.id)}"><div class="m"><b>${esc(p.name)}</b></div><div class="a"><b>${fmtP(Math.abs(balance(p.id)))}</b><small>${balWord(balance(p.id))}</small></div></div>`).join('') : '<div class="empty">مفيش حساب بالاسم ده</div>';
+    $$('#lkL .pt').forEach(el => el.onclick = () => mkConfirm(ops, {pid: el.dataset.p}));
+  };
+  draw(); $('#lkQ').oninput = draw;
+  $('#lkX').onclick = closeModal;
+  $('#lkNew').onclick = () => mkConfirm(ops, {newName: g.name});
+}
+/* شاشة التأكيد (إجبارية قبل أي نقل): المبلغ والتاريخ والخزنة لكل دفعة، والخزنة اختيار حر (أو من غير خزنة) */
+function mkConfirm(ops, to) {
+  ensureMktVault();
+  const name = to.pid ? P.get(to.pid).name : to.newName;
+  modal(`<h3>تأكيد النقل للحسابات</h3>
+    <p style="margin-bottom:8px">${ops.length > 1 ? `${ops.length} دفعات` : 'دفعة'} من <b>${esc(name)}</b>${to.newName ? ' <span class="nwt">حساب جديد في عملاء السوق</span>' : ''}</p>
+    ${ops.map((o, i) => `<div class="mvr" data-i="${i}"><div class="mvh">${mkTag(o.m)} <small>اتسجلت ${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</small></div>
+      <div class="g2"><div class="fld"><label>المبلغ</label><input class="inp num" data-f="amt" value="${fmtP(o.amt)}"></div>
+        <div class="fld"><label>← الخزنة</label><select class="inp" data-f="v">${vaultOpts(mkVaultFor(o.m), 'من غير خزنة (في حساب العميل بس)')}</select></div></div>
+      <div class="fld"><label>التاريخ</label><input class="inp" type="date" data-f="d" value="${isoOf(o.ts)}"></div></div>`).join('')}
+    <div id="mvW"></div>
+    <div class="mfoot">${ops.length > 1 ? `<div class="dtot"><span>الإجمالي</span><b id="mvT">${fmtP(ops.reduce((s, o) => s + o.amt, 0))}</b></div>` : ''}
+      <div class="mrow"><button class="btn green" id="mvOk" type="button">سجّل</button><button class="btn line" id="mvX" type="button">إلغاء</button></div></div>`, true);
+  $$('#modal [data-f=amt]').forEach(el => { bindMoney(el); el.addEventListener('input', () => { if ($('#mvT')) $('#mvT').textContent = fmtP($$('#modal [data-f=amt]').reduce((s, x) => s + toP(x.value), 0)); }); });
+  $('#mvX').onclick = () => { closeModal(); renderMkt(); };
+  $('#mvOk').onclick = () => {
+    const rows = $$('#modal .mvr').map(el => ({o: ops[+el.dataset.i], amt: toP(el.querySelector('[data-f=amt]').value), vault: el.querySelector('[data-f=v]').value, date: el.querySelector('[data-f=d]').value}));
+    for (const r of rows) {
+      if (!(r.amt > 0)) return toast('اكتب المبلغ');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) return toast('اختار التاريخ');
+      if (isLocked(r.date)) return lockToast();
+      if (mkState(r.o) !== 'new') return toast('في عملية من دول اتغيرت. افتح الوارد تاني.', 4000);
+    }
+    let pid = to.pid;
+    if (!pid) {
+      const ex = liveParties().find(p => p.sec === 'mkt' && norm(p.name) === norm(to.newName));
+      if (ex) pid = ex.id;
+      else { const now = Date.now(), np = {id: newId('p_'), sec: 'mkt', name: to.newName, phone: '', note: 'من حركة السوق', noTot: false, at: now, upd: now, del: false}; db.parties.push(np); P.set(np.id, np); pid = np.id; }
+    }
+    let n = 0;
+    rows.forEach(r => { if (mkMove(r.o, {pid, amt: r.amt, date: r.date, vault: r.vault})) n++; db.cfg.mkv = Object.assign({}, db.cfg.mkv, {[r.o.m]: r.vault}); });
+    saveDB(); closeModal(); renderMkt(); renderMkHome(); mkSync();
+    toast(n ? `اتنقلت للحساب ✔ (${n === 1 ? 'دفعة' : n + ' دفعات'})` : 'اتنقلت قبل كده ✔');
+  };
+}
+
+/* ---------- الإعدادات: ربط شيت السوق + تليجرام ---------- */
+function mktLink() { const c = mkCreds(); return c ? location.origin + location.pathname.replace(/[^/]*$/, '') + 'market.html#marketjoin=' + b64u(JSON.stringify({u: c.u, k: c.k})) : ''; }
+async function mktConnect(u) {
+  u = normSheetUrl(u);
+  if (!/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec$/.test(u)) return 'اللينك لازم يبدأ بـ https://script.google.com ويخلص بـ /exec';
+  const old = getSet('mktSheet', null), k = old && old.k || makeKey();
+  let j; try { j = await callSheet({action: 'ping'}, u, k, 30000); } catch (e) { return e.code === 'page' ? 'الشيت رد بصفحة مش مفهومة. غالباً الوصول مش "أي شخص (Anyone)".' : 'معرفتش أوصل للشيت. اتأكد من النت ومن اللينك.'; }
+  if (j && j.error === 'key') return 'الشيت ده مقفول على مفتاح تاني. في Apps Script اختار الدالة resetKey واضغط تشغيل (Run) مرة، وجرّب تاني.';
+  if (j && j.ok && j.app === 'fo-acc') return 'ده لينك شيت الحسابات. حركة السوق محتاجة شيت جديد لوحده — شوف الخطوات.';
+  if (j && j.ok && j.app !== 'fo-mkt') return 'الشيت ده عليه كود تاني. اعمل الخطوات وانسخ كود حركة السوق من هنا.';
+  if (!j || !j.ok) return 'الشيت رد بخطأ: ' + (j && j.error || 'غير معروف');
+  putSet('mktSheet', {u, k});
+  ensureMktVault();
+  await mkSync();
+  return '';
+}
+function mktHelp() {
+  const code = marketScript(), lines = code.split('\n').length;
+  modal(`<h3>شيت "حركة السوق" (مرة واحدة بس، من الكمبيوتر)</h3>
+  <ol class="steps">
+    <li>افتح <b>sheets.google.com</b> بحساب جوجل بتاعك، واضغط <b>+ (فاضي)</b>. سمّي الجدول: <b>حركة السوق</b>. (ده جدول جديد، <b>مش</b> جدول الحسابات.)</li>
+    <li>من القايمة اللي فوق: <b>الإضافات (Extensions)</b> ← <b>Apps Script</b>.</li>
+    <li>اضغط جوه خانة الكود، واختار <b>تحديد الكل</b> وامسح كل حاجة. ارجع هنا واضغط <b>"انسخ الكود"</b>، والصقه <b>مرة واحدة بس</b>. الكود الصح بيخلص عند السطر رقم ${lines}.</li>
+    <li>اضغط أيقونة الحفظ 💾.</li>
+    <li>فوق على اليمين: <b>نشر (Deploy)</b> ← <b>نشر جديد (New deployment)</b> ← العجلة ⚙ ← <b>Web app</b>.</li>
+    <li><b>Execute as</b> = <b>Me (أنا)</b>، و<b>Who has access</b> = <b>Anyone (أي شخص)</b>. ده عادي لأن المفتاح السري هو اللي بيحمي البيانات.</li>
+    <li>اضغط <b>نشر (Deploy)</b> ← <b>Authorize access</b> ← اختار حسابك ← <b>Advanced</b> ← <b>Go to ... (unsafe)</b> ← <b>Allow</b>. (التحذير عادي لأن الكود بتاعك إنت. هيطلب كمان إذن "الاتصال بخدمة خارجية" ده علشان رسايل تليجرام.)</li>
+    <li>انسخ <b>Web app URL</b> (بيخلص بـ /exec)، والصقه هنا في خانة لينك شيت السوق، واضغط <b>اربط</b>.</li>
+  </ol>
+  <div class="stack" style="margin-top:12px"><button class="btn green" id="mhCopy" type="button">انسخ الكود</button><button class="btn line" id="mhShow" type="button">اعرض الكود</button><button class="btn line" id="mhX" type="button">إغلاق</button></div>`, true);
+  $('#mhX').onclick = closeModal;
+  $('#mhShow').onclick = () => { if (!$('#mhCode')) $('#mhShow').insertAdjacentHTML('afterend', `<pre class="code" id="mhCode">${esc(code)}</pre>`); };
+  $('#mhCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(code); toast('اتنسخ الكود ✔ دلوقتي الصقه في Apps Script', 5000); }
+    catch (e) { $('#mhShow').click(); const r = document.createRange(); r.selectNodeContents($('#mhCode')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('اضغط مطوّل على الكود واختار نسخ (Copy)', 6000); }
+  };
+}
+let tgInfo = null;
+async function tgCall(action, extra) {
+  const c = mkCreds(); if (!c) return null;
+  try { return await callSheet(Object.assign({action}, extra || {}), c.u, c.k, 30000); } catch (e) { return null; }
+}
+function renderMktSettings() {
+  const box = $('#sMkt'); if (!box || !db) return;
+  const c = mkCreds();
+  box.innerHTML = `<h2>📥 حركة السوق (تطبيق شريكك)</h2>
+    ${c ? `<div class="sync ${mkErr ? 'warn' : 'ok'}">${mkErr === 'key' ? '⚠️ شيت السوق رفض المفتاح.' : mkErr ? '⚠️ آخر اتصال بشيت السوق فشل، وهيحاول تاني لوحده.' : '✔ شيت حركة السوق مربوط.'}</div>
+      <button class="btn green" id="smShareP" type="button">📲 ابعت تطبيق "حركة السوق" لشريكك</button>
+      <p class="hint" style="margin:6px 0 12px">ابعته على واتساب شريكك (أو افتحه على موبايله) ← من قايمة كروم (⋮) اختار <b>"إضافة إلى الشاشة الرئيسية"</b>. هيلاقي العملاء على طول، من غير كلمة سر.</p>
+      <button class="btn line sm" id="smOpen" type="button">📥 افتح وارد السوق</button>
+      <div class="sech"><span>🔔 تنبيهات تليجرام</span></div>
+      <div id="tgSt" class="hint" style="margin:0 0 8px">⏳ بشوف حالة التنبيهات…</div>
+      <details class="fld" id="tgHow"><summary style="font-weight:700;color:var(--gold-d);cursor:pointer">إزاي أعمل البوت؟ (من الموبايل، 3 دقايق)</summary>
+        <ol class="steps"><li>افتح تليجرام ودوّر على <b>@BotFather</b> وافتحه.</li><li>ابعتله <b>/newbot</b>، واكتب أي اسم (مثلاً: تنبيهات السوق)، وبعدين اسم بيخلص بـ <b>bot</b> (مثلاً: flashon_souq_bot).</li>
+        <li>هيبعتلك رسالة فيها <b>التوكن</b> (رقم وبعده : وحروف). انسخه والصقه هنا تحت، واضغط <b>حفظ التوكن</b>.</li><li>افتح البوت بتاعك (اللينك اللي في رسالة BotFather) واضغط <b>Start</b> أو ابعتله <b>ابدأ</b>.</li><li>ارجع هنا واضغط <b>جرّب التنبيه</b>.</li></ol></details>
+      <div class="krow" style="grid-template-columns:1fr auto"><input class="inp" id="tgTok" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:14px" placeholder="الصق توكن البوت هنا"><button class="btn gold" id="tgSave" type="button" style="width:auto;padding:0 14px">حفظ التوكن</button></div>
+      <button class="btn line sm" id="tgTest" type="button" style="margin-top:8px">جرّب التنبيه</button>
+      <p class="hint">التوكن بيتحفظ جوه شيت السوق بس (مش في البرنامج ولا على الجهاز). شريكك ملوش دعوة بتليجرام.</p>
+      <details class="fld" style="margin-top:8px"><summary style="font-weight:700;color:#777;cursor:pointer">لينك شيت السوق</summary>
+        <div class="fld" style="margin-top:6px"><input class="inp" id="smUrl" style="direction:ltr;font-size:14px" value="${esc(c.u)}"></div>
+        <div class="stack"><button class="btn line sm" id="smGo" type="button">حفظ واختبار</button><button class="btn line sm" id="smHelp" type="button">كود شيت السوق والخطوات</button></div></details>`
+    : `<p class="hint" style="margin:0 0 10px">تطبيق لشريكك يسجل فيه اللي حصّله من عملاء السوق، ويوصلك هنا في "وارد السوق" تنقله بإيدك. محتاج شيت جوجل جديد لوحده (مرة واحدة من الكمبيوتر).</p>
+      <button class="btn line" id="smHelp" type="button" style="margin-bottom:10px">إزاي أعمل شيت حركة السوق؟ (خطوة بخطوة)</button>
+      <div class="fld"><label>لينك شيت حركة السوق (Web app URL)</label><input class="inp" id="smUrl" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" autocomplete="off"></div>
+      <button class="btn gold" id="smGo" type="button">اربط</button>`}
+    <div class="err" id="smE" style="color:var(--red);font-weight:800;margin-top:6px"></div>`;
+  $('#smHelp').onclick = mktHelp;
+  $('#smGo').onclick = async () => {
+    $('#smGo').disabled = true; $('#smE').textContent = '⏳ بجرب الاتصال…';
+    const err = await mktConnect($('#smUrl').value);
+    if (!$('#smGo')) return;
+    $('#smGo').disabled = false; $('#smE').textContent = err ? '❌ ' + err : '';
+    if (!err) { toast('✔ اتربط شيت حركة السوق', 5000); renderMktSettings(); }
+  };
+  if (!c) return;
+  $('#smOpen').onclick = () => go('mkt');
+  $('#smShareP').onclick = async () => {
+    const url = mktLink(), text = 'افتح الرابط ده، وبعدين من قايمة كروم (⋮) اختار "إضافة إلى الشاشة الرئيسية":';
+    try { if (navigator.share) { await navigator.share({title: 'حركة السوق', text, url}); return; } } catch (e) { if (e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(url); toast('اتنسخ الرابط ✔ ابعته لشريكك على واتساب', 6000); } catch (e) { modal(`<h3>رابط حركة السوق</h3><pre class="code">${esc(url)}</pre><button class="btn line" id="jlX" type="button">تمام</button>`); $('#jlX').onclick = closeModal; }
+  };
+  const showTg = j => {
+    const el = $('#tgSt'); if (!el) return;
+    if (!j) { el.innerHTML = '⚠️ معرفتش أوصل لشيت السوق دلوقتي.'; return; }
+    tgInfo = j;
+    el.innerHTML = !j.token ? 'لسه مفيش بوت. اعمله من الخطوات تحت (مرة واحدة).'
+      : !j.chat ? `<b style="color:var(--gold-d)">⏳ البوت @${esc(j.bot)} محفوظ. افتحه في تليجرام وابعتله "ابدأ"، وبعدين دوس "جرّب التنبيه".</b>`
+      : `<b style="color:var(--green)">✔ التنبيهات شغالة على البوت @${esc(j.bot)}.</b>`;
+    if ($('#tgHow') && !j.token) $('#tgHow').open = true;
+  };
+  if (tgInfo) showTg(tgInfo);
+  tgCall('tgstate').then(showTg);
+  $('#tgSave').onclick = async () => {
+    const t = $('#tgTok').value.trim(); if (!t) return toast('الصق التوكن الأول');
+    $('#tgSave').disabled = true; $('#tgSt').textContent = '⏳ بجرب التوكن…';
+    const j = await tgCall('tg', {token: t});
+    if (!$('#tgSave')) return; $('#tgSave').disabled = false;
+    if (!j || !j.ok) { $('#tgSt').innerHTML = `<b style="color:var(--red)">❌ ${!j ? 'معرفتش أوصل لشيت السوق.' : j.error === 'token' ? 'التوكن ده مش شغال. انسخه تاني من رسالة BotFather كله.' : 'تليجرام مردش. جرّب تاني.'}</b>`; return; }
+    $('#tgTok').value = ''; showTg(Object.assign({token: true}, j)); toast('اتحفظ التوكن ✔');
+  };
+  $('#tgTest').onclick = async () => {
+    $('#tgTest').disabled = true; $('#tgSt').textContent = '⏳ ببعت رسالة تجربة…';
+    const j = await tgCall('tgtest');
+    if (!$('#tgTest')) return; $('#tgTest').disabled = false;
+    showTg(j);
+    if (j && j.sent) toast('✔ اتبعتت رسالة تجربة على تليجرام', 5000);
+    else if (j && j.token && !j.chat) toast('ابعت "ابدأ" للبوت في تليجرام الأول، وجرّب تاني', 6000);
+  };
+}
 </script>
 </body>
 </html>

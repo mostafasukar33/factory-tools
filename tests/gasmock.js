@@ -19,7 +19,7 @@ function makeGas(opts = {}) {
     return sh;
   };
   const ss = {getId: () => 'ss1', getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = mkSheet(n))};
-  const props = {}, triggers = [], folders = [];
+  const props = {}, triggers = [], folders = [], tg = {calls: [], updates: []};
   const ctx = {
     SpreadsheetApp: {getActiveSpreadsheet: () => ss},
     LockService: {getScriptLock: () => ({waitLock() {}, tryLock() { return true; }, releaseLock() {}})},
@@ -36,11 +36,18 @@ function makeGas(opts = {}) {
     ContentService: {MimeType: {JSON: 'json'}, createTextOutput: t => ({t, setMimeType() { return this; }})},
     Utilities: {sleep() {}, formatDate: d => d.toISOString().slice(0, 10)},
     MailApp: {sendEmail() {}},
+    /* تليجرام: بنسجل كل طلب، وبنرد زي تليجرام (tg.updates = الرسايل اللي اتبعتت للبوت) */
+    UrlFetchApp: {fetch: (url, o) => {
+      tg.calls.push({url, body: o && o.payload ? JSON.parse(o.payload) : null});
+      const m = String(url).split('/').pop();
+      const body = !/bot\d{5,}:[\w-]{20,}\//.test(url) ? {ok: false} : m === 'getMe' ? {ok: true, result: {username: 'test_souq_bot'}} : m === 'getUpdates' ? {ok: true, result: tg.updates} : {ok: true, result: {}};
+      return {getContentText: () => JSON.stringify(body), getResponseCode: () => 200};
+    }},
     console, JSON, Date, Math
   };
   vm.createContext(ctx);
   return {
-    sheets, ctx, triggers, folders,
+    sheets, ctx, triggers, folders, props, tg,
     load(src) { vm.runInContext(src, ctx); },
     post(body) { return ctx.doPost({postData: {contents: body}}).t; },
     get() { return ctx.doGet({parameter: {}}).t; }

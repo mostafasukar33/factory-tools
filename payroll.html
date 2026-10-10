@@ -241,9 +241,10 @@ function settle({daysPay = 0, fridayPay = 0, bonus = 0, advances = 0, oldDeduct 
 /* فهرس الحركات (الحية بس). أنواع السجلات (k):
    sup مشرف، wk عامل، day يوم (d_<عامل>_<تاريخ>)، adv سلفة، bon حافز، wst حالة أسبوع (ws_<خميس>: الجمعة شغل/إجازة)،
    lk قفل أسبوع (lk_<خميس> فيه اللقطة snap)، pd قبض (pd_<خميس>_<عامل>)، log سطر سجل.
-   المرحلة التانية: old سلفة قديمة، rule قاعدة خصم، wded خصم أسبوع، fdf فرق جمعة. */
+   المرحلة التانية: old سلفة قديمة (eff = أول خميس بتتخصم منه)، rule قاعدة خصم لعامل (ru_<عامل>: mode none|auto|fixed و amt و eff)،
+   wded خصم الأسبوع ده بس (wd_<خميس>_<عامل>: mode skip|amt)، fdf فرق جمعة (fd_<خميس>_<عامل>: done 0|1 = جه ولا لأ في جمعة الأسبوع اللي فات). */
 function buildIdx(list) {
-  const I = {W: new Map(), day: new Map(), dayBy: new Map(), adv: [], bon: [], ws: new Map(), lk: new Map(), pd: new Map(), sup: [], log: [], first: null, memo: new Map()};
+  const I = {W: new Map(), day: new Map(), dayBy: new Map(), adv: [], bon: [], ws: new Map(), lk: new Map(), pd: new Map(), sup: [], log: [], old: [], rule: new Map(), wded: new Map(), fdf: new Map(), first: null, memo: new Map()};
   list.forEach(r => {
     if (!r || r.del) return;
     if (r.k === 'wk') I.W.set(r.id, r);
@@ -255,6 +256,10 @@ function buildIdx(list) {
     else if (r.k === 'pd') I.pd.set(r.thu + '|' + r.w, r);
     else if (r.k === 'sup') I.sup.push(r);
     else if (r.k === 'log') I.log.push(r);
+    else if (r.k === 'old') I.old.push(r);
+    else if (r.k === 'rule') I.rule.set(r.w, r);
+    else if (r.k === 'wded') I.wded.set(r.thu + '|' + r.w, r);
+    else if (r.k === 'fdf') I.fdf.set(r.thu + '|' + r.w, r);
   });
   const ths = [];
   I.W.forEach(w => { if (w.from) ths.push(ownerThursday(w.from)); });
@@ -264,22 +269,26 @@ function buildIdx(list) {
   I.first = ths.sort()[0] || null;
   return I;
 }
-/* حساب أسبوع: لو مقفول بنرجّع اللقطة المثبتة، وإلا بنحسب من الحركات (fresh = احسب حتى لو مقفول، وقت القفل) */
+/* حساب أسبوع: لو مقفول بنرجّع اللقطة المثبتة، وإلا بنحسب من الحركات (fresh = احسب حتى لو مقفول، وقت القفل أو إعادة الحساب).
+   oldPaid = اللي اتخصم من السلف القديمة لكل عامل لحد الأسبوع ده (تراكمي). */
 function calcWeek(I, thu, fresh) {
   const lk = I.lk.get(thu);
-  if (!fresh && lk && lk.snap) return {thu, closed: true, lk, fri: lk.snap.fri, rows: lk.snap.rows, total: lk.snap.total};
+  if (!fresh && lk && lk.snap) return {thu, closed: true, lk, fri: lk.snap.fri, rows: lk.snap.rows, total: lk.snap.total, oldPaid: lk.snap.oldPaid || {}};
   const key = thu + (fresh ? '!' : '');
   if (I.memo.has(key)) return I.memo.get(key);
   const ds = weekDates(thu), work = ds.slice(0, 6);
   const ws = I.ws.get(thu), fri = ws && ws.fri === 'work' ? 'work' : 'off';
   const prev = addDays(thu, -7), pw = I.first && prev >= I.first ? calcWeek(I, prev) : null;
+  const pf = pw && pw.fri === 'work' ? pw : null;         // الجمعة اللي فاتت كانت شغل: فرق الجمعة
+  const prevPaid = pw && pw.oldPaid ? pw.oldPaid : {};
+  const fdDelta = id => { const pay = pf && pf.rows[id] ? pf.rows[id].fridayPay || 0 : 0, f = I.fdf.get(thu + '|' + id); return pay ? Math.round((1 - (f ? f.done : 1)) * pay) : 0; };
   const ids = new Set();
   I.W.forEach(w => { if (w.st === 'on' && (!w.from || w.from <= thu)) ids.add(w.id); });
   work.forEach(d => (I.dayBy.get(d) || []).forEach(r => ids.add(r.w)));
   const advs = I.adv.filter(a => ownerThursday(a.date) === thu), bons = I.bon.filter(b => b.thu === thu);
   advs.forEach(a => ids.add(a.w)); bons.forEach(b => ids.add(b.w));
-  if (pw) Object.keys(pw.rows).forEach(id => { if (pw.rows[id].carryOut) ids.add(id); });
-  const rows = {};
+  if (pw) Object.keys(pw.rows).forEach(id => { if (pw.rows[id].carryOut || fdDelta(id)) ids.add(id); });
+  const rows = {}, oldPaid = Object.assign({}, prevPaid);
   let total = 0;
   ids.forEach(id => {
     const w = I.W.get(id); if (!w) return;
@@ -290,11 +299,24 @@ function calcWeek(I, thu, fresh) {
     const bonus = bons.filter(b => b.w === id).reduce((s, b) => s + b.amt, 0);
     const advances = advs.filter(a => a.w === id).reduce((s, a) => s + a.amt, 0);
     const carryIn = pw && pw.rows[id] ? pw.rows[id].carryOut || 0 : 0;
-    const s = settle({daysPay, fridayPay, bonus, advances, oldDeduct: 0, prevFridayDelta: 0, carryIn});
-    rows[id] = Object.assign({w: id, name: w.name, days, units, daysPay, fridayPay, bonus, advances, carryIn, prevFridayDelta: 0}, s);
+    const prevFridayDelta = fdDelta(id);
+    /* السلف القديمة: الباقي = مجموعها − اللي اتخصم قبل كده. الطلب: خصم الأسبوع ده (wded) وإلا قاعدة العامل (rule) */
+    const oldTotal = I.old.filter(o => o.w === id && o.eff <= thu).reduce((s, o) => s + o.amt, 0);
+    const oldBefore = Math.max(oldTotal - (prevPaid[id] || 0), 0);
+    const wd = I.wded.get(thu + '|' + id), ru = I.rule.get(id);
+    /* لو الأسبوع مقفول واتعاد حسابه بعد تعديل: بنحتفظ بطلب الخصم اللي اتثبت وقت القفل (تغيير القاعدة بعد كده مبيغيرش الأسابيع القديمة) */
+    const sr = fresh && lk && lk.snap && lk.snap.rows[id], keep = !wd && sr && sr.oldReq !== undefined;
+    let req = 0, auto = false;
+    if (wd) req = wd.mode === 'skip' ? 0 : wd.amt || 0;
+    else if (keep) { auto = !!sr.oldAuto; req = auto ? oldBefore : sr.oldReq; }
+    else if (ru && ru.eff <= thu) { auto = ru.mode === 'auto'; req = auto ? oldBefore : ru.mode === 'fixed' ? ru.amt || 0 : 0; }
+    const oldDeduct = Math.min(Math.max(req, 0), oldBefore);
+    const s = settle({daysPay, fridayPay, bonus, advances, oldDeduct, prevFridayDelta, carryIn});
+    if (oldTotal || prevPaid[id]) oldPaid[id] = (prevPaid[id] || 0) + s.oldApplied;
+    rows[id] = Object.assign({w: id, name: w.name, days, units, daysPay, fridayPay, bonus, advances, carryIn, prevFridayDelta, oldBefore, oldReq: req, oldAuto: auto, oldLeft: oldBefore - s.oldApplied, oldSkip: !!(wd && wd.mode === 'skip')}, s);
     total += s.net;
   });
-  const res = {thu, closed: false, fri, rows, total};
+  const res = {thu, closed: false, fri, rows, total, oldPaid};
   I.memo.set(key, res);
   return res;
 }
@@ -551,16 +573,27 @@ function lockWeek(thu, auto) {
   });
   dirty(); I = idx();
   const c = calcWeek(I, thu, true);
-  const snap = {fri: c.fri, rows: c.rows, total: c.total};
+  const snap = {fri: c.fri, rows: c.rows, total: c.total, oldPaid: c.oldPaid};
   if (auto) {
     S.recs['lk_' + thu] = {id: 'lk_' + thu, k: 'lk', thu, snap, auto: true, by: 'تلقائي', at: Date.now(), upd: 2, del: false};
     if (!S.recs['l_auto_' + thu]) S.recs['l_auto_' + thu] = {id: 'l_auto_' + thu, k: 'log', thu, txt: `أسبوع الخميس ${dm(thu)} اتقفل تلقائي بعد الجمعة (الأيام اللي متسجلتش اتحسبت غياب) — هيخرج ${fmt(c.total)}`, by: 'تلقائي', at: Date.now(), upd: 2, del: false};
   } else {
-    put('lk', {id: 'lk_' + thu, thu, snap, auto: false});
+    put('lk', {id: 'lk_' + thu, thu, snap, auto: false, closer: myName()});
     log(`${myName()} قفّل أسبوع الخميس ${dm(thu)} — هيخرج ${fmt(c.total)}`, {thu});
   }
   dirty();
 }
+/* التعديل بعد القفل: بنعيد حساب الأسبوع المقفول وكل الأسابيع المقفولة اللي بعده بالترتيب (المرحّل والخصم القديم وفرق الجمعة بيتعدلوا معاه) ونثبت اللقطة الجديدة */
+function relockFrom(thu) {
+  [...idx().lk.keys()].filter(t => t >= thu).sort().forEach(t => {
+    const l = idx().lk.get(t), c = calcWeek(idx(), t, true), snap = {fri: c.fri, rows: c.rows, total: c.total, oldPaid: c.oldPaid};
+    if (!l.snap || JSON.stringify(snap) !== JSON.stringify(l.snap)) put('lk', {id: l.id, snap});
+  });
+  dirty();
+}
+/* أي تعديل في أسبوع: لو مقفول نعيد حسابه. بنرجّع علامة "بعد القفل" للسجل */
+const afterTag = thu => idx().lk.has(thu) ? ' — بعد القفل' : '';
+function touched(thu) { if (idx().lk.has(thu)) relockFrom(thu); }
 /* بعد ما الجمعة تعدي: أي أسبوع لسه مفتوح بيتقفل لوحده (بالترتيب). لو فيه شيت، لازم نكون سحبنا الجديد من شوية */
 function autoClose() {
   if (!me()) return false;
@@ -723,7 +756,7 @@ function setDay(w, d, u) {
   if (cur && cur.u === u) return false;
   /* الأجر بيتثبت على اليوم وقت أول تسجيل */
   put('day', {id, w: w.id, date: d, u, rate: cur ? cur.rate : (w.rate || 0)});
-  log(cur ? `${myName()} غيّر ${dayFull(d)} لـ ${w.name} من "${U_BTN[cur.u]}" لـ "${U_BTN[u]}"` : `${myName()} سجّل ${w.name} "${U_BTN[u]}" — ${dayFull(d)}`, {w: w.id, thu: ownerThursday(d)});
+  log((cur ? `${myName()} غيّر ${dayFull(d)} لـ ${w.name} من "${U_BTN[cur.u]}" لـ "${U_BTN[u]}"` : `${myName()} سجّل ${w.name} "${U_BTN[u]}" — ${dayFull(d)}`) + afterTag(ownerThursday(d)), {w: w.id, thu: ownerThursday(d)});
   return true;
 }
 
@@ -765,7 +798,6 @@ function pickWorkers(sel) {
 function advModal(a, d, wid) {
   let w = a ? a.w : wid || null;
   const date = a ? a.date : d || today(), thu = ownerThursday(date);
-  if (idx().lk.has(thu)) return toast('الأسبوع ده اتقفل');
   modal(`<h3>${a ? 'تعديل سلفة' : 'سلفة'}<small>${dayFull(date)}${a ? ' · ' + byTxt(a) : ''}</small></h3>
     ${a ? `<p style="margin:0 0 6px">${esc(wName(a.w))}</p>` : `<span class="fl">لمين؟</span>${pickWorkers(w)}`}
     ${amtBox('avA', a && a.amt, true)}
@@ -784,22 +816,21 @@ function advModal(a, d, wid) {
       if (a.amt === amt && (a.note || '') === note) return closeModal();
       const old = a.amt;
       put('adv', {id: a.id, amt, note});
-      log(`${myName()} غيّر سلفة ${wName(a.w)} (${dayFull(a.date)}) من ${fmt(old)} لـ ${fmt(amt)}`, {w: a.w, thu});
+      log(`${myName()} غيّر سلفة ${wName(a.w)} (${dayFull(a.date)}) من ${fmt(old)} لـ ${fmt(amt)}${afterTag(thu)}`, {w: a.w, thu});
     } else {
       put('adv', {id: newId('a'), w, date, amt, note});
-      log(`${myName()} سجّل سلفة لـ ${wName(w)} ${fmt(amt)}${note ? ' (' + note + ')' : ''} — ${dayFull(date)}`, {w, thu});
+      log(`${myName()} سجّل سلفة لـ ${wName(w)} ${fmt(amt)}${note ? ' (' + note + ')' : ''} — ${dayFull(date)}${afterTag(thu)}`, {w, thu});
     }
-    commit(); closeModal(); toast('اتسجلت ✔'); afterChange(w);
+    touched(thu); commit(); closeModal(); toast('اتسجلت ✔'); afterChange(w);
   };
   if ($('#avDel')) $('#avDel').onclick = async () => {
     if (!(await ask(`تمسح سلفة ${wName(a.w)} ${fmt(a.amt)}؟`, 'أيوه امسحها', 'لأ', true))) return;
     put('adv', {id: a.id, del: true});
-    log(`${myName()} مسح سلفة ${wName(a.w)} ${fmt(a.amt)} (${dayFull(a.date)})`, {w: a.w, thu});
-    commit(); toast('اتمسحت ✔'); afterChange(a.w);
+    log(`${myName()} مسح سلفة ${wName(a.w)} ${fmt(a.amt)} (${dayFull(a.date)})${afterTag(thu)}`, {w: a.w, thu});
+    touched(thu); commit(); toast('اتمسحت ✔'); afterChange(a.w);
   };
 }
 function bonModal(b, thu, wid) {
-  if (idx().lk.has(thu)) return toast('الأسبوع ده اتقفل');
   const w = b ? b.w : wid;
   modal(`<h3>${b ? 'تعديل حافز' : 'حافز'} — ${esc(wName(w))}<small>أسبوع الخميس ${dm(thu)}${b ? ' · ' + byTxt(b) : ''}</small></h3>
     ${amtBox('bnA', b && b.amt, true)}
@@ -814,18 +845,18 @@ function bonModal(b, thu, wid) {
     if (b) {
       if (b.amt === amt && (b.note || '') === note) return closeModal();
       put('bon', {id: b.id, amt, note});
-      log(`${myName()} غيّر حافز ${wName(w)} من ${fmt(b.amt)} لـ ${fmt(amt)}`, {w, thu});
+      log(`${myName()} غيّر حافز ${wName(w)} من ${fmt(b.amt)} لـ ${fmt(amt)}${afterTag(thu)}`, {w, thu});
     } else {
       put('bon', {id: newId('b'), w, thu, amt, note});
-      log(`${myName()} سجّل حافز لـ ${wName(w)} ${fmt(amt)}${note ? ' (' + note + ')' : ''}`, {w, thu});
+      log(`${myName()} سجّل حافز لـ ${wName(w)} ${fmt(amt)}${note ? ' (' + note + ')' : ''}${afterTag(thu)}`, {w, thu});
     }
-    commit(); closeModal(); toast('اتسجل ✔'); afterChange(w);
+    touched(thu); commit(); closeModal(); toast('اتسجل ✔'); afterChange(w);
   };
   if ($('#bnDel')) $('#bnDel').onclick = async () => {
     if (!(await ask(`تمسح حافز ${wName(w)} ${fmt(b.amt)}؟`, 'أيوه امسحه', 'لأ', true))) return;
     put('bon', {id: b.id, del: true});
-    log(`${myName()} مسح حافز ${wName(w)} ${fmt(b.amt)}`, {w, thu});
-    commit(); toast('اتمسح ✔'); afterChange(w);
+    log(`${myName()} مسح حافز ${wName(w)} ${fmt(b.amt)}${afterTag(thu)}`, {w, thu});
+    touched(thu); commit(); toast('اتمسح ✔'); afterChange(w);
   };
 }
 /* بعد أي تعديل من نافذة: نرسم الشاشة، ولو كنا في تفاصيل عامل في الأسبوع نرجع لها */
@@ -834,6 +865,8 @@ function afterChange(wid) { render(); if (scr.v === 'w' && wid) workerSheet(wid,
 /* ---------- الأسبوع / الخميس ---------- */
 const curThu = () => scr.thu || ownerThursday(today());
 const nz = n => n ? fmt(n) : '<span class="z">—</span>';
+/* كل اللي اتخصم من العامل في الأسبوع ده (سلف + مرحّل + فرق جمعة + خصم السلف القديمة) */
+const ded = r => r.advances + r.carryIn + (r.prevFridayDelta || 0) + (r.oldApplied || 0);
 function drawWeek() {
   const I = idx(), t = today(), thu = curThu(), nowThu = ownerThursday(t), ds = weekDates(thu);
   const c = calcWeek(I, thu), ids = Object.keys(c.rows).sort((a, b) => ((I.W.get(a) || {}).ord || 0) - ((I.W.get(b) || {}).ord || 0));
@@ -844,26 +877,28 @@ function drawWeek() {
   $('#main').innerHTML = `<div class="dnav"><button type="button" id="wPrev" title="الأسبوع اللي قبله"${thu <= firstThu ? ' disabled' : ''}>›</button><span>أسبوع الخميس ${dm(thu)}${thu === nowThu ? ' · الحالي' : ''}</span><button type="button" id="wNext" title="الأسبوع اللي بعده"${thu >= nowThu ? ' disabled' : ''}>‹</button></div>
     ${owe.length && !c.closed ? `<button class="note" id="owe" type="button" style="width:100%;text-align:right;border:0">💵 فيه ${owe.length === 1 ? 'عامل' : owe.length + ' عمال'} لسه مقبضوش من أسبوع قبل كده — دوس هنا</button>` : ''}
     <section class="panel"><div class="p1"><span>${c.closed ? 'المرتبات (اتقفل)' : 'هيخرج من المصنع'}</span><b class="money">${fmt(c.total)}</b></div>
-      <div class="cap"><span>من ${dayFull(ds[0])} لـ ${dayFull(ds[5])}</span>${c.closed ? `<span class="ok">🔒 ${c.lk.auto ? 'اتقفل تلقائي' : 'قفّله ' + esc(c.lk.by)} · اتقبض ${paidN} من ${toPay}</span>` : ''}</div>
-      <div class="fri"><span>الجمعة ${dm(ds[6])}:</span><div class="seg" id="fri"><button type="button" data-v="work" class="${c.fri === 'work' ? 'on' : ''}"${c.closed ? ' disabled' : ''}>شغل ✓</button><button type="button" data-v="off" class="${c.fri !== 'work' ? 'on' : ''}"${c.closed ? ' disabled' : ''}>إجازة</button></div></div>
+      <div class="cap"><span>من ${dayFull(ds[0])} لـ ${dayFull(ds[5])}</span>${c.closed ? `<span class="ok">🔒 ${c.lk.auto ? 'اتقفل تلقائي' : 'قفّله ' + esc(c.lk.closer || c.lk.by)} · اتقبض ${paidN} من ${toPay}</span>` : ''}</div>
+      <div class="fri"><span>الجمعة ${dm(ds[6])}:</span><div class="seg" id="fri"><button type="button" data-v="work" class="${c.fri === 'work' ? 'on' : ''}">شغل ✓</button><button type="button" data-v="off" class="${c.fri !== 'work' ? 'on' : ''}">إجازة</button></div></div>
       ${c.fri === 'work' ? '<div class="sm" style="margin-top:4px">أجر الجمعة بيتدفع مع الخميس ده.</div>' : ''}
     </section>
+    ${friCard(I, thu, c)}
     <div class="lbl"><span>العمال (${ids.length})</span><span>دوس على أي عامل تشوف تفاصيله</span></div>
     ${ids.length ? `<table class="tbl"><thead><tr><th>الاسم</th><th>المرتب</th><th>السلف</th><th>الصافي</th>${c.closed ? '<th></th>' : ''}</tr></thead><tbody>
-      ${ids.map(id => { const r = c.rows[id], p = I.pd.get(thu + '|' + id); return `<tr data-w="${esc(id)}"><td><b>${esc(r.name)}</b><small>${unitsText(r.units)}${r.fridayPay ? ' + جمعة' : ''}</small></td><td>${nz(r.wages)}</td><td class="${r.advances + r.carryIn ? 'bk' : ''}">${nz(r.advances + r.carryIn)}</td><td class="net ${r.net ? '' : 'z'}">${r.net ? fmt(r.net) : (r.carryOut ? '<small class="bk">عليه ' + fmt(r.carryOut) + '</small>' : '—')}</td>${c.closed ? `<td>${r.net > 0 ? (p ? `<span class="paid">✓ قبض<br>${esc(p.by)}</span>` : `<button class="pay" type="button" data-pay="${esc(id)}">قبض</button>`) : ''}</td>` : ''}</tr>`; }).join('')}</tbody></table>`
+      ${ids.map(id => { const r = c.rows[id], p = I.pd.get(thu + '|' + id); return `<tr data-w="${esc(id)}"><td><b>${esc(r.name)}</b><small>${unitsText(r.units)}${r.fridayPay ? ' + جمعة' : ''}</small></td><td>${nz(r.wages)}</td><td class="${ded(r) ? 'bk' : ''}">${nz(ded(r))}</td><td class="net ${r.net ? '' : 'z'}">${r.net ? fmt(r.net) : (r.carryOut ? '<small class="bk">عليه ' + fmt(r.carryOut) + '</small>' : '—')}</td>${c.closed ? `<td>${r.net > 0 || p ? (p ? `<span class="paid">✓ قبض<br>${esc(p.by)}${p.amt !== r.net ? `<br><span class="bk">⚠ كان ${fmt(p.amt)}</span>` : ''}</span>` : `<button class="pay" type="button" data-pay="${esc(id)}">قبض</button>`) : ''}</td>` : ''}</tr>`; }).join('')}</tbody></table>`
       : '<div class="list"><div class="empty">مفيش عمال في الأسبوع ده</div></div>'}
     ${c.closed ? '' : `<button class="big b-dark" id="lockW" type="button">🔒 قفّل الأسبوع</button><div id="lockErr"></div><p class="hint">بعد القفل الأرقام بتتثبت ويظهر زرار "قبض" لكل عامل. ولو محدش قفله، بيتقفل لوحده بعد الجمعة.</p>`}`;
   $('#wPrev').onclick = () => nav('w/' + addDays(thu, -7), true);
   $('#wNext').onclick = () => nav(addDays(thu, 7) >= nowThu ? 'w' : 'w/' + addDays(thu, 7), true);
   if ($('#owe')) $('#owe').onclick = () => nav('w/' + owe.sort().pop(), true);
-  $$('#fri button').forEach(b => b.onclick = () => {
-    if (idx().lk.has(thu)) return;
+  $$('#fri button').forEach(b => b.onclick = async () => {
     const v = b.dataset.v, cur = idx().ws.get(thu);
     if ((cur && cur.fri === 'work' ? 'work' : 'off') === v) return;
+    if (idx().lk.has(thu) && !(await ask('الأسبوع ده مقفول. تغيّر الجمعة وتعيد حساب المرتبات؟', 'أيوه، غيّر'))) return;
     put('wst', {id: 'ws_' + thu, thu, fri: v});
-    log(`${myName()} علّم الجمعة ${dm(ds[6])}: ${v === 'work' ? 'شغل' : 'إجازة'}`, {thu});
-    commit(); drawWeek();
+    log(`${myName()} علّم الجمعة ${dm(ds[6])}: ${v === 'work' ? 'شغل' : 'إجازة'}${afterTag(thu)}`, {thu});
+    touched(thu); commit(); drawWeek();
   });
+  $$('#main .ub button[data-fd]').forEach(b => b.onclick = () => setFriCame(b.dataset.fd, thu, +b.dataset.u));
   $$('#main tr[data-w]').forEach(tr => tr.onclick = e => { if (e.target.closest('[data-pay]')) return; workerSheet(tr.dataset.w, thu); });
   $$('#main [data-pay]').forEach(b => b.onclick = () => payOut(b.dataset.pay, thu));
   if ($('#lockW')) $('#lockW').onclick = async () => {
@@ -876,6 +911,27 @@ function drawWeek() {
     if (idx().lk.has(thu)) return drawWeek();
     lockWeek(thu, false); commit(); drawWeek(); toast('اتقفل ✔ دلوقتي علّم مين قبض');
   };
+}
+/* فرق الجمعة: لو الجمعة اللي فاتت كانت شغل واتقفلت، العمال اللي اتدفعلهم بيظهروا هنا في الأسبوع الحالي. الكل محسوب "جه" لحد ما تعلّم اللي مجاش، وأجره بيتخصم من الخميس ده */
+function friCard(I, thu, c) {
+  if (c.closed) return '';
+  const pw = calcWeek(I, addDays(thu, -7));
+  if (!pw || !pw.closed || pw.fri !== 'work') return '';
+  const ids = Object.keys(pw.rows).filter(id => pw.rows[id].fridayPay > 0 && I.W.get(id)).sort((a, b) => (I.W.get(a).ord || 0) - (I.W.get(b).ord || 0));
+  if (!ids.length) return '';
+  const fd = addDays(thu, -6);
+  return `<div class="lbl"><span>جمعة ${dm(fd)} (اتدفعت مع الخميس اللي فات)</span><span>علّم اللي مجاش</span></div><div class="list">${ids.map(id => {
+    const f = I.fdf.get(thu + '|' + id), done = f ? f.done : 1, pay = pw.rows[id].fridayPay;
+    return `<div class="wr"><div class="nm"><b>${esc(pw.rows[id].name)}</b><small class="sm ${done ? '' : 'bk'}">${done ? 'جه (اتدفعله ' + fmt(pay) + ')' : 'مجاش — هيتخصم ' + fmt(pay)}${f ? ' · ' + byTxt(f) : ''}</small></div><div class="ub" style="grid-template-columns:repeat(2,auto)"><button type="button" data-fd="${esc(id)}" data-u="1" class="${done ? 'on' : ''}">جه</button><button type="button" data-fd="${esc(id)}" data-u="0" class="${done ? '' : 'on'}">مجاش</button></div></div>`;
+  }).join('')}</div>`;
+}
+function setFriCame(wid, thu, v) {
+  const I = idx(), f = I.fdf.get(thu + '|' + wid), cur = f ? f.done : 1;
+  if (cur === v) return;
+  const pay = ((calcWeek(I, addDays(thu, -7)).rows[wid]) || {}).fridayPay || 0, fd = addDays(thu, -6);
+  put('fdf', {id: 'fd_' + thu + '_' + wid, thu, w: wid, done: v});
+  log(`${myName()} علّم ${wName(wid)} ${v ? '"جه"' : '"مجاش"'} في جمعة ${dm(fd)}${v ? '' : ' — هيتخصم ' + fmt(pay) + ' من الخميس ده'}`, {w: wid, thu});
+  commit(); drawWeek();
 }
 async function payOut(wid, thu) {
   const I = idx(), c = calcWeek(I, thu), r = c.rows[wid];
@@ -909,20 +965,60 @@ function workerSheet(wid, thu) {
     <div class="kv"><span>سلف الأسبوع</span><b class="money ${r.advances ? 'neg' : ''}">${r.advances ? '- ' + fmt(r.advances) : '—'}</b></div>
     ${advs.map(a => `<div class="kv sub" data-adv="${esc(a.id)}"><span>${dayName(a.date)} · ${a.note ? esc(a.note) + ' · ' : ''}${byTxt(a)}</span><span class="money">${fmt(a.amt)}</span></div>`).join('')}
     ${r.carryIn ? `<div class="kv"><span>عليه من الأسبوع اللي فات</span><b class="money neg">- ${fmt(r.carryIn)}</b></div>` : ''}
+    ${r.prevFridayDelta ? `<div class="kv"><span>فرق الجمعة (مجاش)</span><b class="money neg">- ${fmt(r.prevFridayDelta)}</b></div>` : ''}
+    ${r.oldBefore ? `<div class="kv"><span>خصم من السلف القديمة${r.oldSkip ? ' (متخصمش الأسبوع ده)' : ''}</span><b class="money ${r.oldApplied ? 'neg' : ''}">${r.oldApplied ? '- ' + fmt(r.oldApplied) : '—'}</b></div>
+      <div class="kv sub" id="wsOld"><span>الباقي عليه ${fmt(r.oldLeft)} · دوس تغيّر الخصم الأسبوع ده</span><span>✏️</span></div>` : ''}
     <div class="kv tot"><span>الصافي</span><b class="money">${fmt(r.net)}</b></div>
     ${r.carryOut ? `<div class="note">السلف أكتر من المرتب: عليه ${fmt(r.carryOut)} بتتخصم الخميس الجاي.</div>` : ''}
-    ${open ? `<div class="mini"><button class="big b-home" id="wsAdv" type="button">＋ سلفة</button><button class="big b-home" id="wsBon" type="button">＋ حافز</button></div>`
-      : r.net > 0 ? (p ? `<div class="info">✓ قبض ${fmt(p.amt)} · ${byTxt(p)}</div><button class="lnk" id="wsPay" type="button">لسه مقبضش؟</button>` : `<button class="big b-ok" id="wsPay" type="button">💵 قبض ${fmt(r.net)}</button>`) : ''}
+    ${c.closed ? '<div class="info">🔒 الأسبوع مقفول. أي تعديل هنا بيعيد حساب الأرقام (واللي بعده) وبيتسجل في السجل.</div>' : ''}
+    <div class="mini"><button class="big b-home" id="wsAdv" type="button">＋ سلفة</button><button class="big b-home" id="wsBon" type="button">＋ حافز</button></div>
+    ${!open && (r.net > 0 || p) ? (p && p.amt !== r.net ? `<div class="note">⚠ العامل ده اتعلّم إنه قبض ${fmt(p.amt)} والصافي دلوقتي ${fmt(r.net)} بعد التعديل.</div>` : '') + (p ? `<div class="info">✓ قبض ${fmt(p.amt)} · ${byTxt(p)}</div><button class="lnk" id="wsPay" type="button">لسه مقبضش؟</button>` : `<button class="big b-ok" id="wsPay" type="button">💵 قبض ${fmt(r.net)}</button>`) : ''}
     <button class="lnk" id="wsX" type="button">إغلاق</button>`);
   $('#wsX').onclick = closeModal;
-  $$('#modal .days button').forEach(b => b.onclick = () => { if (open) nav('t/' + b.dataset.d); });
+  $$('#modal .days button').forEach(b => b.onclick = () => { if (open) nav('t/' + b.dataset.d); else dayModal(wid, b.dataset.d, thu); });
+  if ($('#wsOld')) $('#wsOld').onclick = () => wdedModal(wid, thu);
   if ($('#wsAdv')) $('#wsAdv').onclick = () => advModal(null, defDayIn(thu), wid);
   if ($('#wsBon')) $('#wsBon').onclick = () => bonModal(null, thu, wid);
   if ($('#wsPay')) $('#wsPay').onclick = () => payOut(wid, thu);
-  if (open) {
-    $$('#modal [data-adv]').forEach(x => x.onclick = () => advModal(S.recs[x.dataset.adv]));
-    $$('#modal [data-bon]').forEach(x => x.onclick = () => bonModal(S.recs[x.dataset.bon], thu));
-  }
+  $$('#modal [data-adv]').forEach(x => x.onclick = () => advModal(S.recs[x.dataset.adv]));
+  $$('#modal [data-bon]').forEach(x => x.onclick = () => bonModal(S.recs[x.dataset.bon], thu));
+}
+/* تغيير يوم في أسبوع مقفول */
+function dayModal(wid, d, thu) {
+  const w = idx().W.get(wid), cur = idx().day.get(wid + '|' + d);
+  modal(`<h3>${esc(w.name)}<small>${dayFull(d)} · 🔒 أسبوع مقفول</small></h3>
+    <div class="ub" style="grid-template-columns:repeat(4,1fr);gap:6px">${UNITS.map(u => `<button type="button" data-u="${u}" class="${cur && cur.u === u ? 'on' : ''}" style="height:48px">${U_BTN[u]}</button>`).join('')}</div>
+    <p class="hint">التغيير بيعيد حساب الأسبوع ده واللي بعده.</p><button class="lnk" id="dmX" type="button">إغلاق</button>`);
+  $('#dmX').onclick = () => workerSheet(wid, thu);
+  $$('#modal .ub button').forEach(b => b.onclick = () => {
+    if (setDay(w, d, +b.dataset.u)) { touched(thu); commit(); toast('اتعدّل ✔'); }
+    render(); workerSheet(wid, thu);
+  });
+}
+/* خصم السلف القديمة للأسبوع ده بس: زي القاعدة / متخصمش / رقم تاني */
+function wdedModal(wid, thu) {
+  const I = idx(), r = calcWeek(I, thu).rows[wid], wd = I.wded.get(thu + '|' + wid), ru = I.rule.get(wid);
+  const ruTxt = !ru || ru.mode === 'none' ? 'مفيش خصم' : ru.mode === 'auto' ? 'تلقائي (كل الباقي)' : 'مبلغ ثابت ' + fmt(ru.amt) + ' كل أسبوع';
+  modal(`<h3>خصم السلف القديمة — ${esc(wName(wid))}<small>أسبوع الخميس ${dm(thu)}</small></h3>
+    <div class="kv"><span>الباقي عليه قبل الأسبوع ده</span><b class="money">${fmt(r.oldBefore)}</b></div>
+    <div class="kv"><span>القاعدة</span><b>${ruTxt}</b></div>
+    <button class="big ${wd ? 'b-home' : 'b-ok'}" id="wdRule" type="button">زي القاعدة</button>
+    <button class="big ${wd && wd.mode === 'skip' ? 'b-ok' : 'b-home'}" id="wdSkip" type="button">متخصمش الأسبوع ده</button>
+    <span class="fl">أو رقم تاني</span>${amtBox('wdA', wd && wd.mode === 'amt' ? wd.amt : 0, true)}
+    <button class="big ${wd && wd.mode === 'amt' ? 'b-ok' : 'b-home'}" id="wdAmt" type="button">خصم الرقم ده</button>
+    <button class="lnk" id="wdX" type="button">رجوع</button>`);
+  bindAmt($('#wdA'));
+  $('#wdX').onclick = () => workerSheet(wid, thu);
+  const save = (mode, amt, txt) => {
+    const id = 'wd_' + thu + '_' + wid;
+    if (mode === 'rule') { if (!wd) return workerSheet(wid, thu); put('wded', {id, del: true}); }
+    else put('wded', {id, thu, w: wid, mode, amt: amt || 0});
+    log(`${myName()} ${txt} ${wName(wid)} — أسبوع الخميس ${dm(thu)}${afterTag(thu)}`, {w: wid, thu});
+    touched(thu); commit(); render(); workerSheet(wid, thu);
+  };
+  $('#wdRule').onclick = () => save('rule', 0, 'رجّع خصم السلف القديمة زي القاعدة لـ');
+  $('#wdSkip').onclick = () => save('skip', 0, 'علّم متخصمش من السلف القديمة لـ');
+  $('#wdAmt').onclick = () => { const a = amtOf($('#wdA')); if (!(a > 0)) return toast('اكتب المبلغ'); save('amt', a, `خصم ${fmt(a)} بدل القاعدة من السلف القديمة لـ`); };
 }
 /* تاريخ السلفة الجديدة من شاشة الأسبوع: النهارده لو جوه الأسبوع، وإلا الخميس بتاعه */
 const defDayIn = thu => { const t = today(); return ownerThursday(t) === thu ? t : thu; };
@@ -940,6 +1036,83 @@ function drawWorkers() {
   $('#kNew').onclick = () => workerModal(null);
   $$('#main .row[data-w]').forEach(r => r.onclick = () => workerModal(idx().W.get(r.dataset.w)));
 }
+/* أول خميس لسه مقفولش: السلف القديمة والقاعدة بتبدأ منه (الأسابيع اللي اتقفلت قبله مبتتغيرش) */
+function firstOpenThu() {
+  const I = idx(), nowThu = ownerThursday(today());
+  let t = I.first && I.first < nowThu ? I.first : nowThu;
+  while (I.lk.has(t)) t = addDays(t, 7);
+  return t;
+}
+/* الباقي من السلف القديمة بعد الأسبوع الحالي */
+function oldLeftNow(wid) {
+  const I = idx(), tot = I.old.filter(o => o.w === wid).reduce((s, o) => s + o.amt, 0);
+  if (!tot) return 0;
+  const c = calcWeek(I, firstOpenThu());
+  return Math.max(tot - ((c.oldPaid || {})[wid] || 0), 0);
+}
+/* السلف القديمة (ديون قبل كده): قايمة بمبلغ وتاريخ وملاحظة، وقاعدة الخصم لكل عامل: مفيش / تلقائي / مبلغ ثابت كل أسبوع */
+function oldModal(wid) {
+  const I = idx(), w = I.W.get(wid), list = I.old.filter(o => o.w === wid).sort((a, b) => (a.date || '').localeCompare(b.date || '') || a.at - b.at);
+  const ru = I.rule.get(wid) || {mode: 'none', amt: 0};
+  let mode = ru.mode;
+  const left = oldLeftNow(wid), tot = list.reduce((s, o) => s + o.amt, 0);
+  modal(`<h3>السلف القديمة — ${esc(w.name)}</h3>
+    <div class="kv"><span>مجموع السلف القديمة</span><b class="money">${fmt(tot)}</b></div>
+    <div class="kv"><span>الباقي عليه</span><b class="money ${left ? 'neg' : ''}">${fmt(left)}</b></div>
+    ${list.map(o => `<div class="kv sub" data-o="${esc(o.id)}"><span>${o.date ? dm(o.date) + ' · ' : ''}${o.note ? esc(o.note) + ' · ' : ''}${byTxt(o)}</span><span class="money">${fmt(o.amt)}</span></div>`).join('')}
+    <button class="big b-home" id="olAdd" type="button">＋ سلفة قديمة</button>
+    <span class="fl">طريقة الخصم من مرتبه</span>
+    <div class="seg" id="olMode" style="--n:3">${[['none', 'مفيش خصم'], ['auto', 'تلقائي'], ['fixed', 'مبلغ ثابت']].map(([k, t]) => `<button type="button" data-v="${k}" class="${mode === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <div id="olFx" style="${mode === 'fixed' ? '' : 'display:none'};margin-top:8px"><span class="fl">كل أسبوع</span>${amtBox('olA', ru.amt, true)}</div>
+    <p class="sm" id="olHint" style="margin:6px 2px 0"></p>
+    <button class="big b-ok" id="olSave" type="button">حفظ الطريقة</button><button class="lnk" id="olX" type="button">إغلاق</button>`);
+  bindAmt($('#olA'));
+  const hint = () => { $('#olFx').style.display = mode === 'fixed' ? '' : 'none'; $('#olHint').textContent = mode === 'auto' ? 'بيتخصم كل الباقي من أول مرتب لحد ما يخلص (بحد أقصى المرتب).' : mode === 'fixed' ? 'بيتخصم المبلغ ده كل أسبوع لحد ما الباقي يخلص.' : 'مفيش حاجة بتتخصم لوحدها. تقدر تخصم أسبوع بأسبوع من تفاصيل العامل.'; };
+  hint();
+  $$('#olMode button').forEach(b => b.onclick = () => { mode = b.dataset.v; $$('#olMode button').forEach(x => x.classList.toggle('on', x === b)); hint(); });
+  $('#olX').onclick = () => { closeModal(); if (scr.v === 'k') drawWorkers(); };
+  $('#olAdd').onclick = () => oldEntryModal(wid, null);
+  $$('#modal [data-o]').forEach(x => x.onclick = () => oldEntryModal(wid, S.recs[x.dataset.o]));
+  $('#olSave').onclick = () => {
+    const amt = mode === 'fixed' ? amtOf($('#olA')) : 0;
+    if (mode === 'fixed' && !(amt > 0)) return toast('اكتب المبلغ الثابت');
+    if (ru.mode === mode && (ru.amt || 0) === amt) return toast('نفس الطريقة');
+    const txt = mode === 'none' ? 'مفيش خصم' : mode === 'auto' ? 'تلقائي' : `مبلغ ثابت ${fmt(amt)} كل أسبوع`;
+    put('rule', {id: 'ru_' + wid, w: wid, mode, amt, eff: ru.eff || firstOpenThu()});
+    log(`${myName()} غيّر طريقة خصم السلف القديمة لـ ${w.name} لـ "${txt}"`, {w: wid});
+    commit(); toast('اتحفظ ✔'); oldModal(wid);
+  };
+}
+function oldEntryModal(wid, o) {
+  const t = today();
+  modal(`<h3>${o ? 'تعديل سلفة قديمة' : 'سلفة قديمة'} — ${esc(wName(wid))}${o ? `<small>${byTxt(o)}</small>` : ''}</h3>
+    ${amtBox('oeA', o && o.amt, true)}
+    <span class="fl">التاريخ (تقريبي)</span><input class="inp" id="oeD" type="date" value="${o ? o.date || t : t}" max="${t}">
+    <input class="inp" id="oeN" autocomplete="off" placeholder="ملاحظة (اختياري)" value="${esc(o ? o.note || '' : '')}">
+    ${o ? `<div class="row2"><button class="big b-ok" id="oeOk" type="button">حفظ</button><button class="big b-redo" id="oeDel" type="button">🗑 مسح</button></div>` : '<button class="big b-ok" id="oeOk" type="button">سجّل</button>'}
+    <button class="lnk" id="oeX" type="button">رجوع</button>`);
+  bindAmt($('#oeA')); setTimeout(() => $('#oeA') && $('#oeA').focus(), 60);
+  $('#oeX').onclick = () => oldModal(wid);
+  $('#oeOk').onclick = () => {
+    const amt = amtOf($('#oeA')), note = $('#oeN').value.trim(), date = isDay($('#oeD').value) ? $('#oeD').value : t;
+    if (!(amt > 0)) return toast('اكتب المبلغ');
+    if (o) {
+      if (o.amt === amt && (o.note || '') === note && o.date === date) return oldModal(wid);
+      put('old', {id: o.id, amt, note, date});
+      log(`${myName()} غيّر سلفة قديمة على ${wName(wid)} من ${fmt(o.amt)} لـ ${fmt(amt)}`, {w: wid});
+    } else {
+      put('old', {id: newId('o'), w: wid, amt, note, date, eff: firstOpenThu()});
+      log(`${myName()} سجّل سلفة قديمة على ${wName(wid)} ${fmt(amt)}${note ? ' (' + note + ')' : ''}`, {w: wid});
+    }
+    commit(); toast('اتسجلت ✔'); oldModal(wid);
+  };
+  if ($('#oeDel')) $('#oeDel').onclick = async () => {
+    if (!(await ask(`تمسح السلفة القديمة ${fmt(o.amt)} على ${wName(wid)}؟`, 'أيوه امسحها', 'لأ', true))) return oldEntryModal(wid, o);
+    put('old', {id: o.id, del: true});
+    log(`${myName()} مسح سلفة قديمة على ${wName(wid)} ${fmt(o.amt)}`, {w: wid});
+    commit(); toast('اتمسحت ✔'); oldModal(wid);
+  };
+}
 function workerModal(w) {
   const t = today();
   modal(`<h3>${w ? esc(w.name) : 'عامل جديد'}${w ? `<small>${byTxt(w)}</small>` : ''}</h3>
@@ -947,6 +1120,7 @@ function workerModal(w) {
     <div class="mini"><div><span class="fl">اليومية (السبت للخميس)</span>${amtBox('wkR', w && w.rate, true)}</div><div><span class="fl">أجر الجمعة</span>${amtBox('wkF', w && w.fri, true)}</div></div>
     ${w ? '<p class="sm" style="margin:6px 2px 0">لو غيّرت اليومية: الأيام اللي اتسجلت قبل كده بتفضل بأجرها القديم.</p>' : `<span class="fl">بدأ شغل من</span><input class="inp" id="wkD" type="date" value="${t}" max="${t}">`}
     <button class="big b-ok" id="wkOk" type="button">${w ? 'حفظ' : 'ضيف العامل'}</button>
+    ${w ? `<button class="big b-home" id="wkOld" type="button">💳 السلف القديمة${oldLeftNow(w.id) ? ' (الباقي ' + fmt(oldLeftNow(w.id)) + ')' : ''}</button>` : ''}
     ${w ? `<div class="mini">${w.st === 'on' ? '<button class="big b-home" id="wkStop" type="button">⏸ وقّفه</button>' : '<button class="big b-home" id="wkOn" type="button">▶ رجّعه للشغل</button>'}${w.st !== 'gone' ? '<button class="big b-redo" id="wkGone" type="button">مشى</button>' : '<span></span>'}</div>` : ''}
     <button class="lnk" id="wkX" type="button">إغلاق</button>`);
   bindAmt($('#wkR')); bindAmt($('#wkF'));
@@ -972,19 +1146,31 @@ function workerModal(w) {
     }
     commit(); closeModal(); toast('اتحفظ ✔'); drawWorkers();
   };
+  if ($('#wkOld')) $('#wkOld').onclick = () => oldModal(w.id);
   const setSt = (st, txt) => { put('wk', {id: w.id, st}); log(txt, {w: w.id}); commit(); closeModal(); drawWorkers(); };
   if ($('#wkStop')) $('#wkStop').onclick = () => setSt('stop', `${myName()} وقّف ${w.name}`);
   if ($('#wkOn')) $('#wkOn').onclick = () => setSt('on', `${myName()} رجّع ${w.name} للشغل`);
   if ($('#wkGone')) $('#wkGone').onclick = async () => { if (await ask(`${w.name} مشى؟ هيختفي من الأسبوع، واسمه هيفضل في الأرشيف.`, 'أيوه مشى', 'لأ', true)) setSt('gone', `${myName()} علّم إن ${w.name} مشى`); };
 }
 
-/* ---------- الأرشيف: الأسابيع المقفولة ---------- */
+/* ---------- الأرشيف: الأسابيع المقفولة، متجمعة كل 4 أسابيع في "الشهر الأول/التاني/…" بإجماليه ---------- */
+const ORD = ['', 'الأول', 'التاني', 'التالت', 'الرابع', 'الخامس', 'السادس', 'السابع', 'التامن', 'التاسع', 'العاشر', 'الحداشر', 'الاتناشر'];
+const monthName = n => 'الشهر ' + (ORD[n] || n);
+/* بيرجّع المجموعات: الأقدم أول، كل 4 أسابيع مقفولة بالترتيب مجموعة */
+function archiveGroups(ls) {
+  const asc = ls.slice().sort((a, b) => a.thu.localeCompare(b.thu)), g = [];
+  asc.forEach((l, i) => { if (i % 4 === 0) g.push({n: g.length + 1, weeks: [], total: 0}); const x = g[g.length - 1]; x.weeks.push(l); x.total += l.snap.total; });
+  return g;
+}
 function drawArchive() {
-  const I = idx(), ls = [...I.lk.values()].filter(l => l.snap).sort((a, b) => b.thu.localeCompare(a.thu));
-  $('#main').innerHTML = ls.length ? `<div class="list">${ls.map(l => {
-      const rs = Object.values(l.snap.rows).filter(r => r.net > 0), paid = rs.filter(r => I.pd.has(l.thu + '|' + r.w)).length, ds = weekDates(l.thu);
-      return `<div class="row" data-thu="${l.thu}"><div class="m"><b>أسبوع الخميس ${dm(l.thu)}</b><small>${dm(ds[0])} → ${dm(ds[5])} · ${l.auto ? 'تلقائي' : esc(l.by)}${l.snap.fri === 'work' ? ' · الجمعة شغل' : ''}</small></div><div class="a"><b class="money">${fmt(l.snap.total)}</b><small class="sm ${paid < rs.length ? 'wt' : 'ok'}">قبض ${paid} من ${rs.length}</small></div></div>`; }).join('')}</div>
-    <p class="hint">دوس على أي أسبوع تفتحه وتعلّم مين قبض.</p>`
+  const I = idx(), ls = [...I.lk.values()].filter(l => l.snap);
+  const weekRow = l => {
+    const rs = Object.values(l.snap.rows).filter(r => r.net > 0), paid = rs.filter(r => I.pd.has(l.thu + '|' + r.w)).length, ds = weekDates(l.thu);
+    return `<div class="row" data-thu="${l.thu}"><div class="m"><b>أسبوع الخميس ${dm(l.thu)}</b><small>${dm(ds[0])} → ${dm(ds[5])} · ${l.auto ? 'تلقائي' : esc(l.closer || l.by)}${l.snap.fri === 'work' ? ' · الجمعة شغل' : ''}</small></div><div class="a"><b class="money">${fmt(l.snap.total)}</b><small class="sm ${paid < rs.length ? 'wt' : 'ok'}">قبض ${paid} من ${rs.length}</small></div></div>`;
+  };
+  const gs = archiveGroups(ls).reverse();
+  $('#main').innerHTML = gs.length ? gs.map(g => `<div class="lbl"><span><b>${monthName(g.n)}</b> · ${g.weeks.length === 4 ? '4 أسابيع' : g.weeks.length + (g.weeks.length === 1 ? ' أسبوع' : ' أسابيع') + ' (لسه)'}</span><span class="money" style="color:var(--ink)">${fmt(g.total)}</span></div>
+      <div class="list">${g.weeks.slice().reverse().map(weekRow).join('')}</div>`).join('') + '<p class="hint">دوس على أي أسبوع تفتحه، تعلّم مين قبض، أو تعدّل فيه (الأرقام بتتحسب تاني).</p>'
     : '<div class="list"><div class="empty">لسه مفيش أسابيع مقفولة.<br>الأسبوع بيتقفل يوم الخميس (أو لوحده بعد الجمعة).</div></div>';
   $$('#main .row[data-thu]').forEach(r => r.onclick = () => nav('w/' + r.dataset.thu));
 }

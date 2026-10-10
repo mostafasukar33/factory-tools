@@ -28,8 +28,8 @@ uiApply();
 try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', uiApply); } catch (e) {}
 </script>
 <style>
-:root{--gold:#D9AE57;--gold-d:#8F6B1B;--gold-l:#FAF4E4;--ink:#24211b;--bg:#F4F3EF;--line:#E7E3D8;--red:#BF3B30;--red-l:#FBEDEB;--green:#1E8A46;--green-l:#E8F5EC;--card:#fff;--sub:#7d7765;--row:#EFEBDF;--insta:#5B3FA8;--voda:#C0293D;--wait:#A9731A;--shadow:0 1px 2px #1b150a0d,0 1px 6px #1b150a08;--field:#D9D2BD}
-html[data-theme=dark]{color-scheme:dark;--bg:#12110e;--line:#34312a;--gold-l:#2a2312;--gold-d:#DDB765;--ink:#ECE8DC;--red:#FF8279;--red-l:#3a1d1a;--green:#52C97A;--green-l:#15291b;--card:#1c1b16;--sub:#9a937f;--row:#2a2822;--wait:#E9C46A;--shadow:0 1px 2px #0009;--field:#4a463a}
+:root{--gold:#D9AE57;--gold-d:#8F6B1B;--gold-l:#FAF4E4;--ink:#24211b;--bg:#F4F3EF;--line:#E7E3D8;--red:#BF3B30;--red-l:#FBEDEB;--green:#1E8A46;--green-l:#E8F5EC;--card:#fff;--sub:#7d7765;--row:#EFEBDF;--insta:#5B3FA8;--voda:#C0293D;--wait:#A9731A;--shadow:0 1px 2px #1b150a0d,0 1px 6px #1b150a08;--field:#D9D2BD;--exp:#B4672E;--exp-l:#FAEFE3;--sup:#3C7A8A;--sup-l:#E5F1F4}
+html[data-theme=dark]{color-scheme:dark;--bg:#12110e;--line:#34312a;--gold-l:#2a2312;--gold-d:#DDB765;--ink:#ECE8DC;--red:#FF8279;--red-l:#3a1d1a;--green:#52C97A;--green-l:#15291b;--card:#1c1b16;--sub:#9a937f;--row:#2a2822;--wait:#E9C46A;--shadow:0 1px 2px #0009;--field:#4a463a;--exp:#E0975A;--exp-l:#33261a;--sup:#6DB4C4;--sup-l:#18292e}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0}
 body{font-family:'Cairo',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.5;touch-action:manipulation;min-height:100vh}
@@ -139,6 +139,18 @@ html[data-theme=dark] .b-again{background:#34312a}
 .b-red{background:var(--red);color:#fff}
 .b-redo{background:var(--card);color:var(--red);border:1px solid var(--red)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.row.t-exp{border-inline-start:4px solid var(--exp);background:linear-gradient(90deg,transparent,var(--exp-l))}
+.row.t-spay{border-inline-start:4px solid var(--sup);background:linear-gradient(90deg,transparent,var(--sup-l))}
+.gh{display:flex;justify-content:space-between;align-items:center;margin:12px 4px 5px;font-size:14px;font-weight:800;color:var(--sub)}.gh .money{font-size:16px;color:var(--ink)}
+.gh.g-exp{color:var(--exp)}.gh.g-exp .money{color:var(--exp)}.gh.g-spay{color:var(--sup)}.gh.g-spay .money{color:var(--sup)}
+.gh:first-child{margin-top:0}
+.seg.sp button.on.exp{background:var(--exp);color:#fff}.seg.sp button.on.spay{background:var(--sup);color:#fff}
+html[data-theme=dark] .seg.sp button.on.exp,html[data-theme=dark] .seg.sp button.on.spay{color:#111}
+.b-exp{background:var(--exp);color:#fff}.b-sup{background:var(--sup);color:#fff}
+html[data-theme=dark] .b-exp,html[data-theme=dark] .b-sup{color:#111}
+.amt.exp{border-color:var(--exp)}.amt.spay{border-color:var(--sup)}
+.inp2.exp{border:2px solid var(--exp);height:54px;font-size:18px}.inp2.spay{border:2px solid var(--sup)}
+.wh{font-size:14px;font-weight:800;margin:14px 4px 0}
 .cat{height:52px;border:1px solid var(--field);background:var(--card);border-radius:12px;font-weight:700;font-size:16.5px;cursor:pointer;box-shadow:var(--shadow)}
 .cat:active,.cat.on{background:var(--gold-l);border-color:var(--gold)}
 .inp2{width:100%;height:48px;border:1px solid var(--field);border-radius:11px;background:var(--card);padding:0 14px;font-size:16px;outline:none;margin-top:10px}
@@ -246,7 +258,6 @@ const timeOf = ms => { const d = new Date(ms), h = d.getHours(); return `${h % 1
 const M_BTN = {cash: '💵 كاش معايا', insta: '📱 إنستا لمصطفى', voda: '📱 فودافون لمصطفى'};
 const M_TXT = {cash: 'كاش معايا', insta: 'إنستا لمصطفى', voda: 'فودافون لمصطفى'};
 const M_SAID = {cash: 'كاش', insta: 'إنستا لمصطفى', voda: 'فودافون لمصطفى'};
-const SP_CATS = [['بنزين', '⛽'], ['مواصلات', '🚌'], ['أكل', '🍽'], ['حاجة تانية', '🧾']];
 const AR_DAYS = ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت'];
 const RLM = '\u200F';
 const dispDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}${RLM}/${RLM}${m}${RLM}/${RLM}${y}` : ''; };
@@ -484,7 +495,10 @@ function stHtml(o) {
   return s === 'done' ? '<span class="st ok">✓ اتنقلت</span>' : s === 'back' ? '<span class="st bk">🔴 راجعة</span>' : s === 'wait' ? '<span class="st wt">⏳ عند مصطفى</span>' : '<span class="st ns">⏳ لسه متبعتتش</span>';
 }
 /* سطر عملية: دوسة عليه بتفتح التعديل */
-const opRow = (o, withDay, noName) => `<div class="row" data-o="${esc(o.id)}"><div class="m"><b>${esc(noName ? opHow(o) : opWhat(o))}</b><small>${withDay ? dispDate(dayOf(o.ts)) + ' · ' : ''}${timeOf(o.ts)}${noName ? '' : ' · ' + esc(opHow(o))}</small></div><div class="a"><b class="money">${fmt(o.amt)}</b>${stHtml(o)}</div></div>`;
+const opRow = (o, withDay, noName) => `<div class="row t-${o.t}" data-o="${esc(o.id)}"><div class="m"><b>${esc(noName ? opHow(o) : opWhat(o))}</b><small>${withDay ? dispDate(dayOf(o.ts)) + ' · ' : ''}${timeOf(o.ts)}${noName ? '' : ' · ' + esc(opHow(o))}</small></div><div class="a"><b class="money">${fmt(o.amt)}</b>${stHtml(o)}</div></div>`;
+/* حركات اليوم متجمعة بالنوع، كل نوع تحت بعضه وبإجماليه (المصروفات لوحدها والموردين لوحدهم) */
+const GROUPS = [['in', 'تحصيل وفواتير العملاء', o => o.t === 'pay' || o.t === 'inv'], ['cs', 'بيع كاش من المصنع', o => o.t === 'cs'], ['exp', 'المصروفات', o => o.t === 'exp'], ['spay', 'دفعات الموردين', o => o.t === 'spay'], ['hand', 'سلّمت لمصطفى', o => o.t === 'hand']];
+const dayList = ops => GROUPS.map(([k, t, f]) => { const g = ops.filter(f); return g.length ? `<div class="gh g-${k}"><span>${t} (${g.length})</span><b class="money">${fmt(g.reduce((a, o) => a + o.amt, 0))}</b></div><div class="list">${g.map(o => opRow(o)).join('')}</div>` : ''; }).join('');
 const bindOps = root => $$(root + ' .row[data-o]').forEach(r => r.onclick = () => editSheet(S.ops[r.dataset.o]));
 /* الفواتير (إجمالي بس) مبتدخلش في اللي معاه، فبتتعرض في سطر لوحدها */
 const invLn = s => s.inv ? `<div class="invln"><span>🧾 فواتير (إجمالي بس)</span><b class="money">${fmt(s.inv)}</b></div>` : '';
@@ -504,8 +518,8 @@ function drawHome() {
       <div class="cap">النهارده</div>${pnHtml(s, 3, true)}</section>
     <div class="qa2"><button class="qb g" id="qPay" type="button"><i>💵</i>دفعة أو فاتورة</button><button class="qb qs" id="qSale" type="button"><i>🏭</i>بيع كاش من المصنع</button><button class="qb" id="qSp" type="button"><i>⛽</i>صرفت</button><button class="qb" id="qHand" type="button"><i>🤝</i>سلمت لمصطفى</button></div>
     <div class="lbl"><span>حركات النهارده</span><span>دوس على أي حركة تعدّلها</span></div>
-    ${ops.length ? `<div class="list">${ops.map(o => opRow(o)).join('')}</div>` : '<div class="list"><div class="empty">لسه مسجلتش حاجة النهارده</div></div>'}
-    ${earlier.map(d => `<div class="lbl dh"><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}</span><span>حصّلت <b class="money">${fmt(sums(byDay.get(d)).col)}</b></span></div><div class="list">${byDay.get(d).map(o => opRow(o)).join('')}</div>`).join('')}
+    ${ops.length ? dayList(ops) : '<div class="list"><div class="empty">لسه مسجلتش حاجة النهارده</div></div>'}
+    ${earlier.map(d => `<div class="lbl dh"><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}</span><span>حصّلت <b class="money">${fmt(sums(byDay.get(d)).col)}</b></span></div>${dayList(byDay.get(d))}`).join('')}
     ${days.length > earlier.length ? '<button class="more" id="hMore" type="button" style="margin-top:12px">اعرض أيام أقدم</button>' : ''}
     <button class="lnk" id="goArch" type="button">الأرشيف (أسابيع وشهور) ›</button>`;
   if ($('#bk')) $('#bk').onclick = () => editSheet(bk[0]);
@@ -646,7 +660,7 @@ function editSheet(o) {
       <button class="big b-home" id="eX" type="button">تمام</button>`);
     $('#eX').onclick = closeModal; return;
   }
-  let m = o.m, cat = o.cat;
+  let m = o.m;
   const bs = s === 'back' ? stOf(o) : null;
   modal(`<h3>${EDIT_TITLE[o.t]}${o.t === 'pay' || o.t === 'inv' ? ' — ' + esc(o.cname) : ''}<small>${dispDate(dayOf(o.ts))} ${timeOf(o.ts)}</small></h3>
     ${bs ? `<div class="note" style="margin:0 0 6px">🔴 مصطفى رجّعها: ${esc(bs.back)}</div>` : ''}
@@ -655,12 +669,11 @@ function editSheet(o) {
     <label class="amt sm" for="eA" style="margin-top:6px"><input id="eA" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${fmt(o.amt)}"><em>جنيه</em></label>
     ${o.t === 'pay' || o.t === 'inv' || o.t === 'cs' ? datePick('eD', dayOf(o.ts)) : ''}
     ${o.t === 'pay' ? `<div class="seg" id="eM" style="--n:3;margin-top:10px">${['cash', 'insta', 'voda'].map(k => `<button type="button" data-m="${k}" class="${k === m ? 'on' : ''}">${{cash: 'كاش معايا', insta: 'إنستا', voda: 'فودافون'}[k]}</button>`).join('')}</div>` : ''}
-    ${o.t === 'exp' ? `<div class="chips" id="eC">${SP_CATS.map(([c]) => `<button type="button" class="chip ${c === cat ? 'on' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div><input class="inp2" id="eNt" autocomplete="off" placeholder="ملاحظة (اختياري)" value="${esc(o.note || '')}">` : ''}
+    ${o.t === 'exp' ? `<label class="wh" for="eNt">المصروف ده إيه؟</label><input class="inp2 exp" id="eNt" autocomplete="off" placeholder="اكتب المصروف" value="${esc(o.cat + (o.note ? ' — ' + o.note : ''))}" style="margin-top:6px">` : ''}
     <div class="row2" style="margin-top:12px"><button class="big b-cash" id="eOk" type="button" style="margin-top:0">حفظ</button><button class="big b-redo" id="eDel" type="button" style="margin-top:0">🗑 مسح</button></div>
     <button class="lnk" id="eX" type="button">إغلاق</button>`);
   bindAmt($('#eA')); if ($('#eD')) bindDate('eD');
   $$('#eM button').forEach(b => b.onclick = () => { m = b.dataset.m; $$('#eM button').forEach(x => x.classList.toggle('on', x === b)); });
-  $$('#eC .chip').forEach(b => b.onclick = () => { cat = b.dataset.c; $$('#eC .chip').forEach(x => x.classList.toggle('on', x === b)); });
   $('#eX').onclick = closeModal;
   $('#eOk').onclick = () => {
     const amt = amtOf($('#eA'));
@@ -668,7 +681,7 @@ function editSheet(o) {
     const ch = {amt};
     if (o.t === 'pay') ch.m = m;
     if ($('#eD')) { const nd = dateOf('eD'); if (nd !== dayOf(o.ts)) ch.ts = tsOnDay(nd, o.ts); }
-    if (o.t === 'exp') Object.assign(ch, {cat, note: $('#eNt').value.trim()});
+    if (o.t === 'exp') { const w = $('#eNt').value.trim().replace(/\s+/g, ' '); if (!w) return toast('اكتب المصروف ده إيه'); Object.assign(ch, {cat: w, note: ''}); }
     if (o.t === 'cs') { ch.buyer = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.buyer) return toast('اكتب اسم المشتري'); }
     if (o.t === 'spay') { ch.sname = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.sname) return toast('اكتب اسم المورد'); }
     if (opState(o) === 'done') { closeModal(); return toast('دي اتنقلت خلاص'); }
@@ -723,25 +736,24 @@ function spNames() {
 }
 function drawSpend() {
   lastSave = 0;
-  $('#main').innerHTML = `<div class="seg" id="spT"><button type="button" data-v="exp" class="${spTab === 'exp' ? 'on' : ''}">مصروف</button><button type="button" data-v="spay" class="${spTab === 'spay' ? 'on' : ''}">دفعت لمورد</button></div>
+  $('#main').innerHTML = `<div class="seg sp" id="spT"><button type="button" data-v="exp" class="exp ${spTab === 'exp' ? 'on' : ''}">⛽ مصروف</button><button type="button" data-v="spay" class="spay ${spTab === 'spay' ? 'on' : ''}">🏭 دفعت لمورد</button></div>
     <div id="spBody"></div>
     <p class="hint">بتتخصم من اللي معاك كاش (${fmtN(cashNow())})</p>`;
   $$('#spT button').forEach(b => b.onclick = () => { spTab = b.dataset.v; $$('#spT button').forEach(x => x.classList.toggle('on', x === b)); body(); });
   const body = () => {
-    const amtBox = `<label class="amt" for="amt"><input id="amt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>`;
+    const amtBox = `<label class="amt ${spTab}" for="amt"><input id="amt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>`;
     if (spTab === 'exp') {
-      $('#spBody').innerHTML = `${amtBox}<input class="inp2" id="nt" autocomplete="off" placeholder="ملاحظة (اختياري) — مثلاً: مصروفات اليوم">
-        <div class="grid2">${SP_CATS.map(([c, ic]) => `<button class="cat" data-c="${esc(c)}" type="button">${ic} ${esc(c)}</button>`).join('')}</div>
-        <p class="hint" style="margin-top:10px">اكتب الرقم وبعدين دوس على نوع المصروف وهيتحفظ. تقدر تسجلهم واحد واحد أو تجمعهم في إجمالي آخر اليوم.</p>`;
+      $('#spBody').innerHTML = `${amtBox}<label class="wh" for="nt">المصروف ده إيه؟</label><input class="inp2 exp" id="nt" autocomplete="off" placeholder="اكتب المصروف (مثلاً: بنزين)" style="margin-top:6px">
+        <button class="big b-exp" id="spOk" type="button">حفظ المصروف</button>`;
       bindAmt($('#amt'));
-      $$('#spBody .cat').forEach(b => { b.addEventListener('mousedown', e => e.preventDefault()); b.onclick = () => saveSpend('exp', {cat: b.dataset.c, note: $('#nt').value.trim()}); });
+      $('#spOk').onclick = () => saveSpend('exp', {cat: $('#nt').value.trim().replace(/\s+/g, ' '), note: ''});
       $('#amt').focus(); setTimeout(() => { const i = $('#amt'); if (i && document.activeElement !== i) i.focus(); }, 120);
     } else {
       const names = spNames();
-      $('#spBody').innerHTML = `<input class="inp2" id="sn" autocomplete="off" placeholder="اسم المورد (اكتبه)" style="margin-top:0">
+      $('#spBody').innerHTML = `<label class="wh" for="sn" style="margin-top:0">اسم المورد</label><input class="inp2 spay" id="sn" autocomplete="off" placeholder="اكتب اسم المورد" style="margin-top:6px">
         ${names.length ? `<div class="chips">${names.map(n => `<button class="chip" type="button" data-n="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}
         ${amtBox}
-        <button class="big b-cash" id="spOk" type="button">حفظ</button>`;
+        <button class="big b-sup" id="spOk" type="button">حفظ دفعة المورد</button>`;
       bindAmt($('#amt'));
       $$('#spBody .chip').forEach(c => c.onclick = () => { $('#sn').value = c.dataset.n; $('#amt').focus(); });
       $('#spOk').onclick = () => saveSpend('spay', {sname: $('#sn').value.trim().replace(/\s+/g, ' ')});
@@ -754,6 +766,7 @@ async function saveSpend(t, x) {
   if (Date.now() - lastSave < 700) return;
   const amt = amtOf($('#amt'));
   if (!(amt > 0)) { toast('اكتب المبلغ الأول'); $('#amt').focus(); return; }
+  if (t === 'exp' && !x.cat) { toast('اكتب المصروف ده إيه'); $('#nt').focus(); return; }
   if (t === 'spay' && !x.sname) { toast('اكتب اسم المورد'); $('#sn').focus(); return; }
   lastSave = Date.now();
   /* حماية من التكرار: نفس المبلغ لنفس النوع في خلال دقيقتين */
@@ -887,7 +900,7 @@ function drawDay() {
     <label class="pick">📅 اختار يوم<input type="date" id="aDay" value="${d}" max="${t}"></label>
     <section class="panel">${sub4(true, s)}</section>
     <div class="lbl"><span>حركات اليوم (${ops.length})</span><span>دوس على أي حركة تعدّلها</span></div>
-    ${ops.length ? `<div class="list">${ops.map(o => opRow(o)).join('')}</div>` : '<div class="list"><div class="empty">مفيش حركات في اليوم ده</div></div>'}
+    ${ops.length ? dayList(ops) : '<div class="list"><div class="empty">مفيش حركات في اليوم ده</div></div>'}
     <button class="lnk" id="aBack" type="button">‹ رجوع للأرشيف</button>`;
   $('#aPrev').onclick = () => nav('a/' + addDays(d, -1), true);
   $('#aNext').onclick = () => { if (d < t) nav('a/' + addDays(d, 1), true); };

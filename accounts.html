@@ -1751,7 +1751,7 @@ function renderParty(id) {
   $('#ppRet').onclick = () => docModal(p, sup ? 'rpur' : 'rinv');
   $('#ppAdj').onclick = () => adjModal(p);
   if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
-  $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => openEntry(p, E.get(el.dataset.id)));
+  $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => el.dataset.g ? mkGrpModal(p, el.dataset.g.split(',')) : openEntry(p, E.get(el.dataset.id)));
   if ($('#ppEnd')) $('#ppEnd').onclick = () => jumpTo(true);
   if ($('#ldgOld')) $('#ldgOld').onclick = () => { ldgAll.add(id); renderParty(id); };
   if (isFwdSrc(p)) fwBind(p);
@@ -1783,6 +1783,18 @@ function openEntry(p, e) {
   if (e.kind === 'adj') return adjModal(p, e);
   if (e.kind === 'bnc') return bounceInfo(p, e);
   return entryModal(p, e);
+}
+/* سطر "دفعة" متجمع من حركة السوق: بيوريك هي متكونة من إيه (لمصطفى بس)، ودوسة على أي جزء بتفتحه */
+function mkGrpModal(p, ids) {
+  const L = ids.map(id => E.get(id)).filter(e => e && !e.del);
+  if (L.length === 1) return openEntry(p, L[0]);
+  modal(`<h3>💵 دفعة — ${esc(p.name)}</h3>
+    <p class="hint" style="margin:-6px 0 10px">اتنقلت من حركة السوق مرة واحدة، وفي الحساب والكشف بتظهر "دفعة" واحدة بس. التفاصيل دي ليك انت بس:</p>
+    ${L.map(e => `<div class="pt" data-e="${esc(e.id)}"><div class="m"><b>${esc(e.method || 'نقدي')}${e.note && e.note !== 'حركة السوق' ? ' — ' + esc(e.note.replace(/^حركة السوق — /, '')) : ''}</b><small>${dispDate(e.date)}${e.vault ? ' — ' + esc(vName(e.vault)) : ''}</small></div><div class="a"><b>${fmtP(e.amt)}</b></div></div>`).join('')}
+    <div class="dtot"><span>الإجمالي</span><b>${fmtP(L.reduce((s, e) => s + (e.amt || 0), 0))}</b></div>
+    <button class="btn line" id="mgX" type="button">رجوع</button>`, true);
+  $('#mgX').onclick = closeModal;
+  $$('#modal .pt[data-e]').forEach(el => el.onclick = () => openEntry(p, E.get(el.dataset.e)));
 }
 function cancelledModal(e) {
   modal(`<h3>حركة ملغية</h3><p style="font-size:16px">${dispDate(e.date)} — ${esc(docDesc(e))}<br>${e.cr ? 'دائن' : 'مدين'} ${fmtP(e.dr || e.cr)} ${CUR}</p>
@@ -2109,7 +2121,7 @@ function ledgerTable(p) {
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
     ${cut ? `<tr class="more"><td colspan="7"><a id="ldgOld">↑ عرض الحركات الأقدم (${cut} سطر)</a></td></tr>` : ''}
-    ${(cut ? s.rows.slice(cut) : s.rows).map(r => (yPrev !== null && (r.date || '').slice(0, 4) !== yPrev ? `<tr class="yr"><td colspan="7">${yPrev = (r.date || '').slice(0, 4)}</td></tr>` : '') + `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${fwTag(r)}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
+    ${(cut ? s.rows.slice(cut) : s.rows).map(r => (yPrev !== null && (r.date || '').slice(0, 4) !== yPrev ? `<tr class="yr"><td colspan="7">${yPrev = (r.date || '').slice(0, 4)}</td></tr>` : '') + `<tr data-id="${esc(r.e.id)}"${r.grp && r.grp.length > 1 ? ` data-g="${esc(r.grp.map(x => x.id).join(','))}"` : ''} class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${fwTag(r)}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b data-ck="pe:${esc(p.id)}" data-cnt="${s.close * s.sg}">${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>
     ${ledgerHintOnce()}`;
@@ -2127,12 +2139,25 @@ function rowsOf(e) {
     return out;
   }
   if ((e.kind === 'pay' || e.kind === 'ppay') && e.chk) return [{date: e.date, desc: `شيك${e.chk.no ? ' رقم ' + e.chk.no : ''}`, ref: `يستحق ${dispDate(e.chk.due)}${e.chk.bank ? ' — ' + e.chk.bank : ''}`, dr: e.dr || 0, cr: e.cr || 0, pay: true}];
+  if (e.kind === 'pay' && isMkPay(e)) return [{date: e.date, desc: 'دفعة', ref: '', dr: e.dr || 0, cr: e.cr || 0, pay: true}];   // دفعة من حركة السوق: "دفعة" وبس من غير تفاصيل (بطلب صاحب المشروع)
   if (e.kind === 'pay' || e.kind === 'ppay') return [{date: e.date, desc: 'دفعة ' + (e.method || 'نقدي'), ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, pay: true}];
   if (e.kind === 'adj') return [{date: e.date, desc: e.dir === 'dn' ? 'خصم' : 'تسوية', ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, ret: e.dir === 'dn'}];
   if (e.kind === 'bnc') return [{date: e.date, desc: `شيك مرتجع${e.chkno ? ' رقم ' + e.chkno : ''}`, ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, bnc: true}];
   return [{date: e.date, desc: e.desc, ref: '', dr: e.dr || 0, cr: e.cr || 0, op: e.kind === 'open'}];
 }
 function rowsWithRef(e) { return rowsOf(e).map((r, i) => Object.assign(r, {e, first: i === 0})); }
+/* دفعات حركة السوق: كل الفلوس اللي اتنقلت من نفس العميل مرة واحدة (كاش + تحويلات) = سطر واحد "دفعة" بإجماليها في الحساب والكشف.
+   الحركات نفسها لسه منفصلة (كل واحدة في خزنتها، وبـ id العملية e_mk_)، والتجميع للعرض بس بالعلامة mkg ونفس التاريخ */
+const isMkPay = e => e.kind === 'pay' && String(e.id).startsWith('e_mk_');
+function rowsOfList(ents) {
+  const out = [];
+  ents.forEach(e => {
+    const last = out[out.length - 1];
+    if (e.mkg && isMkPay(e) && last && last.grp && last.mkg === e.mkg && last.date === e.date) { last.dr += e.dr || 0; last.cr += e.cr || 0; last.grp.push(e); return; }
+    rowsWithRef(e).forEach(r => { if (e.mkg && isMkPay(e)) Object.assign(r, {mkg: e.mkg, grp: [e]}); out.push(r); });
+  });
+  return out;
+}
 function stmtData(pid, from, to, fromEnt) {
   const all = partyEntries(pid);
   /* fromEnt = آخر فاتورة: الكشف يبدأ من الفاتورة دي (والدفعات اللي بعدها)، والرصيد قبلها بيتكتب كرصيد سابق */
@@ -2142,7 +2167,7 @@ function stmtData(pid, from, to, fromEnt) {
   if (fi >= 0) from = all[fi].date;
   let run = open || 0, tdr = 0, tcr = 0;
   const rows = [];
-  ents.forEach(e => rowsWithRef(e).forEach(r => { run += r.dr - r.cr; tdr += r.dr; tcr += r.cr; rows.push(Object.assign(r, {run})); }));
+  rowsOfList(ents).forEach(r => { run += r.dr - r.cr; tdr += r.dr; tcr += r.cr; rows.push(Object.assign(r, {run})); });
   /* زي الإكسيل: الرصيد بيتكتب من ناحية الطرف التاني (للمورد = اللي ليه)، وأي سطر بيزوّد الرصيد في عمود الإجمالي وأي سطر بينقّصه في عمود الدفعة */
   const sg = P.get(pid).sec === 'sup' ? -1 : 1;
   let tg = 0, tp = 0; rows.forEach(r => { const x = (r.dr - r.cr) * sg; r.gd = x > 0 ? x : 0; r.pd = x < 0 ? -x : 0; tg += r.gd; tp += r.pd; });
@@ -4415,7 +4440,8 @@ function mkMove(o, f) {
     const x = {party: f.pid, kind: o.t === 'pay' ? 'pay' : 'ppay', date: f.date, amt: f.amt, method: o.t === 'pay' && o.m !== 'cash' ? 'تحويل' : 'نقدي', vault: f.vault,
       note: 'حركة السوق' + (o.t === 'spay' ? ' — دفعة مورد' : o.m === 'cash' ? '' : ' — ' + MK_M[o.m])};
     x.desc = docDesc(x);
-    if (rec) { (rec.hist = rec.hist || []).push(snapshot(rec)); Object.assign(rec, x, {del: false}); delete rec.delAt; applyAmounts(rec); touch(rec); }
+    if (f.grp) x.mkg = f.grp;
+    if (rec) { (rec.hist = rec.hist || []).push(snapshot(rec)); Object.assign(rec, x, {del: false}); delete rec.delAt; if (!f.grp) delete rec.mkg; applyAmounts(rec); touch(rec); }
     else { const e = addEntry(Object.assign({id: 'e_mk_' + o.id}, x)); applyAmounts(e); }
   } else {
     const x = o.t === 'exp' ? {type: 'exp', amt: f.amt, vault: f.vault, to: '', cat: 'c_mkexp', note: o.cat + (o.note ? ' — ' + o.note : '')}
@@ -4841,6 +4867,7 @@ function mkConfirm(ops, to) {
       ${o.t === 'hand' ? `<div class="fld"><label>← لخزنة</label><select class="inp" data-f="t">${vaultOpts(mkHandTo())}</select></div>` : ''}
       <div class="fld"><label>التاريخ</label><input class="inp" type="date" data-f="d" value="${isoOf(o.ts)}"></div></div>`).join('')}
     <div id="mvW"></div>
+    ${kind === 'pay' && ops.length > 1 ? '<p class="hint" style="margin:0 2px 8px">في حساب العميل وكشفه هتظهر <b>"دفعة" واحدة بالإجمالي</b> من غير تفاصيل (كل جزء بيدخل خزنته عادي).</p>' : ''}
     <div class="mfoot">${ops.length > 1 ? `<div class="dtot"><span>الإجمالي</span><b id="mvT">${fmtP(ops.reduce((s, o) => s + o.amt, 0))}</b></div>` : ''}
       <div class="mrow"><button class="btn green" id="mvOk" type="button">${kind === 'hand' ? 'استلمت' : 'سجّل'}</button><button class="btn line" id="mvX" type="button">إلغاء</button></div></div>`, true);
   $$('#modal [data-f=amt]').forEach(el => { bindMoney(el); el.addEventListener('input', () => { if ($('#mvT')) $('#mvT').textContent = fmtP($$('#modal [data-f=amt]').reduce((s, x) => s + toP(x.value), 0)); }); });
@@ -4857,7 +4884,8 @@ function mkConfirm(ops, to) {
     let pid = to.pid || '';
     if (kind === 'pay' || kind === 'spay') pid = mkEnsureParty(kind === 'spay' ? 'sup' : 'mkt', to);
     let n = 0;
-    rows.forEach(r => { if (mkMove(r.o, {pid, amt: r.amt, date: r.date, vault: r.vault, to: r.to})) n++; db.cfg.mkv = Object.assign({}, db.cfg.mkv, {[key(r.o)]: r.vault}, r.o.t === 'hand' ? {handTo: r.to} : {}); });
+    const grp = kind === 'pay' && rows.length > 1 ? 'g_' + ops[0].id : '';   // دفعات نفس العميل اللي اتنقلت مع بعض = "دفعة" واحدة في حسابه
+    rows.forEach(r => { if (mkMove(r.o, {pid, amt: r.amt, date: r.date, vault: r.vault, to: r.to, grp})) n++; db.cfg.mkv = Object.assign({}, db.cfg.mkv, {[key(r.o)]: r.vault}, r.o.t === 'hand' ? {handTo: r.to} : {}); });
     saveDB(); closeModal(); renderMkt(); renderMkHome(); mkSync();
     toast(n ? `اتنقلت ✔ (${n === 1 ? 'عملية' : n + ' عمليات'})` : 'اتنقلت قبل كده ✔');
   };

@@ -370,7 +370,7 @@ const MO = !!process.env.MARKET_ONLY;
     await bg(A, 'cashSync(true)');   // ياخد اللي اتسجل في الدفتر من الجهاز التاني الأول
     const vb0 = await A.evaluate(() => vaultBal(''));
     eq('الموبايل: حركة السوق في الشريط اللي تحت مكان الشركاء، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ['home', 'cash', 'mkt', 'rep', 'set']);
-    await A.click('nav button[data-go=cash]'); await A.click('#cPart');
+    await A.click('nav button[data-go=cash]'); await A.click('#cPart'); await A.waitForSelector('#ptBack', {timeout: 3000}).catch(() => {});   // الصفحة بتفتح بعد تغيير العنوان
     eq('الشركاء من الخزنة: الخزنة متعلّمة تحت وفيه رجوع', [await A.evaluate(() => $('nav button.on').dataset.go), !!await A.$('#ptBack')], ['cash', true]);
     await A.click('#psGo'); await A.fill('#psA', '10');
     await A.fill('#psS', await A.evaluate(() => addDays(lastThu(), -14))); await A.click('#psOk'); await A.waitForTimeout(200);
@@ -511,6 +511,15 @@ const MO = !!process.env.MARKET_ONLY;
     eq('النقل: العميل نزل 8,000، وخزنة السوق دخلها الكاش بس', [await bal(A, C1), await vbal(A, 'v_mkt')], [bal0 - 800000, 500000]);
     const twice = await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(x => x.m === 'cash' && x.amt === 500000); const r = mkMove(o, {pid: o.cid, amt: o.amt, date: todayISO(), vault: 'v_mkt'}); return [r, db.entries.filter(e => e.id.startsWith('e_mk_') && !e.del).length]; });
     eq('مستحيل تتنقل مرتين', twice, [false, 2]);
+    /* الكاش والتحويل من نفس العميل اتنقلوا مع بعض: في حسابه وكشفه سطر واحد "دفعة" بالإجمالي، والحركات نفسها لسه في خزنها */
+    eq('حساب العميل: "دفعة" واحدة بـ 8,000 من غير تفاصيل (كاش/تحويل/حركة السوق)', await A.evaluate(pid => { const s = stmtData(pid, '', ''), mk = s.rows.filter(r => r.grp); const r = mk[mk.length - 1];
+      return [mk.length, r.desc, r.ref, r.cr, r.grp.length, s.rows.some(x => /حركة السوق|إنستا|تحويل/.test(x.desc + x.ref))]; }, pid1), [1, 'دفعة', '', 800000, 2, false]);
+    await openParty(A, C1);
+    const gRow = await A.$('#p-party .ldg tr[data-g]');
+    eq('سطر الدفعة المتجمعة في الجدول', [!!gRow, gRow && (await gRow.textContent()).includes('8,000')], [true, true]);
+    await gRow.click(); await A.waitForTimeout(150);
+    eq('دوسة عليه: تفاصيله لمصطفى بس (جزئين بخزنهم)', await A.evaluate(() => [$$('#modal .pt[data-e]').length, $('#modal .dtot b').textContent]), [2, '8,000']);
+    await A.evaluate(() => { closeModal(); go('mkt'); }); await A.waitForTimeout(250);
     await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(800);
     eq('الشريك شاف ✓ اتنقلت، والرصيد عنده اتظبط', await M.evaluate(id => [liveOps().filter(o => opState(o) === 'done').length, customers().get(id).bal], pid1), [2, bal0 - 800000]);
     eq('بعد النقل مفيش "امسحها" عند الشريك', await M.evaluate(() => { const o = liveOps().find(x => opState(x) === 'done'); nav('ok/' + o.id); return !!$('#sDel'); }), false);

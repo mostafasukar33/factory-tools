@@ -612,6 +612,7 @@ const MO = !!process.env.MARKET_ONLY;
     await A.click(`#p-mkt [data-mv="${pid1}"]`); await A.waitForTimeout(250); await A.click('#mvOk'); await A.waitForTimeout(300);
     eq('نقل الدفعة: الرصيد = القديم + الفاتورة − الدفعة، وخزنة السوق = اللي مع الشريك', [await bal(A, C1) - bI0, await vbal(A, 'v_mkt'), cashB + 330000], [670000, cashB + 330000, cashB + 330000]);
     await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(900);
+    await M.waitForFunction(([id, v]) => liveOps().every(o => ['done', 'exp'].includes(opState(o))) && customers().get(id).bal === v, [pid1, bI0 + 670000], {timeout: 15000}).catch(() => {});
     eq('الشريك شاف ✓ على الاتنين ورصيد العميل عنده = رصيد الحسابات', await M.evaluate(id => [liveOps().filter(o => !['done', 'exp'].includes(opState(o))).length, customers().get(id).bal], pid1), [0, bI0 + 670000]);
     await A.evaluate(id => cancelEntry(E.get('e_mk_' + id)), invOp); await A.waitForTimeout(200); await bg(A, 'mkSync()'); await A.waitForTimeout(300);
     eq('لو مسح الفاتورة من الحسابات: ترجع "متنقلتش"', await A.evaluate(() => mkPending().map(o => o.t)), ['inv']);

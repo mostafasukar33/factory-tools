@@ -28,7 +28,8 @@ uiApply();
 try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', uiApply); } catch (e) {}
 </script>
 <style>
-:root{--gold:#D9AE57;--gold-d:#8F6B1B;--gold-l:#FAF4E4;--ink:#24211b;--bg:#F4F3EF;--line:#E7E3D8;--red:#BF3B30;--red-l:#FBEDEB;--green:#1E8A46;--green-l:#E8F5EC;--card:#fff;--sub:#7d7765;--row:#EFEBDF;--insta:#5B3FA8;--voda:#C0293D;--wait:#A9731A;--shadow:0 1px 2px #1b150a0d,0 1px 6px #1b150a08;--field:#D9D2BD;--exp:#B4672E;--exp-l:#FAEFE3;--sup:#3C7A8A;--sup-l:#E5F1F4}
+/* الفاتح "only light" علشان أندرويد ميغمّقش الصفحة لوحده (Auto Dark) لما الموبايل نفسه على الوضع الليلي */
+:root{color-scheme:only light;--gold:#D9AE57;--gold-d:#8F6B1B;--gold-l:#FAF4E4;--ink:#24211b;--bg:#F4F3EF;--line:#E7E3D8;--red:#BF3B30;--red-l:#FBEDEB;--green:#1E8A46;--green-l:#E8F5EC;--card:#fff;--sub:#7d7765;--row:#EFEBDF;--insta:#5B3FA8;--voda:#C0293D;--wait:#A9731A;--shadow:0 1px 2px #1b150a0d,0 1px 6px #1b150a08;--field:#D9D2BD;--exp:#B4672E;--exp-l:#FAEFE3;--sup:#3C7A8A;--sup-l:#E5F1F4}
 html[data-theme=dark]{color-scheme:dark;--bg:#12110e;--line:#34312a;--gold-l:#2a2312;--gold-d:#DDB765;--ink:#ECE8DC;--red:#FF8279;--red-l:#3a1d1a;--green:#52C97A;--green-l:#15291b;--card:#1c1b16;--sub:#9a937f;--row:#2a2822;--wait:#E9C46A;--shadow:0 1px 2px #0009;--field:#4a463a;--exp:#E0975A;--exp-l:#33261a;--sup:#6DB4C4;--sup-l:#18292e}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0}

@@ -221,7 +221,7 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await addW('عامل تجربة ج', '100', '0', '2026-10-14');
     await A.evaluate(() => nav('w', true));
     await A.click('#fri button[data-v=work]');
-    eq('الجمعة: اختيارين جنب بعض و"شغل" اتعلّم', await A.$$eval('#fri button', b => b.map(x => x.textContent + (x.classList.contains('on') ? '*' : ''))), ['شغل ✓*', 'إجازة']);
+    eq('الجمعة: اختيارين جنب بعض و"شغل" اتعلّم', await A.$$eval('#fri button', b => b.map(x => x.textContent + (x.classList.contains('on') ? '*' : ''))), ['شغل*', 'إجازة']);
     await A.click('#lockW');
     eq('القفل مبيشتغلش لو في يوم ناقص', (await A.textContent('#lockErr')).trim(), 'يوم ناقص عند عامل تجربة ج: الأربعيوم ناقص عند عامل تجربة ج: الخميس');
     await A.evaluate(() => nav('t/2026-10-14', true)); await A.click('#allDay');
@@ -332,6 +332,35 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await A.evaluate(() => nav('a', true));
     eq('شاشة الأرشيف: الشهر الأول (لسه) فيه الأسبوعين المقفولين بإجماليهم', await A.evaluate(() => { const t = $('#main').textContent; return [t.includes('الشهر الأول'), t.includes('(لسه)'), $$('#main .row[data-thu]').length]; }), [true, true, 2]);
     await settle_(A);
+
+    console.log('\n١٢) تسهيلات التسجيل: زي امبارح، الأيام الناقصة، الأسابيع الفاضية، السجل');
+    const D = await device(browser, base, makeGas({noDrive: true}), 'payroll.html', at('2026-10-21T09:00:00'));
+    pages.push(D);
+    await D.click('#lgNew'); await D.fill('#lgN', 'مشرف تجربة 4'); await D.fill('#lgP', '4321'); await D.click('#lgGo'); await D.waitForSelector('#tabs button');
+    eq('قبل ربط الشيت: تنبيه أحمر في النهارده', !!(await D.$('#goLink')), true);
+    for (const n of ['عامل د1', 'عامل د2', 'عامل د3']) {
+      await D.evaluate(() => nav('k')); await D.click('#kNew'); await D.fill('#wkN', n); await D.fill('#wkR', '200'); await D.fill('#wkF', '0'); await D.fill('#wkD', '2026-09-20'); await D.click('#wkOk'); await closed(D);
+    }
+    await D.evaluate(() => { if (autoClose()) { save(); } });
+    eq('عامل بتاريخ قديم: الأسابيع الفاضية اللي فاتت متقفلتش بأصفار', await D.evaluate(() => [idx().lk.size, idx().log.some(l => l.by === 'تلقائي')]), [0, false]);
+    await D.evaluate(() => nav('t/2026-10-17', true)); await D.click('#allDay');
+    await D.evaluate(() => nav('t/2026-10-18', true)); await D.click('#allDay'); await D.click('#main .wr:nth-child(2) .ub button[data-u="0"]');
+    await D.evaluate(() => nav('t/2026-10-19', true));
+    eq('زرار "زي امبارح" شغال', await D.$eval('#sameY', b => b.disabled), false);
+    await D.click('#sameY');
+    eq('زي امبارح: نقل حالة كل عامل من امبارح (التاني غاب)', await D.evaluate(() => [...idx().W.keys()].map(id => idx().day.get(id + '|2026-10-19').u)), [1, 0, 1]);
+    await D.evaluate(() => nav('t/2026-10-21', true));
+    eq('تنبيه الأيام الناقصة: التلات ناقص 3 عمال', (await D.textContent('#main .alert:not(.red) .chip')).trim(), 'التلات · 3 عمال');
+    await D.click('#main .alert .chip[data-go]');
+    eq('دوسة على اليوم الناقص بتفتحه', await D.evaluate(() => location.hash), '#t/2026-10-20');
+    await D.click('#allDay');
+    eq('الرسالة بتظهر تحت ومش بتغطي التاريخ', await D.evaluate(() => $('#toast').getBoundingClientRect().top > $('.dnav').getBoundingClientRect().bottom + 200), true);
+    await D.evaluate(() => nav('l', true));
+    eq('السجل: الأسامي الكتير بتتلم في "(3 عمال ▾)" والوقت لوحده', await D.evaluate(() => [!!$('#main button[data-x]'), $('#main button[data-x]').textContent, !!$('#main .lg .tm'), $('#main .lg .who').textContent]), [true, '3 عمال ▾', true, 'مشرف تجربة 4']);
+    await D.click('#lgF button[data-c]');
+    eq('فلتر "التعديلات والمسح بس" بيعرض التغيير بس', await D.evaluate(() => $$('#main .lg').length > 0 && $$('#main .lg').every(x => x.classList.contains('chg') || x.classList.contains('del'))), true);
+    await D.evaluate(() => nav('w', true));
+    eq('الأسبوع: صف الإجمالي تحت الجدول', await D.evaluate(() => [!!$('#main tfoot'), $('#main tfoot td.net').textContent]), [true, await D.evaluate(() => fmt(calcWeek(idx(), '2026-10-22').total))]);
 
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }

@@ -940,8 +940,9 @@ function advModal(a, d, wid) {
   let w = a ? a.w : wid || null;
   const date = a ? a.date : d || today(), thu = ownerThursday(date);
   modal(`<h3>${a ? 'تعديل سلفة' : 'سلفة'}<small>${dayFull(date)}${a ? ' · ' + byTxt(a) : ''}</small></h3>
-    ${a ? `<p style="margin:0 0 6px">${esc(wName(a.w))}</p>` : `<span class="fl">لمين؟</span>${pickWorkers(w)}`}
+    <span class="fl">لمين؟</span>${pickWorkers(w)}
     ${amtBox('avA', a && a.amt, true)}${quickAmts('avA')}
+    ${a ? `<span class="fl">التاريخ</span><input class="inp" id="avD" type="date" value="${a.date}" max="${today()}">` : ''}
     <input class="inp" id="avN" autocomplete="off" placeholder="ملاحظة (اختياري)" style="margin-top:8px" value="${esc(a ? a.note || '' : '')}">
     ${a ? `<div class="row2"><button class="big b-ok" id="avOk" type="button">حفظ</button><button class="big b-redo" id="avDel" type="button">🗑 مسح</button></div>` : `<button class="big b-ok" id="avOk" type="button">سجّل السلفة</button>`}
     <button class="lnk" id="avX" type="button">إغلاق</button>`);
@@ -954,10 +955,16 @@ function advModal(a, d, wid) {
     if (!w) return toast('اختار العامل');
     if (!(amt > 0)) return toast('اكتب المبلغ');
     if (a) {
-      if (a.amt === amt && (a.note || '') === note) return closeModal();
-      const old = a.amt;
-      put('adv', {id: a.id, amt, note});
-      log(`${myName()} غيّر سلفة ${wName(a.w)} (${dayFull(a.date)}) من ${fmt(old)} لـ ${fmt(amt)}${afterTag(thu)}`, {w: a.w, thu});
+      const nd = isDay($('#avD').value) ? $('#avD').value : a.date, nthu = ownerThursday(nd);
+      if (a.amt === amt && (a.note || '') === note && a.w === w && a.date === nd) return closeModal();
+      const ch = [];
+      if (a.w !== w) ch.push(`من ${wName(a.w)} لـ ${wName(w)}`);
+      if (a.amt !== amt) ch.push(`المبلغ من ${fmt(a.amt)} لـ ${fmt(amt)}`);
+      if (a.date !== nd) ch.push(`التاريخ من ${dayFull(a.date)} لـ ${dayFull(nd)}`);
+      if ((a.note || '') !== note) ch.push('الملاحظة');
+      put('adv', {id: a.id, w, date: nd, amt, note});
+      log(`${myName()} عدّل سلفة ${wName(a.w)}: ${ch.join('، ')}${afterTag(thu)}`, {w, thu: nthu});
+      if (nthu !== thu) touched(nthu);
     } else {
       put('adv', {id: newId('a'), w, date, amt, note});
       log(`${myName()} سجّل سلفة لـ ${wName(w)} ${fmt(amt)}${note ? ' (' + note + ')' : ''} — ${dayFull(date)}${afterTag(thu)}`, {w, thu});

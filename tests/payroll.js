@@ -215,7 +215,7 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await B.evaluate(() => nav('w', true)); await B.click('#main tr[data-w]:nth-child(1)'); await B.click('#modal [data-adv]');
     await B.fill('#avA', '300'); await B.click('#avOk'); await B.waitForTimeout(150);
     await settle_(B); await settle_(A); await A.evaluate(() => drawLog());
-    eq('السجل: "غيّر سلفة من 200 لـ 300"', (await A.textContent('#main')).includes('مشرف تجربة 2 غيّر سلفة عامل تجربة أ') && (await A.textContent('#main')).includes('من 200 لـ 300'), true);
+    eq('السجل: "غيّر سلفة من 200 لـ 300"', (await A.textContent('#main')).includes('مشرف تجربة 2 عدّل سلفة عامل تجربة أ') && (await A.textContent('#main')).includes('المبلغ من 200 لـ 300'), true);
 
     console.log('\n٥) الأسبوع والقفل والقبض');
     await addW('عامل تجربة ج', '100', '0', '2026-10-14');
@@ -424,6 +424,20 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await A.evaluate(() => { [...document.querySelectorAll('#main .row')].find(x => x.textContent.includes('سلفة · ')).click(); });
     await A.waitForSelector('#avA'); await A.fill('#avA', a0); await A.click('#avOk'); await A.waitForTimeout(250);
     eq('وبعد ما رجّعناها رجع زي ما كان', await A.textContent('.panel .p1 b'), money(12000 - 2000 - advSum));
+    /* تعديل سلفة بالكامل (عامل وتاريخ ومبلغ) ومسحها من المصاريف */
+    await A.evaluate(() => { [...document.querySelectorAll('#main .row')].find(x => x.textContent.includes('سلفة · ')).click(); });
+    await A.waitForSelector('#avD');
+    const adv0 = await A.evaluate(() => { const r = [...document.querySelectorAll('#main .row')].find(x => x.textContent.includes('سلفة · ')); const a = S.recs[r.dataset.e]; return {id: a.id, w: a.w, date: a.date, amt: a.amt}; });
+    const other = await A.evaluate(w => [...idx().W.values()].find(x => x.id !== w && x.st === 'on').id, adv0.w);
+    await A.click(`#pkW .chip[data-w="${other}"]`); await A.fill('#avA', '777'); await A.fill('#avD', '2026-10-21'); await A.click('#avOk'); await A.waitForTimeout(250);
+    eq('تعديل سلفة كاملة: عامل جديد ومبلغ وتاريخ، والصافي اتغيّر', await A.evaluate(id => { const a = S.recs[id]; return [a.w !== undefined, a.amt, a.date]; }, adv0.id), [true, 77700, '2026-10-21']);
+    eq('سطر التعديل في السجل بيقول إيه اتغيّر', await A.evaluate(() => idx().log.some(l => l.txt.includes('عدّل سلفة') && l.txt.includes('المبلغ من') && l.txt.includes('التاريخ من'))), true);
+    const netBefore = await A.textContent('.panel .p1 b');
+    await A.evaluate(id => { document.querySelector(`#main .row[data-e="${id}"]`).click(); }, adv0.id);
+    await A.waitForSelector('#avDel'); await A.click('#avDel'); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(250);
+    eq('مسح سلفة من المصاريف: السطر اختفى والصافي زاد بقيمتها', await A.evaluate(([id, nb]) => [!document.querySelector(`#main .row[data-e="${id}"]`), $('.panel .p1 b').textContent !== nb], [adv0.id, netBefore]), [true, true]);
+    await A.click('#eF button[data-v=all]');
+    await A.evaluate(o => { put('adv', {id: o.id, del: false, w: o.w, date: o.date, amt: o.amt}); commit(); drawExp(); }, adv0);
     await A.click('#eWk'); await A.waitForSelector('#pwOk');
     const wkTot = await A.evaluate(() => idx().lk.get('2026-10-22').snap.total);
     await A.click('#pwC .chip[data-t="2026-10-22"]'); await A.click('#pwOk'); await A.waitForTimeout(150);

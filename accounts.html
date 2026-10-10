@@ -2055,6 +2055,7 @@ function stmtModal(p) {
   const pm0 = new Date(+y, +t.slice(5, 7) - 2, 1), pmS = isoOf(new Date(pm0.getFullYear(), pm0.getMonth(), Math.min(+t.slice(8), new Date(pm0.getFullYear(), pm0.getMonth() + 1, 0).getDate())).getTime());
   modal(`<h3>كشف حساب — ${esc(p.name)}</h3>
     <div class="seg s4" id="smMode">${[['last', 'آخر فاتورة'], ['prev', 'آخر شهر'], ['all', 'الحساب كله'], ['range', 'من – إلى']].map(([k, l]) => `<button type="button" data-m="${k}" class="${k === mode ? 'on' : ''}"${k === 'last' && !lastInv ? ' disabled' : ''}>${l}</button>`).join('')}</div>
+    ${lastInv ? `<button type="button" class="btn line" id="smInv" style="min-height:40px;font-size:14.5px;margin:-2px 0 10px">🧾 ابعت آخر فاتورة بس (من غير الرصيد اللي قبلها)</button>` : ''}
     <div class="g2" id="smRange" style="display:none;margin-bottom:6px"><div><label>من</label><input class="inp" type="date" id="smFrom" value="${y}-01-01"></div><div><label>إلى</label><input class="inp" type="date" id="smTo" value="${t}"></div></div>
     <div id="smOut"></div>
     <div class="mfoot"><div class="mrow3"><button class="btn green" id="smShare" type="button">📲 واتساب</button>
@@ -2076,6 +2077,25 @@ function stmtModal(p) {
   const run = async how => { const s = upd(); if (!s) return; s.to = s.to || todayISO(); await exportStmt(p, s, how); };
   $('#smShare').onclick = () => run('share');
   $('#smPdf').onclick = () => run('preview');
+  if ($('#smInv')) $('#smInv').onclick = () => invOnlyModal(p, lastInv);
+}
+/* آخر فاتورة لوحدها: بنودها وإجماليها بس، من غير الرصيد اللي قبلها ولا الدفعات (الكشف نفسه زي ما هو) */
+function invOnlyData(p, e) {
+  const sg = p.sec === 'sup' ? -1 : 1; let run = 0;
+  const rows = rowsWithRef(e).map(r => { run += r.dr - r.cr; const x = (r.dr - r.cr) * sg; return Object.assign(r, {run, gd: x > 0 ? x : 0, pd: x < 0 ? -x : 0}); });
+  return {invOnly: e, open: null, rows, n: 1, sg, close: run, from: e.date, to: e.date, tg: 0, tp: 0, lastInv: null};
+}
+function invOnlyModal(p, e) {
+  const s = invOnlyData(p, e), tot = docTotal(e);
+  modal(`<h3>آخر فاتورة بس — ${esc(p.name)}</h3>
+    <div class="stm"><div><span>تاريخ الفاتورة</span><b>${dispDate(e.date)}</b></div><div><span>عدد البنود</span><b>${(e.lines || []).length}</b></div>
+      <div class="k"><span>إجمالي الفاتورة</span><b>${fmtP(tot)}</b></div></div>
+    <p class="hint">الملف فيه الفاتورة دي بس: البنود${e.disc ? ' والخصم' : ''} والإجمالي، من غير الرصيد اللي قبلها ومن غير الدفعات.</p>
+    <div class="mfoot"><div class="mrow3"><button class="btn green" id="ivShare" type="button">📲 واتساب</button>
+      <button class="btn gold" id="ivPdf" type="button">📄 معاينة PDF</button><button class="btn line" id="ivBack" type="button">رجوع</button></div></div>`, true);
+  $('#ivBack').onclick = () => stmtModal(p);
+  $('#ivShare').onclick = () => exportStmt(p, s, 'share');
+  $('#ivPdf').onclick = () => exportStmt(p, s, 'preview');
 }
 function buildStmtPages(p, s) {
   const box = $('#render'); box.innerHTML = '';
@@ -2084,10 +2104,10 @@ function buildStmtPages(p, s) {
     const pg = document.createElement('div'); pg.className = 'pg';
     pg.innerHTML = `<div class="strip"></div><div class="in">` + (first
       ? `<div class="hd"><img src="icons/logo.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${phone ? `<em>${esc(phone)}</em>` : ''}</div>
-         <div class="ti"><h3>كشف حساب</h3><div>تاريخ الإصدار: <span>${dispDate(isoOf(issued))}</span></div><div>الفترة: <span>${esc(periodText(s))}</span></div></div></div>
+         <div class="ti"><h3>${s.invOnly ? (p.sec === 'sup' ? 'فاتورة مشتريات' : 'فاتورة') : 'كشف حساب'}</h3><div>تاريخ الإصدار: <span>${dispDate(isoOf(issued))}</span></div><div>${s.invOnly ? 'تاريخ الفاتورة' : 'الفترة'}: <span>${esc(s.invOnly ? dispDate(s.from) : periodText(s))}</span></div></div></div>
          <div class="cust"><span>السادة / <b>${esc(p.name)}</b></span>${p.sec === 'sup' ? `<i>${SEC1[p.sec]}</i>` : ''}</div>
-         ${p.sec === 'sup' ? `<div class="sbox"><div><span>إجمالي المشتريات</span><b>${fmtP(s.tg)}</b></div><div><span>إجمالي المدفوعات</span><b>${fmtP(s.tp)}</b></div><div class="k"><span>الرصيد</span><b>${fmtP(s.close * s.sg)}</b></div></div>` : ''}`
-      : `<div class="mini"><b>فلاش أون</b><span>كشف حساب — ${esc(p.name)} — ${esc(periodText(s))}</span></div>`) +
+         ${p.sec === 'sup' && !s.invOnly ? `<div class="sbox"><div><span>إجمالي المشتريات</span><b>${fmtP(s.tg)}</b></div><div><span>إجمالي المدفوعات</span><b>${fmtP(s.tp)}</b></div><div class="k"><span>الرصيد</span><b>${fmtP(s.close * s.sg)}</b></div></div>` : ''}`
+      : `<div class="mini"><b>فلاش أون</b><span>${s.invOnly ? 'فاتورة' : 'كشف حساب'} — ${esc(p.name)} — ${esc(s.invOnly ? dispDate(s.from) : periodText(s))}</span></div>`) +
       `</div><div class="ft"><span>عالم متكامل من احتياجاتك الكهربائية</span><span class="pn"></span></div>`;
     box.appendChild(pg);
     return {pg, inn: pg.querySelector('.in')};
@@ -2095,6 +2115,8 @@ function buildStmtPages(p, s) {
   const over = (inn, el) => el.getBoundingClientRect().bottom > inn.getBoundingClientRect().bottom - 16;
   const mkTable = () => {
     const t = document.createElement('table');
+    if (s.invOnly) { t.innerHTML = `<colgroup><col style="width:15%"><col style="width:37%"><col style="width:16%"><col style="width:14%"><col style="width:18%"></colgroup>
+      <thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody></tbody>`; return t; }
     t.innerHTML = `<colgroup><col style="width:12.5%"><col style="width:23.5%"><col style="width:14%"><col style="width:10.5%"><col style="width:13%"><col style="width:11.5%"><col style="width:15%"></colgroup>
       <thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody></tbody>`;
     return t;
@@ -2108,20 +2130,22 @@ function buildStmtPages(p, s) {
   if (s.open !== null) { const tr = document.createElement('tr'); tr.className = 'op'; tr.innerHTML = `<td class="dt">${dispDate(s.from)}</td><td class="l">${opLabel(s)}</td><td></td><td></td><td></td><td></td>${balCell(s.open)}`; put(tr); }
   s.rows.forEach((r, i) => {
     const tr = document.createElement('tr'); tr.className = r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : '';
-    tr.innerHTML = `<td class="dt">${dispDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td><td class="q">${esc(r.qty || '')}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td>${balCell(r.run)}`;
+    tr.innerHTML = `<td class="dt">${dispDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td><td class="q">${esc(r.qty || '')}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td>` + (s.invOnly
+      ? `<td class="n">${r.gd ? fmtP(r.gd) : r.pd ? '−' + fmtP(r.pd) : ''}</td>`
+      : `<td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td>${balCell(r.run)}`);
     put(tr);
   });
   if (!s.rows.length) { const tr = document.createElement('tr'); tr.innerHTML = `<td colspan="7">مفيش حركات في الفترة دي</td>`; put(tr); }
   const sum = document.createElement('div'); sum.className = 'sum';
-  sum.innerHTML = `<div class="f"><span>الرصيد</span><b>${fmtP(s.close * s.sg)} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div>`;
+  sum.innerHTML = `<div class="f"><span>${s.invOnly ? 'إجمالي الفاتورة' : 'الرصيد'}</span><b>${fmtP(s.close * s.sg)} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div>`;
   const note = document.createElement('div'); note.className = 'note';
-  note.textContent = 'برجاء مراجعة الكشف، ولو فيه أي ملاحظة يا ريت تتواصلوا معانا.';
+  note.textContent = s.invOnly ? 'شكراً لتعاملكم معنا. لو فيه أي ملاحظة على الفاتورة يا ريت تتواصلوا معانا.' : 'برجاء مراجعة الكشف، ولو فيه أي ملاحظة يا ريت تتواصلوا معانا.';
   [sum, note].forEach(el => { pg.inn.appendChild(el); if (over(pg.inn, el)) { el.remove(); pg = shell(false); pg.inn.appendChild(el); } });
   const pages = [...box.children];
   pages.forEach((x, i) => x.querySelector('.pn').textContent = `صفحة ${i + 1} من ${pages.length}`);
   return pages;
 }
-async function makeStmtPdf(p, s) { return pagesToPdf(() => buildStmtPages(p, s), `كشف حساب - ${p.name}`, p.name); }   // الملف باسم الشخص بس
+async function makeStmtPdf(p, s) { return s.invOnly ? pagesToPdf(() => buildStmtPages(p, s), `فاتورة - ${p.name}`, `فاتورة ${p.name}`) : pagesToPdf(() => buildStmtPages(p, s), `كشف حساب - ${p.name}`, p.name); }   // الملف باسم الشخص بس
 async function shareFile(res, title) {
   const file = new File([res.blob], res.name, {type: 'application/pdf'});
   const data = {files: [file]};   // الملف بس: من غير رسالة مكتوبة قبله
@@ -2143,12 +2167,12 @@ async function shareFile(res, title) {
   }
 }
 async function exportStmt(p, s, how) {
-  modal('<p style="text-align:center">جاري تجهيز كشف الحساب…</p>');
+  modal(`<p style="text-align:center">جاري تجهيز ${s.invOnly ? 'الفاتورة' : 'كشف الحساب'}…</p>`);
   let res;
   try { res = await makeStmtPdf(p, s); }
   catch (e) { closeModal(); console.error(e); toast('حصلت مشكلة في تجهيز الـ PDF، جرّب تاني.'); return; }
   closeModal();
-  const title = `كشف حساب ${p.name}`;
+  const title = `${s.invOnly ? 'فاتورة' : 'كشف حساب'} ${p.name}`;
   if (how === 'share') return shareFile(res, title);
   modal(`${res.imgs.map(u => `<img src="${u}" alt="">`).join('')}${res.pages > res.imgs.length ? `<p class="hint">(المعاينة بتعرض أول ${res.imgs.length} صفحات من ${res.pages})</p>` : ''}
     <div class="stack"><button class="btn green" id="pvShare">ابعت واتساب</button><button class="btn gold" id="pvDl">تنزيل PDF</button><button class="btn line" id="pvX">إغلاق</button></div>`, true);

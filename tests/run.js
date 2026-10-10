@@ -185,6 +185,16 @@ const MO = !!process.env.MARKET_ONLY;
     eq('لو الجهاز مبيدعمش المشاركة الملف بينزل باسم الشخص', await A.evaluate(() => __dn), 'عميل تجربة واحد.pdf');
     const pdf = fs.readFileSync(await dl.path());
     eq('الـ PDF اتعمل', pdf.slice(0, 4).toString(), '%PDF');
+    /* آخر فاتورة بس: بنودها والإجمالي من غير الرصيد اللي قبلها، والكشف زي ما هو */
+    await A.evaluate(() => closeModal()); await A.click('#ppStmt'); await A.waitForTimeout(150);
+    eq('الكشف لسه بيفتح على آخر فاتورة بالرصيد اللي قبلها', [await A.getAttribute('#smMode .on', 'data-m'), (await A.textContent('#smOut')).includes('الرصيد قبل الفاتورة')], ['last', true]);
+    await A.click('#smInv'); await A.waitForTimeout(150);
+    eq('آخر فاتورة بس: إجماليها = إجمالي آخر فاتورة', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), l = partyEntries(p.id).filter(e => e.kind === 'inv').pop(); return $('#modal .stm .k b').textContent === fmtP(docTotal(l)); }), true);
+    eq('صفحة الفاتورة: من غير رصيد سابق ولا دفعات ولا عمود رصيد', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), l = partyEntries(p.id).filter(e => e.kind === 'inv').pop();
+      const pg = buildStmtPages(p, invOnlyData(p, l))[0], r = [pg.querySelector('h3').textContent, pg.querySelectorAll('thead th').length, pg.querySelectorAll('tbody tr').length === rowsOf(l).length, !pg.textContent.includes('الرصيد قبل'), !pg.textContent.includes('دفعة'), pg.querySelector('.sum b').textContent.includes(fmtP(docTotal(l)))]; $('#render').innerHTML = ''; return r; }), ['فاتورة', 5, true, true, true, true]);
+    await A.evaluate(() => { window.__sh = null; navigator.canShare = () => true; navigator.share = d => { window.__sh = d; return Promise.resolve(); }; });
+    await A.click('#ivShare'); await A.waitForFunction(() => window.__sh, null, {timeout: 90000});
+    eq('واتساب الفاتورة: الملف بس واسمه "فاتورة" + اسم الشخص', await A.evaluate(() => [Object.keys(__sh), __sh.files[0].name]), [['files'], 'فاتورة عميل تجربة واحد.pdf']);
 
     console.log('\n٨) التقارير');
     await A.click('nav button[data-go=rep]'); await A.waitForTimeout(200);

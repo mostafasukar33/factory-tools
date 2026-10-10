@@ -637,6 +637,7 @@ html[data-theme=dark] .fab2,html[data-theme=dark] .cbar{background:linear-gradie
 .mrow3{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}
 .msec{display:flex;gap:6px;margin-bottom:8px}.msec .btn{flex:1}
 .mtools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.mtools .btn{width:auto;flex:1;white-space:nowrap}
+.mkcash{min-height:48px;display:flex;align-items:center;padding:0 12px;border:1.5px dashed var(--line);border-radius:10px;font-weight:800;color:var(--gold-d)}
 .sg{display:none;border:1.5px solid var(--line);border-radius:10px;background:#fff;margin:0 0 6px;overflow:hidden}
 .sg.on{display:block}
 .sg .sh{font-size:12px;font-weight:800;color:var(--gold-d);background:var(--gold-l);padding:3px 10px}
@@ -2972,7 +2973,10 @@ $('#fRestore').addEventListener('change', async ev => {
    الـ ids بتاعة الخزنة والبنود الافتراضية ثابتة وزي دفتر الخزنة القديم، فالنقل منه أو فتح البرنامج على جهازين مش بيكرر حاجة. */
 const DEF_EXP = ['خامات', 'صبغة', 'كهربا', 'أجور', 'نقل', 'صيانة', 'إيجار', 'نثريات', 'أخرى'];
 const TXT = {exp: 'مصروف', inc: 'إيراد', tr: 'تحويل'};
-const vaultsL = () => db.vaults.filter(v => !v.del).sort((a, b) => (a.ord || 0) - (b.ord || 0) || (a.at || 0) - (b.at || 0));
+/* خزنة السوق (v_mkt) = فلوس الشريك: بتتحكم فيها حركة السوق بس (بطلب صاحب المشروع). مخفية من الخزنة والإجماليات والاختيارات،
+   والحركات اللي فيها بتفضل (علشان الأرباح والتاريخ)، والكاش اللي الشريك بيسلّمه بيظهر دخل في خزنتك */
+const MKV = 'v_mkt', isMkv = id => id === MKV;
+const vaultsL = () => db.vaults.filter(v => !v.del && !isMkv(v.id)).sort((a, b) => (a.ord || 0) - (b.ord || 0) || (a.at || 0) - (b.at || 0));
 const catsL = t => db.cats.filter(c => !c.del && c.type === t && !SPECIAL_CATS.has(c.id)).sort((a, b) => (a.ord || 0) - (b.ord || 0));
 const vName = id => (IDX.vault.get(id) || {name: '؟'}).name;
 const cName = id => (IDX.cat.get(id) || {name: 'بدون بند'}).name;
@@ -2987,15 +2991,17 @@ function ensureVaults() {
 /* رصيد خزنة (أو كل الخزن لو vid فاضي). لو before اتبعت: الحركات اللي قبل التاريخ ده بس */
 function vaultBal(vid, before) {
   let b = 0;
-  vaultsL().forEach(v => { if (!vid || v.id === vid) b += v.open || 0; });
+  const has = id => vid ? id === vid : !isMkv(id);   // كل الخزن = من غير خزنة السوق
+  db.vaults.forEach(v => { if (!v.del && (vid ? v.id === vid : !isMkv(v.id))) b += v.open || 0; });
   for (const t of db.txs) {
     if (t.del || (before && t.date >= before)) continue;
-    if (t.type === 'inc' && (!vid || t.vault === vid)) b += t.amt;
-    else if (t.type === 'exp' && (!vid || t.vault === vid)) b -= t.amt;
+    if (t.type === 'inc' && has(t.vault)) b += t.amt;
+    else if (t.type === 'exp' && has(t.vault)) b -= t.amt;
     else if (t.type === 'tr' && vid) { if (t.vault === vid) b -= t.amt; if (t.to === vid) b += t.amt; }
+    else if (t.type === 'tr') { if (isMkv(t.vault) && !isMkv(t.to)) b += t.amt; else if (!isMkv(t.vault) && isMkv(t.to)) b -= t.amt; }   // كاش من الشريك
   }
   for (const e of db.entries) {
-    if (e.del || !isPay(e) || !e.vault || (before && vdate(e) >= before) || (vid && e.vault !== vid)) continue;
+    if (e.del || !isPay(e) || !e.vault || (before && vdate(e) >= before) || !has(e.vault)) continue;
     b += e.kind === 'pay' ? e.amt : -e.amt;
   }
   return b;
@@ -3006,14 +3012,17 @@ function vaultMoves(vid, from, to) {
   db.txs.forEach(t => {
     if (t.del || !inR(t.date)) return;
     if (vid && t.vault !== vid && t.to !== vid) return;
-    const sign = t.type === 'inc' ? 1 : t.type === 'exp' ? -1 : (!vid ? 0 : t.to === vid ? 1 : -1);
+    if (!vid && isMkv(t.vault) && (t.type !== 'tr' || isMkv(t.to))) return;   // حركات خزنة السوق مش بتظهر هنا
+    const fromM = t.type === 'tr' && isMkv(t.vault), toM = t.type === 'tr' && isMkv(t.to);
+    const sign = t.type === 'inc' ? 1 : t.type === 'exp' ? -1 : (!vid ? (fromM ? 1 : toM ? -1 : 0) : t.to === vid ? 1 : -1);
+    const trT = fromM ? `كاش من شريك السوق ← ${vName(t.to)}` : `تحويل: ${vName(t.vault)} ← ${vName(t.to)}`;
     out.push({src: 'tx', r: t, date: t.date, at: t.at || 0, sign, amt: t.amt,
-      title: t.type === 'tr' ? `تحويل: ${vName(t.vault)} ← ${vName(t.to)}` : `${TXT[t.type]} — ${cName(t.cat)}`,
-      sub: (t.type === 'tr' ? '' : vName(t.vault)) + (t.note ? (t.type === 'tr' ? '' : ' — ') + t.note : ''), cls: t.type,
-      who: t.type === 'tr' ? `تحويل: ${vName(t.vault)} ← ${vName(t.to)}` : (t.note || cName(t.cat)), what: t.type === 'tr' ? '' : (t.note ? cName(t.cat) : '')});
+      title: t.type === 'tr' ? trT : `${TXT[t.type]} — ${cName(t.cat)}`,
+      sub: (t.type === 'tr' ? '' : vName(t.vault)) + (t.note ? (t.type === 'tr' ? '' : ' — ') + t.note : ''), cls: fromM ? 'inc' : t.type,
+      who: fromM ? 'كاش من شريك السوق' : t.type === 'tr' ? trT : (t.note || cName(t.cat)), what: fromM ? vName(t.to) : t.type === 'tr' ? '' : (t.note ? cName(t.cat) : '')});
   });
   db.entries.forEach(e => {
-    if (e.del || !isPay(e) || !e.vault || !inR(vdate(e)) || (vid && e.vault !== vid)) return;
+    if (e.del || !isPay(e) || !e.vault || !inR(vdate(e)) || (vid && e.vault !== vid) || (!vid && isMkv(e.vault))) return;
     const p = P.get(e.party);
     out.push({src: 'pay', r: e, date: vdate(e), at: e.at || 0, sign: e.kind === 'pay' ? 1 : -1, amt: e.amt,
       title: `${e.kind === 'pay' ? 'تحصيل من' : 'دفع لـ'} ${p ? p.name : '؟'}`, sub: `${vName(e.vault)} — ${e.chk ? 'شيك' + (e.chk.no ? ' رقم ' + e.chk.no : '') + ' اتصرف' : e.method || 'نقدي'}${e.note ? ' — ' + e.note : ''}`, cls: e.kind === 'pay' ? 'inc' : 'exp',
@@ -3162,6 +3171,7 @@ function openingModal() {
   };
 }
 function vaultOpts(sel, none) {
+  if (isMkv(sel)) return `<option value="${MKV}" selected>خزنة السوق (مع شريكك — بتتحكم فيها حركة السوق)</option>`;   // مقفولة: متتغيرش من هنا
   return (none ? `<option value="" ${!sel ? 'selected' : ''}>${esc(none)}</option>` : '') + vaultsL().map(v => `<option value="${esc(v.id)}" ${sel === v.id ? 'selected' : ''}>${esc(v.name)} (${fmtP(vaultBal(v.id))})</option>`).join('');
 }
 /* الخزنة الافتراضية: النقدي والمصروفات دايماً من أول خزنة (خزنة المصنع)، والتحويل من آخر خزنة اتسجل فيها تحويل */
@@ -4451,7 +4461,7 @@ function mkFollowExp() {
 function mkIgnore(o) {
   if (!o || o.t !== 'exp') return;
   const rec = IDX.tx.get('t_mk_' + o.id), reg = rec && !rec.del;
-  modal(`<h3>تجاهل المصروف ده؟</h3><p>${esc(mkWhat(o))} — <b class="money">${fmtP(o.amt)}</b><br><small style="color:#777">${reg ? 'هتتشال من خزنة السوق وتقارير الأرباح. ' : ''}الشريك مش هيشوف أي تغيير.</small></p>
+  modal(`<h3>تجاهل المصروف ده؟</h3><p>${esc(mkWhat(o))} — <b class="money">${fmtP(o.amt)}</b><br><small style="color:#777">${reg ? 'هتتشال من تقرير الأرباح. ' : ''}الشريك مش هيشوف أي تغيير.</small></p>
     <div class="g2"><button class="btn red" id="igOk" type="button">تجاهل</button><button class="btn line" id="igX" type="button">رجوع</button></div>`);
   $('#igX').onclick = closeModal;
   $('#igOk').onclick = () => {
@@ -4698,15 +4708,12 @@ function renderMkt() {
 }
 function mkInbox() {
   const gs = mkGroups(), n = mkPending().length, ops = mkLive();
-  const withP = ops.reduce((s, o) => s + mkSign(o) * o.amt, 0), pendNet = ops.filter(o => mkState(o) !== 'done' && mkState(o) !== 'ign').reduce((s, o) => s + mkSign(o) * o.amt, 0);
-  const vb = IDX.vault.get('v_mkt') && !IDX.vault.get('v_mkt').del ? vaultBal('v_mkt') : null, diff = vb === null ? 0 : withP - vb;
+  const withP = ops.reduce((s, o) => s + mkSign(o) * o.amt, 0);
   $('#mkBody').innerHTML = `${nlAlert()}<div class="mkh"><b>عمليات متنقلتش</b><span class="n">${n}</span></div>
     ${gs.length ? gs.map(mkCard).join('') : '<div class="card empty">لسه شريكك مسجلش حاجة.</div>'}
     <div class="card mkbal">
       <div class="bl"><span>💵 مع شريكك حسب تسجيله (بعد المصروف والتسليم)</span><b>${fmtP(withP)}</b></div>
-      <div class="bl"><span>🗄️ رصيد خزنة السوق في الحسابات</span><b>${vb === null ? '—' : fmtP(vb)}</b></div>
-      ${vb !== null && diff ? `<p class="hint" style="margin:6px 0 0">الفرق ${fmtP(Math.abs(diff))}${diff === pendNet ? ' = عمليات لسه متنقلتش.' : pendNet ? ` — منهم ${fmtP(Math.abs(pendNet))} عمليات لسه متنقلتش، والباقي حركات اتعملت في خزنة السوق بإيدك.` : ' — غالباً حركات اتعملت في خزنة السوق بإيدك، أو عمليات نقلتها على خزنة تانية.'}</p>` : vb !== null ? '<p class="hint" style="margin:6px 0 0">✓ متطابقين.</p>' : ''}
-      <p class="hint" style="margin:6px 0 0">التحويلات (إنستا/فودافون) مش على الشريك، لأنها وصلتلك على طول.</p>
+      <p class="hint" style="margin:6px 0 0">الرقم ده من تطبيق حركة السوق بس، ومش بيتعدل ولا بيتخصم من الحسابات. التحويلات مش عليه لأنها وصلتلك على طول.</p>
     </div>`;
   $$('#mkBody [data-op]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkOpMenu(mkDb().ops[el.dataset.op]); });
   $$('#mkBody [data-ok]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkArrive(mkDb().ops[el.dataset.ok]); });
@@ -4899,23 +4906,27 @@ function nlModal(ev) {
   $('#nlX').onclick = closeModal;
   $$('#modal .pt[data-e]').forEach(el => el.onclick = () => { const e = E.get(el.dataset.e); docModal(P.get(e.party), 'inv', e); });
 }
+/* فلوس كاش مع الشريك (دفعة كاش، مصروف، دفعة مورد، بيع كاش، تسليم): بتتسجل في خزنة السوق المخفية لوحدها من غير اختيار.
+   التحويلات بس (وصلت لمصطفى على طول) بيختار خزنتها من خزنه هو */
+const mkCashOp = o => o.t !== 'pay' || o.m === 'cash';
 /* شاشة التأكيد (إجبارية قبل أي نقل): المبلغ والتاريخ والخزنة لكل عملية. الخزنة اختيار حر، والدفعات تقدر تبقى من غير خزنة.
    المصروف والكاش المسلَّم لازم يبقوا على خزنة. الكاش المسلَّم = تحويل من خزنة لخزنة */
 function mkConfirm(ops, to) {
   ensureMktVault();
   const kind = ops[0].t, name = to.pid ? P.get(to.pid).name : to.newName;
   const title = kind === 'cs' ? 'تأكيد البيع الكاش' : kind === 'exp' ? 'تأكيد المصروف' : kind === 'hand' ? 'تأكيد الاستلام' : 'تأكيد النقل للحسابات';
-  const who = kind === 'cs' ? '<b>بيع كاش من المصنع</b> ← إيراد في الخزنة' : kind === 'exp' ? `<b>مصاريف السوق</b>` : kind === 'hand' ? '<b>كاش من شريكك</b> ← تحويل بين الخزن' : `${kind === 'spay' ? 'من' : 'من'} <b>${esc(name)}</b>${to.newName ? ` <span class="nwt">${kind === 'spay' ? 'حساب مورد جديد' : 'حساب جديد في عملاء السوق'}</span>` : ''}`;
+  const who = kind === 'cs' ? '<b>بيع كاش من المصنع</b> (الفلوس مع شريكك)' : kind === 'exp' ? `<b>مصاريف السوق</b>` : kind === 'hand' ? '<b>كاش من شريكك</b> ← بيدخل خزنتك' : `${kind === 'spay' ? 'من' : 'من'} <b>${esc(name)}</b>${to.newName ? ` <span class="nwt">${kind === 'spay' ? 'حساب مورد جديد' : 'حساب جديد في عملاء السوق'}</span>` : ''}`;
   const key = o => o.t === 'pay' ? o.m : o.t;
   modal(`<h3>${title}</h3>
     <p style="margin-bottom:8px">${ops.length > 1 ? `${ops.length} عمليات` : 'عملية'} ${kind === 'spay' ? 'دفعة لمورد' : kind === 'pay' ? 'دفعة' : ''} ${who}</p>
     ${ops.map((o, i) => `<div class="mvr" data-i="${i}"><div class="mvh">${mkLTag(o)} <small>${o.t === 'exp' && o.note ? esc(o.note) + ' — ' : ''}${o.t === 'cs' && o.buyer ? esc(o.buyer) + ' — ' : ''}اتسجلت ${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</small></div>
       <div class="g2"><div class="fld"><label>المبلغ</label><input class="inp num" data-f="amt" value="${fmtP(o.amt)}"></div>
-        <div class="fld"><label>${o.t === 'hand' ? 'من خزنة' : o.t === 'exp' || o.t === 'spay' ? 'من خزنة' : '← الخزنة'}</label><select class="inp" data-f="v">${vaultOpts(mkVaultFor(key(o)), o.t === 'pay' || o.t === 'spay' ? 'من غير خزنة (في حساب ' + (o.t === 'spay' ? 'المورد' : 'العميل') + ' بس)' : '')}</select></div></div>
-      ${o.t === 'hand' ? `<div class="fld"><label>← لخزنة</label><select class="inp" data-f="t">${vaultOpts(mkHandTo())}</select></div>` : ''}
+        ${mkCashOp(o) && o.t !== 'hand' ? `<div class="fld"><label>الفلوس</label><div class="mkcash">💵 مع شريكك</div><input type="hidden" data-f="v" value="${MKV}"></div>`
+          : o.t === 'hand' ? `<div class="fld"><label>استلمتها في خزنة</label><select class="inp" data-f="t">${vaultOpts(mkHandTo())}</select><input type="hidden" data-f="v" value="${MKV}"></div>`
+          : `<div class="fld"><label>← الخزنة</label><select class="inp" data-f="v">${vaultOpts(mkVaultFor(key(o)), 'من غير خزنة (في حساب العميل بس)')}</select></div>`}</div>
       <div class="fld"><label>التاريخ</label><input class="inp" type="date" data-f="d" value="${isoOf(o.ts)}"></div></div>`).join('')}
     <div id="mvW"></div>
-    ${kind === 'pay' && ops.length > 1 ? '<p class="hint" style="margin:0 2px 8px">في حساب العميل وكشفه هتظهر <b>"دفعة" واحدة بالإجمالي</b> من غير تفاصيل (كل جزء بيدخل خزنته عادي).</p>' : ''}
+    ${kind === 'pay' && ops.length > 1 ? '<p class="hint" style="margin:0 2px 8px">في حساب العميل وكشفه هتظهر <b>"دفعة" واحدة بالإجمالي</b> من غير تفاصيل.</p>' : ''}
     <div class="mfoot">${ops.length > 1 ? `<div class="dtot"><span>الإجمالي</span><b id="mvT">${fmtP(ops.reduce((s, o) => s + o.amt, 0))}</b></div>` : ''}
       <div class="mrow"><button class="btn green" id="mvOk" type="button">${kind === 'hand' ? 'استلمت' : 'سجّل'}</button><button class="btn line" id="mvX" type="button">إلغاء</button></div></div>`, true);
   $$('#modal [data-f=amt]').forEach(el => { bindMoney(el); el.addEventListener('input', () => { if ($('#mvT')) $('#mvT').textContent = fmtP($$('#modal [data-f=amt]').reduce((s, x) => s + toP(x.value), 0)); }); });
@@ -4927,7 +4938,7 @@ function mkConfirm(ops, to) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) return toast('اختار التاريخ');
       if (isLocked(r.date)) return lockToast();
       if (mkState(r.o) !== 'new') return toast('في عملية من دول اتغيرت. افتح الوارد تاني.', 4000);
-      if (r.o.t === 'hand' && (!r.vault || !r.to || r.vault === r.to)) return toast('اختار خزنتين مختلفتين للتحويل');
+      if (r.o.t === 'hand' && (!r.to || isMkv(r.to))) return toast('اختار الخزنة اللي استلمت فيها');
     }
     let pid = to.pid || '';
     if (kind === 'pay' || kind === 'spay') pid = mkEnsureParty(kind === 'spay' ? 'sup' : 'mkt', to);

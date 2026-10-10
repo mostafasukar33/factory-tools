@@ -624,7 +624,7 @@ const MO = !!process.env.MARKET_ONLY;
     eq('مفيش حاجة دخلت الحسابات لوحدها (لا خزنة ولا مورد)', await A.evaluate(() => [vaultBal('v_mkt'), db.txs.filter(t => t.id.startsWith('t_mk_')).length, db.entries.filter(e => e.id.startsWith('e_mk_') && !e.del).length]), [150000, 0, 2]);
     const supB0 = await bal(A, 'مورد تجربة'), mainB0 = await vbal(A, 'v_main'), exp0 = await A.evaluate(() => profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp);
     await A.click('#p-mkt [data-mv="x:exp"]'); await A.waitForTimeout(200);
-    eq('تأكيد المصروف: من خزنة السوق، ومن غير اختيار "من غير خزنة"', await A.evaluate(() => [$('#modal [data-f=v]').value, [...$('#modal [data-f=v]').options].every(o => o.value), $('#modal').textContent.includes('مصاريف السوق')]), ['v_mkt', true, true]);
+    eq('تأكيد المصروف: من فلوس الشريك لوحده من غير اختيار خزنة', await A.evaluate(() => [$('#modal [data-f=v]').value, !$('#modal select[data-f=v]'), $('#modal').textContent.includes('مع شريكك'), $('#modal').textContent.includes('مصاريف السوق')]), ['v_mkt', true, true, true]);
     await A.click('#mvOk'); await A.waitForTimeout(300);
     eq('المصروف اتنقل كمصروف خزنة تحت "مصاريف السوق"، وخزنة السوق نزلت، وطلع في الأرباح', await A.evaluate(([e0]) => { const t = IDX.tx.get('t_mk_' + Object.values(db.mkt.ops).find(o => o.t === 'exp').id); return [t.type, t.cat, cName(t.cat), t.amt, vaultBal('v_mkt'), profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp - e0]; }, [exp0]), ['exp', 'c_mkexp', 'مصاريف السوق', 25000, 125000, 25000]);
     await A.click('#p-mkt [data-mv^="s:"]'); await A.waitForTimeout(250);
@@ -633,12 +633,17 @@ const MO = !!process.env.MARKET_ONLY;
     await A.click('#mvOk'); await A.waitForTimeout(300);
     eq('اتنقلت للمورد كدفعة (ppay) من خزنة السوق، ورصيد المورد اتغير', await A.evaluate(([b0]) => { const e = E.get('e_mk_' + Object.values(db.mkt.ops).find(o => o.t === 'spay').id); return [e.kind, e.vault, e.amt, balance(e.party) - b0, vaultBal('v_mkt')]; }, [supB0]), ['ppay', 'v_mkt', 300000, 300000, -175000]);
     await A.click('#p-mkt [data-mv="x:hand"]'); await A.waitForTimeout(250);
-    eq('الاستلام: تحويل من خزنة السوق لأول خزنة تانية', await A.evaluate(() => [$('#modal [data-f=v]').value, $('#modal [data-f=t]').value]), ['v_mkt', 'v_main']);
+    eq('الاستلام: بيختار بس الخزنة اللي استلم فيها (خزنة السوق مش في الاختيارات)', await A.evaluate(() => [$('#modal [data-f=v]').value, $('#modal [data-f=t]').value, [...$('#modal select[data-f=t]').options].some(o => o.value === 'v_mkt')]), ['v_mkt', 'v_main', false]);
     await A.click('#mvOk'); await A.waitForTimeout(300);
     eq('الكاش المسلَّم اتنقل كتحويل خزنة لخزنة', await A.evaluate(([m0]) => { const t = IDX.tx.get('t_mk_' + Object.values(db.mkt.ops).find(o => o.t === 'hand').id); return [t.type, t.vault, t.to, t.amt, vaultBal('v_mkt'), vaultBal('v_main') - m0]; }, [mainB0]), ['tr', 'v_mkt', 'v_main', 100000, -275000, 100000]);
     await A.click('#p-mkt [data-mv]'); await A.waitForTimeout(250); await A.click('#mvOk'); await A.waitForTimeout(300);
     const finalCash = await M.evaluate(() => cashNow());
-    eq('بعد نقل الكل: رصيد خزنة السوق = اللي مع الشريك حسب تسجيله، و"متطابقين"', [await vbal(A, 'v_mkt'), finalCash, await A.evaluate(() => mkPending().length), (await A.textContent('#p-mkt .mkbal')).includes('متطابقين')], [175000, 175000, 0, true]);
+    eq('بعد نقل الكل: خزنة السوق (المخفية) = اللي مع الشريك، والوارد بيعرض رقم الشريك بس من غير رصيد خزنة', [await vbal(A, 'v_mkt'), finalCash, await A.evaluate(() => mkPending().length), (await A.textContent('#p-mkt .mkbal')).includes('مش بيتعدل'), (await A.textContent('#p-mkt .mkbal')).includes('رصيد خزنة السوق')], [175000, 175000, 0, true, false]);
+    eq('خزنة السوق مخفية من الخزنة: مش في القايمة ولا الاختيارات ولا "رصيد كل الخزن"، وكاش الشريك ظاهر دخل', await A.evaluate(() => {
+      const all = db.vaults.filter(v => !v.del && v.id !== 'v_mkt').reduce((s, v) => s + vaultBal(v.id), 0);
+      go('cash'); renderCash(); const r = [vaultsL().some(v => v.id === 'v_mkt'), vaultOpts('').includes('v_mkt'), vaultBal('') === all, $('#p-cash').textContent.includes('خزنة السوق'),
+        vaultMoves('', todayISO(), todayISO()).some(m => m.who === 'كاش من شريك السوق' && m.sign === 1), vaultMoves('', todayISO(), todayISO()).some(m => m.r.vault === 'v_mkt' && m.r.type !== 'tr')];
+      go('mkt'); return r; }), [false, false, true, false, true, false]);
     await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(900);
     eq('الشريك شاف ✓ على كل حاجة (من غير مسح)', await M.evaluate(() => [liveOps().filter(o => !['done', 'exp'].includes(opState(o))).length, liveOps().length]), [0, 6]);
     await A.evaluate(() => { const t = IDX.tx.get('t_mk_' + Object.values(db.mkt.ops).find(o => o.t === 'hand').id); t.del = true; touch(t); saveDB(); });

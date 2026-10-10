@@ -27,8 +27,9 @@ vm.runInContext(html.match(/<script id="engine">([\s\S]*?)<\/script>/)[1] + '\n;
 const E = eng.E;
 const J = x => JSON.parse(JSON.stringify(x));
 console.log('\n١) قواعد الحساب');
-eq('الخميس بتاع السبت/الأربع/الخميس/الجمعة', ['2026-10-10', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17'].map(E.ownerThursday), ['2026-10-15', '2026-10-15', '2026-10-15', '2026-10-15', '2026-10-22']);
-eq('أيام الأسبوع: السبت..الخميس وبعدهم الجمعة', J(E.weekDates('2026-10-15')), ['2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16']);
+eq('الخميس بتاع السبت/الأربع/الخميس/الجمعة (الجمعة تبع الخميس الجاي)/السبت', ['2026-10-10', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17'].map(E.ownerThursday), ['2026-10-15', '2026-10-15', '2026-10-15', '2026-10-22', '2026-10-22']);
+eq('أيام الأسبوع: السبت..الخميس وفي الآخر الجمعة اللي قبل السبت', J(E.weekDates('2026-10-15')), ['2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-09']);
+eq('الجمعة (نادرة) بتتحسب مع القبض الجاي بأجر الجمعة', (r => [r.units, r.daysPay])(J(E.calcWeek(E.buildIdx([{id: 'w1', k: 'wk', name: 'x', rate: 25000, fri: 30000, st: 'on', from: '2026-10-01'}, {id: 'd_w1_2026-10-16', k: 'day', w: 'w1', date: '2026-10-16', u: 1, rate: 30000}]), '2026-10-22').rows.w1)), [1, 30000]);
 eq('الكلام عن عدد الأيام', [0, 0.5, 1, 1.5, 2, 2.5, 5, 5.5].map(E.unitsText), ['من غير أيام', 'نص يوم', 'يوم', 'يوم ونص', 'يومين', 'يومين ونص', '5 أيام', '5 أيام ونص']);
 eq('settle: عادي', J(E.settle({daysPay: 150000, fridayPay: 25000, bonus: 5000, advances: 30000})), {wages: 180000, oldApplied: 0, net: 150000, carryOut: 0});
 eq('settle: سلفة أكبر من المرتب = صافي 0 ومرحّل', J(E.settle({daysPay: 40000, advances: 70000})), {wages: 40000, oldApplied: 0, net: 0, carryOut: 30000});
@@ -233,9 +234,10 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     console.log('\n٥) الأسبوع والقفل والقبض');
     await addW('عامل تجربة ج', '100', '0', '2026-10-14');
     await A.evaluate(() => nav('w', true));
-    eq('الجمعة: زرار صغير بس (مفيش اختيار كبير) وقبل التعليم "＋ جمعة شغل"', [await A.$$eval('#fri button', b => b.length), (await A.textContent('#friT')).trim()], [0, '＋ جمعة شغل']);
-    await A.click('#friT');
-    eq('الجمعة: دوسة واحدة بتعلّمها شغل', (await A.textContent('#friT')).trim(), 'الجمعة شغل ✓');
+    eq('الجمعة نادرة: مفيش زرار جمعة في الأسبوع', await A.$('#friT'), null);
+    /* أسبوع قديم كان متعلّم "الجمعة شغل" (قبل التعديل) بيفضل يتحسب ويبان */
+    await A.evaluate(() => { put('wst', {id: 'ws_2026-10-15', thu: '2026-10-15', fri: 'work'}); commit(); drawWeek(); });
+    eq('أسبوع متعلّم جمعة شغل قبل كده: بيبان علامته', (await A.textContent('#friT')).trim(), 'الجمعة شغل ✓');
     await A.click('#lockW');
     eq('القفل مبيشتغلش لو في يوم ناقص', (await A.textContent('#lockErr')).trim(), 'يوم ناقص عند عامل تجربة ج: الأربعيوم ناقص عند عامل تجربة ج: الخميس');
     await A.evaluate(() => nav('t/2026-10-14', true)); await A.click('#allDay');
@@ -312,7 +314,7 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await A.click('#wsX');
     /* الجمعة في الأسبوع المقفول التاني: بتفتح كارت فرق الجمعة في الأسبوع الحالي */
     await A.evaluate(() => nav('w/2026-10-22', true));
-    await A.click('#friT'); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(150);
+    await A.evaluate(() => { put('wst', {id: 'ws_2026-10-22', thu: '2026-10-22', fri: 'work'}); touched('2026-10-22'); commit(); drawWeek(); }); await A.waitForTimeout(150);
     eq('تغيير الجمعة في أسبوع مقفول بيعيد حسابه (جمعة شغل بقت في اللقطة)', await A.evaluate(() => [idx().lk.get('2026-10-22').snap.fri, Object.values(idx().lk.get('2026-10-22').snap.rows).some(r => r.fridayPay > 0)]), ['work', true]);
     await A.evaluate(() => nav('w', true));
     eq('كارت فرق الجمعة ظهر في الأسبوع الحالي', (await A.textContent('#main')).includes('جمعة 23') || (await A.textContent('#main')).includes('اتدفعت مع الخميس اللي فات'), true);
@@ -500,6 +502,13 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     eq('ورجوع الموبايل من الكشف بيرجع للعمال', await A.evaluate(() => { history.back(); return true; }), true);
     await A.waitForTimeout(250);
     eq('الرجوع من كشف العامل للعمال', await A.evaluate(() => scr.v), 'k');
+
+    console.log('\n١٨) الجمعة نادرة: لو حد اشتغلها بتتحسب مع الخميس الجاي');
+    await A.clock.setFixedTime(at('2026-10-30T10:00:00'));
+    await A.evaluate(() => { closeModal(); nav('', true); });
+    eq('يوم الجمعة: النهارده بيفتح على الجمعة نفسها وهي أول الشريط', await A.evaluate(() => [document.querySelector('#main .lbl b').textContent.includes('الجمعة'), document.querySelector('.wk button').textContent.includes('الجمعة')]), [true, true]);
+    await A.click('#main .wr:nth-child(1) .ub button[data-u="1"]'); await A.waitForTimeout(150);
+    eq('الجمعة اتسجلت في أسبوع الخميس الجاي (مش الأسبوع اللي اتقبض)', await A.evaluate(() => { const r = [...idx().day.values()].find(x => x.date === '2026-10-30'); return [ownerThursday(r.date), calcWeek(idx(), '2026-11-05').rows[r.w].units, calcWeek(idx(), '2026-10-29').rows[r.w] ? calcWeek(idx(), '2026-10-29').rows[r.w].days['2026-10-30'] : undefined]; }), ['2026-11-05', 1, undefined]);
 
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }

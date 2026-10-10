@@ -395,29 +395,44 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await C2.waitForSelector('.gate .chip', {timeout: 15000});
     eq('موبايل جديد بيتربط لوحده من اللينك والسجل القديم مش ظاهر', await C2.evaluate(async () => { await sync(); return [!!S.u, idx().log.filter(l => l.at > ((idx().lgclr || {}).cut || 0)).length]; }), [true, 1]);
 
-    console.log('\n١٤) تبويب مصاريف: عهدة ومصروفات والصافي');
+    console.log('\n١٤) تبويب مصاريف: عهدة ومصروفات وسلف والصافي');
     await A.evaluate(() => nav('e', true));
-    await A.click('#eCus'); await A.fill('#exA', '5000'); await A.fill('#exD', '2026-10-20'); await A.fill('#exN', 'عهدة تجربة'); await A.click('#exOk'); await A.waitForTimeout(150);
+    const advSum = await A.evaluate(() => idx().adv.filter(a => idx().W.has(a.w)).reduce((s, a) => s + a.amt, 0) / 100), advN = await A.evaluate(() => idx().adv.filter(a => idx().W.has(a.w)).length);
+    const money = n => n.toLocaleString('en-US', {maximumFractionDigits: 2});
+    eq('السلف اللي اتسجلت على العمال بتتخصم من العهدة لوحدها (الصافي بالسالب لسه مفيش عهدة)', [advN > 0, await A.textContent('.panel .p1 b')], [true, '-' + money(advSum)]);
+    await A.click('#eCus'); await A.fill('#exA', '9000'); await A.fill('#exD', '2026-10-20'); await A.fill('#exN', 'عهدة تجربة'); await A.click('#exOk'); await A.waitForTimeout(150);
     await A.click('#eCus'); await A.fill('#exA', '3000'); await A.fill('#exD', '2026-11-02'); await A.click('#exOk'); await A.waitForTimeout(150);
-    await A.click('#eExp'); await A.fill('#exA', '1250'); await A.fill('#exD', '2026-10-21'); await A.fill('#exN', 'مصروف تجربة'); await A.click('#exOk'); await A.waitForTimeout(150);
-    eq('الصافي = العهدة − المصروفات (8,000 − 1,250)', await A.textContent('.panel .p1 b'), '6,750');
-    eq('الحركات بالترتيب الأحدث فوق، وجنب كل حركة الصافي بعدها', await A.$$eval('#main .row .a', x => x.map(e => e.textContent.replace(/\s+/g, ' ').trim())), ['+3,0006,750', '-1,2503,750', '+5,0005,000']);
-    await A.click('#eM .chip[data-m="2026-10"]');
-    eq('فلتر شهر أكتوبر', await A.$$eval('#main .row', x => x.length), 2);
+    await A.click('#eExp'); await A.fill('#exA', '1250'); await A.fill('#exD', '2026-10-21'); await A.fill('#exN', 'بند تجربة'); await A.fill('#exT', 'مورد تجربة');
+    eq('خانة "مين دفعها" فيها اسمي وأسماء المشرفين', [await A.inputValue('#exP'), await A.$$eval('#exC .chip', x => x.length)], ['مشرف تجربة 1', 2]);
+    await A.click('#exC .chip:nth-child(2)'); await A.click('#exOk'); await A.waitForTimeout(150);
+    eq('الصافي = العهدة − المصروفات − السلف', await A.textContent('.panel .p1 b'), money(12000 - 1250 - advSum));
+    const row = await A.evaluate(() => { const r = [...document.querySelectorAll('#main .row')].find(x => x.textContent.includes('بند تجربة')); return r.textContent.replace(/\s+/g, ' '); });
+    eq('سطر المصروف: البند ولمين ومين دفعه', [row.includes('مصروف · بند تجربة'), row.includes('لـ مورد تجربة'), row.includes('دفعه مشرف تجربة 2')], [true, true, true]);
+    eq('سطر السلفة: اسم العامل ومين سجّلها', await A.evaluate(() => { const r = [...document.querySelectorAll('#main .row')].filter(x => x.textContent.includes('سلفة · ')); return [r.length, r[0].textContent.includes('دفعه مشرف')]; }), [advN, true]);
+    await A.click('#eF button[data-v=cus]');
+    eq('فلتر العهدة', await A.$$eval('#main .row', x => x.length), 2);
     await A.click('#eF button[data-v=exp]');
-    eq('فلتر المصروفات بس', await A.$$eval('#main .row', x => x.length), 1);
-    await A.click('#main .row'); await A.fill('#exA', '2000'); await A.click('#exOk'); await A.waitForTimeout(150);
-    await A.click('#eF button[data-v=all]'); await A.click('#eM .chip[data-m=""]');
-    eq('تعديل المصروف بيغيّر الصافي (8,000 − 2,000)', await A.textContent('.panel .p1 b'), '6,000');
+    eq('فلتر المصروفات فيه المصروف والسلف', await A.$$eval('#main .row', x => x.length), 1 + advN);
+    await A.click('#eF button[data-v=all]');
+    await A.evaluate(() => { [...document.querySelectorAll('#main .row')].find(x => x.textContent.includes('بند تجربة')).click(); });
+    await A.fill('#exA', '2000'); await A.click('#exOk'); await A.waitForTimeout(150);
+    eq('تعديل المصروف بيغيّر الصافي', await A.textContent('.panel .p1 b'), money(12000 - 2000 - advSum));
+    /* تعديل سلفة من هنا بيغيّر العهدة */
+    await A.evaluate(() => { [...document.querySelectorAll('#main .row')].find(x => x.textContent.includes('سلفة · ')).click(); });
+    await A.waitForSelector('#avA'); const a0 = await A.inputValue('#avA'); await A.fill('#avA', '1'); await A.click('#avOk'); await A.waitForTimeout(250);
+    eq('تعديل سلفة بيتعكس على الصافي', (await A.textContent('.panel .p1 b')) !== money(12000 - 2000 - advSum), true);
+    await A.evaluate(() => { [...document.querySelectorAll('#main .row')].find(x => x.textContent.includes('سلفة · ')).click(); });
+    await A.waitForSelector('#avA'); await A.fill('#avA', a0); await A.click('#avOk'); await A.waitForTimeout(250);
+    eq('وبعد ما رجّعناها رجع زي ما كان', await A.textContent('.panel .p1 b'), money(12000 - 2000 - advSum));
     await A.click('#eWk'); await A.waitForSelector('#pwOk');
     const wkTot = await A.evaluate(() => idx().lk.get('2026-10-22').snap.total);
     await A.click('#pwC .chip[data-t="2026-10-22"]'); await A.click('#pwOk'); await A.waitForTimeout(150);
-    eq('تنزيل قبض أسبوع من المصروفات بيزوّد المصروفات', await A.evaluate(() => idx().exp.filter(x => x.wk).map(x => [x.wk, x.amt])), [['2026-10-22', wkTot]]);
-    eq('والصافي نزل بنفس المبلغ', await A.textContent('.panel .p1 b'), (6000 - wkTot / 100).toLocaleString('en-US', {maximumFractionDigits: 2}).replace(/^-/, '-'));
+    eq('تنزيل قبض أسبوع من المصروفات', await A.evaluate(() => idx().exp.filter(x => x.wk).map(x => [x.wk, x.amt])), [['2026-10-22', wkTot]]);
+    eq('والصافي نزل بنفس المبلغ', await A.textContent('.panel .p1 b'), money(12000 - 2000 - advSum - wkTot / 100));
     await settle_(A); await settle_(B);
     eq('الشريك شايف العهدة والمصروفات', await B.evaluate(() => [idx().cus.length, idx().exp.length]), [2, 2]);
     await A.click('#main .row[data-e="x_wk_2026-10-22"]'); await A.click('#exDel'); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(150);
-    eq('مسح مصروف بيرجّع الصافي', await A.textContent('.panel .p1 b'), '6,000');
+    eq('مسح مصروف بيرجّع الصافي', await A.textContent('.panel .p1 b'), money(12000 - 2000 - advSum));
 
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }

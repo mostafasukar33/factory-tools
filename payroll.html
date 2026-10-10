@@ -609,7 +609,7 @@ function view(r) {
   const when = r.at ? dayOf(r.at) + ' ' + timeOf(r.at) : '';
   const t = KIND_AR[r.k] || r.k;
   if (r.k === 'log') return [t, cell(r.txt), r.thu || '', '', cell(r.by), when];
-  if (r.k === 'cus' || r.k === 'exp') return [t, cell(r.note || ''), r.date, r.amt / 100, cell(r.by), when];
+  if (r.k === 'cus' || r.k === 'exp') return [t, cell((r.note || '') + (r.to ? ' ← ' + r.to : '') + (r.paidBy ? ' (دفعه ' + r.paidBy + ')' : '')), r.date, r.amt / 100, cell(r.by), when];
   if (r.k === 'sup') return [t, cell(r.name), '', '', cell(r.by), when];
   if (r.k === 'wk') return [t, cell(r.name), r.from || '', (r.rate || 0) / 100, cell(r.by), when];
   if (r.k === 'day') return [t + ': ' + unitsText(r.u), cell(wName(r.w)), r.date, Math.round(r.u * r.rate) / 100, cell(r.by), when];
@@ -1388,9 +1388,11 @@ const ym = d => d.slice(0, 7);
 const MON = ['', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 const monTxt = m => MON[+m.slice(5)] + ' ' + m.slice(0, 4);
 function drawExp() {
-  const I = idx(), all = I.cus.map(r => ({r, sg: 1})).concat(I.exp.map(r => ({r, sg: -1}))).sort((a, b) => a.r.date.localeCompare(b.r.date) || a.r.at - b.r.at);
+  /* السلف اللي بتتسجل على العمال بتتخصم من العهدة لوحدها (بتتحسب من حركات السلف نفسها، فتعديلها أو مسحها بيتغيّر هنا) */
+  const I = idx(), advX = I.adv.filter(a => I.W.has(a.w)).map(a => Object.assign({}, a, {adv: true, to: wName(a.w), paidBy: a.by, note: a.note || ''}));
+  const all = I.cus.map(r => ({r, sg: 1})).concat(I.exp.map(r => ({r, sg: -1})), advX.map(r => ({r, sg: -1}))).sort((a, b) => a.r.date.localeCompare(b.r.date) || a.r.at - b.r.at);
   let run = 0; all.forEach(x => { run += x.sg * x.r.amt; x.run = run; });
-  const tc = I.cus.reduce((s, r) => s + r.amt, 0), te = I.exp.reduce((s, r) => s + r.amt, 0);
+  const tc = I.cus.reduce((s, r) => s + r.amt, 0), te = I.exp.concat(advX).reduce((s, r) => s + r.amt, 0);
   const months = [...new Set(all.map(x => ym(x.r.date)))].sort().reverse();
   if (expM && !months.includes(expM)) expM = '';
   const shown = all.filter(x => (expF === 'all' || (expF === 'cus') === (x.sg > 0)) && (!expM || ym(x.r.date) === expM)).reverse();
@@ -1402,34 +1404,39 @@ function drawExp() {
     <div class="seg" id="eF" style="--n:3;margin-top:8px">${[['all', 'الكل'], ['cus', 'العهدة'], ['exp', 'المصروفات']].map(([k, t]) => `<button type="button" data-v="${k}" class="${expF === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     ${months.length > 1 ? `<div class="chips" id="eM" style="margin-top:8px"><button type="button" class="chip ${expM ? '' : 'on'}" data-m="">كل الشهور</button>${months.map(m => `<button type="button" class="chip ${expM === m ? 'on' : ''}" data-m="${m}">${monTxt(m)}</button>`).join('')}</div>` : ''}
     <div class="lbl"><span>${shown.length} حركة${expM || expF !== 'all' ? ` · عهدة ${fmt(sc)} · مصروفات ${fmt(se)}` : ''}</span><span>الرقم الصغير = الصافي بعد الحركة</span></div>
-    ${shown.length ? `<div class="list">${shown.map(x => `<div class="row" data-e="${esc(x.r.id)}"><div class="m"><b>${x.sg > 0 ? '＋ عهدة' : '－ مصروف'}${x.r.note ? ' · ' + esc(x.r.note) : ''}</b><small>${dayFull(x.r.date)} · ${esc(x.r.by)}</small></div><div class="a"><b class="money ${x.sg > 0 ? 'ok' : 'bk'}">${x.sg > 0 ? '+' : '-'}${fmt(x.r.amt)}</b><small class="sm money">${fmtN(x.run)}</small></div></div>`).join('')}</div>` : '<div class="list"><div class="empty">لسه مفيش حركات هنا.<br>ابدأ بـ "＋ عهدة" لما تستلم فلوس.</div></div>'}`;
+    ${shown.length ? `<div class="list">${shown.map(x => `<div class="row" data-e="${esc(x.r.id)}"><div class="m"><b>${x.sg > 0 ? '＋ عهدة' : x.r.adv ? '－ سلفة' : '－ مصروف'}${x.r.adv ? ' · ' + esc(x.r.to) : x.r.note ? ' · ' + esc(x.r.note) : ''}</b><small>${x.sg > 0 ? '' : (x.r.adv ? (x.r.note ? esc(x.r.note) + ' · ' : '') : (x.r.to ? 'لـ ' + esc(x.r.to) + ' · ' : '')) + 'دفعه ' + esc(x.r.paidBy || x.r.by) + ' · '}${dayFull(x.r.date)}${x.sg > 0 ? ' · ' + esc(x.r.by) : ''}</small></div><div class="a"><b class="money ${x.sg > 0 ? 'ok' : 'bk'}">${x.sg > 0 ? '+' : '-'}${fmt(x.r.amt)}</b><small class="sm money">${fmtN(x.run)}</small></div></div>`).join('')}</div>` : '<div class="list"><div class="empty">لسه مفيش حركات هنا.<br>ابدأ بـ "＋ عهدة" لما تستلم فلوس.</div></div>'}`;
   $('#eCus').onclick = () => expModal('cus', null);
   $('#eExp').onclick = () => expModal('exp', null);
   $('#eWk').onclick = payWkModal;
   $$('#eF button').forEach(b => b.onclick = () => { expF = b.dataset.v; drawExp(); });
   $$('#eM .chip').forEach(b => b.onclick = () => { expM = b.dataset.m; drawExp(); });
-  $$('#main .row[data-e]').forEach(r => r.onclick = () => expModal(S.recs[r.dataset.e].k, S.recs[r.dataset.e]));
+  $$('#main .row[data-e]').forEach(r => r.onclick = () => { const o = S.recs[r.dataset.e]; if (o.k === 'adv') advModal(o); else expModal(o.k, o); });
 }
 function expModal(k, o) {
   const t = today(), cus = k === 'cus', nm = cus ? 'عهدة' : 'مصروف';
   modal(`<h3>${o ? 'تعديل ' : ''}${nm}${o ? `<small>${byTxt(o)}</small>` : ''}</h3>
     ${amtBox('exA', o && o.amt, true)}
     <span class="fl">التاريخ</span><input class="inp" id="exD" type="date" value="${o ? o.date : t}">
-    <input class="inp" id="exN" autocomplete="off" placeholder="${cus ? 'ملاحظة (مثلاً: استلمتها من فلان)' : 'ملاحظة (صرفتها في إيه)'}" value="${esc(o ? o.note || '' : '')}">
+    <input class="inp" id="exN" autocomplete="off" placeholder="${cus ? 'ملاحظة (مثلاً: استلمتها من فلان)' : 'البند (صرفتها في إيه)'}" value="${esc(o ? o.note || '' : '')}">
+    ${cus ? '' : `<span class="fl">لمين اتصرفت؟</span><input class="inp" id="exT" autocomplete="off" placeholder="اسم اللي خدها (مورد، عامل، …)" value="${esc(o ? o.to || '' : '')}">
+    <span class="fl">مين دفعها؟</span><input class="inp" id="exP" autocomplete="off" value="${esc(o ? o.paidBy || o.by : myName())}">
+    <div class="chips" id="exC">${idx().sup.map(x => `<button type="button" class="chip" data-n="${esc(x.name)}">${esc(x.name)}</button>`).join('')}</div>`}
     ${o ? '<div class="row2"><button class="big b-ok" id="exOk" type="button">حفظ</button><button class="big b-redo" id="exDel" type="button">🗑 مسح</button></div>' : `<button class="big b-ok" id="exOk" type="button">سجّل ${nm}</button>`}
     <button class="lnk" id="exX" type="button">إغلاق</button>`);
   bindAmt($('#exA')); setTimeout(() => $('#exA') && $('#exA').focus(), 60);
   $('#exX').onclick = closeModal;
+  $$('#exC .chip').forEach(b => b.onclick = () => { $('#exP').value = b.dataset.n; });
   $('#exOk').onclick = () => {
     const amt = amtOf($('#exA')), note = $('#exN').value.trim(), date = isDay($('#exD').value) ? $('#exD').value : t;
+    const x = cus ? {} : {to: $('#exT').value.trim(), paidBy: $('#exP').value.trim() || myName()};
     if (!(amt > 0)) return toast('اكتب المبلغ');
     if (o) {
-      if (o.amt === amt && (o.note || '') === note && o.date === date) return closeModal();
-      put(k, {id: o.id, amt, note, date});
+      if (o.amt === amt && (o.note || '') === note && o.date === date && (cus || ((o.to || '') === x.to && (o.paidBy || o.by) === x.paidBy))) return closeModal();
+      put(k, Object.assign({id: o.id, amt, note, date}, x));
       log(`${myName()} عدّل ${nm} من ${fmt(o.amt)} لـ ${fmt(amt)}${note ? ' (' + note + ')' : ''} — ${dayFull(date)}`);
     } else {
-      put(k, {id: newId(cus ? 'c' : 'x'), amt, note, date});
-      log(`${myName()} سجّل ${nm} ${fmt(amt)}${note ? ' (' + note + ')' : ''} — ${dayFull(date)}`);
+      put(k, Object.assign({id: newId(cus ? 'c' : 'x'), amt, note, date}, x));
+      log(`${myName()} سجّل ${nm} ${fmt(amt)}${note ? ' (' + note + ')' : ''}${x.to ? ' لـ ' + x.to : ''}${cus ? '' : ' — دفعه ' + x.paidBy} — ${dayFull(date)}`);
     }
     commit(); closeModal(); toast('اتسجل ✔'); drawExp();
   };
@@ -1458,7 +1465,7 @@ function payWkModal() {
   $('#pwOk').onclick = () => {
     const amt = amtOf($('#pwA')); if (!(amt > 0)) return toast('اكتب المبلغ');
     if (idx().exp.some(x => x.wk === sel)) return toast('الأسبوع ده اتنزل قبل كده');
-    put('exp', {id: 'x_wk_' + sel, amt, note: `قبض أسبوع الخميس ${dm(sel)}`, date: today(), wk: sel});
+    put('exp', {id: 'x_wk_' + sel, amt, note: `قبض أسبوع الخميس ${dm(sel)}`, to: 'العمال', paidBy: myName(), date: today(), wk: sel});
     log(`${myName()} نزّل قبض أسبوع الخميس ${dm(sel)} (${fmt(amt)}) من المصروفات`, {thu: sel});
     commit(); closeModal(); toast('اتنزل ✔'); drawExp();
   };

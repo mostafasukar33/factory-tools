@@ -520,7 +520,7 @@ const MO = !!process.env.MARKET_ONLY;
     await bg(A, 'mkSync()'); await A.waitForTimeout(400);
     eq('مسح الحركة المنقولة من الحسابات: العملية رجعت "متنقلتش"', [await A.evaluate(() => mkPending().length), await bal(A, C1)], [1, bal0 - 300000]);
     await bg(M, 'sync()'); await M.waitForTimeout(500);
-    eq('والشريك شافها ⏳ عند مصطفى تاني', await M.evaluate(() => opState(liveOps().find(x => x.m === 'cash' && x.amt === 500000))), 'wait');
+    eq('والشريك شافها "مصطفى شالها" ومبتتحسبش في رصيد العميل', await M.evaluate(() => opState(liveOps().find(x => x.m === 'cash' && x.amt === 500000))), 'rm');
 
     await A.click('nav button[data-go=home]'); await A.click('#mkGo'); await A.waitForTimeout(200);
     await A.click(`#p-mkt [data-bk="${pid1}"]`); await A.fill('#rtN', 'المبلغ 4,500 مش 5,000'); await A.click('#rtOk'); await A.waitForTimeout(300);
@@ -667,8 +667,12 @@ const MO = !!process.env.MARKET_ONLY;
     eq('الشريك شاف ✓ على الاتنين ورصيد العميل عنده = رصيد الحسابات', await M.evaluate(id => [liveOps().filter(o => !['done', 'exp'].includes(opState(o))).length, customers().get(id).bal], pid1), [0, bI0 + 670000]);
     await A.evaluate(id => cancelEntry(E.get('e_mk_' + id)), invOp); await A.waitForTimeout(200); await bg(A, 'mkSync()'); await A.waitForTimeout(300);
     eq('لو مسح الفاتورة من الحسابات: ترجع "متنقلتش"', await A.evaluate(() => mkPending().map(o => o.t)), ['inv']);
+    await bg(M, 'sync()'); await M.waitForFunction(id => customers().get(id).bal === S.cust[id].bal && S.cust[id].bal !== undefined, pid1, {timeout: 15000}).catch(() => {});
+    eq('والشريك: رصيد العميل عنده = رصيد الحسابات بعد المسح، والفاتورة عليها "مصطفى شالها"', [await M.evaluate(id => customers().get(id).bal, pid1), await bal(A, C1), await M.evaluate(id => [opState(S.ops[id]), stHtml(S.ops[id]).includes('شالها')], invOp)], [bI0 - 330000, bI0 - 330000, ['rm', true]]);
     await A.click(`#p-mkt [data-inv="${invOp}"]`); await A.waitForTimeout(300); await A.click('#dcOk'); await closed(A); await A.waitForTimeout(300);
     eq('وإعادة كتابتها بترجع نفس الفاتورة من غير تكرار', await A.evaluate(id => [mkPending().length, db.entries.filter(e => e.id === 'e_mk_' + id).length, E.get('e_mk_' + id).del], invOp), [0, 1, false]);
+    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForFunction(id => opState(S.ops[id]) === 'done', invOp, {timeout: 15000}).catch(() => {});
+    eq('بعد ما اتنقلت تاني: الشريك شايفها اتنقلت والرصيد زي الحسابات', await M.evaluate(([id, pid]) => [opState(S.ops[id]), customers().get(pid).bal], [invOp, pid1]), ['done', bI0 + 670000]);
 
     /* عميل جديد: فاتورة بإجمالي بس */
     await M.evaluate(() => nav('c')); await M.click('#bNew'); await M.fill('#ncN', 'عميل فاتورة جديد'); await M.click('#ncOk'); await M.click('#pyT button[data-v=inv]'); await M.fill('#amt', '2500'); await M.click('#invOk'); await M.waitForTimeout(1200);

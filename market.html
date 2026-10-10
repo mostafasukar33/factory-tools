@@ -318,6 +318,7 @@ function opState(o) {               // done | back | wait (عند مصطفى) | 
   const s = stOf(o);
   if (s && s.done) return 'done';
   if (s && s.back && s.bv === o.upd) return 'back';
+  if (s && s.rm && s.rm === o.upd) return 'rm';   // مصطفى نقلها وبعدين مسحها من الحسابات: مبتتحسبش في رصيد العميل، ولو الشريك عدّلها بترجع تتحسب
   return o.sy === o.upd ? 'wait' : 'unsent';
 }
 /* العميل الجديد بعد ما مصطفى يربطه بحساب: عملياته بتتعرض تحت الحساب ده */
@@ -335,8 +336,8 @@ function customers() {
   Object.values(S.cust).forEach(c => { if (!c.del) m.set(c.id, {id: c.id, name: c.name, bal: c.bal || 0, lim: c.lim || ''}); });
   S.newc.forEach(c => { if (!al[c.id] && !m.has(c.id)) m.set(c.id, {id: c.id, name: c.name, bal: 0, nw: true}); });
   custAll().forEach(o => { const id = al[o.cid] || o.cid; if (!m.has(id)) m.set(id, {id, name: o.cname, bal: 0, nw: id.startsWith('n_')}); });
-  /* الصافي = رصيده في الحسابات + الفواتير اللي اتسجلت هنا − الدفعات اللي اتسجلت هنا، لسه متنقلتش */
-  custAll().forEach(o => { if (opState(o) !== 'done') { const c = m.get(al[o.cid] || o.cid); if (c) c.bal += o.t === 'inv' ? o.amt : -o.amt; } });
+  /* الصافي = رصيده في الحسابات + الفواتير اللي اتسجلت هنا − الدفعات اللي اتسجلت هنا، لسه متنقلتش (واللي مصطفى شالها من الحسابات مبتتحسبش) */
+  custAll().forEach(o => { if (!['done', 'rm'].includes(opState(o))) { const c = m.get(al[o.cid] || o.cid); if (c) c.bal += o.t === 'inv' ? o.amt : -o.amt; } });
   return m;
 }
 const custOps = (cid, al) => custAll().filter(o => (al[o.cid] || o.cid) === cid);
@@ -500,7 +501,7 @@ function refresh() {
 /* ---------- حاجات مشتركة ---------- */
 function stHtml(o) {
   const s = opState(o);
-  return s === 'exp' ? '' : s === 'done' ? '<span class="st ok">✓ اتنقلت</span>' : s === 'back' ? '<span class="st bk">🔴 راجعة</span>' : s === 'wait' ? '<span class="st wt">⏳ عند مصطفى</span>' : '<span class="st ns">⏳ لسه متبعتتش</span>';
+  return s === 'exp' ? '' : s === 'done' ? '<span class="st ok">✓ اتنقلت</span>' : s === 'back' ? '<span class="st bk">🔴 راجعة</span>' : s === 'rm' ? '<span class="st bk">✖ مصطفى شالها</span>' : s === 'wait' ? '<span class="st wt">⏳ عند مصطفى</span>' : '<span class="st ns">⏳ لسه متبعتتش</span>';
 }
 /* سطر عملية: دوسة عليه بتفتح التعديل */
 const opRow = (o, withDay, noName) => `<div class="row t-${o.t}" data-o="${esc(o.id)}"><div class="m"><b>${esc(noName ? opHow(o) : opWhat(o))}</b><small>${withDay ? dispDate(dayOf(o.ts)) + ' · ' : ''}${timeOf(o.ts)}${noName ? '' : ' · ' + esc(opHow(o))}</small></div><div class="a"><b class="money">${fmt(o.amt)}</b>${stHtml(o)}</div></div>`;
@@ -719,7 +720,7 @@ function sentHtml(o, c) {
 function drawSaved() {
   const o = S.ops[scr.op]; if (!o) return nav('', true);
   const al = aliases(), cid = al[o.cid] || o.cid, c = customers().get(cid), s = opState(o);
-  const stTxt = s === 'unsent' ? '⏳ هتتبعت أول ما النت يرجع' : s === 'exp' ? '' : s === 'done' ? (o.t === 'hand' ? '✓ مصطفى استلمها' : '✓ اتنقلت للحسابات') : s === 'back' ? '🔴 مصطفى رجّعها' : '✓ وصلت لمصطفى';
+  const stTxt = s === 'unsent' ? '⏳ هتتبعت أول ما النت يرجع' : s === 'exp' ? '' : s === 'done' ? (o.t === 'hand' ? '✓ مصطفى استلمها' : '✓ اتنقلت للحسابات') : s === 'back' ? '🔴 مصطفى رجّعها' : s === 'rm' ? '✖ مصطفى شالها من الحساب' : '✓ وصلت لمصطفى';
   const again = {pay: 'في فلوس تانية من نفس العميل', inv: 'العميل دفع حاجة دلوقتي؟', exp: 'صرفت حاجة تانية', spay: 'دفعت لمورد تاني', cs: 'بيع كاش تاني'}[o.t];
   $('#main').innerHTML = o.del ? `<div class="done"><h2 style="color:var(--red)">اتمسحت</h2></div><button class="big b-home" id="sHome" type="button" style="margin-top:20px">${o.t === 'pay' || o.t === 'inv' ? 'رجوع للعملاء' : 'رجوع للرئيسية'}</button>` : `<div class="done">
       <div class="chk">✓</div><h2>${o.upd !== o.ts ? 'اتعدّلت' : 'اتسجلت'}</h2>

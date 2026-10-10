@@ -4412,7 +4412,7 @@ function mkReconcile() {
   Object.values(mkDb().ops).forEach(o => {
     if (!MK_T[o.t]) return;
     const e = mkRec(o), s = mkSt(o.id); if (!e) return;
-    if (e.del && s && s.done) { mkSetSt(o.id, {done: false, dv: 0}); n++; }
+    if (e.del && s && s.done) { mkSetSt(o.id, {done: false, dv: 0, rm: o.upd}); n++; }   // rm: مصطفى شالها من الحسابات بعد النقل، فالشريك ميحسبهاش في رصيد العميل
     else if (!e.del && !(s && s.done)) { mkSetSt(o.id, {done: true, dv: o.upd, pid: e.party || ''}); n++; }
   });
   return n;

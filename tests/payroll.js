@@ -237,7 +237,7 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await A.click('#main [data-pay]');
     eq('القبض اتعلّم باسم اللي سلّم', (await A.textContent('#main tr[data-w]:nth-child(1) .paid')).includes('مشرف تجربة 1'), true);
     await settle_(A); await settle_(B); await B.evaluate(() => nav('a', true));
-    eq('الأرشيف عند الشريك: الأسبوع مقفول وقبض 1 من 3', [await B.textContent('#main .row .m b'), (await B.textContent('#main .row .a small')).trim()], ['أسبوع الخميس 15‏/‏10', 'قبض 1 من 3']);
+    eq('الأرشيف عند الشريك: الأسبوع مقفول وقبض 1 من 3', [await B.textContent('#main .row .m b'), (await B.textContent('#main .row .a small')).trim()], ['أسبوع الخميس 15‏/‏10 · الحالي', 'قبض 1 من 3']);
     await B.evaluate(() => nav('t/2026-10-15', true));
     eq('النهارده بعد القفل: الأزرار مقفولة', await B.$eval('#main .ub button', b => b.disabled), true);
 
@@ -328,10 +328,20 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await settle_(A); await settle_(B);
     eq('الشريك شايف السلف القديمة والقاعدة', await B.evaluate(id => [idx().old.length, idx().rule.get(id).mode], aId), [1, 'fixed']);
 
-    console.log('\n١١) الأرشيف: كل 4 أسابيع شهر');
-    eq('المجموعات: 5 أسابيع = شهر كامل + شهر لسه', await A.evaluate(() => { const mk = (t, n) => ({thu: t, snap: {total: n}}); const g = archiveGroups(['2026-10-15', '2026-10-22', '2026-10-29', '2026-11-05', '2026-11-12'].map((t, i) => mk(t, (i + 1) * 100))); return g.map(x => [x.n, x.weeks.length, x.total, monthName(x.n)]); }), [[1, 4, 1000, 'الشهر الأول'], [2, 1, 500, 'الشهر التاني']]);
+    console.log('\n١١) الأرشيف: كل الأسابيع متجمعة في شهور بإجمالي كل أسبوع وشهر');
+    eq('الشهور: الأسبوع بيتحسب على شهر خميس القبض، والإجمالي لكل شهر', await A.evaluate(() => { const lk = (t, n) => ({k: 'lk', id: 'lk_' + t, thu: t, snap: {total: n, rows: {}}}); const m = archiveMonths(buildIdx(['2026-09-24', '2026-10-01', '2026-10-08', '2026-10-29', '2026-11-05'].map((t, i) => lk(t, (i + 1) * 100)))); return m.map(x => [x.ym, x.weeks.length, x.total, monthTitle(x.ym)]); }), [['2026-09', 1, 100, 'سبتمبر 2026'], ['2026-10', 3, 900, 'أكتوبر 2026'], ['2026-11', 1, 500, 'نوفمبر 2026']]);
     await A.evaluate(() => nav('a', true));
-    eq('شاشة الأرشيف: الشهر الأول (لسه) فيه الأسبوعين المقفولين بإجماليهم', await A.evaluate(() => { const t = $('#main').textContent; return [t.includes('الشهر الأول'), t.includes('(لسه)'), $$('#main .row[data-thu]').length]; }), [true, true, 2]);
+    eq('شاشة الأرشيف: كل أسبوع ظاهر في شهره وقدامه المبلغ، وقدام كل شهر إجماليه', await A.evaluate(() => { const ms = archiveMonths(idx()); return [$$('#main .mo').length === ms.length, $$('#main .row[data-thu]').length === ms.reduce((s, m) => s + m.weeks.length, 0), $$('#main .mh .money').length === ms.length, $$('#main .row[data-thu] .money').length === $$('#main .row[data-thu]').length, $$('#main .mo')[0].classList.contains('shut')]; }), [true, true, true, true, false]);
+    eq('إجمالي الشهر = مجموع أسابيعه', await A.evaluate(() => archiveMonths(idx()).every(m => m.total === m.weeks.reduce((s, w) => s + w.c.total, 0))), true);
+    await A.evaluate(() => { document.querySelector('#main .mh').click(); });
+    eq('دوسة على الشهر بتقفله، ودوسة تانية بتفتحه', await A.evaluate(() => { const s = document.querySelector('#main .mo'), a = s.classList.contains('shut'); document.querySelector('#main .mh').click(); return [a, s.classList.contains('shut')]; }), [true, false]);
+    /* العامل اللي مشى يفضل ظاهر في الأرشيف وفي أسابيعه القديمة */
+    const gone = await A.evaluate(() => { const I = idx(), l = [...I.lk.values()].filter(x => x.snap && Object.keys(x.snap.rows).length).sort((a, b) => a.thu.localeCompare(b.thu))[0], id = Object.keys(l.snap.rows)[0], name = l.snap.rows[id].name; put('wk', {id, st: 'gone'}); commit(); nav('a', true); return {id, name, thu: l.thu}; });
+    eq('العامل اللي مشى: لسه بيظهر في أسبوعه القديم المقفول', await A.evaluate(g => { const c = calcWeek(idx(), g.thu); return [!!c.rows[g.id], idx().W.get(g.id).st]; }, gone), [true, 'gone']);
+    await A.evaluate(() => { document.querySelector('#main .row[data-ms]').click(); });
+    eq('"كل عامل خد كام في الشهر": اللي مشى ظاهر وعليه علامة مشى', await A.evaluate(g => { const t = $('#modal').textContent; return [t.includes(g.name), t.includes('مشى'), t.includes('الإجمالي')]; }, gone), [true, true, true]);
+    await A.click('#msX');
+    await A.evaluate(id => { put('wk', {id, st: 'on'}); commit(); }, gone.id);
     await settle_(A);
 
     console.log('\n١٢) تسهيلات التسجيل: زي امبارح، الأيام الناقصة، الأسابيع الفاضية، السجل');

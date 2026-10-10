@@ -205,6 +205,14 @@ html[data-theme=dark] .b-ok{color:#06140d}
 /* العمال */
 .tag{font-size:11px;font-weight:800;border-radius:6px;padding:0 6px;margin-inline-start:6px;vertical-align:middle}
 .tag.stop{background:var(--wait-l);color:var(--wait)}.tag.gone{background:var(--row);color:var(--sub)}.tag.debt{background:var(--red-l);color:var(--red)}
+.mo{margin-top:12px}.mo:first-child{margin-top:0}
+.mh{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;cursor:pointer;box-shadow:var(--shadow)}
+.mh:active{background:var(--row)}
+.mh .car{font-style:normal;color:var(--sub);font-size:13px;transition:transform .15s}
+.mo.shut .car{transform:rotate(90deg)}
+.mh .m{flex:1;min-width:0}.mh .m b{display:block;font-size:16.5px;font-weight:800}.mh .m small{display:block;color:var(--sub);font-size:12px;font-weight:600}
+.mh .money{font-size:19px;color:var(--green)}
+.mo .list{margin-top:6px}.mo.shut .list{display:none}
 details.more{margin-top:12px}
 details.more summary{font-weight:800;color:var(--gold-d);font-size:14px;padding:6px 4px;cursor:pointer}
 /* السجل */
@@ -1297,28 +1305,59 @@ function workerModal(w) {
   if ($('#wkGone')) $('#wkGone').onclick = async () => { if (await ask(`${w.name} مشى؟ هيختفي من الأسبوع، واسمه هيفضل في الأرشيف.`, 'أيوه مشى', 'لأ', true)) setSt('gone', `${myName()} علّم إن ${w.name} مشى`); };
 }
 
-/* ---------- الأرشيف: الأسابيع المقفولة، متجمعة كل 4 أسابيع في "الشهر الأول/التاني/…" بإجماليه ---------- */
-const ORD = ['', 'الأول', 'التاني', 'التالت', 'الرابع', 'الخامس', 'السادس', 'السابع', 'التامن', 'التاسع', 'العاشر', 'الحداشر', 'الاتناشر'];
-const monthName = n => 'الشهر ' + (ORD[n] || n);
-/* بيرجّع المجموعات: الأقدم أول، كل 4 أسابيع مقفولة بالترتيب مجموعة */
-function archiveGroups(ls) {
-  const asc = ls.slice().sort((a, b) => a.thu.localeCompare(b.thu)), g = [];
-  asc.forEach((l, i) => { if (i % 4 === 0) g.push({n: g.length + 1, weeks: [], total: 0}); const x = g[g.length - 1]; x.weeks.push(l); x.total += l.snap.total; x.wages = (x.wages || 0) + Object.values(l.snap.rows || {}).reduce((s, r) => s + (r.wages || 0), 0); x.adv = (x.adv || 0) + Object.values(l.snap.rows || {}).reduce((s, r) => s + (r.advances || 0), 0); });
-  return g;
+/* ---------- الأرشيف: كل الأسابيع متجمعة في شهور (الأسبوع بيتحسب على شهر خميس القبض)، قدام كل أسبوع وكل شهر إجمالي المرتبات ---------- */
+const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+const monthTitle = ym => MONTHS[+ym.slice(5, 7) - 1] + ' ' + ym.slice(0, 4);
+let archOpen = {};   // الشهور اللي المستخدم فتحها/قفلها (الباقي: آخر شهر مفتوح بس)
+/* بيرجّع الشهور (الأقدم أول)، كل شهر فيه أسابيعه (مقفولة بلقطتها، أو الحالي/اللي لسه متقفلش محسوبة حية) وإجماليها */
+function archiveMonths(I) {
+  const nowThu = ownerThursday(today()), set = new Set(I.lk.keys()), map = new Map();
+  for (let t = I.first; t && t <= nowThu; t = addDays(t, 7)) set.add(t);
+  [...set].sort().forEach(thu => {
+    const lk = I.lk.get(thu), closed = !!(lk && lk.snap);
+    if (!closed && (thu > nowThu || (thu !== nowThu && !weekHasData(I, thu)))) return;
+    const c = calcWeek(I, thu), rs = Object.values(c.rows || {});
+    if (!closed && !rs.length) return;
+    const ym = thu.slice(0, 7);
+    if (!map.has(ym)) map.set(ym, {ym, weeks: [], total: 0, wages: 0, adv: 0, open: false});
+    const m = map.get(ym);
+    m.weeks.push({thu, c, closed, lk});
+    m.total += c.total || 0; m.wages += rs.reduce((s, r) => s + (r.wages || 0), 0); m.adv += rs.reduce((s, r) => s + (r.advances || 0), 0);
+    if (!closed) m.open = true;
+  });
+  return [...map.values()];
+}
+/* كل عامل خد كام في الشهر ده (بما فيهم اللي مشى: اسمه بيفضل من لقطات الأسابيع) */
+function monthSheet(ym) {
+  const I = idx(), m = archiveMonths(I).find(x => x.ym === ym);
+  if (!m) return closeModal();
+  const acc = {};
+  m.weeks.forEach(w => Object.values(w.c.rows || {}).forEach(r => {
+    const a = acc[r.w] || (acc[r.w] = {w: r.w, name: r.name, wages: 0, adv: 0, net: 0});
+    a.wages += r.wages || 0; a.adv += r.advances || 0; a.net += r.net || 0;
+  }));
+  const list = Object.values(acc).sort((a, b) => ((I.W.get(a.w) || {}).ord || 0) - ((I.W.get(b.w) || {}).ord || 0));
+  modal(`<h3>العمال في ${monthTitle(ym)}</h3>
+    <table class="tbl"><thead><tr><th>الاسم</th><th>المرتب</th><th>السلف</th><th>الصافي</th></tr></thead><tbody>
+    ${list.map(a => { const w = I.W.get(a.w); return `<tr><td><b>${esc((w || a).name)}${w && w.st === 'gone' ? '<span class="tag gone">مشى</span>' : ''}</b></td><td>${fmt(a.wages)}</td><td class="${a.adv ? 'bk' : ''}">${nz(a.adv)}</td><td class="net">${fmt(a.net)}</td></tr>`; }).join('')}</tbody>
+    <tfoot><tr><td>الإجمالي</td><td>${fmt(m.wages)}</td><td class="${m.adv ? 'bk' : ''}">${nz(m.adv)}</td><td class="net">${fmt(m.total)}</td></tr></tfoot></table>
+    <p class="hint">الصافي = اللي خرج فعلاً للعامل بعد السلف والخصومات.${m.open ? ' الشهر لسه شغال فالأرقام لحد دلوقتي.' : ''}</p>
+    <button class="lnk" id="msX" type="button">إغلاق</button>`);
+  $('#msX').onclick = closeModal;
 }
 function drawArchive() {
-  const I = idx(), ls = [...I.lk.values()].filter(l => l.snap);
-  const weekRow = l => {
-    const rs = Object.values(l.snap.rows).filter(r => r.net > 0), paid = rs.filter(r => I.pd.has(l.thu + '|' + r.w)).length, ds = weekDates(l.thu);
-    return `<div class="row" data-thu="${l.thu}"><div class="m"><b>أسبوع الخميس ${dm(l.thu)}</b><small>${dm(ds[0])} → ${dm(ds[5])} · ${l.auto ? 'تلقائي' : esc(l.closer || l.by)}${l.snap.fri === 'work' ? ' · الجمعة شغل' : ''}</small></div><div class="a"><b class="money">${fmt(l.snap.total)}</b><small class="sm ${paid < rs.length ? 'wt' : 'ok'}">قبض ${paid} من ${rs.length}</small></div></div>`;
+  const I = idx(), nowThu = ownerThursday(today()), ms = archiveMonths(I).reverse(), last = ms[0] && ms[0].ym;
+  const weekRow = w => {
+    const {thu, c, closed, lk} = w, ds = weekDates(thu), rs = Object.values(c.rows || {}).filter(r => r.net > 0), paid = closed ? rs.filter(r => I.pd.has(thu + '|' + r.w)).length : 0;
+    return `<div class="row" data-thu="${thu}"><div class="m"><b>أسبوع الخميس ${dm(thu)}${thu === nowThu ? ' · الحالي' : ''}</b><small>${dm(ds[0])} ← ${dm(ds[5])}${closed ? ' · ' + (lk.auto ? 'تلقائي' : esc(lk.closer || lk.by)) : ''}${c.fri === 'work' ? ' · الجمعة شغل' : ''}</small></div><div class="a"><b class="money">${fmt(c.total)}</b>${closed ? `<small class="sm ${paid < rs.length ? 'wt' : 'ok'}">قبض ${paid} من ${rs.length}</small>` : '<small class="sm wt">لسه مقفولش</small>'}</div></div>`;
   };
-  const gs = archiveGroups(ls).reverse(), g0 = gs[0];
-  $('#main').innerHTML = (g0 ? `<section class="panel"><div class="p1"><span>${monthName(g0.n)}${g0.weeks.length < 4 ? ' (لسه شغال)' : ''}</span><b class="money">${fmt(g0.total)}</b></div>
-      <div class="cap"><span>صافي اللي خرج للعمال في ${g0.weeks.length === 1 ? 'أسبوع' : g0.weeks.length + ' أسابيع'}</span></div>
-      <div class="stats"><div><b class="money">${fmt(g0.wages)}</b>المرتبات</div><div><b class="money ${g0.adv ? 'bk' : ''}">${g0.adv ? fmt(g0.adv) : '—'}</b>سلف</div><div><b class="money">${fmt(Math.round(g0.total / g0.weeks.length))}</b>متوسط الأسبوع</div></div></section>` : '') + (gs.length ? gs.map(g => `<div class="lbl"><span><b>${monthName(g.n)}</b> · ${g.weeks.length === 4 ? '4 أسابيع' : g.weeks.length + (g.weeks.length === 1 ? ' أسبوع' : ' أسابيع') + ' (لسه)'}</span><span><span class="sm" style="display:inline">سلف ${fmt(g.adv)} · </span><b class="money">${fmt(g.total)}</b></span></div>
-      <div class="list">${g.weeks.slice().reverse().map(weekRow).join('')}</div>`).join('') + '<p class="hint">دوس على أي أسبوع تفتحه، تعلّم مين قبض، أو تعدّل فيه (الأرقام بتتحسب تاني).</p>'
-    : '<div class="list"><div class="empty">لسه مفيش أسابيع مقفولة.<br>الأسبوع بيتقفل يوم الخميس (أو لوحده بعد الجمعة).</div></div>');
-  $$('#main .row[data-thu]').forEach(r => r.onclick = () => nav('w/' + r.dataset.thu));
+  const isOpen = m => m.ym in archOpen ? archOpen[m.ym] : m.ym === last;
+  $('#main').innerHTML = ms.length ? ms.map(m => `<section class="mo${isOpen(m) ? '' : ' shut'}" data-ym="${m.ym}"><div class="mh" data-m="${m.ym}"><i class="car">▾</i><div class="m"><b>${monthTitle(m.ym)}</b><small>${m.weeks.length} ${m.weeks.length === 1 ? 'أسبوع' : m.weeks.length === 2 ? 'أسبوعين' : 'أسابيع'}${m.adv ? ' · سلف ' + fmt(m.adv) : ''}${m.open ? ' · لسه شغال' : ''}</small></div><b class="money">${fmt(m.total)}</b></div>
+      <div class="list">${m.weeks.slice().reverse().map(weekRow).join('')}<div class="row" data-ms="${m.ym}"><div class="m"><b>👷 كل عامل خد كام في الشهر ده</b></div><span class="sm">‹</span></div></div></section>`).join('') + '<p class="hint">دوس على الشهر تفتحه أو تقفله، ودوس على أي أسبوع تشوف تفاصيله وتعلّم مين قبض.</p>'
+    : '<div class="list"><div class="empty">لسه مفيش أسابيع.<br>الأسبوع بيظهر هنا أول ما تسجّل فيه، وبعد ما يتقفل بيتجمع في شهره.</div></div>';
+  $$('#main .mh').forEach(h => h.onclick = () => { const s = h.parentNode, shut = !s.classList.contains('shut'); s.classList.toggle('shut', shut); archOpen[s.dataset.ym] = !shut; });
+  $$('#main .row[data-thu]').forEach(r => r.onclick = () => nav(r.dataset.thu >= nowThu ? 'w' : 'w/' + r.dataset.thu));
+  $$('#main .row[data-ms]').forEach(r => r.onclick = () => monthSheet(r.dataset.ms));
 }
 
 /* ---------- السجل: كل تغيير بالترتيب، ومفيش حاجة بتتمسح منه ---------- */

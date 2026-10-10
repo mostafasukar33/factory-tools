@@ -167,7 +167,7 @@ html[data-theme=dark] .chk{color:#0b1a10}
 .tbl tr[data-d]{cursor:pointer}.tbl tr[data-d]:active td{background:var(--gold-l)}
 .tbl .neg{color:var(--red)}.tbl .z{color:var(--sub);font-weight:500}
 .wkh{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-bottom:0;border-radius:14px 14px 0 0;padding:12px 14px;box-shadow:var(--shadow)}
-.wkh b{font-size:18px;font-weight:800}.wkh span{font-size:14px;color:var(--sub);font-weight:700}
+.wkh b{font-size:18px;font-weight:800;display:block}.wkh span{font-size:13.5px;color:var(--sub);font-weight:700}.wkh .tc{text-align:left;flex:none;line-height:1.2}.wkh .tc span{display:block;font-size:12.5px}.wkh .tc .money{font-size:24px;color:var(--green)}
 .wk .tbl{border-radius:0 0 14px 14px}.tbl tfoot td:first-child{font-weight:800;color:var(--gold-d)}
 .tbl tr.inr td{direction:rtl;text-align:right;font-size:14px;font-weight:700;color:var(--sub);padding:8px 12px;border-inline-start:0;background:var(--card);border-top:1px dashed var(--row)}.tbl tr.inr b{color:var(--ink);margin-inline-start:6px}
 .dnav{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 10px}
@@ -851,7 +851,7 @@ function drawArchive() {
   $('#main').innerHTML = `${archHead(t)}
     ${shown.map(w => {
       const days = weeks.get(w).sort().reverse(), ops = days.flatMap(d => byDay.get(d)), s = sums(ops), cur = w === weekStart(t);
-      return `<section class="wk"><div class="wkh"><b>${cur ? 'الأسبوع ده' : 'أسبوع'}</b><span>من ${shortD(w)} إلى ${shortD(addDays(w, 6))}</span></div>
+      return `<section class="wk"><div class="wkh"><div><b>${cur ? 'الأسبوع ده' : 'أسبوع'}</b><span>من ${shortD(w)} إلى ${shortD(addDays(w, 6))}</span></div><div class="tc"><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div></div>
         ${days.length ? tblHtml('اليوم', days.map(d => `<tr data-d="${d}"><td>${dayLabel(d)}</td>${sumRow(sums(byDay.get(d)))}</tr>`).join(''), s, 'الإجمالي') : '<div class="list" style="border-radius:0 0 14px 14px"><div class="empty">لسه مفيش حركات الأسبوع ده</div></div>'}</section>`;
     }).join('')}
     ${ws.length > shown.length ? '<button class="more" id="aMore" type="button">اعرض أسابيع أقدم</button>' : ''}
@@ -864,7 +864,7 @@ function drawMonth() {
   ops.forEach(o => { const d = dayOf(o.ts); if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(o); });
   const days = [...byDay.keys()].sort().reverse();
   $('#main').innerHTML = `<div class="dnav"><span>${monLabel(ym)}</span></div>
-    ${days.length ? `<section class="wk"><div class="wkh"><b>إجمالي الشهر</b><span>${days.length} يوم</span></div>${tblHtml('اليوم', days.map(d => `<tr data-d="${d}"><td>${dayLabel(d)}</td>${sumRow(sums(byDay.get(d)))}</tr>`).join(''), sums(ops), 'الإجمالي')}</section><p class="hint">دوس على اليوم تفتحه</p>` : '<div class="list"><div class="empty">مفيش حركات في الشهر ده</div></div>'}
+    ${days.length ? `<section class="wk"><div class="wkh"><div><b>${monLabel(ym)}</b><span>${days.length} يوم</span></div><div class="tc"><span>حصّلت</span><b class="money">${fmt(sums(ops).col)}</b></div></div>${tblHtml('اليوم', days.map(d => `<tr data-d="${d}"><td>${dayLabel(d)}</td>${sumRow(sums(byDay.get(d)))}</tr>`).join(''), sums(ops), 'الإجمالي')}</section><p class="hint">دوس على اليوم تفتحه</p>` : '<div class="list"><div class="empty">مفيش حركات في الشهر ده</div></div>'}
     <button class="lnk" id="aBack" type="button">‹ كل الشهور</button>`;
   $$('#main tr[data-d]').forEach(r => r.onclick = () => nav('a/' + r.dataset.d));
   $('#aBack').onclick = () => { archMode = 'm'; nav('a', true); };

@@ -663,7 +663,7 @@ const MO = !!process.env.MARKET_ONLY;
     await M.waitForFunction(() => liveOps().every(o => ['done', 'exp'].includes(opState(o))), null, {timeout: 20000});
     const bI0 = await bal(A, C1), cashB = await M.evaluate(() => cashNow());
     await M.evaluate(i => { pyTab = 'pay'; nav('p/' + i); }, pid1); await M.waitForTimeout(200);
-    eq('شاشة العميل: دفعة أو فاتورة (الدفعة هي الافتراضي)', await M.evaluate(() => [[...document.querySelectorAll('#pyT button')].map(b => b.dataset.v), document.querySelector('#pyT button.on').dataset.v, document.querySelectorAll('#pyBtns .big[data-m]').length]), [['pay', 'inv'], 'pay', 2]);
+    eq('شاشة العميل: دفعة أو فاتورة (الدفعة هي الافتراضي)', await M.evaluate(() => [[...document.querySelectorAll('#pyT button')].map(b => b.dataset.v), document.querySelector('#pyT button.on').dataset.v, document.querySelectorAll('#pyBtns .big[data-m]').length]), [['pay', 'inv', 'rt'], 'pay', 2]);
     await M.click('#pyT button[data-v=inv]'); await M.fill('#amt', '10000'); await M.click('#invOk'); await M.waitForTimeout(1200);
     eq('فاتورة إجمالي بس: إشعار وفضل في صفحة العميل، وتليجرام', [await M.textContent('#toast'), await M.evaluate(() => [scr.v, $('#amt').value, $('#tdy').textContent.includes('10,000')]), tgTexts().pop()], ['✔ اتسجلت فاتورة 10,000', ['pay', '', true], `🧾 ${C1} فاتورة بـ 10,000`]);
     eq('الفاتورة اتضافت على حساب العميل عند الشريك لوحدها، واللي معاه كاش مبيتغيرش', await M.evaluate(([id, c0]) => [customers().get(id).bal - S.cust[id].bal, cashNow() - c0], [pid1, cashB]), [1000000, 0]);
@@ -700,6 +700,26 @@ const MO = !!process.env.MARKET_ONLY;
     eq('وإعادة كتابتها بترجع نفس الفاتورة من غير تكرار', await A.evaluate(id => [mkPending().length, db.entries.filter(e => e.id === 'e_mk_' + id).length, E.get('e_mk_' + id).del], invOp), [0, 1, false]);
     await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForFunction(id => opState(S.ops[id]) === 'done', invOp, {timeout: 15000}).catch(() => {});
     eq('بعد ما اتنقلت تاني: الشريك شايفها اتنقلت والرصيد زي الحسابات', await M.evaluate(([id, pid]) => [opState(S.ops[id]), customers().get(pid).bal], [invOp, pid1]), ['done', bI0 + 670000]);
+
+    /* مرتجع / شغل: مبلغ + ملاحظة بيتخصم من حساب العميل، من غير ما يلمس الكاش ولا أي خزنة */
+    const rB0 = await bal(A, C1), rV0 = await vbal(A, 'v_mkt'), rC0 = await M.evaluate(() => cashNow());
+    await M.evaluate(i => { pyTab = 'pay'; nav('p/' + i); }, pid1); await M.waitForTimeout(200);
+    eq('صفحة العميل: 3 تابات (دفعة / فاتورة / مرتجع-شغل)', await M.evaluate(() => $$('#pyT button').map(b => b.dataset.v)), ['pay', 'inv', 'rt']);
+    await M.click('#pyT button[data-v=rt]'); await M.fill('#amt', '1500'); await M.click('#rtOk'); await M.waitForTimeout(300);
+    eq('مرتجع من غير ملاحظة: بيطلب الملاحظة ومبيتسجلش', [(await M.textContent('#toast')).includes('ملاحظة'), await M.evaluate(() => liveOps().filter(o => o.t === 'rt').length)], [true, 0]);
+    await M.fill('#rtN', 'مرتجع 2 لفة 16 مم'); await M.click('#rtOk'); await M.waitForTimeout(1200);
+    const rtOp = await M.evaluate(() => liveOps().find(o => o.t === 'rt').id);
+    eq('مرتجع/شغل اتسجل: إشعار وفضل في صفحة العميل، واتخصم من رصيده عند الشريك، والكاش زي ما هو، وتليجرام', [await M.textContent('#toast'), await M.evaluate(() => [scr.v, pyTab, $('#amt').value, $('#rtN').value, $('#tdy').textContent.includes('مرتجع 2 لفة')]), await M.evaluate(([id, c0]) => [customers().get(id).bal - S.cust[id].bal, cashNow() - c0], [pid1, rC0]), tgTexts().pop().replace(/^\S+ /, '')],
+      ['✔ اتسجل مرتجع/شغل 1,500 — اتخصم من حسابه', ['pay', 'rt', '', '', true], [-150000, 0], `${C1} مرتجع/شغل بـ 1,500 — مرتجع 2 لفة 16 مم`]);
+    await A.evaluate(() => { mkView = 'in'; go('mkt'); mkSync(); }); await A.waitForTimeout(900);
+    eq('عند مصطفى: في كارت العميل بزرار "انقلها"، ومدخلش الحسابات لوحده', [await A.$(`#p-mkt [data-rt="${rtOp}"]`) !== null, (await A.textContent('#p-mkt')).includes('مرتجع 2 لفة 16 مم'), await bal(A, C1)], [true, true, rB0]);
+    await A.click(`#p-mkt [data-rt="${rtOp}"]`); await A.waitForTimeout(250);
+    eq('شاشة التأكيد: خصم على الحساب من غير خزنة', [(await A.textContent('#modal')).includes('من غير خزنة'), await A.$('#modal select[data-f=v]')], [true, null]);
+    await A.click('#mvOk'); await A.waitForTimeout(300);
+    eq('اتنقلت خصم على حساب العميل بالملاحظة، والخزنة متأثرتش', [await A.evaluate(id => { const e = E.get('e_mk_' + id); return [e.kind, e.dir, e.amt, e.note, !e.vault]; }, rtOp), await bal(A, C1) - rB0, await vbal(A, 'v_mkt') - rV0],
+      [['adj', 'dn', 150000, 'مرتجع/شغل (السوق) — مرتجع 2 لفة 16 مم', true], -150000, 0]);
+    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForFunction(id => opState(S.ops[id]) === 'done', rtOp, {timeout: 15000}).catch(() => {});
+    eq('الشريك: اتنقلت والرصيد عنده = رصيد الحسابات', await M.evaluate(([id, pid]) => [opState(S.ops[id]), customers().get(pid).bal], [rtOp, pid1]), ['done', rB0 - 150000]);
 
     /* عميل جديد: فاتورة بإجمالي بس */
     await M.evaluate(() => nav('c')); await M.click('#bNew'); await M.fill('#ncN', 'عميل فاتورة جديد'); await M.click('#ncOk'); await M.click('#pyT button[data-v=inv]'); await M.fill('#amt', '2500'); await M.click('#invOk'); await M.waitForTimeout(1200);

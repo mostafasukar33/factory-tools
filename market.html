@@ -139,6 +139,12 @@ html[data-theme=dark] .ctb tr.l-r td.nm{color:var(--red)}
 .b-insta{background:var(--insta);color:#fff}
 .b-voda{background:var(--voda);color:#fff}
 .b-tr{background:#2F6690;color:#fff}
+/* مرتجع / شغل: برتقاني */
+.b-rt{background:#C27A2C;color:#fff}
+.inp2.rt{border:2px solid #C27A2C}
+#pyT button.rt.on{color:#9A4B12}html[data-theme=dark] #pyT button.rt.on{color:#E9A55E}
+#pyT button{white-space:nowrap}
+.row.t-rt .a .money{color:#C27A2C}
 html[data-theme=dark] .b-cash{color:#0b1a10}
 .b-again{background:#24211b;color:#fff}
 html[data-theme=dark] .b-again{background:#34312a}
@@ -335,28 +341,30 @@ function aliases() {
 const liveOps = () => Object.values(S.ops).filter(o => !o.del);
 const payOps = () => liveOps().filter(o => o.t === 'pay');
 /* حركات العميل: دفعات + فواتير (فاتورة = إجمالي بس، ومصطفى هو اللي بيكتب بنودها) */
-const custAll = () => liveOps().filter(o => o.t === 'pay' || o.t === 'inv');
+/* حركات العملاء: دفعة / فاتورة / مرتجع أو شغل (rt: مبلغ + ملاحظة بيتخصم من حساب العميل، ملوش دعوة بالكاش) */
+const isCustOp = o => o.t === 'pay' || o.t === 'inv' || o.t === 'rt';
+const custAll = () => liveOps().filter(isCustOp);
 function customers() {
   const al = aliases(), m = new Map();
   Object.values(S.cust).forEach(c => { if (!c.del) m.set(c.id, {id: c.id, name: c.name, bal: c.bal || 0, lim: c.lim || ''}); });
   S.newc.forEach(c => { if (!al[c.id] && !m.has(c.id)) m.set(c.id, {id: c.id, name: c.name, bal: 0, nw: true}); });
   custAll().forEach(o => { const id = al[o.cid] || o.cid; if (!m.has(id)) m.set(id, {id, name: o.cname, bal: 0, nw: id.startsWith('n_')}); });
-  /* الصافي = رصيده في الحسابات + الفواتير اللي اتسجلت هنا − الدفعات اللي اتسجلت هنا، لسه متنقلتش (واللي مصطفى شالها من الحسابات مبتتحسبش) */
+  /* الصافي = رصيده في الحسابات + الفواتير اللي اتسجلت هنا − الدفعات والمرتجع/الشغل اللي اتسجلوا هنا، لسه متنقلتش (واللي مصطفى شالها من الحسابات مبتتحسبش) */
   custAll().forEach(o => { if (!['done', 'rm'].includes(opState(o))) { const c = m.get(al[o.cid] || o.cid); if (c) c.bal += o.t === 'inv' ? o.amt : -o.amt; } });
   return m;
 }
 const custOps = (cid, al) => custAll().filter(o => (al[o.cid] || o.cid) === cid);
 /* اللي معايا كاش دلوقتي = كاش حصّلته − مصروفات − دفعات موردين − كاش سلمته لمصطفى (التحويلات مش على الشريك) */
-const cashSign = o => o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'cs' ? 1 : o.t === 'inv' ? 0 : -1;
+const cashSign = o => o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'cs' ? 1 : o.t === 'inv' || o.t === 'rt' ? 0 : -1;
 const cashNow = () => liveOps().reduce((s, o) => s + cashSign(o) * o.amt, 0);
 /* حصّلت / راح لمصطفى (تحويلات + كاش سلمته) / مصروف (مصروفات + دفعات موردين) / معايا */
 function sums(ops) {
   let col = 0, toM = 0, sp = 0, inv = 0;
-  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'cs') col += o.amt; else if (o.t === 'inv') inv += o.amt; else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
+  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'cs') col += o.amt; else if (o.t === 'inv' || o.t === 'rt') { if (o.t === 'inv') inv += o.amt; } else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
   return {col, toM, sp, inv, left: col - toM - sp};
 }
-const opWhat = o => o.t === 'cs' ? 'بيع كاش — ' + o.buyer : o.t === 'pay' ? o.cname : o.t === 'inv' ? 'فاتورة ' + o.cname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعت لـ ' + o.sname : 'سلمت لمصطفى';
-const opHow = o => o.t === 'cs' ? 'من المصنع' : o.t === 'pay' ? M_TXT[o.m] : o.t === 'inv' ? 'فاتورة (إجمالي بس)' : o.t === 'hand' ? 'كاش' : o.t === 'exp' ? 'مصروف' : 'دفعة مورد';
+const opWhat = o => o.t === 'rt' ? '↩️ مرتجع/شغل ' + o.cname : o.t === 'cs' ? 'بيع كاش — ' + o.buyer : o.t === 'pay' ? o.cname : o.t === 'inv' ? 'فاتورة ' + o.cname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعت لـ ' + o.sname : 'سلمت لمصطفى';
+const opHow = o => o.t === 'rt' ? 'مرتجع/شغل' + (o.note ? ' — ' + o.note : '') : o.t === 'cs' ? 'من المصنع' : o.t === 'pay' ? M_TXT[o.m] : o.t === 'inv' ? 'فاتورة (إجمالي بس)' : o.t === 'hand' ? 'كاش' : o.t === 'exp' ? 'مصروف' : 'دفعة مورد';
 const pending = () => Object.values(S.ops).filter(o => o.sy !== o.upd);
 const backs = () => liveOps().filter(o => opState(o) === 'back').sort((a, b) => b.ts - a.ts);
 
@@ -380,11 +388,11 @@ function merge(r) {
   return true;
 }
 /* نص تنبيه تليجرام بيتبعت جاهز مع العملية، فكود الشيت مش محتاج يتحدّث لو الجمل اتغيرت */
-const TG_IC = {pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭'};
+const TG_IC = {rt: '↩️', pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭'};
 const tgText = o => { const a = fmt(o.amt), w = {cash: 'كاش', tr: 'تحويل', insta: 'إنستا', voda: 'فودافون كاش'};
-  return o.t === 'pay' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${a} ${w[o.m] || ''}` : o.t === 'inv' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${a}`
+  return o.t === 'pay' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${a} ${w[o.m] || ''}` : o.t === 'inv' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${a}` : o.t === 'rt' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} مرتجع/شغل بـ ${a}${o.note ? ' — ' + o.note : ''}`
     : o.t === 'exp' ? `مصروف ${o.cat || ''}: ${a}${o.note ? ' — ' + o.note : ''}` : o.t === 'spay' ? `دفع للمورد ${o.sname || ''} ${a}` : o.t === 'hand' ? `سلّمك ${a} كاش` : o.t === 'cs' ? `بيع كاش من المصنع ${a} — ${o.buyer || ''}` : 'حركة ' + a; };
-const view = o => [dayOf(o.ts) + ' ' + timeOf(o.ts), (o.t === 'pay' || o.t === 'inv') ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, o.t === 'pay' ? M_SAID[o.m] || o.m : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة'}[o.t], ''];
+const view = o => [dayOf(o.ts) + ' ' + timeOf(o.ts), isCustOp(o) ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, o.t === 'pay' ? M_SAID[o.m] || o.m : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة', rt: 'مرتجع/شغل'}[o.t], o.t === 'rt' ? o.note || '' : ''];
 async function sync() {
   if (!S.u || S.bad) return;
   if (syncing) { again = true; return; }
@@ -525,7 +533,7 @@ function stHtml(o) {
 /* سطر عملية: دوسة عليه بتفتح التعديل */
 const opRow = (o, withDay, noName) => `<div class="row t-${o.t}" data-o="${esc(o.id)}"><div class="m"><b>${esc(noName ? opHow(o) : opWhat(o))}</b><small>${withDay ? dispDate(dayOf(o.ts)) + ' · ' : ''}${timeOf(o.ts)}${noName ? '' : ' · ' + esc(opHow(o))}</small></div><div class="a"><b class="money">${fmt(o.amt)}</b>${stHtml(o)}</div></div>`;
 /* حركات اليوم متجمعة بالنوع، كل نوع تحت بعضه وبإجماليه (المصروفات لوحدها والموردين لوحدهم) */
-const GROUPS = [['in', 'تحصيل وفواتير العملاء', o => o.t === 'pay' || o.t === 'inv'], ['cs', 'بيع كاش من المصنع', o => o.t === 'cs'], ['exp', 'المصروفات', o => o.t === 'exp'], ['spay', 'دفعات الموردين', o => o.t === 'spay'], ['hand', 'سلّمت لمصطفى', o => o.t === 'hand']];
+const GROUPS = [['in', 'تحصيل وفواتير العملاء', o => o.t === 'pay' || o.t === 'inv'], ['rt', 'مرتجع / شغل (اتخصم من العملاء)', o => o.t === 'rt'], ['cs', 'بيع كاش من المصنع', o => o.t === 'cs'], ['exp', 'المصروفات', o => o.t === 'exp'], ['spay', 'دفعات الموردين', o => o.t === 'spay'], ['hand', 'سلّمت لمصطفى', o => o.t === 'hand']];
 const dayList = ops => GROUPS.map(([k, t, f]) => { const g = ops.filter(f); return g.length ? `<div class="gh g-${k}"><span>${t} (${g.length})</span><b class="money">${fmt(g.reduce((a, o) => a + o.amt, 0))}</b></div><div class="list">${g.map(o => opRow(o)).join('')}</div>` : ''; }).join('');
 const bindOps = root => $$(root + ' .row[data-o]').forEach(r => r.onclick = () => editSheet(S.ops[r.dataset.o]));
 /* الفواتير (إجمالي بس) مبتدخلش في اللي معاه، فبتتعرض في سطر لوحدها */
@@ -614,7 +622,7 @@ function drawPay() {
   if (!c) return nav('c', true);
   lastSave = 0; cShow = 15;
   $('#main').innerHTML = `<div class="cust" id="cBox"></div>
-    <div class="seg" id="pyT" style="margin-top:10px"><button type="button" data-v="pay" class="${pyTab === 'pay' ? 'on' : ''}">💵 دفعة</button><button type="button" data-v="inv" class="${pyTab === 'inv' ? 'on' : ''}">🧾 فاتورة</button></div>
+    <div class="seg" id="pyT" style="margin-top:10px;--n:3"><button type="button" data-v="pay" class="${pyTab === 'pay' ? 'on' : ''}">💵 دفعة</button><button type="button" data-v="inv" class="${pyTab === 'inv' ? 'on' : ''}">🧾 فاتورة</button><button type="button" data-v="rt" class="rt ${pyTab === 'rt' ? 'on' : ''}">↩️ مرتجع/شغل</button></div>
     <label class="amt" for="amt"><input id="amt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>
     ${datePick('pyD', today())}
     <div id="pyBtns"></div>
@@ -624,12 +632,14 @@ function drawPay() {
   const btns = () => {
     $('#pyBtns').innerHTML = pyTab === 'pay'
       ? `${['cash', 'tr'].map(m => `<button class="big b-${m}" data-m="${m}" type="button">${M_BTN[m]}</button>`).join('')}<p class="hint">دوسة على الزرار بتحفظ على طول</p>`
+      : pyTab === 'rt' ? `<input class="inp2 rt" id="rtN" autocomplete="off" placeholder="ملاحظة: مرتجع إيه أو شغل إيه"><button class="big b-rt" id="rtOk" type="button">↩️ سجّل (بيتخصم من حسابه)</button><p class="hint">بيتخصم من حساب العميل بس. ملوش دعوة بالكاش اللي معاك.</p>`
       : `<button class="big b-again" id="invOk" type="button">🧾 سجّل الفاتورة</button><p class="hint">اكتب إجمالي الفاتورة بس (من غير بنود). بتتضاف على حساب العميل عندك، ومصطفى بيكتب البنود من عنده.</p>`;
     $$('#pyBtns .big[data-m]').forEach(b => {
       b.addEventListener('mousedown', e => e.preventDefault());   // علشان الكيبورد ميقفلش ويتحرك الزرار قبل الدوسة
       b.onclick = () => savePay(c, b.dataset.m);
     });
     if ($('#invOk')) { $('#invOk').addEventListener('mousedown', e => e.preventDefault()); $('#invOk').onclick = () => saveInv(c); }
+    if ($('#rtOk')) $('#rtOk').onclick = () => saveRt(c);
   };
   $$('#pyT button').forEach(b => b.onclick = () => { pyTab = b.dataset.v; $$('#pyT button').forEach(x => x.classList.toggle('on', x === b)); btns(); inp.focus(); });
   btns();
@@ -670,6 +680,21 @@ async function savePay(c, m) {
   savedHere(`✔ اتسجلت دفعة ${fmt(amt)} — ${M_TXT[m]}`);
 }
 
+async function saveRt(c) {
+  if (Date.now() - lastSave < 700) return;
+  const amt = amtOf($('#amt')), note = $('#rtN').value.trim().replace(/\s+/g, ' ');
+  if (!(amt > 0)) { toast('اكتب المبلغ الأول'); $('#amt').focus(); return; }
+  if (!note) { toast('اكتب ملاحظة: مرتجع إيه أو شغل إيه'); $('#rtN').focus(); return; }
+  lastSave = Date.now();
+  const al = aliases(), dup = custOps(c.id, al).find(o => o.t === 'rt' && o.amt === amt && Date.now() - (o.cr || o.ts) < 120000);
+  if (dup && !(await ask(`سجلت مرتجع/شغل ${fmt(amt)} للعميل ده من شوية. دي مرة تانية؟`, 'أيوه، مرة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
+  const now = Date.now();
+  const o = {id: newId(), t: 'rt', cid: c.id, cname: c.name, newc: !!c.nw, amt, note, ts: tsOnDay(dateOf('pyD')), cr: now, upd: now, del: false};
+  S.ops[o.id] = o;
+  save(); sync();
+  $('#rtN').value = '';
+  savedHere(`✔ اتسجل مرتجع/شغل ${fmt(amt)} — اتخصم من حسابه`);
+}
 async function saveInv(c) {
   if (Date.now() - lastSave < 700) return;
   const amt = amtOf($('#amt'));
@@ -685,7 +710,7 @@ async function saveInv(c) {
 }
 
 /* ---------- تعديل أي حركة بسهولة (نافذة من تحت): المبلغ والنوع والاسم، أو مسحها ---------- */
-const EDIT_TITLE = {pay: 'دفعة عميل', inv: 'فاتورة (إجمالي)', exp: 'مصروف', spay: 'دفعة لمورد', hand: 'تسليم كاش لمصطفى', cs: 'بيع كاش من المصنع'};
+const EDIT_TITLE = {rt: 'مرتجع / شغل', pay: 'دفعة عميل', inv: 'فاتورة (إجمالي)', exp: 'مصروف', spay: 'دفعة لمورد', hand: 'تسليم كاش لمصطفى', cs: 'بيع كاش من المصنع'};
 function editSheet(o) {
   if (!o || o.del) return;
   const s = opState(o);
@@ -697,12 +722,13 @@ function editSheet(o) {
   }
   let m = o.m;
   const bs = s === 'back' ? stOf(o) : null;
-  modal(`<h3>${EDIT_TITLE[o.t]}${o.t === 'pay' || o.t === 'inv' ? ' — ' + esc(o.cname) : ''}<small>${dispDate(dayOf(o.ts))} ${timeOf(o.ts)}</small></h3>
+  modal(`<h3>${EDIT_TITLE[o.t]}${isCustOp(o) ? ' — ' + esc(o.cname) : ''}<small>${dispDate(dayOf(o.ts))} ${timeOf(o.ts)}</small></h3>
     ${bs ? `<div class="note" style="margin:0 0 6px">🔴 مصطفى رجّعها: ${esc(bs.back)}</div>` : ''}
     ${o.t === 'spay' ? `<label style="font-size:12.5px;font-weight:700;color:var(--sub)">اسم المورد</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.sname)}">` : ''}
     ${o.t === 'cs' ? `<label style="font-size:12.5px;font-weight:700;color:var(--sub)">اسم المشتري</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.buyer)}">` : ''}
     <label class="amt sm" for="eA" style="margin-top:6px"><input id="eA" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${fmt(o.amt)}"><em>جنيه</em></label>
-    ${o.t === 'pay' || o.t === 'inv' || o.t === 'cs' ? datePick('eD', dayOf(o.ts)) : ''}
+    ${isCustOp(o) || o.t === 'cs' ? datePick('eD', dayOf(o.ts)) : ''}
+    ${o.t === 'rt' ? `<input class="inp2 rt" id="eRt" autocomplete="off" placeholder="ملاحظة: مرتجع إيه أو شغل إيه" value="${esc(o.note || '')}">` : ''}
     ${o.t === 'pay' ? `<div class="seg" id="eM" style="--n:2;margin-top:10px">${['cash', 'tr'].map(k => `<button type="button" data-m="${k}" class="${k === m || (k === 'tr' && m !== 'cash') ? 'on' : ''}">${{cash: 'فلوس معايا', tr: 'تحويل لمصطفى'}[k]}</button>`).join('')}</div>` : ''}
     ${o.t === 'exp' ? `<label class="wh" for="eNt">المصروف ده إيه؟</label><input class="inp2 exp" id="eNt" autocomplete="off" placeholder="اكتب المصروف" value="${esc(o.cat + (o.note ? ' — ' + o.note : ''))}" style="margin-top:6px">` : ''}
     <div class="row2" style="margin-top:12px"><button class="big b-cash" id="eOk" type="button" style="margin-top:0">حفظ</button><button class="big b-redo" id="eDel" type="button" style="margin-top:0">🗑 مسح</button></div>
@@ -717,6 +743,7 @@ function editSheet(o) {
     if (o.t === 'pay') ch.m = m;
     if ($('#eD')) { const nd = dateOf('eD'); if (nd !== dayOf(o.ts)) ch.ts = tsOnDay(nd, o.ts); }
     if (o.t === 'exp') { const w = $('#eNt').value.trim().replace(/\s+/g, ' '); if (!w) return toast('اكتب المصروف ده إيه'); Object.assign(ch, {cat: w, note: ''}); }
+    if (o.t === 'rt') { ch.note = $('#eRt').value.trim().replace(/\s+/g, ' '); if (!ch.note) return toast('اكتب الملاحظة'); }
     if (o.t === 'cs') { ch.buyer = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.buyer) return toast('اكتب اسم المشتري'); }
     if (o.t === 'spay') { ch.sname = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.sname) return toast('اكتب اسم المورد'); }
     if (opState(o) === 'done') { closeModal(); return toast('دي اتنقلت خلاص'); }
@@ -727,7 +754,7 @@ function editSheet(o) {
 }
 async function delOp(o) {
   if (opState(o) === 'done') { toast('دي اتنقلت للحسابات. أي تصحيح من عند مصطفى.', 4000); return false; }
-  if (!(await ask(`تمسح ${o.t === 'pay' ? 'دفعة' : o.t === 'inv' ? 'فاتورة' : o.t === 'hand' ? 'تسليم' : o.t === 'cs' ? 'بيع كاش' : 'مصروف'} ${fmt(o.amt)} (${opWhat(o)}${o.t === 'pay' ? ' — ' + M_SAID[o.m] : ''})؟`, 'أيوه امسحها', 'لأ', true))) return false;
+  if (!(await ask(`تمسح ${o.t === 'pay' ? 'دفعة' : o.t === 'inv' ? 'فاتورة' : o.t === 'rt' ? 'مرتجع/شغل' : o.t === 'hand' ? 'تسليم' : o.t === 'cs' ? 'بيع كاش' : 'مصروف'} ${fmt(o.amt)} (${opWhat(o)}${o.t === 'pay' ? ' — ' + M_SAID[o.m] : ''})؟`, 'أيوه امسحها', 'لأ', true))) return false;
   o.del = true; bump(o); save(); sync();
   toast('اتمسحت ✔');
   return true;
@@ -738,6 +765,7 @@ function sentHtml(o, c) {
   const m = `<b class="money">${fmt(o.amt)}</b>`;
   return o.t === 'pay' ? `${esc(c ? c.name : o.cname)}<br>دفع ${m} جنيه ${esc(M_SAID[o.m])}`
     : o.t === 'inv' ? `فاتورة ${esc(c ? c.name : o.cname)}<br>إجمالي ${m} جنيه`
+    : o.t === 'rt' ? `مرتجع/شغل ${esc(c ? c.name : o.cname)}<br>${m} جنيه — ${esc(o.note || '')}`
     : o.t === 'cs' ? `بيع كاش من المصنع<br>${esc(o.buyer)} — ${m} جنيه`
     : o.t === 'exp' ? `صرفت ${m} جنيه<br>${esc(o.cat)}${o.note ? ' — ' + esc(o.note) : ''}`
     : o.t === 'spay' ? `دفعت لـ ${esc(o.sname)}<br>${m} جنيه`
@@ -748,17 +776,17 @@ function drawSaved() {
   const al = aliases(), cid = al[o.cid] || o.cid, c = customers().get(cid), s = opState(o);
   const stTxt = s === 'unsent' ? '⏳ هتتبعت أول ما النت يرجع' : s === 'exp' ? '' : s === 'done' ? (o.t === 'hand' ? '✓ مصطفى استلمها' : '✓ اتنقلت للحسابات') : s === 'back' ? '🔴 مصطفى رجّعها' : s === 'rm' ? '✖ مصطفى شالها من الحساب' : '✓ وصلت لمصطفى';
   const again = {pay: 'في فلوس تانية من نفس العميل', inv: 'العميل دفع حاجة دلوقتي؟', exp: 'صرفت حاجة تانية', spay: 'دفعت لمورد تاني', cs: 'بيع كاش تاني'}[o.t];
-  $('#main').innerHTML = o.del ? `<div class="done"><h2 style="color:var(--red)">اتمسحت</h2></div><button class="big b-home" id="sHome" type="button" style="margin-top:20px">${o.t === 'pay' || o.t === 'inv' ? 'رجوع للعملاء' : 'رجوع للرئيسية'}</button>` : `<div class="done">
+  $('#main').innerHTML = o.del ? `<div class="done"><h2 style="color:var(--red)">اتمسحت</h2></div><button class="big b-home" id="sHome" type="button" style="margin-top:20px">${isCustOp(o) ? 'رجوع للعملاء' : 'رجوع للرئيسية'}</button>` : `<div class="done">
       <div class="chk">✓</div><h2>${o.upd !== o.ts ? 'اتعدّلت' : 'اتسجلت'}</h2>
       <div class="sent">${sentHtml(o, c)}
-        ${(o.t === 'pay' || o.t === 'inv' || o.t === 'cs') && dayOf(o.ts) !== today() ? `<small>📅 بتاريخ ${dispDate(dayOf(o.ts))}</small>` : ''}<small class="${s === 'unsent' ? 'wt' : s === 'back' ? 'bk' : 'ok'}" id="sSt">${stTxt}</small></div></div>
+        ${(isCustOp(o) || o.t === 'cs') && dayOf(o.ts) !== today() ? `<small>📅 بتاريخ ${dispDate(dayOf(o.ts))}</small>` : ''}<small class="${s === 'unsent' ? 'wt' : s === 'back' ? 'bk' : 'ok'}" id="sSt">${stTxt}</small></div></div>
     ${again ? `<button class="big b-again" id="sAgain" type="button" style="margin-top:18px">${again}</button>` : ''}
-    <button class="big b-home" id="sHome" type="button"${again ? '' : ' style="margin-top:18px"'}>${o.t === 'pay' || o.t === 'inv' ? 'رجوع للعملاء' : 'رجوع للرئيسية'}</button>
+    <button class="big b-home" id="sHome" type="button"${again ? '' : ' style="margin-top:18px"'}>${isCustOp(o) ? 'رجوع للعملاء' : 'رجوع للرئيسية'}</button>
     <div style="text-align:center">${s !== 'done' ? '<button class="oops n" id="sEdit" type="button">✏️ تعديل</button><button class="oops" id="sDel" type="button">غلطت، امسحها</button>' : ''}</div>`;
-  $('#sHome').onclick = () => nav(o.t === 'pay' || o.t === 'inv' ? 'c' : '', true);
-  if ($('#sAgain')) $('#sAgain').onclick = () => { if (o.t === 'pay' || o.t === 'inv') { pyTab = 'pay'; nav('p/' + cid, true); } else if (o.t === 'cs') nav('b', true); else { spTab = o.t; nav('x', true); } };
+  $('#sHome').onclick = () => nav(isCustOp(o) ? 'c' : '', true);
+  if ($('#sAgain')) $('#sAgain').onclick = () => { if (isCustOp(o)) { pyTab = 'pay'; nav('p/' + cid, true); } else if (o.t === 'cs') nav('b', true); else { spTab = o.t; nav('x', true); } };
   if ($('#sEdit')) $('#sEdit').onclick = () => editSheet(o);
-  if ($('#sDel')) $('#sDel').onclick = async () => { if (await delOp(o)) nav(o.t === 'pay' || o.t === 'inv' ? 'p/' + cid : '', true); };
+  if ($('#sDel')) $('#sDel').onclick = async () => { if (await delOp(o)) nav(isCustOp(o) ? 'p/' + cid : '', true); };
 }
 
 /* ---------- صرفت: مصروف أو دفعة لمورد (بتتخصم من اللي معايا) ---------- */

@@ -751,7 +751,7 @@ html[data-theme=dark] .dnav span{color:#F3EFE3}
 .ilnote{font-size:13px;color:var(--red);font-weight:700;padding:2px 14px 6px;border-bottom:1px dashed #EFE9DA}
 .ilsum{font-size:13.5px;color:#666;font-weight:700;padding:6px 14px;text-align:left;direction:rtl}.ilsum b{direction:ltr;unicode-bidi:isolate;color:var(--ink)}
 .mtag{font-size:12px;font-weight:800;border-radius:6px;padding:1px 8px}
-.mtag.cash{background:var(--green-l);color:var(--green)}.mtag.insta{background:#EEE8FA;color:#5B3FA8}.mtag.voda{background:var(--red-l);color:#C8102E}.mtag.tr{background:#E6EEF5;color:#2F6690}
+.mtag.cash{background:var(--green-l);color:var(--green)}.mtag.insta{background:#EEE8FA;color:#5B3FA8}.mtag.voda{background:var(--red-l);color:#C8102E}.mtag.tr{background:#E6EEF5;color:#2F6690}.mtag.rt{background:#FAEEDF;color:#9A4B12;white-space:nowrap}
 .il .tm{font-size:12px;color:#999;font-weight:600}
 .vbtn{border:1.5px solid #B7791F;color:#B7791F;background:#fff;border-radius:8px;font-weight:800;font-size:13px;height:32px;padding:0 10px;cursor:pointer;font-family:inherit}
 .vok{color:var(--green);font-size:13px;font-weight:800}.vbk{color:var(--red);font-size:13px;font-weight:800}
@@ -764,7 +764,7 @@ html[data-theme=dark] :is(.ic,.mvr,.vbtn){background:#1f1e19;border-color:#37342
 html[data-theme=dark] :is(.ich,.il,.ilnote){border-color:#2d2b24}
 html[data-theme=dark] .mkh .n,html[data-theme=dark] .nwt{background:#0d0c0a}
 html[data-theme=dark] .ilsum{color:#B9B3A1}html[data-theme=dark] .ilsum b{color:#F3EFE3}
-html[data-theme=dark] .mtag.insta{background:#2a2240;color:#B9A6F0}html[data-theme=dark] .mtag.voda{color:#FF8A80}html[data-theme=dark] .mtag.tr{background:#1c2a36;color:#8FBCE0}
+html[data-theme=dark] .mtag.insta{background:#2a2240;color:#B9A6F0}html[data-theme=dark] .mtag.voda{color:#FF8A80}html[data-theme=dark] .mtag.tr{background:#1c2a36;color:#8FBCE0}html[data-theme=dark] .mtag.rt{background:#33261a;color:#E9A55E}
 /* مصروف / صفحات الوارد الجديدة */
 .mtag.exp{background:#FFF3CD;color:#8A6200}
 .mtag.inv{background:#E3EEFB;color:#1F5FA8}
@@ -4365,7 +4365,7 @@ function opText_(d) {
   if (d.t === 'cs') return 'بيع كاش من المصنع ' + a + (d.buyer ? ' — ' + d.buyer : '');
   return 'حركة ' + a;
 }
-const ICON = {pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭'};
+const ICON = {pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭', rt: '↩️'};
 function txt_(d) { return d.tg || opText_(d); }
 function opMsg_(old, d, del) {
   const ic = ICON[d.t] || '•';
@@ -4424,8 +4424,8 @@ function mkDb() { return db.mkt = db.mkt || {u: '', cursor: 0, ops: {}, st: {}, 
 const mkSt = id => mkDb().st['st_' + id];
 /* أنواع العمليات: pay دفعة عميل، inv فاتورة عميل (إجمالي بس من الشريك، ومصطفى بيكتب بنودها)، spay دفعة مورد (كاش)، exp مصروف، hand كاش سلّمه الشريك لمصطفى.
    لما تتنقل: pay/spay بتبقى دفعة على الحساب (e_mk_<id>)، وinv فاتورة بيع على الحساب (e_mk_<id>)، وexp/hand بيبقوا حركة خزنة (t_mk_<id>) */
-const MK_T = {pay: 1, spay: 1, exp: 1, hand: 1, inv: 1, cs: 1};
-const mkRec = o => o.t === 'pay' || o.t === 'spay' || o.t === 'inv' ? E.get('e_mk_' + o.id) : IDX.tx.get('t_mk_' + o.id);
+const MK_T = {pay: 1, spay: 1, exp: 1, hand: 1, inv: 1, cs: 1, rt: 1};   // rt = مرتجع/شغل: مبلغ + ملاحظة بيتنقل "خصم" (adj dn) على حساب العميل بـ e_mk_<id>، من غير خزنة
+const mkRec = o => o.t === 'pay' || o.t === 'spay' || o.t === 'inv' || o.t === 'rt' ? E.get('e_mk_' + o.id) : IDX.tx.get('t_mk_' + o.id);
 /* اتنقلت؟ الحركة في الحسابات هي الأصل. لو لسه منزلتش على الجهاز ده من المزامنة، بنصدق حالة الشيت */
 function mkMoved(o) { const e = mkRec(o); if (e) return !e.del; const s = mkSt(o.id); return !!(s && s.done); }
 function mkState(o) { const s0 = mkSt(o.id); if (s0 && s0.ign) return 'ign'; if (mkMoved(o)) return 'done'; const s = mkSt(o.id); return s && s.back && s.bv === o.upd ? 'back' : 'new'; }
@@ -4504,6 +4504,10 @@ function mkMove(o, f) {
     if (f.grp) x.mkg = f.grp;
     if (rec) { (rec.hist = rec.hist || []).push(snapshot(rec)); Object.assign(rec, x, {del: false}); delete rec.delAt; if (!f.grp) delete rec.mkg; applyAmounts(rec); touch(rec); }
     else { const e = addEntry(Object.assign({id: 'e_mk_' + o.id}, x)); applyAmounts(e); }
+  } else if (o.t === 'rt') {
+    const x = {party: f.pid, kind: 'adj', dir: 'dn', amt: f.amt, date: f.date, note: 'مرتجع/شغل (السوق)' + (o.note ? ' — ' + o.note : '')};
+    if (rec) { (rec.hist = rec.hist || []).push(snapshot(rec)); Object.assign(rec, x, {del: false}); delete rec.delAt; applyAmounts(rec); rec.desc = docDesc(rec); touch(rec); }
+    else { const e = addEntry(Object.assign({id: 'e_mk_' + o.id}, x)); applyAmounts(e); e.desc = docDesc(e); }
   } else {
     const x = o.t === 'exp' ? {type: 'exp', amt: f.amt, vault: f.vault, to: '', cat: 'c_mkexp', note: o.cat + (o.note ? ' — ' + o.note : '')}
       : o.t === 'cs' ? {type: 'inc', amt: f.amt, vault: f.vault, to: '', cat: 'c_inc1', note: 'بيع كاش من المصنع — ' + (o.buyer || '')}
@@ -4671,15 +4675,15 @@ function renderMkHome() {
 
 /* ---------- شاشة وارد السوق ---------- */
 const mkTag = m => `<span class="mtag ${m}">${MK_M[m] || m}</span>`;
-const mkLTag = o => o.t === 'cs' ? '<span class="mtag exp">بيع كاش</span>' : o.t === 'exp' ? `<span class="mtag exp">${esc(o.cat)}</span>` : o.t === 'inv' ? '<span class="mtag inv">فاتورة</span>' : mkTag(o.m || 'cash');
-const mkWhat = o => o.t === 'pay' ? o.cname + ' — ' + (MK_M[o.m] || '') : o.t === 'inv' ? 'فاتورة: ' + o.cname + ' (إجمالي بس)' : o.t === 'exp' ? 'مصروف: ' + o.cat + (o.note ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعة لمورد: ' + o.sname : o.t === 'cs' ? 'بيع كاش من المصنع: ' + (o.buyer || '') : 'كاش سلّمه لك';
+const mkLTag = o => o.t === 'rt' ? '<span class="mtag rt">↩️ مرتجع/شغل</span>' : o.t === 'cs' ? '<span class="mtag exp">بيع كاش</span>' : o.t === 'exp' ? `<span class="mtag exp">${esc(o.cat)}</span>` : o.t === 'inv' ? '<span class="mtag inv">فاتورة</span>' : mkTag(o.m || 'cash');
+const mkWhat = o => o.t === 'rt' ? 'مرتجع/شغل: ' + o.cname + (o.note ? ' — ' + o.note : '') : o.t === 'pay' ? o.cname + ' — ' + (MK_M[o.m] || '') : o.t === 'inv' ? 'فاتورة: ' + o.cname + ' (إجمالي بس)' : o.t === 'exp' ? 'مصروف: ' + o.cat + (o.note ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعة لمورد: ' + o.sname : o.t === 'cs' ? 'بيع كاش من المصنع: ' + (o.buyer || '') : 'كاش سلّمه لك';
 /* حصّلت / راح لمصطفى / مصروف / معايا — نفس حسبة شريكك */
 function mkSums(ops) {
   let col = 0, toM = 0, sp = 0, inv = 0;
-  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'cs') col += o.amt; else if (o.t === 'inv') inv += o.amt; else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
+  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'cs') col += o.amt; else if (o.t === 'inv') inv += o.amt; else if (o.t === 'rt') return; else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
   return {col, toM, sp, inv, left: col - toM - sp};
 }
-const mkSign = o => o.t === 'cs' ? 1 : o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'inv' ? 0 : -1;
+const mkSign = o => o.t === 'cs' ? 1 : o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'inv' || o.t === 'rt' ? 0 : -1;
 function mkGroups() {
   const al = mkAlias(), g = new Map(), old = Date.now() - 3 * 86400000;
   mkLive().forEach(o => {
@@ -4690,7 +4694,7 @@ function mkGroups() {
     else if (o.t === 'hand') { k = 'x:hand'; name = 'كاش سلّمه لك'; }
     else if (o.t === 'cs') { k = 'x:cs'; name = 'بيع كاش من المصنع'; }
     else { pid = mkPid(o, al); k = pid || (o.t === 'spay' ? 's:' + norm(o.sname) : 'n:' + o.cid); name = pid ? P.get(pid).name : o.t === 'spay' ? o.sname : o.cname; }
-    if (!g.has(k)) g.set(k, {k, kind: o.t === 'inv' ? 'pay' : o.t, pid, cid: o.cid, name, nw: !pid && (o.t === 'pay' || o.t === 'inv' || o.t === 'spay'), ops: []});
+    if (!g.has(k)) g.set(k, {k, kind: o.t === 'inv' || o.t === 'rt' ? 'pay' : o.t, pid, cid: o.cid, name, nw: !pid && (o.t === 'pay' || o.t === 'inv' || o.t === 'rt' || o.t === 'spay'), ops: []});
     g.get(k).ops.push(o);
   });
   const arr = [...g.values()];
@@ -4723,6 +4727,7 @@ function mkInbox() {
   $$('#mkBody [data-ok]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkArrive(mkDb().ops[el.dataset.ok]); });
   $$('#mkBody [data-ig]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkIgnore(mkDb().ops[el.dataset.ig]); });
   $$('#mkBody [data-inv]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkInvQuick(mkDb().ops[el.dataset.inv]); });
+  $$('#mkBody [data-rt]').forEach(el => el.onclick = ev => { ev.stopPropagation(); const o = mkDb().ops[el.dataset.rt], g = gs.find(x => x.ops.includes(o)); if (o && g) mkMoveFlow(g, [o]); });
   $$('#mkBody [data-nl]').forEach(el => el.onclick = nlModal);
   $$('#mkBody [data-mv]').forEach(el => el.onclick = () => { const g = gs.find(x => x.k === el.dataset.mv); if (g) mkMoveFlow(g, g.pend); });
   $$('#mkBody [data-bk]').forEach(el => el.onclick = () => { const g = gs.find(x => x.k === el.dataset.bk); if (g) mkReturn(g.pend.length ? g.pend : g.ops.filter(o => mkState(o) === 'back'), g.name); });
@@ -4733,7 +4738,7 @@ function mkArch() {
   const t = todayISO(), d = mkDay || t, ops = mkLive().filter(o => isoOf(o.ts) === d).sort((a, b) => b.ts - a.ts), s = mkSums(ops);
   $('#mkBody').innerHTML = `<div class="card"><div class="dnav"><button type="button" id="maPrev" title="اليوم اللي قبله">›</button><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}${d === t ? ' · النهارده' : ''}</span><button type="button" id="maNext" title="اليوم اللي بعده">‹</button></div>
       <label style="margin-top:8px">📅 اختار يوم</label><input class="inp" type="date" id="maDay" value="${d}"></div>
-    ${ops.length ? `<div class="ic">${ops.map(o => `<div class="il ${mkState(o) === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<span><b>${esc(o.t === 'pay' || o.t === 'inv' ? o.cname : o.t === 'spay' ? o.sname : o.t === 'exp' ? (o.note || o.cat) : o.t === 'cs' ? (o.buyer || 'بيع كاش') : 'تسليم كاش')}</b><br><small class="tm">${dispTime(o.ts)}</small></span></span><span style="text-align:left"><b class="money">${fmtP(o.amt)}</b><br>${mkStTxt(o)}</span></div>`).join('')}</div>` : '<div class="card empty">مفيش حركات من الشريك في اليوم ده.</div>'}
+    ${ops.length ? `<div class="ic">${ops.map(o => `<div class="il ${mkState(o) === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<span><b>${esc(o.t === 'pay' || o.t === 'inv' || o.t === 'rt' ? o.cname : o.t === 'spay' ? o.sname : o.t === 'exp' ? (o.note || o.cat) : o.t === 'cs' ? (o.buyer || 'بيع كاش') : 'تسليم كاش')}</b><br><small class="tm">${dispTime(o.ts)}</small></span></span><span style="text-align:left"><b class="money">${fmtP(o.amt)}</b><br>${mkStTxt(o)}</span></div>`).join('')}</div>` : '<div class="card empty">مفيش حركات من الشريك في اليوم ده.</div>'}
     <div class="card mkbal"><div class="bl"><span>حصّلت</span><b>${fmtP(s.col)}</b></div><div class="bl"><span>راح لمصطفى (تحويلات + كاش سلّمه)</span><b>${fmtP(s.toM)}</b></div><div class="bl"><span>مصروف (مصروفات + دفعات موردين)</span><b>${fmtP(s.sp)}</b></div><div class="bl k"><span>معاه</span><b>${fmtP(s.left)}</b></div>${s.inv ? `<div class="bl"><span>🧾 فواتير (إجمالي بس)</span><b>${fmtP(s.inv)}</b></div>` : ''}</div>`;
   $('#maPrev').onclick = () => { mkDay = addDays(d, -1); mkArch(); };
   $('#maNext').onclick = () => { if (d < t) { mkDay = addDays(d, 1); mkArch(); } };
@@ -4759,10 +4764,11 @@ function mkCard(g) {
     const right = ((st === 'ign' ? '<span class="tm">⛔ تجاهلتها</span>' : '') || (st === 'done' ? `<span class="vok">✓ اتنقلت${(s && s.dv && s.dv !== o.upd) ? ' <small class="cr">(اتعدلت بعد النقل)</small>' : ''}</span>`
       : st === 'back' ? '<span class="vbk">🔴 راجعة للشريك</span>'
       : o.t === 'inv' ? `<button class="vbtn" data-inv="${esc(o.id)}" type="button">📥 انقلها</button>`
+      : o.t === 'rt' ? `<button class="vbtn" data-rt="${esc(o.id)}" type="button">📥 انقلها</button>`
       : mkNeeds(o) ? (mkArrived(o) ? '<span class="vok">✓ وصل</span>' : `<button class="vbtn" data-ok="${esc(o.id)}" type="button">🔔 وصل؟</button>`)
       : `<span class="tm">${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</span>`)) + igBtn;
     const fixed = st === 'new' && s && s.back && s.bv !== o.upd ? ' <small class="fx">اتصلحت</small>' : '';
-    return `<div class="il ${st === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<b class="money">${fmtP(o.amt)}</b>${o.t === 'exp' && o.note ? `<small class="tm">${esc(o.note)}</small>` : ''}${o.t === 'cs' && o.buyer ? `<small class="tm">${esc(o.buyer)}</small>` : ''}${fixed}</span>${right}</div>
+    return `<div class="il ${st === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<b class="money">${fmtP(o.amt)}</b>${(o.t === 'exp' || o.t === 'rt') && o.note ? `<small class="tm">${esc(o.note)}</small>` : ''}${o.t === 'cs' && o.buyer ? `<small class="tm">${esc(o.buyer)}</small>` : ''}${fixed}</span>${right}</div>
       ${st === 'back' && s ? `<div class="ilnote">ملاحظتك: ${esc(s.back)}</div>` : ''}`;
   };
   const sum = g.kind === 'pay' && pendPays.length > 1 ? `<div class="ilsum">${['cash', 'tr', 'insta', 'voda'].map(m => { const t = pendPays.filter(o => o.m === m).reduce((a, o) => a + o.amt, 0); return t ? `${fmtP(t)} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ')} = <b>${fmtP(tot)}</b></div>` : '';
@@ -4789,7 +4795,7 @@ function mkOpMenu(o) {
     $('#omX').onclick = closeModal; if ($('#omP')) $('#omP').onclick = () => { closeModal(); go('p/' + e.party); };
     return;
   }
-  const mvTxt = o.t === 'inv' ? '📥 انقل الفاتورة' : o.t === 'exp' ? 'سجّلها مصروف' : o.t === 'cs' ? 'سجّلها إيراد' : o.t === 'hand' ? 'استلمت ✓' : pid ? 'انقل الدفعة دي بس' : o.t === 'spay' ? 'اربطها بحساب المورد وانقلها' : 'اربطها بحساب وانقلها';
+  const mvTxt = o.t === 'inv' ? '📥 انقل الفاتورة' : o.t === 'rt' ? (pid ? '📥 انقلها خصم على الحساب' : 'اربطها بحساب وانقلها خصم') : o.t === 'exp' ? 'سجّلها مصروف' : o.t === 'cs' ? 'سجّلها إيراد' : o.t === 'hand' ? 'استلمت ✓' : pid ? 'انقل الدفعة دي بس' : o.t === 'spay' ? 'اربطها بحساب المورد وانقلها' : 'اربطها بحساب وانقلها';
   modal(`<h3>${esc(mkWhat(o))} — <span class="money">${amt}</span></h3>
     <p class="hint" style="margin:-6px 0 12px">اتسجلت عند الشريك ${dispDate(isoOf(o.ts))} ${dispTime(o.ts)}${st === 'back' ? ` — 🔴 راجعة للشريك: ${esc(mkSt(o.id).back)}` : ''}</p>
     <div class="stack">
@@ -4804,7 +4810,7 @@ function mkOpMenu(o) {
 }
 function mkReturn(ops, name) {
   if (!ops.length) return;
-  modal(`<h3>رجّعها لشريكك</h3><p style="font-size:15.5px">${esc(name)}: ${ops.map(o => fmtP(o.amt) + ' ' + (o.t === 'pay' ? MK_M[o.m] : o.t === 'inv' ? 'فاتورة' : o.t === 'exp' ? o.cat : o.t === 'spay' ? 'دفعة مورد' : 'تسليم')).join(' + ')}</p>
+  modal(`<h3>رجّعها لشريكك</h3><p style="font-size:15.5px">${esc(name)}: ${ops.map(o => fmtP(o.amt) + ' ' + (o.t === 'pay' ? MK_M[o.m] : o.t === 'inv' ? 'فاتورة' : o.t === 'rt' ? 'مرتجع/شغل' : o.t === 'exp' ? o.cat : o.t === 'spay' ? 'دفعة مورد' : 'تسليم')).join(' + ')}</p>
     <div class="fld"><label>اكتبله إيه الغلط (هيظهرله عنده)</label><input class="inp" id="rtN" autocomplete="off" placeholder="مثلاً: المبلغ 4,500 مش 5,000"></div>
     <div class="g2"><button class="btn red" id="rtOk" type="button">رجّعها</button><button class="btn line" id="rtX" type="button">إلغاء</button></div>`);
   $('#rtX').onclick = closeModal;
@@ -4918,14 +4924,15 @@ const mkCashOp = o => o.t !== 'pay' || o.m === 'cash';
 function mkConfirm(ops, to) {
   ensureMktVault();
   const kind = ops[0].t, name = to.pid ? P.get(to.pid).name : to.newName;
-  const title = kind === 'cs' ? 'تأكيد البيع الكاش' : kind === 'exp' ? 'تأكيد المصروف' : kind === 'hand' ? 'تأكيد الاستلام' : 'تأكيد النقل للحسابات';
+  const title = kind === 'rt' ? 'تأكيد المرتجع / الشغل (خصم على الحساب)' : kind === 'cs' ? 'تأكيد البيع الكاش' : kind === 'exp' ? 'تأكيد المصروف' : kind === 'hand' ? 'تأكيد الاستلام' : 'تأكيد النقل للحسابات';
   const who = kind === 'cs' ? '<b>بيع كاش من المصنع</b> (الفلوس مع شريكك)' : kind === 'exp' ? `<b>مصاريف السوق</b>` : kind === 'hand' ? '<b>كاش من شريكك</b> ← بيدخل خزنتك' : `${kind === 'spay' ? 'من' : 'من'} <b>${esc(name)}</b>${to.newName ? ` <span class="nwt">${kind === 'spay' ? 'حساب مورد جديد' : 'حساب جديد في عملاء السوق'}</span>` : ''}`;
   const key = o => o.t === 'pay' ? o.m : o.t;
   modal(`<h3>${title}</h3>
-    <p style="margin-bottom:8px">${ops.length > 1 ? `${ops.length} عمليات` : 'عملية'} ${kind === 'spay' ? 'دفعة لمورد' : kind === 'pay' ? 'دفعة' : ''} ${who}</p>
-    ${ops.map((o, i) => `<div class="mvr" data-i="${i}"><div class="mvh">${mkLTag(o)} <small>${o.t === 'exp' && o.note ? esc(o.note) + ' — ' : ''}${o.t === 'cs' && o.buyer ? esc(o.buyer) + ' — ' : ''}اتسجلت ${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</small></div>
+    <p style="margin-bottom:8px">${ops.length > 1 ? `${ops.length} عمليات` : 'عملية'} ${kind === 'spay' ? 'دفعة لمورد' : kind === 'pay' ? 'دفعة' : kind === 'rt' ? 'مرتجع/شغل' : ''} ${who}</p>
+    ${ops.map((o, i) => `<div class="mvr" data-i="${i}"><div class="mvh">${mkLTag(o)} <small>${(o.t === 'exp' || o.t === 'rt') && o.note ? esc(o.note) + ' — ' : ''}${o.t === 'cs' && o.buyer ? esc(o.buyer) + ' — ' : ''}اتسجلت ${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</small></div>
       <div class="g2"><div class="fld"><label>المبلغ</label><input class="inp num" data-f="amt" value="${fmtP(o.amt)}"></div>
-        ${mkCashOp(o) && o.t !== 'hand' ? `<div class="fld"><label>الفلوس</label><div class="mkcash">💵 مع شريكك</div><input type="hidden" data-f="v" value="${MKV}"></div>`
+        ${o.t === 'rt' ? `<div class="fld"><label>الخزنة</label><div class="mkcash">↩️ من غير خزنة</div><input type="hidden" data-f="v" value=""></div>`
+          : mkCashOp(o) && o.t !== 'hand' ? `<div class="fld"><label>الفلوس</label><div class="mkcash">💵 مع شريكك</div><input type="hidden" data-f="v" value="${MKV}"></div>`
           : o.t === 'hand' ? `<div class="fld"><label>استلمتها في خزنة</label><select class="inp" data-f="t">${vaultOpts(mkHandTo())}</select><input type="hidden" data-f="v" value="${MKV}"></div>`
           : `<div class="fld"><label>← الخزنة</label><select class="inp" data-f="v">${vaultOpts(mkVaultFor(key(o)), 'من غير خزنة (في حساب العميل بس)')}</select></div>`}</div>
       <div class="fld"><label>التاريخ</label><input class="inp" type="date" data-f="d" value="${isoOf(o.ts)}"></div></div>`).join('')}
@@ -4945,7 +4952,7 @@ function mkConfirm(ops, to) {
       if (r.o.t === 'hand' && (!r.to || isMkv(r.to))) return toast('اختار الخزنة اللي استلمت فيها');
     }
     let pid = to.pid || '';
-    if (kind === 'pay' || kind === 'spay') pid = mkEnsureParty(kind === 'spay' ? 'sup' : 'mkt', to);
+    if (kind === 'pay' || kind === 'spay' || kind === 'rt') pid = mkEnsureParty(kind === 'spay' ? 'sup' : 'mkt', to);
     let n = 0;
     const grp = kind === 'pay' && rows.length > 1 ? 'g_' + ops[0].id : '';   // دفعات نفس العميل اللي اتنقلت مع بعض = "دفعة" واحدة في حسابه
     rows.forEach(r => { if (mkMove(r.o, {pid, amt: r.amt, date: r.date, vault: r.vault, to: r.to, grp})) n++; db.cfg.mkv = Object.assign({}, db.cfg.mkv, {[key(r.o)]: r.vault}, r.o.t === 'hand' ? {handTo: r.to} : {}); });

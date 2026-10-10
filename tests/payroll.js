@@ -33,7 +33,8 @@ eq('الكلام عن عدد الأيام', [0, 0.5, 1, 1.5, 2, 2.5, 5, 5.5].map
 eq('settle: عادي', J(E.settle({daysPay: 150000, fridayPay: 25000, bonus: 5000, advances: 30000})), {wages: 180000, oldApplied: 0, net: 150000, carryOut: 0});
 eq('settle: سلفة أكبر من المرتب = صافي 0 ومرحّل', J(E.settle({daysPay: 40000, advances: 70000})), {wages: 40000, oldApplied: 0, net: 0, carryOut: 30000});
 eq('settle: المرحّل بيتخصم الأسبوع اللي بعده', J(E.settle({daysPay: 120000, carryIn: 30000})), {wages: 120000, oldApplied: 0, net: 90000, carryOut: 0});
-eq('settle: الخصم القديم مبيعديش الباقي', J(E.settle({daysPay: 50000, advances: 10000, oldDeduct: 60000})), {wages: 50000, oldApplied: 40000, net: 0, carryOut: 0});
+eq('settle: القسط بيتخصم كامل حتى لو المرتب مش مكفي، والفرق عليه للأسبوع الجاي', J(E.settle({daysPay: 50000, advances: 10000, oldDeduct: 60000})), {wages: 50000, oldApplied: 60000, net: 0, carryOut: 20000});
+eq('settle: أول الأسبوع من غير أيام: القسط ظاهر من الأول وعليه', J(E.settle({oldDeduct: 25000})), {wages: 0, oldApplied: 25000, net: 0, carryOut: 25000});
 
 const W1 = {id: 'w1', k: 'wk', name: 'عامل تجربة أ', rate: 25000, fri: 30000, st: 'on', from: '2026-10-01', ord: 1};
 const W2 = {id: 'w2', k: 'wk', name: 'عامل تجربة ب', rate: 20000, fri: 20000, st: 'on', from: '2026-10-01', ord: 2};
@@ -112,6 +113,9 @@ const instR = o0.concat([ruleOf('fixed', 40000), {id: 'a6', k: 'adv', w: 'w1', d
 eq('سلفة على أقساط: مبتنقّصش المرتب كله، بتتضاف للقديمة وتتخصم بالقسط', (r => [r.advances, r.instAdv, r.oldBefore, r.oldApplied, r.net, r.oldLeft])(rowOf(instR, '2026-10-15')), [0, 100000, 200000, 40000, 110000, 160000]);
 eq('والقسط بيكمل الأسابيع اللي بعده', [od(instR, '2026-10-22'), od(instR, '2026-10-29')], [[40000, 120000, 110000], [40000, 80000, 110000]]);
 eq('سلفة أقساط من غير قاعدة خصم: مفيش خصم والمبلغ فاضل عليه', (r => [r.oldApplied, r.oldLeft, r.net])(rowOf(o0.slice(0, o0.length - 1).concat([{id: 'a7', k: 'adv', w: 'w1', date: '2026-10-13', amt: 100000, inst: true}]), '2026-10-15')), [0, 100000, 150000]);
+
+eq('القسط بيبان من أول الأسبوع حتى قبل ما يتسجل أيام', (r => [r.oldApplied, r.net, r.carryOut])(rowOf([W1, {id: 'o1', k: 'old', w: 'w1', amt: 100000, eff: '2026-10-15'}, ruleOf('fixed', 25000)], '2026-10-15')), [25000, 0, 25000]);
+eq('تلقائي مبيحوّلش الدين كله لـ"عليه" لو مفيش مرتب', (r => [r.oldApplied, r.carryOut])(rowOf([W1, {id: 'o1', k: 'old', w: 'w1', amt: 100000, eff: '2026-10-15'}, ruleOf('auto')], '2026-10-15')), [0, 0]);
 
 /* ====================== 2 و 3) الشيت والتطبيق ====================== */
 function serve() {

@@ -317,13 +317,13 @@ function unitsText(n) {
   if (n === 2.5) return 'يومين ونص';
   return n % 1 ? `${Math.floor(n)} أيام ونص` : `${n} أيام`;
 }
-/* المرتب والصافي لعامل في أسبوع (بالقرش) */
+/* المرتب والصافي لعامل في أسبوع (بالقرش) — حسبة واحدة بسيطة (بطلب صاحب المشروع):
+   الصافي = المرتب − سلف الأسبوع − قسط السلف القديمة − اللي عليه من الأسبوع اللي فات (− فرق الجمعة).
+   القسط بيتخصم من أول الأسبوع دايماً (مش مستني المرتب يكفي). ولو الناتج بالسالب: الصافي 0 والفرق "عليه" بيترحّل للخميس الجاي. */
 function settle({daysPay = 0, fridayPay = 0, bonus = 0, advances = 0, oldDeduct = 0, prevFridayDelta = 0, carryIn = 0}) {
-  const wages = daysPay + fridayPay + bonus;
-  const after = wages - advances - prevFridayDelta - carryIn;
-  if (after <= 0) return {wages, oldApplied: 0, net: 0, carryOut: -after};
-  const oldApplied = Math.min(Math.max(oldDeduct, 0), after);
-  return {wages, oldApplied, net: after - oldApplied, carryOut: 0};
+  const wages = daysPay + fridayPay + bonus, oldApplied = Math.max(oldDeduct, 0);
+  const after = wages - advances - prevFridayDelta - carryIn - oldApplied;
+  return after >= 0 ? {wages, oldApplied, net: after, carryOut: 0} : {wages, oldApplied, net: 0, carryOut: -after};
 }
 /* فهرس الحركات (الحية بس). أنواع السجلات (k):
    sup مشرف، wk عامل، day يوم (d_<عامل>_<تاريخ>)، adv سلفة، bon حافز، wst حالة أسبوع (ws_<خميس>: الجمعة شغل/إجازة)،
@@ -401,6 +401,8 @@ function calcWeek(I, thu, fresh) {
     if (wd) req = wd.mode === 'skip' ? 0 : wd.amt || 0;
     else if (keep) { auto = !!sr.oldAuto; req = auto ? oldBefore : sr.oldReq; }
     else if (ru && ru.eff <= thu) { auto = ru.mode === 'auto'; req = auto ? oldBefore : ru.mode === 'fixed' ? ru.amt || 0 : 0; }
+    /* "تلقائي" = كل الباقي بس على قد اللي فاضل من المرتب (علشان الدين كله ميتحولش "عليه"). الثابت ورقم الأسبوع بيتخصموا كاملين */
+    if (auto) req = Math.min(req, Math.max(daysPay + fridayPay + bonus - advances - prevFridayDelta - carryIn, 0));
     const oldDeduct = Math.min(Math.max(req, 0), oldBefore);
     const s = settle({daysPay, fridayPay, bonus, advances, oldDeduct, prevFridayDelta, carryIn});
     if (oldTotal || prevPaid[id]) oldPaid[id] = (prevPaid[id] || 0) + s.oldApplied;
@@ -1148,6 +1150,21 @@ async function payOut(wid, thu) {
   }
   commit(); closeModal(); render();
 }
+/* الحسبة كلها في مكان واحد وبالترتيب: المرتب − سلف الأسبوع − قسط السلف القديمة − اللي عليه = الصافي */
+function calcBlock(r, ds, wid, closed) {
+  const debt = r.oldBefore || 0, ru = idx().rule.get(wid), noRule = debt && (!ru || ru.mode === 'none') && !r.oldApplied;
+  const ln = (l, v, cls, extra) => `<div class="kv"${extra || ''}><span>${l}</span><b class="money ${cls || ''}">${v}</b></div>`;
+  const parts = [unitsText(r.units)].concat(r.fridayPay ? ['جمعة'] : [], r.bonus ? ['حافز ' + fmt(r.bonus)] : []).join(' + ');
+  return `<div class="list" style="padding:2px 12px;margin-top:8px">
+    ${ln(`المرتب <small class="sm" style="display:inline">(${parts})</small>`, fmt(r.wages))}
+    ${r.advances ? ln('− سلف الأسبوع', fmt(r.advances), 'neg') : ''}
+    ${debt ? ln(`− قسط السلف القديمة${r.oldSkip ? ' (متخصمش الأسبوع ده)' : ''}<small class="sm">${noRule ? '<span class="bk">مفيش قسط متحدد · دوس حدده</span>' : 'عليه ' + fmt(debt) + ' ← يفضل ' + fmt(r.oldLeft) + ' · دوس تغيّره'}</small>`, r.oldApplied ? fmt(r.oldApplied) : '—', 'neg', ' id="wsOld" style="cursor:pointer"') : ''}
+    ${r.carryIn ? ln('− عليه من الأسبوع اللي فات', fmt(r.carryIn), 'neg') : ''}
+    ${r.prevFridayDelta ? ln('− فرق الجمعة (مجاش)', fmt(r.prevFridayDelta), 'neg') : ''}
+    <div class="kv tot"><span>= الصافي</span><b class="money">${fmt(r.net)}</b></div>
+    ${r.carryOut ? `<div class="kv"><span class="bk">${closed ? 'الخصم كان أكبر من المرتب: عليه للخميس الجاي' : 'لحد دلوقتي الخصم أكبر من المرتب بـ'}</span><b class="money bk">${fmt(r.carryOut)}</b></div>` : ''}
+  </div>`;
+}
 /* تفاصيل عامل في أسبوع (نافذة من تحت): كل يوم اشتغل ايه ومين سجّله، السلف (ومين سلّمها)، الحافز، والحساب. الأيام بتتغير من هنا على طول */
 function workerSheet(wid, thu) {
   const I = idx(), c = calcWeek(I, thu), r = c.rows[wid], w = I.W.get(wid);
@@ -1164,27 +1181,14 @@ function workerSheet(wid, thu) {
   const adv = a => `<div class="ar" data-adv="${esc(a.id)}"><div class="nm"><b>${dayName(a.date)} ${dm(a.date)}${a.inst ? ' · على أقساط' : ''}</b><small>من ${esc(a.by)} · ${whenTxt(a.at)}${a.note ? ' · ' + esc(a.note) : ''}</small></div><b class="money neg">${fmt(a.amt)}</b></div>`;
   const bon = b => `<div class="ar" data-bon="${esc(b.id)}"><div class="nm"><b>حافز${b.note ? ' · ' + esc(b.note) : ''}</b><small>من ${esc(b.by)} · ${whenTxt(b.at)}</small></div><b class="money ok">${fmt(b.amt)}</b></div>`;
   modal(`<h3>${esc(r.name)}<small>أسبوع الخميس ${dm(thu)}${c.closed ? ' · 🔒 مقفول' : ''}</small></h3>
-    <div class="sn"><span>الصافي<br>${r.wages ? 'المرتب ' + fmt(r.wages) : ''}${ded(r) ? ' − خصم ' + fmt(ded(r)) : ''}</span><b class="money">${fmt(r.net)}</b></div>
-    ${r.carryOut ? `<div class="note" style="margin:6px 0 0">السلف أكتر من المرتب: عليه ${fmt(r.carryOut)} بتتخصم الخميس الجاي.</div>` : ''}
+    ${calcBlock(r, ds, wid, c.closed)}
     <div class="hd2"><span>الشغل</span><b>${unitsText(r.units)}${r.fridayPay ? ' + جمعة' : ''}</b></div>
     <div class="days">${ds.slice(0, 6).map(dayRow).join('')}</div>
     ${c.closed ? '<p class="hint" style="margin:6px 0 0">🔒 الأسبوع مقفول. أي تغيير هنا بيعيد حساب الأرقام وبيتسجل في السجل.</p>' : ''}
     <div class="hd2"><span>السلف${advs.length ? ' · ' + advs.length : ''}</span><button class="mini-b" id="wsAdv" type="button">＋ سلفة</button></div>
     <div class="days">${advs.length ? advs.map(adv).join('') : '<div class="none">مفيش سلف جديدة الأسبوع ده</div>'}
-      ${r.oldBefore ? `<div class="ar" id="wsOld"><div class="nm"><b>خصم من السلف القديمة${r.oldSkip ? ' (متخصمش الأسبوع ده)' : ''}</b><small>الباقي عليه ${fmt(r.oldLeft)} · دوس تغيّر الخصم الأسبوع ده</small></div><b class="money ${r.oldApplied ? 'neg' : ''}">${r.oldApplied ? fmt(r.oldApplied) : '—'}</b></div>` : ''}
-      ${r.advances + (r.oldApplied || 0) ? `<div class="ar" style="background:var(--row)"><div class="nm"><b>إجمالي السلف المخصومة الأسبوع ده</b></div><b class="money neg">${fmt(r.advances + (r.oldApplied || 0))}</b></div>` : ''}</div>
+</div>
     ${bons.length ? `<div class="hd2"><span>الحافز</span><button class="mini-b" id="wsBon" type="button">＋ حافز</button></div><div class="days">${bons.map(bon).join('')}</div>` : ''}
-    <div class="hd2"><span>الحساب</span></div>
-    <div class="list" style="padding:2px 12px">
-      <div class="kv"><span>أيام الشغل</span><b class="money">${fmt(r.daysPay)}</b></div>
-      ${r.fridayPay ? `<div class="kv"><span>الجمعة ${dm(ds[6])}</span><b class="money">${fmt(r.fridayPay)}</b></div>` : ''}
-      ${r.bonus ? `<div class="kv"><span>حافز</span><b class="money">${fmt(r.bonus)}</b></div>` : ''}
-      <div class="kv"><span><b>المرتب</b></span><b class="money">${fmt(r.wages)}</b></div>
-      ${r.advances + (r.oldApplied || 0) ? `<div class="kv"><span>السلف (جديدة + قديمة)</span><b class="money neg">- ${fmt(r.advances + (r.oldApplied || 0))}</b></div>` : ''}
-      ${r.carryIn ? `<div class="kv"><span>عليه من الأسبوع اللي فات</span><b class="money neg">- ${fmt(r.carryIn)}</b></div>` : ''}
-      ${r.prevFridayDelta ? `<div class="kv"><span>فرق الجمعة (مجاش)</span><b class="money neg">- ${fmt(r.prevFridayDelta)}</b></div>` : ''}
-      <div class="kv tot"><span>الصافي</span><b class="money">${fmt(r.net)}</b></div>
-    </div>
     ${bons.length ? '' : '<button class="lnk" id="wsBon" type="button">＋ حافز</button>'}
     ${!open && (r.net > 0 || p) ? (p && p.amt !== r.net ? `<div class="note">⚠ العامل ده اتعلّم إنه قبض ${fmt(p.amt)} والصافي دلوقتي ${fmt(r.net)} بعد التعديل.</div>` : '') + (p ? `<div class="info">✓ قبض ${fmt(p.amt)} · ${byTxt(p)}</div><button class="lnk" id="wsPay" type="button">لسه مقبضش؟</button>` : `<button class="big b-ok" id="wsPay" type="button">💵 قبض ${fmt(r.net)}</button>`) : ''}
     <button class="lnk" id="wsStmt" type="button">📋 كشف العامل الكامل (كل حاجة بالتفصيل)</button>
@@ -1198,7 +1202,7 @@ function workerSheet(wid, thu) {
     const keep = $('#modal').scrollTop;
     if (setDay(w, b.dataset.d, +b.dataset.u)) { touched(thu); commit(); render(); workerSheet(wid, thu); $('#modal').scrollTop = keep; }
   });
-  if ($('#wsOld')) $('#wsOld').onclick = () => wdedModal(wid, thu);
+  if ($('#wsOld')) $('#wsOld').onclick = () => { const ru = idx().rule.get(wid); if (!ru || ru.mode === 'none') oldModal(wid); else wdedModal(wid, thu); };
   if ($('#wsAdv')) $('#wsAdv').onclick = () => advModal(null, defDayIn(thu), wid);
   if ($('#wsBon')) $('#wsBon').onclick = () => bonModal(null, thu, wid);
   if ($('#wsPay')) $('#wsPay').onclick = () => payOut(wid, thu);

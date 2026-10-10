@@ -857,6 +857,15 @@ html[data-theme=dark]{--pane:#1f1e19;--pane2:#1a1914;--mut:#B9B3A1;--rowl:#2d2b2
 }
 /* القايمة الجانبية: مجموعات واضحة + زرار حركة السوق + جرس الإشعارات (اللاب بس) */
 nav .ngrp,nav button.lap,.top .bell,#mkPop{display:none}
+/* الموبايل (بطلب صاحب المشروع): "حركة السوق" تحت مكان "الشركاء"، والشركاء بقت زرار جوه الخزنة (#cPart) */
+nav .nb:empty{display:none}
+@media (max-width:999.98px){
+  nav button[data-go=mkt]{display:flex;order:1}
+  nav button[data-go=part]{display:none}
+  nav button[data-go=rep],nav button[data-go=set]{order:2}
+}
+.ctools .btn.mob{display:none}
+@media (max-width:999.98px){.ctools .btn.mob{display:inline-flex}}
 @media (min-width:1000px){
   nav{width:176px;padding:76px 12px 112px;gap:2px}
   nav .ngrp{display:block;font-size:11px;font-weight:800;color:#77715f;letter-spacing:.02em;padding:14px 10px 5px}
@@ -953,6 +962,7 @@ html[data-theme=dark]{--sb-bg:#231e13;--sb-bg2:#1b170f;--sb-tx:#EDE4CC;--sb-mut:
 .fwbar .fwt3{margin-top:6px;font-size:13px;color:var(--red)}.fwbar .fwt3 a{text-decoration:underline;cursor:pointer;margin-inline-start:6px}
 .fwbar .btn{margin-top:8px;min-height:42px;font-size:15px}
 .ldg td.l small.fwt{display:block;font-size:11.5px;font-weight:800}
+.nlb{cursor:pointer}.nlb a{text-decoration:underline;margin-inline-start:6px}
 .ldg td.l small.fwt.ok{color:var(--green)}.ldg td.l small.fwt.no{color:#B26A00}.ldg td.l small.fwt.chg{color:var(--red)}.ldg td.l small.fwt.from{color:var(--blue)}
 .fwbox{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;border-radius:10px;padding:8px 12px;margin:0 0 10px;font-weight:800;font-size:14.5px;background:#FFF4E0;color:#8A4B00}
 .fwbox.ok{background:var(--green-l);color:var(--green)}.fwbox.chg{background:var(--red-l);color:var(--red)}.fwbox.from{background:#EAF0F3;color:var(--blue)}
@@ -983,7 +993,8 @@ html[data-theme=dark] .fwbox:not(.ok):not(.chg){background:#33281a;color:#F0B46A
   <div id="hAlerts"><div class="sync" id="syncBox"></div>
   <div id="chk"></div>
   <div id="bkRem"></div>
-  <div id="mkRem"></div></div>
+  <div id="mkRem"></div>
+  <div id="nlRem"></div></div>
   <div class="tots" id="hTots"></div>
   <div class="srow">
     <input class="inp" id="hSearch" type="search" placeholder="🔍 دوّر بالاسم أو التليفون" autocomplete="off">
@@ -1470,6 +1481,7 @@ function renderHome() {
   const lb = db.cfg.lastBackup || 0, every = db.cfg.sheetOk ? 30 : 7, days = Math.floor((Date.now() - lb) / 86400000);
   $('#bkRem').innerHTML = db.parties.length && days >= every ? `<div class="sync">💾 ${lb ? `آخر نسخة احتياطية من ${days} يوم.` : 'لسه منزّلتش نسخة احتياطية.'} <a id="bkGo">نزّل واحدة دلوقتي</a></div>` : '';
   if ($('#bkGo')) $('#bkGo').onclick = () => $('#bBackup').click();
+  $('#nlRem').innerHTML = nlAlert(); if ($('#nlRem [data-nl]')) $('#nlRem [data-nl]').onclick = nlModal;
   $('#chk').innerHTML = chkAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '');
   const bal = allBalances();
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
@@ -1719,6 +1731,7 @@ function renderParty(id) {
       <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}" data-ck="pb:${esc(id)}" data-cnt="${Math.abs(b)}">${fmtP(Math.abs(b))} <small style="font-size:14px;color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
     ${isFwdSrc(p) ? (fwAutoLink(p), fwBar(p)) : ''}
+    ${nlAlert(id)}
     <div class="acts">
       <button class="btn" id="ppDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button>
       <button class="btn green" id="ppPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button>
@@ -1742,6 +1755,7 @@ function renderParty(id) {
   if ($('#ppEnd')) $('#ppEnd').onclick = () => jumpTo(true);
   if ($('#ldgOld')) $('#ldgOld').onclick = () => { ldgAll.add(id); renderParty(id); };
   if (isFwdSrc(p)) fwBind(p);
+  $$('#p-party [data-nl]').forEach(el => el.onclick = nlModal);
   runCounters($('#p-party'));
 }
 function entryCard(e, runB) {
@@ -1803,13 +1817,13 @@ async function cancelEntry(e) {
 function itemBook() {
   const m = new Map();
   try { const q = JSON.parse(localStorage.getItem('fo_db')); (q && q.items || []).forEach(x => { if (x && x.name) m.set(norm(x.name), {name: x.name, unit: x.unit || '', price: Math.round((+x.price || 0) * 100)}); }); } catch (e) {}
-  db.entries.filter(e => isDoc(e) && !e.del).sort(entCmp).forEach(e => (e.lines || []).forEach(l => m.set(norm(l.name), {name: l.name, unit: l.unit, price: l.price})));
+  db.entries.filter(e => isDoc(e) && !e.del && !e.mkNL).sort(entCmp).forEach(e => (e.lines || []).forEach(l => m.set(norm(l.name), {name: l.name, unit: l.unit, price: l.price})));
   return m;
 }
 /* آخر سعر الصنف ده اتباع/اتشرى بيه لنفس الحساب */
 function lastPrice(pid, kind, name) {
   const k = norm(name); let r = null;
-  db.entries.filter(e => e.party === pid && e.kind === kind && !e.del).sort(entCmp).forEach(e => (e.lines || []).forEach(l => { if (norm(l.name) === k) r = l; }));
+  db.entries.filter(e => e.party === pid && e.kind === kind && !e.del && !e.mkNL).sort(entCmp).forEach(e => (e.lines || []).forEach(l => { if (norm(l.name) === k) r = l; }));
   return r;
 }
 
@@ -1819,11 +1833,13 @@ function docModal(p, kind, e, opts = {}) {
   const isNew = !e, sale = kind === 'inv', ret = kind === 'rinv' || kind === 'rpur', base = kind === 'rinv' ? 'inv' : kind === 'rpur' ? 'pur' : kind;
   const ttl = {inv: '🧾 فاتورة بيع', pur: '🧾 فاتورة شراء', rinv: '↩ مرتجع بيع', rpur: '↩ مرتجع شراء'}[kind];
   if (e && isLocked(e.date)) return lockedView(p, e);
-  const lines = e ? e.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty), price: fmtP(l.price)})) : [{name: '', unit: 'كيلو', qty: '', price: ''}];
+  /* nl = فاتورة من السوق اتنقلت بالإجمالي وبنودها لسه: بتفتح فاضية، والإجمالي لازم يطابق، وأول حفظ بيشيل التنبيه */
+  const nl = !!(e && e.mkNL), mkT = opts.mk ? opts.mk.amt : nl ? docTotal(e) : null, fill = isNew || nl;
+  const lines = e && !nl ? e.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty), price: fmtP(l.price)})) : [{name: '', unit: 'كيلو', qty: '', price: ''}];
   const book = itemBook();
-  const lastDoc = isNew ? db.entries.filter(x => x.party === p.id && x.kind === kind && !x.del && x.lines && x.lines.length).sort(entCmp).pop() : null;
-  modal(`<h3>${isNew ? ttl : 'تعديل ' + esc(docTitle(e))} — ${esc(p.name)}</h3>
-    ${opts.mk ? `<div class="sync" style="margin:0 0 10px;display:block">📥 فاتورة من شريكك في السوق — إجمالي: <b class="money">${fmtP(opts.mk.amt)}</b><br><small>اكتب البنود (كمية وسعر) والإجمالي لازم يطابق ده.</small><div id="dcMk" style="margin-top:4px;font-weight:800"></div></div>` : ''}
+  const lastDoc = fill ? db.entries.filter(x => x.party === p.id && x.kind === kind && !x.del && !x.mkNL && x.lines && x.lines.length).sort(entCmp).pop() : null;
+  modal(`<h3>${isNew ? ttl : nl ? '📝 اكتب بنود الفاتورة' : 'تعديل ' + esc(docTitle(e))} — ${esc(p.name)}</h3>
+    ${mkT !== null ? `<div class="sync" style="margin:0 0 10px;display:block">📥 فاتورة من شريكك في السوق${nl ? ' (اتنقلت بالإجمالي)' : ''} — إجمالي: <b class="money">${fmtP(mkT)}</b><br><small>اكتب البنود (كمية وسعر) والإجمالي لازم يطابق ده.</small><div id="dcMk" style="margin-top:4px;font-weight:800"></div></div>` : ''}
     ${e && kind === 'inv' && isFwdSrc(p) ? `<div class="fwbox ${fwState(e)}"><span>${FW_TAG[fwState(e)]}${fwState(e) !== 'no' && fwdMain(p) ? ` <small>(في حساب ${esc(fwdMain(p).name)})</small>` : ''}</span>${fwState(e) !== 'ok' && fwdMain(p) ? `<button class="btn gold sm" id="fwOne" type="button">📤 ${fwState(e) === 'chg' ? 'انقل التعديل' : 'انقلها للحساب الأساسي'}</button>` : ''}${fwState(e) === 'no' ? '<button class="btn line sm" id="fwMk" type="button">✓ دي متنقلة بالفعل</button>' : ''}${e.fwMan && !fwCopyOf(e) ? '<button class="btn line sm" id="fwUn" type="button">↩ رجّعها متنقلتش</button>' : ''}</div>` : ''}
     ${e && e.fwFrom ? `<div class="fwbox from"><span>↩ الفاتورة دي منقولة من حساب ${esc((P.get((E.get(e.fwFrom) || {}).party) || {}).name || 'فرعي')}. التعديل يكون هناك وبعدين "انقل التعديل".</span></div>` : ''}
     ${ret ? `<p class="hint" style="margin:-6px 0 10px">البضاعة اللي ${kind === 'rinv' ? 'رجعت من العميل' : 'رجعتها للمورد'}. قيمتها ${kind === 'rinv' ? 'بتنزل من اللي عليه' : 'بتنزل من اللي ليه'}.</p>` : ''}
@@ -1832,8 +1848,8 @@ function docModal(p, kind, e, opts = {}) {
     <div id="dcLines"></div>
     <div class="mtools"><button class="btn line sm" id="dcAdd" type="button">+ صنف كمان</button>
       ${lastDoc ? `<button class="btn line sm" id="dcLast" type="button">↻ زي آخر ${ret ? 'مرتجع' : 'فاتورة'} (${dispDate(lastDoc.date)})</button>` : ''}
-      ${isNew && kind === 'inv' ? '<button class="btn line sm" id="dcQuote" type="button">📋 من عرض سعر</button>' : ''}</div>
-    ${isNew && kind === 'inv' ? '<div id="dcQ" style="display:none"></div>' : ''}
+      ${fill && kind === 'inv' ? '<button class="btn line sm" id="dcQuote" type="button">📋 من عرض سعر</button>' : ''}</div>
+    ${fill && kind === 'inv' ? '<div id="dcQ" style="display:none"></div>' : ''}
     <details class="mmore" ${(e && (e.disc || e.note)) ? 'open' : ''}><summary>+ خصم أو ملاحظة</summary>
       <div class="g2"><div class="fld"><label>خصم على الفاتورة</label><input class="inp num" id="dcDisc" placeholder="0" value="${e && e.disc ? fmtP(e.disc) : ''}"></div>
         <div class="fld"><label>ملاحظة</label><input class="inp" id="dcNote" value="${esc(e ? e.note || '' : '')}"></div></div></details>
@@ -1844,7 +1860,7 @@ function docModal(p, kind, e, opts = {}) {
     <div class="mfoot">
       <div class="dtot"><span>${ret ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}</span><b id="dcTot">0</b></div>
       ${!isNew ? `<div class="msec">${kind === 'inv' ? '<button class="btn line sm" id="dcDlv" type="button">🚚 إذن تسليم</button>' : ''}<button class="btn red sm" id="dcDel" type="button">${ret ? 'إلغاء المرتجع' : 'إلغاء الفاتورة'}</button></div>` : ''}
-      <div class="mrow"><button class="btn gold" id="dcOk" type="button">${isNew ? 'حفظ الفاتورة' : 'حفظ التعديل'}</button><button class="btn line" id="dcX" type="button">رجوع</button></div></div>`, true);
+      <div class="mrow"><button class="btn gold" id="dcOk" type="button">${isNew ? 'حفظ الفاتورة' : nl ? 'حفظ البنود' : 'حفظ التعديل'}</button><button class="btn line" id="dcX" type="button">رجوع</button></div></div>`, true);
   if ($('#fwMk')) $('#fwMk').onclick = () => { e.fwMan = true; touch(e); saveDB(); closeModal(); route(); toast('✔ اتعلّمت إنها متنقلة (من غير ما تتنقل تاني)'); };
   if ($('#fwUn')) $('#fwUn').onclick = () => { delete e.fwMan; touch(e); saveDB(); closeModal(); route(); toast('رجعت "متنقلتش"'); };
   if ($('#fwOne')) $('#fwOne').onclick = () => { if (fwMove(p, e)) { saveDB(); closeModal(); route(); toast(`✔ اتنقلت لحساب ${fwdMain(p).name}`); } };
@@ -1857,7 +1873,7 @@ function docModal(p, kind, e, opts = {}) {
     });
     t -= toP($('#dcDisc').value);
     $('#dcTot').textContent = fmtP(t) + ' ' + CUR; $('#dcTot').style.color = t < 0 ? 'var(--red)' : '';
-    if (opts.mk) $('#dcMk').innerHTML = t === opts.mk.amt ? '<span style="color:var(--green)">✓ مطابق لإجمالي شريكك</span>' : `<span style="color:var(--red)">الفرق عن إجمالي شريكك: ${fmtP(t - opts.mk.amt)}</span>`;
+    if (mkT !== null) $('#dcMk').innerHTML = t === mkT ? '<span style="color:var(--green)">✓ مطابق لإجمالي شريكك</span>' : `<span style="color:var(--red)">الفرق عن إجمالي شريكك: ${fmtP(t - mkT)}</span>`;
   };
   const draw = ls => {
     $('#dcLines').innerHTML = ls.map((l, i) => `<div class="li">
@@ -1927,11 +1943,11 @@ function docModal(p, kind, e, opts = {}) {
     if (docTotal(doc) <= 0) return toast('الخصم أكبر من الإجمالي');
     if (isLocked(date)) return lockToast();
     /* تنبيهات قبل الحفظ: نفس الفاتورة اتسجلت قبل كده، أو العميل هيعدّي حد الرصيد */
-    if (isNew && !warned) {
+    if (fill && !warned) {
       const w = [];
-      if (db.entries.some(x => !x.del && x.party === p.id && x.kind === kind && x.date === date && docTotal(x) === docTotal(doc))) w.push(`فيه ${KIND[kind]} بنفس المبلغ (${fmtP(docTotal(doc))}) لنفس الحساب في نفس اليوم. متأكد إنها مش متكررة؟`);
-      if (opts.mk && docTotal(doc) !== opts.mk.amt) w.push(`إجمالي البنود (${fmtP(docTotal(doc))}) مش مساوي لإجمالي شريكك (${fmtP(opts.mk.amt)}). متأكد؟`);
-      if (kind === 'inv') { const nb = balance(p.id) + docTotal(doc) - toP(($('#dcPaid') || {}).value), lim = limitsOf(p); if (nb >= lim.r) w.push(`رصيد العميل هيبقى ${fmtP(nb)}، وده فوق الحد الأحمر (${fmtP(lim.r)}).`); }
+      if (isNew && db.entries.some(x => !x.del && x.party === p.id && x.kind === kind && x.date === date && docTotal(x) === docTotal(doc))) w.push(`فيه ${KIND[kind]} بنفس المبلغ (${fmtP(docTotal(doc))}) لنفس الحساب في نفس اليوم. متأكد إنها مش متكررة؟`);
+      if (mkT !== null && docTotal(doc) !== mkT) w.push(`إجمالي البنود (${fmtP(docTotal(doc))}) مش مساوي لإجمالي شريكك (${fmtP(mkT)}). متأكد؟`);
+      if (isNew && kind === 'inv') { const nb = balance(p.id) + docTotal(doc) - toP(($('#dcPaid') || {}).value), lim = limitsOf(p); if (nb >= lim.r) w.push(`رصيد العميل هيبقى ${fmtP(nb)}، وده فوق الحد الأحمر (${fmtP(lim.r)}).`); }
       if (w.length) { warned = true; $('#dcWarn').innerHTML = `<div class="sync warn">${w.map(esc).join('<br>')}</div>`; $('#dcOk').textContent = 'متأكد، احفظ برضه'; return; }
     }
     doc.desc = docDesc(doc);
@@ -1944,8 +1960,8 @@ function docModal(p, kind, e, opts = {}) {
     } else {
       const same = JSON.stringify([e.date, e.no, e.lines, e.disc || 0, e.note || '']) === JSON.stringify([date, no, ls, disc, note]);
       if (same) return closeModal();
-      (e.hist = e.hist || []).push(snapshot(e));
-      Object.assign(e, doc); applyAmounts(e); touch(e); toast('اتعدّلت ✔ (والنسخة القديمة محفوظة)');
+      if (!nl) (e.hist = e.hist || []).push(snapshot(e));   // كتابة بنود فاتورة السوق أول مرة مش تعديل
+      Object.assign(e, doc); delete e.mkNL; applyAmounts(e); touch(e); toast(nl ? 'اتكتبت البنود ✔' : 'اتعدّلت ✔ (والنسخة القديمة محفوظة)');
       if (opts.mk) mkSetSt(opts.mk.id, {done: true, dv: opts.mk.upd, back: '', bv: 0, pid: p.id});
     }
     saveDB(); closeModal(); route();
@@ -3000,6 +3016,7 @@ function renderCash() {
       <button class="btn line sm" id="cOpen2" type="button">✎ الفلوس اللي معايا</button>
       ${vs.length > 1 ? '<button class="btn line sm" id="cTr" type="button">⇄ تحويل بين الخزن</button>' : ''}
       <button class="btn line sm" id="cSet" type="button">⚙ الخزن والبنود</button>
+      <button class="btn line sm mob" id="cPart" type="button">👥 الشركاء</button>
     </div>
     <div class="card">
       <div class="seg s4" id="cMode">${[['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${cashMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
@@ -3031,6 +3048,7 @@ function renderCash() {
     if (m.src === 'tx') m.r.pt ? partnerTxModal(m.r) : txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
   });
   $('#cSet').onclick = vaultSettings;
+  $('#cPart').onclick = () => go('part');
   $('#cOpen2').onclick = openingModal;
   runCounters(pg);
 }
@@ -3329,11 +3347,14 @@ function partRange() {
 }
 function renderPartners() {
   const pg = $('#p-part'), s = partners();
+  /* على الموبايل الشركاء مالهاش زرار تحت (مكانها بقى حركة السوق)، فبنفتحها من الخزنة وبنرجعلها */
+  const back = isWide() ? '' : '<div class="sech ppbar" style="margin-top:0"><a id="ptBack">→ الخزنة</a><b style="font-size:17px;color:var(--ink)">👥 الشركاء</b><span></span></div>';
+  const bindBack = () => { if ($('#ptBack')) $('#ptBack').onclick = () => go('cash'); };
   if (!s || !s.on) {
-    pg.innerHTML = `<div class="card"><h2>👥 الشركاء</h2>
+    pg.innerHTML = back + `<div class="card"><h2>👥 الشركاء</h2>
       <p style="font-weight:700;margin:0 0 12px">كل خميس، مرتب كل شريك بيتسجل لوحده في مصروفات الخزنة. وتقدر تسجل مسحوبات زيادة لأي شريك، وتشوف كل واحد خد كام في الشهر والسنة.</p>
       <button class="btn gold big" id="psGo" type="button">${s ? 'شغّل التسجيل تاني' : 'ابدأ'}</button></div>`;
-    $('#psGo').onclick = partnerSettings;
+    $('#psGo').onclick = partnerSettings; bindBack();
     return;
   }
   const [from, to] = partRange(), t = todayISO();
@@ -3343,7 +3364,7 @@ function renderPartners() {
   const rows = [...per.values()].filter(r => !r.p.to || r.sal || r.draw);
   const tot = rows.reduce((a, r) => a + r.sal + r.draw, 0);
   const next = thuOnOrAfter(addDays(t, dowOf(t) === 4 ? 1 : 0));
-  pg.innerHTML = `
+  pg.innerHTML = back + `
     <div class="cbar"><button class="btn redf" id="ptNew" type="button">− مسحوبات شريك</button><button class="btn line" id="ptSet" type="button">⚙ إعدادات الشركاء</button></div>
     <div class="hint" style="margin:0 2px 8px">✔ مرتب ${fmtP(s.amt)} لكل شريك بيتسجل لوحده كل خميس من ${esc(vName(s.vault))}. الخميس الجاي: ${dispDate(next)}</div>
     <div class="card">
@@ -3356,7 +3377,7 @@ function renderPartners() {
       </tbody></table></section>
     <div style="height:12px"></div>
     ${(() => { const items = mv.map(x => ({date: x.date, who: `${PK[ptKind(x)]} — ${partName(x.pt)}`, what: [x.pnote, x.auto ? 'أوتوماتيك' : ''].filter(Boolean).join(' — '), amt: x.amt})); return cashTable('الحركات', items, items, 'exp'); })()}`;
-  $('#ptNew').onclick = () => partnerTxModal(null, 'draw');
+  $('#ptNew').onclick = () => partnerTxModal(null, 'draw'); bindBack();
   $('#ptSet').onclick = partnerSettings;
   $$('#p-part [data-dr]').forEach(b => b.onclick = ev => { ev.stopPropagation(); partnerTxModal(null, 'draw', b.dataset.dr); });
   $$('#ptMode button').forEach(b => b.onclick = () => { partMode = b.dataset.m; renderPartners(); });
@@ -4080,7 +4101,7 @@ function route() {
   if (h === 'set' || h === 'cash' || h === 'part' || (h === 'chk' && CHECKS_ON) || h === 'rep' || h === 'mkt') pg = h; else if (h.startsWith('p/')) pg = 'party';
   autoPartners();
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
-  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (pg === 'party' || (pg === 'mkt' && !isWide()) ? 'home' : pg)));
+  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (pg === 'party' ? 'home' : pg === 'part' && !isWide() ? 'cash' : pg)));   // على الموبايل الشركاء جوه الخزنة
   if (CHECKS_ON) { const nd = chkDue().length; $('#nbChk').textContent = nd || ''; $('#nbChk').style.display = nd ? '' : 'none'; }
   /* على اللاب توب: قايمة الحسابات على جنب والحساب المفتوح جنبها */
   const split = isWide() && (pg === 'home' || pg === 'party');
@@ -4605,7 +4626,7 @@ function mkInbox() {
   const gs = mkGroups(), n = mkPending().length, ops = mkLive();
   const withP = ops.reduce((s, o) => s + mkSign(o) * o.amt, 0), pendNet = ops.filter(o => mkState(o) !== 'done' && mkState(o) !== 'ign').reduce((s, o) => s + mkSign(o) * o.amt, 0);
   const vb = IDX.vault.get('v_mkt') && !IDX.vault.get('v_mkt').del ? vaultBal('v_mkt') : null, diff = vb === null ? 0 : withP - vb;
-  $('#mkBody').innerHTML = `<div class="mkh"><b>عمليات متنقلتش</b><span class="n">${n}</span></div>
+  $('#mkBody').innerHTML = `${nlAlert()}<div class="mkh"><b>عمليات متنقلتش</b><span class="n">${n}</span></div>
     ${gs.length ? gs.map(mkCard).join('') : '<div class="card empty">لسه شريكك مسجلش حاجة.</div>'}
     <div class="card mkbal">
       <div class="bl"><span>💵 مع شريكك حسب تسجيله (بعد المصروف والتسليم)</span><b>${fmtP(withP)}</b></div>
@@ -4616,7 +4637,8 @@ function mkInbox() {
   $$('#mkBody [data-op]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkOpMenu(mkDb().ops[el.dataset.op]); });
   $$('#mkBody [data-ok]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkArrive(mkDb().ops[el.dataset.ok]); });
   $$('#mkBody [data-ig]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkIgnore(mkDb().ops[el.dataset.ig]); });
-  $$('#mkBody [data-inv]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkInvFlow(mkDb().ops[el.dataset.inv]); });
+  $$('#mkBody [data-inv]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkInvQuick(mkDb().ops[el.dataset.inv]); });
+  $$('#mkBody [data-nl]').forEach(el => el.onclick = nlModal);
   $$('#mkBody [data-mv]').forEach(el => el.onclick = () => { const g = gs.find(x => x.k === el.dataset.mv); if (g) mkMoveFlow(g, g.pend); });
   $$('#mkBody [data-bk]').forEach(el => el.onclick = () => { const g = gs.find(x => x.k === el.dataset.bk); if (g) mkReturn(g.pend.length ? g.pend : g.ops.filter(o => mkState(o) === 'back'), g.name); });
 }
@@ -4651,7 +4673,7 @@ function mkCard(g) {
     const igBtn = o.t === 'exp' && (st === 'new' || st === 'back') ? ` <button class="vbtn" data-ig="${esc(o.id)}" type="button">✖ تجاهل</button>` : '';
     const right = ((st === 'ign' ? '<span class="tm">⛔ تجاهلتها</span>' : '') || (st === 'done' ? `<span class="vok">✓ اتنقلت${(s && s.dv && s.dv !== o.upd) ? ' <small class="cr">(اتعدلت بعد النقل)</small>' : ''}</span>`
       : st === 'back' ? '<span class="vbk">🔴 راجعة للشريك</span>'
-      : o.t === 'inv' ? `<button class="vbtn" data-inv="${esc(o.id)}" type="button">📝 اكتب البنود</button>`
+      : o.t === 'inv' ? `<button class="vbtn" data-inv="${esc(o.id)}" type="button">📥 انقلها</button>`
       : mkNeeds(o) ? (mkArrived(o) ? '<span class="vok">✓ وصل</span>' : `<button class="vbtn" data-ok="${esc(o.id)}" type="button">🔔 وصل؟</button>`)
       : `<span class="tm">${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</span>`)) + igBtn;
     const fixed = st === 'new' && s && s.back && s.bv !== o.upd ? ' <small class="fx">اتصلحت</small>' : '';
@@ -4682,7 +4704,7 @@ function mkOpMenu(o) {
     $('#omX').onclick = closeModal; if ($('#omP')) $('#omP').onclick = () => { closeModal(); go('p/' + e.party); };
     return;
   }
-  const mvTxt = o.t === 'inv' ? 'اكتب البنود وسجّل الفاتورة' : o.t === 'exp' ? 'سجّلها مصروف' : o.t === 'cs' ? 'سجّلها إيراد' : o.t === 'hand' ? 'استلمت ✓' : pid ? 'انقل الدفعة دي بس' : o.t === 'spay' ? 'اربطها بحساب المورد وانقلها' : 'اربطها بحساب وانقلها';
+  const mvTxt = o.t === 'inv' ? '📥 انقل الفاتورة' : o.t === 'exp' ? 'سجّلها مصروف' : o.t === 'cs' ? 'سجّلها إيراد' : o.t === 'hand' ? 'استلمت ✓' : pid ? 'انقل الدفعة دي بس' : o.t === 'spay' ? 'اربطها بحساب المورد وانقلها' : 'اربطها بحساب وانقلها';
   modal(`<h3>${esc(mkWhat(o))} — <span class="money">${amt}</span></h3>
     <p class="hint" style="margin:-6px 0 12px">اتسجلت عند الشريك ${dispDate(isoOf(o.ts))} ${dispTime(o.ts)}${st === 'back' ? ` — 🔴 راجعة للشريك: ${esc(mkSt(o.id).back)}` : ''}</p>
     <div class="stack">
@@ -4692,7 +4714,7 @@ function mkOpMenu(o) {
       <button class="btn line" id="omX" type="button">إغلاق</button></div>`);
   $('#omX').onclick = closeModal;
   if ($('#omA')) $('#omA').onclick = () => mkArrive(o);
-  if ($('#omM')) $('#omM').onclick = () => { if (o.t === 'inv') return mkInvFlow(o); if (!mkArrived(o)) return; const g = mkGroups().find(x => x.ops.includes(o)); mkMoveFlow(g || {pid, nw: !pid, name: o.cname || o.sname || '', cid: o.cid, kind: o.t}, [o]); };
+  if ($('#omM')) $('#omM').onclick = () => { if (o.t === 'inv') return mkInvQuick(o); if (!mkArrived(o)) return; const g = mkGroups().find(x => x.ops.includes(o)); mkMoveFlow(g || {pid, nw: !pid, name: o.cname || o.sname || '', cid: o.cid, kind: o.t}, [o]); };
   if ($('#omB')) $('#omB').onclick = () => mkReturn([o], mkWhat(o));
 }
 function mkReturn(ops, name) {
@@ -4755,6 +4777,53 @@ function mkInvFlow(o) {
   const pid = mkPid(o);
   if (pid) return open(pid);
   mkLinkModal({name: o.cname}, 'mkt', to => open(mkEnsureParty('mkt', to)));
+}
+/* فاتورة الشريك تتنقل بالإجمالي بس (بطلب صاحب المشروع): بتتسجل فاتورة عادية بـ id ثابت e_mk_<id> فيها سطر واحد مؤقت
+   (MK_NL بالإجمالي) وعليها mkNL، فالرصيد والكشف مظبوطين من أول لحظة. البنود بتتكتب بعدين من حساب العميل نفسه (نافذة الفاتورة
+   بتفتح فاضية والإجمالي لازم يطابق)، ولحد ما تتكتب فيه تنبيه في الرئيسية وفي الحساب ووارد السوق (nlList). */
+const MK_NL = 'فاتورة السوق (البنود لسه)';
+function mkInvQuick(o) {
+  if (!o || mkState(o) !== 'new') return;
+  const pid = mkPid(o), d = isoOf(o.ts);
+  modal(`<h3>🧾 فاتورة ${esc(o.cname)} — <span class="money">${fmtP(o.amt)}</span></h3>
+    <p style="margin:-4px 0 12px;font-size:15px">بتاريخ ${dispDate(d)}${pid ? '' : ' — <span class="nwt">عميل جديد</span>'}</p>
+    <div class="stack"><button class="btn gold big" id="iqGo" type="button">📥 انقلها بالإجمالي، والبنود بعدين</button>
+      <p class="hint" style="margin:-4px 2px 4px">الفاتورة هتدخل حساب العميل دلوقتي بإجماليها، وهيفضل عليها تنبيه "📝 البنود لسه" لحد ما تكتبها من حسابه.</p>
+      <button class="btn line" id="iqItems" type="button">📝 هكتب البنود دلوقتي</button>
+      <button class="btn line" id="iqX" type="button">رجوع</button></div>`);
+  $('#iqX').onclick = closeModal;
+  $('#iqItems').onclick = () => mkInvFlow(o);
+  const put = to => {
+    const p = P.get(to); let rec = mkRec(o);
+    if (!p) return;
+    if (rec && !rec.del) { closeModal(); return toast('الفاتورة دي اتسجلت قبل كده'); }
+    if (isLocked(d)) return lockToast();
+    const doc = {kind: 'inv', date: d, no: '', lines: [{name: MK_NL, unit: 'وحدة', qty: 1, price: o.amt}], disc: 0, note: '', mkNL: true};
+    doc.desc = docDesc(doc);
+    if (rec) { (rec.hist = rec.hist || []).push(snapshot(rec)); rec.del = false; delete rec.delAt; Object.assign(rec, doc, {party: p.id}); applyAmounts(rec); touch(rec); }   // كانت اتسجلت واتمسحت: بترجع نفس الفاتورة
+    else { rec = addEntry(Object.assign({party: p.id, id: 'e_mk_' + o.id}, doc)); applyAmounts(rec); }
+    mkSetSt(o.id, {done: true, dv: o.upd, back: '', bv: 0, pid: p.id});
+    saveDB(); closeModal(); route(); renderMkHome(); mkSync();
+    toast(`✔ اتنقلت على حساب ${p.name}. البنود اكتبها بعدين`, 3500);
+  };
+  $('#iqGo').onclick = () => { if (pid) return put(pid); mkLinkModal({name: o.cname}, 'mkt', to => put(mkEnsureParty('mkt', to))); };
+}
+/* الفواتير اللي اتنقلت بالإجمالي وبنودها لسه متكتبتش */
+const nlList = pid => db.entries.filter(e => e.mkNL && !e.del && (!pid || e.party === pid) && P.get(e.party) && !P.get(e.party).del).sort(entCmp);
+function nlAlert(pid) {
+  const l = nlList(pid); if (!l.length) return '';
+  return `<div class="sync warn nlb" data-nl="${esc(pid || '')}">📝 ${l.length === 1 ? 'فيه فاتورة' : `فيه <b>${l.length}</b> فواتير`} من السوق بنودها لسه متكتبتش${pid ? '' : ` (${fmtP(l.reduce((s, e) => s + docTotal(e), 0))})`} <a>${l.length === 1 ? 'اكتب البنود' : 'افتحهم'}</a></div>`;
+}
+function nlModal(ev) {
+  const pid = ev && ev.currentTarget ? ev.currentTarget.dataset.nl || '' : '', l = nlList(pid);
+  if (!l.length) return;
+  if (l.length === 1) { const e = l[0]; return docModal(P.get(e.party), 'inv', e); }
+  modal(`<h3>📝 فواتير بنودها لسه متكتبتش</h3>
+    <p class="hint" style="margin:-6px 0 10px">اتنقلت من حركة السوق بالإجمالي بس. دوس على أي واحدة واكتب بنودها.</p>
+    ${l.map(e => `<div class="pt" data-e="${esc(e.id)}"><div class="m"><b>${esc(P.get(e.party).name)}</b><small>${dispDate(e.date)}</small></div><div class="a"><b>${fmtP(docTotal(e))}</b></div></div>`).join('')}
+    <button class="btn line" id="nlX" type="button" style="margin-top:10px">رجوع</button>`, true);
+  $('#nlX').onclick = closeModal;
+  $$('#modal .pt[data-e]').forEach(el => el.onclick = () => { const e = E.get(el.dataset.e); docModal(P.get(e.party), 'inv', e); });
 }
 /* شاشة التأكيد (إجبارية قبل أي نقل): المبلغ والتاريخ والخزنة لكل عملية. الخزنة اختيار حر، والدفعات تقدر تبقى من غير خزنة.
    المصروف والكاش المسلَّم لازم يبقوا على خزنة. الكاش المسلَّم = تحويل من خزنة لخزنة */

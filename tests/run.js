@@ -85,6 +85,8 @@ const bal = (A, name) => A.evaluate(n => { const p = liveParties().find(x => x.n
 const vbal = (A, vid) => A.evaluate(v => vaultBal(v), vid || '');
 const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParties().find(x => x.name === n).id), name); await A.waitForTimeout(150); };
 
+/* MARKET_ONLY=1 node tests/run.js  → بيشغّل أقسام حركة السوق بس (١٦ و١٧ و١٨) والمراجعة، ويتخطى باقي الأقسام. أسرع بكتير للتعديلات الصغيرة. */
+const MO = !!process.env.MARKET_ONLY;
 (async () => {
   const srv = await serve(), base = `http://localhost:${srv.address().port}/`;
   const browser = await pw.chromium.launch(CHROME ? {executablePath: CHROME} : {});
@@ -116,6 +118,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     const raw = await A.evaluate(async () => JSON.stringify(await idbGet('vault')));
     eq('البيانات على الجهاز متشفرة', raw.includes('عميل تجربة'), false);
 
+    if (!MO) {   // ← MARKET_ONLY بيتخطى ٣ لحد ٩
     console.log('\n٣) فاتورة ودفعة ومرتجع وخصم');
     await A.click('nav button[data-go=cash]'); await A.click('#cNew'); await A.click('#cOpen2'); await A.fill('#modal [data-v]', '1000'); await A.click('#opOk'); await A.waitForTimeout(200);
     eq('رصيد بداية الخزنة', await vbal(A, 'v_main'), 100000);
@@ -191,6 +194,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     eq('مينفعش تسجل في فترة مقفولة', (await A.textContent('#toast')).includes('مقفولة'), true); await A.click('#pyX');
     await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.click('#sUnlock'); await A.fill('#apP', PASS); await A.click('#apOk'); await A.waitForTimeout(600);
 
+    }
     console.log('\n١٠) المزامنة مع الشيت وجهاز تاني');
     await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.waitForTimeout(300);
     await A.click('#shHelp'); await A.click('#hpCopy'); const accCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.acc.load(accCode); await A.click('#hpX');
@@ -203,6 +207,8 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     const D2 = await newDevice(browser, base, sheets), B = await D2.page('accounts.html');
     await unlock(B, true);
     await B.click('nav button[data-go=set]'); await B.evaluate(() => setOpenAll()); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.waitForTimeout(4000);
+    if (MO) await A.evaluate(() => { const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name: 'عميل ترتيب تجربة', phone: '', note: '', noTot: false, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p); saveDB(); });
+    if (!MO) {   // ← MARKET_ONLY بيتخطى باقي ١٠ لحد ١٤
     const snap = X => X.evaluate(() => [liveParties().map(p => balance(p.id)).sort(), vaultBal(''), selfCheck().length]);
     eq('الجهاز التاني نزل نفس الأرصدة', await snap(B), await snap(A));
     await bg(B, 'syncNow()'); await bg(A, 'syncNow()'); await A.waitForTimeout(1500);
@@ -349,6 +355,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     await A.click('#txX');
 
 
+    }   // نهاية الأقسام اللي بتتخطى في MARKET_ONLY
     console.log('\n١٦) حركة السوق: تطبيق الشريك ووارد السوق');
     const C1 = 'عميل تجربة واحد', bal0 = await bal(A, C1), pid1 = await A.evaluate(n => liveParties().find(x => x.name === n).id, C1);
     await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
@@ -599,7 +606,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
 
     console.log('\n١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
-    eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2.errs, DM ? DM.errs : []), []);
+    eq('مفيش أخطاء في الصفحات', D1.errs.concat(typeof D2 !== 'undefined' ? D2.errs : [], DM ? DM.errs : []), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();
   console.log(`\n${fails ? '✖' : '✔'} ${oks} نجح، ${fails} فشل\n`);

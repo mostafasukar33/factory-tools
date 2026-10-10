@@ -1027,7 +1027,8 @@ function drawWeek() {
       ${ids.map(id => { const r = c.rows[id], p = I.pd.get(thu + '|' + id); return `<tr data-w="${esc(id)}"><td><b>${esc(r.name)}</b>${dots(r)}<small>${subTxt(r)}</small></td><td class="${ded(r) ? 'bk' : ''}">${nz(ded(r))}</td><td class="net ${r.net ? '' : 'z'}">${r.net ? fmt(r.net) : (r.carryOut ? '<small class="bk">عليه ' + fmt(r.carryOut) + '</small>' : '—')}</td>${c.closed ? `<td>${r.net > 0 || p ? (p ? `<span class="paid">✓ قبض<br>${esc(p.by)}${p.amt !== r.net ? `<br><span class="bk">⚠ كان ${fmt(p.amt)}</span>` : ''}</span>` : `<button class="pay" type="button" data-pay="${esc(id)}">قبض</button>`) : ''}</td>` : ''}</tr>`; }).join('')}</tbody>
       <tfoot><tr><td>الإجمالي</td><td class="${sumD ? 'bk' : ''}">${nz(sumD)}</td><td class="net">${fmt(c.total)}</td>${c.closed ? '<td></td>' : ''}</tr></tfoot></table>`
       : '<div class="list"><div class="empty">مفيش عمال في الأسبوع ده</div></div>'}
-    ${c.closed ? '' : `<button class="big b-dark" id="lockW" type="button">🔒 قفّل الأسبوع</button><div id="lockErr"></div><p class="hint">بعد القفل الأرقام بتتثبت ويظهر زرار "قبض" لكل عامل. ولو محدش قفله، بيتقفل لوحده بعد الجمعة.</p>`}`;
+    ${c.closed ? '' : `<button class="big b-dark" id="lockW" type="button">🔒 قفّل الأسبوع</button><div id="lockErr"></div><p class="hint">بعد القفل الأرقام بتتثبت ويظهر زرار "قبض" لكل عامل. ولو محدش قفله، بيتقفل لوحده بعد الجمعة.</p>
+    <button class="big b-redo" id="wipeW" type="button">🗑 امسح ${thu === nowThu ? 'الأسبوع الحالي' : 'الأسبوع ده'}</button>`}`;
   $('#wPrev').onclick = () => nav('w/' + addDays(thu, -7), true);
   $('#wNext').onclick = () => nav(addDays(thu, 7) >= nowThu ? 'w' : 'w/' + addDays(thu, 7), true);
   if ($('#owe')) $('#owe').onclick = () => nav('w/' + owe.sort().pop(), true);
@@ -1042,6 +1043,7 @@ function drawWeek() {
   $$('#main .ub button[data-fd]').forEach(b => b.onclick = () => setFriCame(b.dataset.fd, thu, +b.dataset.u));
   $$('#main tbody tr[data-w]').forEach(tr => tr.onclick = e => { if (e.target.closest('[data-pay]')) return; workerSheet(tr.dataset.w, thu); });
   $$('#main [data-pay]').forEach(b => b.onclick = () => payOut(b.dataset.pay, thu));
+  if ($('#wipeW')) $('#wipeW').onclick = () => wipeWeek(thu);
   if ($('#lockW')) $('#lockW').onclick = async () => {
     const miss = missingDays(idx(), thu);
     if (miss.length) {
@@ -1073,6 +1075,21 @@ function setFriCame(wid, thu, v) {
   put('fdf', {id: 'fd_' + thu + '_' + wid, thu, w: wid, done: v});
   log(`${myName()} علّم ${wName(wid)} ${v ? '"جه"' : '"مجاش"'} في جمعة ${dm(fd)}${v ? '' : ' — هيتخصم ' + fmt(pay) + ' من الخميس ده'}`, {w: wid, thu});
   commit(); drawWeek();
+}
+/* مسح بيانات أسبوع مفتوح (أيام، سلف، حوافز، الجمعة، خصم الأسبوع، فرق الجمعة). العمال والسلف القديمة وقواعد الخصم بتفضل. السجل بيفضل وبيتسجل فيه المسح */
+async function wipeWeek(thu) {
+  const I = idx();
+  if (I.lk.has(thu)) return toast('الأسبوع ده مقفول');
+  const ds = weekDates(thu).slice(0, 6), ws = I.ws.get(thu);
+  const hit = [...I.dayBy.entries()].filter(([d]) => ds.includes(d)).flatMap(([, l]) => l)
+    .concat(I.adv.filter(a => ownerThursday(a.date) === thu), I.bon.filter(b => b.thu === thu), ws ? [ws] : [],
+      [...I.wded.values()].filter(x => x.thu === thu), [...I.fdf.values()].filter(x => x.thu === thu));
+  if (!hit.length) return toast('مفيش حاجة متسجلة في الأسبوع ده');
+  const n = k => hit.filter(r => r.k === k).length;
+  if (!(await ask(`تمسح كل اللي اتسجل في أسبوع الخميس ${dm(thu)}؟ (${n('day')} يوم، ${n('adv')} سلفة، ${n('bon')} حافز). العمال بيفضلوا، والمسح مبيتراجعش.`, '🗑 أيوه امسح', 'لأ', true))) return;
+  hit.forEach(r => put(r.k, {id: r.id, del: true}));
+  log(`${myName()} مسح كل حركات أسبوع الخميس ${dm(thu)} (${n('day')} يوم، ${n('adv')} سلفة، ${n('bon')} حافز)`, {thu});
+  commit(); drawWeek(); toast('اتمسح ✔');
 }
 async function payOut(wid, thu) {
   const I = idx(), c = calcWeek(I, thu), r = c.rows[wid];

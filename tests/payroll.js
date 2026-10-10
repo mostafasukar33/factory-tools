@@ -373,6 +373,15 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await D.evaluate(() => nav('w', true));
     eq('الأسبوع: صف الإجمالي تحت الجدول', await D.evaluate(() => [!!$('#main tfoot'), $('#main tfoot td.net').textContent]), [true, await D.evaluate(() => fmt(calcWeek(idx(), '2026-10-22').total))]);
 
+    console.log('\n١٢) مسح الأسبوع الحالي');
+    await A.evaluate(() => nav('w', true));
+    const before = await A.evaluate(() => [idx().dayBy.size > 0, idx().adv.filter(a => ownerThursday(a.date) === '2026-10-29').length, idx().W.size]);
+    await A.click('#wipeW'); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(200);
+    eq('بعد المسح: مفيش أيام ولا سلف في الأسبوع ده، والعمال لسه موجودين', await A.evaluate(() => { const c = calcWeek(idx(), '2026-10-29'); return [Object.values(c.rows).every(r => r.units === 0 && r.advances === 0 && r.fridayPay === 0), idx().adv.filter(a => ownerThursday(a.date) === '2026-10-29').length, [...idx().day.values()].filter(d => d.date >= '2026-10-24').length, idx().W.size]; }), [true, 0, 0, before[2]]);
+    eq('الأسبوع المقفول مبيتمسحش (مفيش زرار)', await A.evaluate(() => { nav('w/2026-10-22', true); return !$('#wipeW'); }), true);
+    await settle_(A); await settle_(B);
+    eq('المسح وصل للشريك والسجل فيه سطر المسح', await B.evaluate(() => [[...idx().day.values()].filter(d => d.date >= '2026-10-24').length, idx().log.some(l => l.txt.includes('مسح كل حركات أسبوع'))]), [0, true]);
+
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();

@@ -220,8 +220,9 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     console.log('\n٥) الأسبوع والقفل والقبض');
     await addW('عامل تجربة ج', '100', '0', '2026-10-14');
     await A.evaluate(() => nav('w', true));
-    await A.click('#fri button[data-v=work]');
-    eq('الجمعة: اختيارين جنب بعض و"شغل" اتعلّم', await A.$$eval('#fri button', b => b.map(x => x.textContent + (x.classList.contains('on') ? '*' : ''))), ['شغل*', 'إجازة']);
+    eq('الجمعة: زرار صغير بس (مفيش اختيار كبير) وقبل التعليم "＋ جمعة شغل"', [await A.$$eval('#fri button', b => b.length), (await A.textContent('#friT')).trim()], [0, '＋ جمعة شغل']);
+    await A.click('#friT');
+    eq('الجمعة: دوسة واحدة بتعلّمها شغل', (await A.textContent('#friT')).trim(), 'الجمعة شغل ✓');
     await A.click('#lockW');
     eq('القفل مبيشتغلش لو في يوم ناقص', (await A.textContent('#lockErr')).trim(), 'يوم ناقص عند عامل تجربة ج: الأربعيوم ناقص عند عامل تجربة ج: الخميس');
     await A.evaluate(() => nav('t/2026-10-14', true)); await A.click('#allDay');
@@ -278,9 +279,9 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     console.log('\n٩) التعديل بعد القفل وإعادة الحساب');
     await A.clock.setFixedTime(at('2026-10-24T11:00:00'));
     await A.evaluate(() => nav('w/2026-10-15', true));
-    await A.click('#main tr[data-w]:nth-child(1)'); await A.waitForSelector('#modal .days button');
-    await A.click('#modal .days button:nth-child(1)'); await A.waitForSelector('#modal .ub button[data-u="0"]');
-    await A.click('#modal .ub button[data-u="0"]'); await A.waitForSelector('#modal .days');
+    await A.click('#main tr[data-w]:nth-child(1)'); await A.waitForSelector('#modal .dr');
+    eq('تفاصيل العامل: 6 أيام كل يوم ومين سجّله، وقسم السلف فيه "من مين"', await A.evaluate(() => [$$('#modal .dr').length, $('#modal .dr small').textContent.includes('مشرف تجربة'), $('#modal .ar small').textContent.includes('من مشرف تجربة')]), [6, true, true]);
+    await A.click('#modal .dr[data-d="2026-10-10"] .ub button[data-u="0"]'); await A.waitForSelector('#modal .days');
     const aw = await A.evaluate(() => { const id = [...idx().W.values()].find(w => w.name === 'عامل تجربة أ').id, r = calcWeek(idx(), '2026-10-15').rows[id], p = idx().pd.get('2026-10-15|' + id); return [r.net, p.amt, idx().lk.get('2026-10-15').snap.rows[id].net, idx().lk.get('2026-10-15').closer]; });
     eq('تغيير يوم في أسبوع مقفول: الصافي اتحسب تاني (−250) واللقطة اتحدّثت واسم اللي قفل فضل', aw, [112500, 137500, 112500, 'مشرف تجربة 1']);
     eq('عامل اتعلّم إنه قبض والرقم اتغير: تحذير', (await A.textContent('#modal')).includes('اتعلّم إنه قبض 1,375 والصافي دلوقتي 1,125'), true);
@@ -298,7 +299,7 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await A.click('#wsX');
     /* الجمعة في الأسبوع المقفول التاني: بتفتح كارت فرق الجمعة في الأسبوع الحالي */
     await A.evaluate(() => nav('w/2026-10-22', true));
-    await A.click('#fri button[data-v=work]'); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(150);
+    await A.click('#friT'); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(150);
     eq('تغيير الجمعة في أسبوع مقفول بيعيد حسابه (جمعة شغل بقت في اللقطة)', await A.evaluate(() => [idx().lk.get('2026-10-22').snap.fri, Object.values(idx().lk.get('2026-10-22').snap.rows).some(r => r.fridayPay > 0)]), ['work', true]);
     await A.evaluate(() => nav('w', true));
     eq('كارت فرق الجمعة ظهر في الأسبوع الحالي', (await A.textContent('#main')).includes('جمعة 23') || (await A.textContent('#main')).includes('اتدفعت مع الخميس اللي فات'), true);
@@ -350,11 +351,11 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await D.click('#sameY');
     eq('زي امبارح: نقل حالة كل عامل من امبارح (التاني غاب)', await D.evaluate(() => [...idx().W.keys()].map(id => idx().day.get(id + '|2026-10-19').u)), [1, 0, 1]);
     await D.evaluate(() => nav('t/2026-10-21', true));
-    eq('تنبيه الأيام الناقصة: التلات ناقص 3 عمال', (await D.textContent('#main .alert:not(.red) .chip')).trim(), 'التلات · 3 عمال');
-    await D.click('#main .alert .chip[data-go]');
+    eq('شريط الأيام: السبت/الأحد/الاتنين اتسجلوا (أخضر)، التلات لسه (أحمر)', await D.$$eval('#main .wk button', b => b.map(x => x.className.replace(/ on/, ''))), ['s-ok', 's-ok', 's-ok', 's-e', 's-e', 's-f']);
+    await D.click('#main .wk button[data-go="2026-10-20"]');
     eq('دوسة على اليوم الناقص بتفتحه', await D.evaluate(() => location.hash), '#t/2026-10-20');
     await D.click('#allDay');
-    eq('الرسالة بتظهر تحت ومش بتغطي التاريخ', await D.evaluate(() => $('#toast').getBoundingClientRect().top > $('.dnav').getBoundingClientRect().bottom + 200), true);
+    eq('الرسالة بتظهر تحت ومش بتغطي التاريخ', await D.evaluate(() => $('#toast').getBoundingClientRect().top > $('.wk').getBoundingClientRect().bottom + 200), true);
     await D.evaluate(() => nav('l', true));
     eq('السجل: الأسامي الكتير بتتلم في "(3 عمال ▾)" والوقت لوحده', await D.evaluate(() => [!!$('#main button[data-x]'), $('#main button[data-x]').textContent, !!$('#main .lg .tm'), $('#main .lg .who').textContent]), [true, '3 عمال ▾', true, 'مشرف تجربة 4']);
     await D.click('#lgF button[data-c]');

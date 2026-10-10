@@ -137,12 +137,6 @@ html[data-theme=dark] .ub button.on{color:#0B0E13}
 .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px #1018281f}
 .seg button:disabled{opacity:.6}
 html[data-theme=dark] .seg button.on{background:#2A303C}
-.fri{display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--row)}
-.fri>span{font-weight:800;font-size:14px;white-space:nowrap}
-.fri .seg{flex:1}
-.fri .seg button.on::before{content:'✓ '}
-.fri .seg button.on[data-v=work]{background:var(--green);color:#fff}
-html[data-theme=dark] .fri .seg button.on[data-v=work]{color:#06140d}
 .tbl{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
 .tbl th{background:var(--row);color:var(--sub);font-size:12px;font-weight:800;padding:7px 6px;text-align:center}
 .tbl th:first-child{text-align:right;padding-inline-start:12px}
@@ -169,18 +163,44 @@ html[data-theme=dark] .b-ok{color:#06140d}
 .b-home{background:var(--card);color:var(--ink);border:1px solid var(--field)}
 .b-red{background:var(--red);color:#fff}
 .b-redo{background:var(--card);color:var(--red);border:1px solid var(--red)}
-/* تفاصيل عامل */
-.days{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:4px 0 8px}
-.days button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:5px 0;font-size:11.5px;font-weight:700;color:var(--sub);line-height:1.35}
-.days button b{display:block;font-size:14px;color:var(--ink)}
-.days button[data-s="0"] b{color:var(--red)}.days button[data-s="0.5"] b{color:var(--amber)}.days button[data-s="1.5"] b{color:var(--blue)}
-.days button.miss{border-color:var(--red);background:var(--red-l)}.days button.miss b{color:var(--red)}
+/* تفاصيل عامل: كل يوم سطر وجنبه حالته (بتتغير من هنا) */
+.days{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.dr,.ar{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--row);min-height:56px}
+.dr:last-child,.ar:last-child{border-bottom:0}
+.dr.todo{box-shadow:inset -3px 0 0 var(--amber)}
+.dr .nm,.ar .nm{flex:1;min-width:0}
+.dr .nm b,.ar .nm b{display:block;font-size:15px;font-weight:800;line-height:1.35}
+.dr .nm small,.ar .nm small{display:block;font-size:11.5px;font-weight:600;color:var(--sub);line-height:1.4}
+.ar{cursor:pointer}.ar:active{background:var(--row)}
+.ar .money{font-size:16.5px}
+.sn{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--green-l);border-radius:13px;padding:9px 14px;margin:0 0 6px}
+.sn span{font-size:13px;font-weight:700;color:var(--sub);line-height:1.5}
+.sn b{font-size:28px;color:var(--green);line-height:1.2}
+.hd2{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:14px 2px 6px;font-size:13px;font-weight:800;color:var(--sub)}
+.hd2 b{color:var(--ink)}
+.mini-b{border:1px solid var(--field);background:var(--card);border-radius:10px;height:34px;padding:0 13px;font-weight:800;font-size:13.5px;color:var(--ink)}
+.mini-b:active{background:var(--row)}
+.none{padding:12px;text-align:center;color:var(--sub);font-weight:600;font-size:13.5px}
+.dots{display:flex;gap:4px;margin:4px 0 2px}
+.dots i{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--field);display:block}
+.dots i.u0{background:var(--red);border-color:var(--red)}.dots i.u05{background:var(--amber);border-color:var(--amber)}.dots i.u1{background:var(--green);border-color:var(--green)}.dots i.u15{background:var(--blue);border-color:var(--blue)}.dots i.f{opacity:.3}
+.tiny{border:1px solid var(--line);background:var(--row);border-radius:20px;padding:0 11px;height:26px;font-size:12px;font-weight:700;color:var(--sub)}
+.tiny.on{background:var(--green-l);border-color:transparent;color:var(--green)}
+/* شريط أيام الأسبوع في النهارده */
+.wk{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin:0 0 10px}
+.wk button{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:5px 0 7px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:11.5px;font-weight:700;color:var(--sub);box-shadow:var(--shadow);min-height:62px}
+.wk button b{font-size:18px;color:var(--ink);line-height:1.25}
+.wk button i{width:18px;height:4px;border-radius:3px;background:var(--row);margin-top:2px}
+.wk .s-ok i{background:var(--green)}.wk .s-p i{background:var(--amber)}.wk .s-e i{background:var(--red)}
+.wk button.on{background:var(--pri);border-color:var(--pri);color:var(--pri-t)}.wk button.on b{color:var(--pri-t)}
+.wk button:disabled{opacity:.35;box-shadow:none}
+.wr .nm{cursor:pointer}
 .kv{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px solid var(--row);font-size:14.5px;font-weight:600}
 .kv:last-child{border-bottom:0}
 .kv b{font-weight:800}
 .kv.tot{font-size:16px}.kv.tot b{font-size:25px;color:var(--green)}
 .kv.sub{padding:3px 0;padding-inline-start:12px;font-size:13px;color:var(--sub);cursor:pointer}
-.kv .neg{color:var(--red)}
+.neg{color:var(--red)}
 .mini{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 /* العمال */
 .tag{font-size:11px;font-weight:800;border-radius:6px;padding:0 6px;margin-inline-start:6px;vertical-align:middle}
@@ -674,8 +694,9 @@ function autoClose() {
 /* ====================== الشاشات ====================== */
 let toastT;
 function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms); }
-function modal(html) { $('#modal').innerHTML = html; $('#mask').classList.add('on'); }
-function closeModal() { $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; }
+let backSheet = null;   // تفاصيل العامل المفتوحة حالياً (علشان نرجعلها بعد سلفة/حافز)
+function modal(html) { backSheet = null; $('#modal').innerHTML = html; $('#mask').classList.add('on'); }
+function closeModal() { backSheet = null; $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; }
 $('#mask').addEventListener('click', e => { if (e.target.id === 'mask') closeModal(); });
 function ask(msg, yes, no = 'لأ', danger = false) {
   return new Promise(res => {
@@ -843,6 +864,7 @@ function missAlert(I, thu, upto, cur) {
   const ms = missingSoFar(I, thu, upto).filter(m => m.d !== cur);
   if (!ms.length) return '';
   const wd = weekday(today()), late = wd === 4 || wd === 5;
+  if (!late) return '';
   return `<div class="alert${late ? ' red' : ''}"><span class="ic">${late ? '⏰' : '📋'}</span><div class="tx">${late ? 'كمّل الأيام الناقصة قبل ما الأسبوع يتقفل (اللي متسجلش هيتحسب غياب):' : 'فيه أيام في الأسبوع لسه ناقصة:'}
     <div class="chips">${ms.map(m => `<button class="chip" type="button" data-go="${m.d}">${dayName(m.d)} · ${m.n === 1 ? 'عامل' : m.n + ' عمال'}</button>`).join('')}</div></div></div>`;
 }
@@ -850,21 +872,27 @@ function bindAlerts() {
   $$('#main [data-go]').forEach(b => b.onclick = () => nav('t/' + b.dataset.go, true));
   if ($('#goLink')) $('#goLink').onclick = () => nav('s');
 }
+/* شريط أيام الأسبوع: دوسة على أي يوم تفتحه. الشريط اللي تحت اليوم: أخضر اتسجلوا كلهم، برتقاني ناقص، أحمر ولا حد */
+function weekStrip(I, thu, d, t) {
+  return `<div class="wk">${weekDates(thu).slice(0, 6).map(x => {
+    const ws = workersOn(I, x), n = ws.filter(w => I.day.has(w.id + '|' + x)).length;
+    const st = x > t || !ws.length ? 'f' : n === ws.length ? 'ok' : n ? 'p' : 'e';
+    return `<button type="button" data-go="${x}" class="s-${st}${x === d ? ' on' : ''}"${x > t ? ' disabled' : ''}><span>${dayName(x)}</span><b>${+x.slice(8)}</b><i></i></button>`;
+  }).join('')}</div>`;
+}
 function drawToday() {
   const t = today(), d = scr.day && scr.day <= t && weekday(scr.day) !== 5 ? scr.day : defDay(), thu = ownerThursday(d);
   const I = idx(), ws = workersOn(I, d), closed = I.lk.has(thu), wd = weekday(d);
   const done = ws.filter(w => I.day.has(w.id + '|' + d)).length;
   const yd = wd === 6 ? null : addDays(d, -1), canCopy = yd && ws.some(w => !I.day.has(w.id + '|' + d) && I.day.has(w.id + '|' + yd));
-  $('#main').innerHTML = `${unlinkedAlert()}<div class="dnav"><button type="button" id="dPrev" title="اليوم اللي قبله"${wd === 6 ? ' disabled' : ''}>›</button><span>${dayFull(d)}${d === t ? ' · <em>النهارده</em>' : ''}</span><button type="button" id="dNext" title="اليوم اللي بعده"${wd === 4 || addDays(d, 1) > t ? ' disabled' : ''}>‹</button></div>
+  $('#main').innerHTML = `${unlinkedAlert()}${weekStrip(I, thu, d, t)}
     ${missAlert(I, thu, t, d)}
     ${closed ? `<div class="info" style="margin:0 0 10px">🔒 الأسبوع ده اتقفل. الأرقام بتاعته في الأرشيف.</div>` : `<div class="qa"><button class="qb g" id="allDay" type="button"${done === ws.length ? ' disabled' : ''}>✓ الكل يوم</button><button class="qb" id="sameY" type="button"${canCopy ? '' : ' disabled'}>↺ زي امبارح</button><button class="qb" id="qAdv" type="button">＋ سلفة</button></div>`}
-    <div class="lbl"><span>العمال (${ws.length})</span><span class="${ws.length && done === ws.length ? 'ok' : ''}">${ws.length ? (done === ws.length ? '✓ اتسجلوا كلهم' : `اتسجل ${done} من ${ws.length}`) : ''}</span></div>
+    <div class="lbl"><span><b>${dayFull(d)}${d === t ? ' · النهارده' : ''}</b></span><span class="${ws.length && done === ws.length ? 'ok' : ''}">${ws.length ? (done === ws.length ? '✓ اتسجلوا كلهم' : `اتسجل ${done} من ${ws.length}`) : ''}</span></div>
     ${ws.length ? `<div class="prog" style="margin-bottom:8px"><i style="width:${Math.round(done / ws.length * 100)}%"></i></div><div class="list">${ws.map(w => { const r = I.day.get(w.id + '|' + d); return `<div class="wr${r ? '' : ' todo'}" data-w="${esc(w.id)}"><div class="nm"><b>${esc(w.name)}</b><small class="sm">${r ? `${U_BTN[r.u]} · ${byTxt(r)}` : '<span class="wt">لسه</span>'}</small></div>
       <div class="ub">${UNITS.map(u => `<button type="button" data-u="${u}" class="${r && r.u === u ? 'on' : ''}"${closed ? ' disabled' : ''}>${U_BTN[u]}</button>`).join('')}</div></div>`; }).join('')}</div>`
       : `<div class="list"><div class="empty">لسه مفيش عمال.<br><button class="lnk" id="goK" type="button">＋ ضيف عامل</button></div></div>`}`;
   bindAlerts();
-  $('#dPrev').onclick = () => nav('t/' + addDays(d, -1), true);
-  $('#dNext').onclick = () => nav('t/' + addDays(d, 1), true);
   if ($('#goK')) $('#goK').onclick = () => nav('k', true);
   if ($('#qAdv')) $('#qAdv').onclick = () => advModal(null, d);
   if ($('#allDay')) $('#allDay').onclick = () => {
@@ -881,6 +909,7 @@ function drawToday() {
     log(`${myName()} سجّل زي امبارح (${left.map(w => w.name + ' "' + U_BTN[I2.day.get(w.id + '|' + yd).u] + '"').join('، ')}) — ${dayFull(d)}`, {thu});
     commit(); drawToday(); toast(`اتسجل ${left.length === 1 ? 'عامل' : left.length + ' عمال'} زي امبارح ✔`);
   };
+  $$('#main .wr .nm').forEach(n => n.onclick = () => workerSheet(n.closest('.wr').dataset.w, thu));
   $$('#main .wr .ub button').forEach(b => b.onclick = () => {
     if (idx().lk.has(thu)) return toast('الأسبوع ده اتقفل');
     const w = idx().W.get(b.closest('.wr').dataset.w);
@@ -894,6 +923,7 @@ function pickWorkers(sel) {
   return `<div class="chips" id="pkW">${ws.map(w => `<button type="button" class="chip ${w.id === sel ? 'on' : ''}" data-w="${esc(w.id)}">${esc(w.name)}</button>`).join('')}</div>`;
 }
 function advModal(a, d, wid) {
+  const back = backSheet;
   let w = a ? a.w : wid || null;
   const date = a ? a.date : d || today(), thu = ownerThursday(date);
   modal(`<h3>${a ? 'تعديل سلفة' : 'سلفة'}<small>${dayFull(date)}${a ? ' · ' + byTxt(a) : ''}</small></h3>
@@ -905,7 +935,7 @@ function advModal(a, d, wid) {
   bindAmt($('#avA')); bindQuick();
   $$('#pkW .chip').forEach(b => b.onclick = () => { w = b.dataset.w; $$('#pkW .chip').forEach(x => x.classList.toggle('on', x === b)); $('#avA').focus(); });
   if (w || a) setTimeout(() => $('#avA') && $('#avA').focus(), 60);
-  $('#avX').onclick = closeModal;
+  $('#avX').onclick = () => back ? workerSheet(back.wid, back.thu) : closeModal();
   $('#avOk').onclick = () => {
     const amt = amtOf($('#avA')), note = $('#avN').value.trim();
     if (!w) return toast('اختار العامل');
@@ -919,24 +949,24 @@ function advModal(a, d, wid) {
       put('adv', {id: newId('a'), w, date, amt, note});
       log(`${myName()} سجّل سلفة لـ ${wName(w)} ${fmt(amt)}${note ? ' (' + note + ')' : ''} — ${dayFull(date)}${afterTag(thu)}`, {w, thu});
     }
-    touched(thu); commit(); closeModal(); toast('اتسجلت ✔'); afterChange(w);
+    touched(thu); commit(); closeModal(); toast('اتسجلت ✔'); afterChange(w, back);
   };
   if ($('#avDel')) $('#avDel').onclick = async () => {
     if (!(await ask(`تمسح سلفة ${wName(a.w)} ${fmt(a.amt)}؟`, 'أيوه امسحها', 'لأ', true))) return;
     put('adv', {id: a.id, del: true});
     log(`${myName()} مسح سلفة ${wName(a.w)} ${fmt(a.amt)} (${dayFull(a.date)})${afterTag(thu)}`, {w: a.w, thu});
-    touched(thu); commit(); toast('اتمسحت ✔'); afterChange(a.w);
+    touched(thu); commit(); toast('اتمسحت ✔'); afterChange(a.w, back);
   };
 }
 function bonModal(b, thu, wid) {
-  const w = b ? b.w : wid;
+  const back = backSheet, w = b ? b.w : wid;
   modal(`<h3>${b ? 'تعديل حافز' : 'حافز'} — ${esc(wName(w))}<small>أسبوع الخميس ${dm(thu)}${b ? ' · ' + byTxt(b) : ''}</small></h3>
     ${amtBox('bnA', b && b.amt, true)}${quickAmts('bnA', [50, 100, 200, 300])}
     <input class="inp" id="bnN" autocomplete="off" placeholder="ملاحظة (اختياري)" style="margin-top:8px" value="${esc(b ? b.note || '' : '')}">
     ${b ? `<div class="row2"><button class="big b-ok" id="bnOk" type="button">حفظ</button><button class="big b-redo" id="bnDel" type="button">🗑 مسح</button></div>` : `<button class="big b-ok" id="bnOk" type="button">سجّل الحافز</button>`}
     <button class="lnk" id="bnX" type="button">إغلاق</button>`);
   bindAmt($('#bnA')); bindQuick(); setTimeout(() => $('#bnA') && $('#bnA').focus(), 60);
-  $('#bnX').onclick = closeModal;
+  $('#bnX').onclick = () => back ? workerSheet(back.wid, back.thu) : closeModal();
   $('#bnOk').onclick = () => {
     const amt = amtOf($('#bnA')), note = $('#bnN').value.trim();
     if (!(amt > 0)) return toast('اكتب المبلغ');
@@ -948,17 +978,17 @@ function bonModal(b, thu, wid) {
       put('bon', {id: newId('b'), w, thu, amt, note});
       log(`${myName()} سجّل حافز لـ ${wName(w)} ${fmt(amt)}${note ? ' (' + note + ')' : ''}${afterTag(thu)}`, {w, thu});
     }
-    touched(thu); commit(); closeModal(); toast('اتسجل ✔'); afterChange(w);
+    touched(thu); commit(); closeModal(); toast('اتسجل ✔'); afterChange(w, back);
   };
   if ($('#bnDel')) $('#bnDel').onclick = async () => {
     if (!(await ask(`تمسح حافز ${wName(w)} ${fmt(b.amt)}؟`, 'أيوه امسحه', 'لأ', true))) return;
     put('bon', {id: b.id, del: true});
     log(`${myName()} مسح حافز ${wName(w)} ${fmt(b.amt)}${afterTag(thu)}`, {w, thu});
-    touched(thu); commit(); toast('اتمسح ✔'); afterChange(w);
+    touched(thu); commit(); toast('اتمسح ✔'); afterChange(w, back);
   };
 }
 /* بعد أي تعديل من نافذة: نرسم الشاشة، ولو كنا في تفاصيل عامل في الأسبوع نرجع لها */
-function afterChange(wid) { render(); if (scr.v === 'w' && wid) workerSheet(wid, curThu()); }
+function afterChange(wid, back) { render(); if (back && wid === back.wid) workerSheet(wid, back.thu); }
 
 /* ---------- الأسبوع / الخميس ---------- */
 const curThu = () => scr.thu || ownerThursday(today());
@@ -972,35 +1002,34 @@ function drawWeek() {
   const firstThu = I.first && I.first < nowThu ? I.first : nowThu;
   /* لسه حد مقبضش من أسابيع قبل كده؟ */
   const sumW = ids.reduce((s, id) => s + c.rows[id].wages, 0), sumD = ids.reduce((s, id) => s + ded(c.rows[id]), 0);
-  const absTxt = r => { const ab = Object.keys(r.days || {}).filter(d => r.days[d] === 0).sort(); return ab.length ? `<small class="bk">غاب ${ab.length > 2 ? ab.length + ' أيام' : ab.map(dayName).join(' و')}</small>` : ''; };
+  /* نقط الأيام: السبت على اليمين. أخضر يوم، برتقاني نص، أزرق يوم ونص، أحمر غاب، فاضي لسه */
+  const dots = r => `<span class="dots">${ds.slice(0, 6).map(d => { const u = (r.days || {})[d]; return `<i class="${u === undefined ? (d > t && !c.closed ? 'f' : '') : 'u' + String(u).replace('.', '')}"></i>`; }).join('')}</span>`;
+  const subTxt = r => { const ab = Object.keys(r.days || {}).filter(d => r.days[d] === 0).sort(); return `${unitsText(r.units)}${r.fridayPay ? ' + جمعة' : ''}${ab.length ? ` · <span class="bk">غاب ${ab.length > 2 ? ab.length + ' أيام' : ab.map(dayName).join(' و')}</span>` : ''}${r.bonus ? ` · <span class="ok">حافز ${fmt(r.bonus)}</span>` : ''}`; };
   const owe = [...I.lk.values()].filter(l => l.thu < thu && l.snap).flatMap(l => Object.values(l.snap.rows).filter(r => r.net > 0 && !I.pd.has(l.thu + '|' + r.w)).map(r => l.thu));
   $('#main').innerHTML = `<div class="dnav"><button type="button" id="wPrev" title="الأسبوع اللي قبله"${thu <= firstThu ? ' disabled' : ''}>›</button><span>أسبوع الخميس ${dm(thu)}${thu === nowThu ? ' · الحالي' : ''}</span><button type="button" id="wNext" title="الأسبوع اللي بعده"${thu >= nowThu ? ' disabled' : ''}>‹</button></div>
     ${owe.length && !c.closed ? `<button class="note" id="owe" type="button" style="width:100%;text-align:right;border:0">💵 فيه ${owe.length === 1 ? 'عامل' : owe.length + ' عمال'} لسه مقبضوش من أسبوع قبل كده — دوس هنا</button>` : ''}
     <section class="panel"><div class="p1"><span>${c.closed ? 'المرتبات (اتقفل)' : 'هيخرج من المصنع'}</span><b class="money">${fmt(c.total)}</b></div>
-      <div class="cap"><span>من ${dayFull(ds[0])} لـ ${dayFull(ds[5])}</span>${c.closed ? `<span class="ok">🔒 ${c.lk.auto ? 'اتقفل تلقائي' : 'قفّله ' + esc(c.lk.closer || c.lk.by)} · اتقبض ${paidN} من ${toPay}</span>` : ''}</div>
-      <div class="fri"><span>الجمعة ${dm(ds[6])}:</span><div class="seg" id="fri"><button type="button" data-v="work" class="${c.fri === 'work' ? 'on' : ''}">شغل</button><button type="button" data-v="off" class="${c.fri !== 'work' ? 'on' : ''}">إجازة</button></div></div>
-      ${c.fri === 'work' ? '<div class="sm" style="margin-top:4px">أجر الجمعة بيتدفع مع الخميس ده.</div>' : ''}
+      <div class="cap"><span>من ${dayFull(ds[0])} لـ ${dayFull(ds[5])}</span>${c.closed ? `<span class="ok">🔒 ${c.lk.auto ? 'اتقفل تلقائي' : 'قفّله ' + esc(c.lk.closer || c.lk.by)}</span>` : ''}<button class="tiny ${c.fri === 'work' ? 'on' : ''}" id="friT" type="button">${c.fri === 'work' ? 'الجمعة شغل ✓' : '＋ جمعة شغل'}</button></div>
       ${ids.length ? `<div class="stats"><div><b class="money">${fmt(sumW)}</b>المرتبات</div><div><b class="money ${sumD ? 'bk' : ''}">${sumD ? fmt(sumD) : '—'}</b>سلف وخصومات</div><div><b>${ids.length}</b>${c.closed ? `قبض ${paidN} من ${toPay}` : 'عامل'}</div></div>` : ''}
     </section>
     ${c.closed ? '' : missAlert(I, thu, thu === nowThu ? t : addDays(thu, 1)).replace('class="alert', 'style="margin-top:10px" class="alert')}
     ${friCard(I, thu, c)}
     <div class="lbl"><span>العمال (${ids.length})</span><span>دوس على أي عامل تشوف تفاصيله</span></div>
-    ${ids.length ? `<table class="tbl"><thead><tr><th>الاسم</th><th>المرتب</th><th>السلف</th><th>الصافي</th>${c.closed ? '<th></th>' : ''}</tr></thead><tbody>
-      ${ids.map(id => { const r = c.rows[id], p = I.pd.get(thu + '|' + id); return `<tr data-w="${esc(id)}"><td><b>${esc(r.name)}</b><small>${unitsText(r.units)}${r.fridayPay ? ' + جمعة' : ''}</small>${absTxt(r)}</td><td>${nz(r.wages)}${r.bonus ? `<small class="ok">+${fmt(r.bonus)} حافز</small>` : ''}</td><td class="${ded(r) ? 'bk' : ''}">${nz(ded(r))}</td><td class="net ${r.net ? '' : 'z'}">${r.net ? fmt(r.net) : (r.carryOut ? '<small class="bk">عليه ' + fmt(r.carryOut) + '</small>' : '—')}</td>${c.closed ? `<td>${r.net > 0 || p ? (p ? `<span class="paid">✓ قبض<br>${esc(p.by)}${p.amt !== r.net ? `<br><span class="bk">⚠ كان ${fmt(p.amt)}</span>` : ''}</span>` : `<button class="pay" type="button" data-pay="${esc(id)}">قبض</button>`) : ''}</td>` : ''}</tr>`; }).join('')}</tbody>
-      <tfoot><tr><td>الإجمالي</td><td>${nz(sumW)}</td><td class="${sumD ? 'bk' : ''}">${nz(sumD)}</td><td class="net">${fmt(c.total)}</td>${c.closed ? '<td></td>' : ''}</tr></tfoot></table>`
+    ${ids.length ? `<table class="tbl"><thead><tr><th>الاسم</th><th>السلف</th><th>الصافي</th>${c.closed ? '<th></th>' : ''}</tr></thead><tbody>
+      ${ids.map(id => { const r = c.rows[id], p = I.pd.get(thu + '|' + id); return `<tr data-w="${esc(id)}"><td><b>${esc(r.name)}</b>${dots(r)}<small>${subTxt(r)}</small></td><td class="${ded(r) ? 'bk' : ''}">${nz(ded(r))}</td><td class="net ${r.net ? '' : 'z'}">${r.net ? fmt(r.net) : (r.carryOut ? '<small class="bk">عليه ' + fmt(r.carryOut) + '</small>' : '—')}</td>${c.closed ? `<td>${r.net > 0 || p ? (p ? `<span class="paid">✓ قبض<br>${esc(p.by)}${p.amt !== r.net ? `<br><span class="bk">⚠ كان ${fmt(p.amt)}</span>` : ''}</span>` : `<button class="pay" type="button" data-pay="${esc(id)}">قبض</button>`) : ''}</td>` : ''}</tr>`; }).join('')}</tbody>
+      <tfoot><tr><td>الإجمالي</td><td class="${sumD ? 'bk' : ''}">${nz(sumD)}</td><td class="net">${fmt(c.total)}</td>${c.closed ? '<td></td>' : ''}</tr></tfoot></table>`
       : '<div class="list"><div class="empty">مفيش عمال في الأسبوع ده</div></div>'}
     ${c.closed ? '' : `<button class="big b-dark" id="lockW" type="button">🔒 قفّل الأسبوع</button><div id="lockErr"></div><p class="hint">بعد القفل الأرقام بتتثبت ويظهر زرار "قبض" لكل عامل. ولو محدش قفله، بيتقفل لوحده بعد الجمعة.</p>`}`;
   $('#wPrev').onclick = () => nav('w/' + addDays(thu, -7), true);
   $('#wNext').onclick = () => nav(addDays(thu, 7) >= nowThu ? 'w' : 'w/' + addDays(thu, 7), true);
   if ($('#owe')) $('#owe').onclick = () => nav('w/' + owe.sort().pop(), true);
-  $$('#fri button').forEach(b => b.onclick = async () => {
-    const v = b.dataset.v, cur = idx().ws.get(thu);
-    if ((cur && cur.fri === 'work' ? 'work' : 'off') === v) return;
+  if ($('#friT')) $('#friT').onclick = async () => {
+    const cur = idx().ws.get(thu), v = cur && cur.fri === 'work' ? 'off' : 'work';
     if (idx().lk.has(thu) && !(await ask('الأسبوع ده مقفول. تغيّر الجمعة وتعيد حساب المرتبات؟', 'أيوه، غيّر'))) return;
     put('wst', {id: 'ws_' + thu, thu, fri: v});
     log(`${myName()} علّم الجمعة ${dm(ds[6])}: ${v === 'work' ? 'شغل' : 'إجازة'}${afterTag(thu)}`, {thu});
-    touched(thu); commit(); drawWeek();
-  });
+    touched(thu); commit(); drawWeek(); toast(v === 'work' ? 'الجمعة شغل: أجرها بيتحسب مع الخميس ده' : 'الجمعة إجازة');
+  };
   bindAlerts();
   $$('#main .ub button[data-fd]').forEach(b => b.onclick = () => setFriCame(b.dataset.fd, thu, +b.dataset.u));
   $$('#main tbody tr[data-w]').forEach(tr => tr.onclick = e => { if (e.target.closest('[data-pay]')) return; workerSheet(tr.dataset.w, thu); });
@@ -1051,53 +1080,60 @@ async function payOut(wid, thu) {
   }
   commit(); closeModal(); render();
 }
-/* تفاصيل عامل في أسبوع (نافذة من تحت): الأيام، الجمعة، الحافز، السلف، المرحّل، الصافي */
+/* تفاصيل عامل في أسبوع (نافذة من تحت): كل يوم اشتغل ايه ومين سجّله، السلف (ومين سلّمها)، الحافز، والحساب. الأيام بتتغير من هنا على طول */
 function workerSheet(wid, thu) {
   const I = idx(), c = calcWeek(I, thu), r = c.rows[wid], w = I.W.get(wid);
   if (!r || !w) return closeModal();
-  const ds = weekDates(thu), open = !c.closed;
+  const ds = weekDates(thu), open = !c.closed, t = today();
   const advs = I.adv.filter(a => a.w === wid && ownerThursday(a.date) === thu).sort((a, b) => a.date.localeCompare(b.date) || a.at - b.at);
   const bons = I.bon.filter(b => b.w === wid && b.thu === thu);
   const p = I.pd.get(thu + '|' + wid);
-  modal(`<h3>${esc(r.name)}<small>أسبوع الخميس ${dm(thu)}${c.closed ? ' · 🔒' : ''}</small></h3>
-    <div class="days">${ds.slice(0, 6).map(d => { const u = r.days[d]; const miss = u === undefined && open && w.st === 'on' && (!w.from || d >= w.from) && d <= today(); return `<button type="button" data-d="${d}" data-s="${u === undefined ? '' : u}" class="${miss ? 'miss' : ''}">${dayName(d)}<b>${u === undefined ? (miss ? '؟' : '—') : U_BTN[u]}</b></button>`; }).join('')}</div>
-    <div class="kv"><span>${unitsText(r.units)}</span><b class="money">${fmt(r.daysPay)}</b></div>
-    ${r.fridayPay ? `<div class="kv"><span>الجمعة ${dm(ds[6])}</span><b class="money">${fmt(r.fridayPay)}</b></div>` : ''}
-    <div class="kv"><span>حافز</span><b class="money">${nz(r.bonus)}</b></div>
-    ${bons.map(b => `<div class="kv sub" data-bon="${esc(b.id)}"><span>${b.note ? esc(b.note) + ' · ' : ''}${byTxt(b)}</span><span class="money">${fmt(b.amt)}</span></div>`).join('')}
-    <div class="kv"><span><b>المرتب</b></span><b class="money">${fmt(r.wages)}</b></div>
-    <div class="kv"><span>سلف الأسبوع</span><b class="money ${r.advances ? 'neg' : ''}">${r.advances ? '- ' + fmt(r.advances) : '—'}</b></div>
-    ${advs.map(a => `<div class="kv sub" data-adv="${esc(a.id)}"><span>${dayName(a.date)} · ${a.note ? esc(a.note) + ' · ' : ''}${byTxt(a)}</span><span class="money">${fmt(a.amt)}</span></div>`).join('')}
-    ${r.carryIn ? `<div class="kv"><span>عليه من الأسبوع اللي فات</span><b class="money neg">- ${fmt(r.carryIn)}</b></div>` : ''}
-    ${r.prevFridayDelta ? `<div class="kv"><span>فرق الجمعة (مجاش)</span><b class="money neg">- ${fmt(r.prevFridayDelta)}</b></div>` : ''}
-    ${r.oldBefore ? `<div class="kv"><span>خصم من السلف القديمة${r.oldSkip ? ' (متخصمش الأسبوع ده)' : ''}</span><b class="money ${r.oldApplied ? 'neg' : ''}">${r.oldApplied ? '- ' + fmt(r.oldApplied) : '—'}</b></div>
-      <div class="kv sub" id="wsOld"><span>الباقي عليه ${fmt(r.oldLeft)} · دوس تغيّر الخصم الأسبوع ده</span><span>✏️</span></div>` : ''}
-    <div class="kv tot"><span>الصافي</span><b class="money">${fmt(r.net)}</b></div>
-    ${r.carryOut ? `<div class="note">السلف أكتر من المرتب: عليه ${fmt(r.carryOut)} بتتخصم الخميس الجاي.</div>` : ''}
-    ${c.closed ? '<div class="info">🔒 الأسبوع مقفول. أي تعديل هنا بيعيد حساب الأرقام (واللي بعده) وبيتسجل في السجل.</div>' : ''}
-    <div class="mini"><button class="big b-home" id="wsAdv" type="button">＋ سلفة</button><button class="big b-home" id="wsBon" type="button">＋ حافز</button></div>
+  const dayRow = d => {
+    const rec = I.day.get(wid + '|' + d), before = w.from && d < w.from, future = open && d > t;
+    return `<div class="dr${!rec && !before && !future && open && w.st === 'on' ? ' todo' : ''}" data-d="${d}"><div class="nm"><b>${dayName(d)} ${dm(d)}</b><small>${rec ? byTxt(rec) : before ? 'قبل ما يبدأ شغل' : future ? 'لسه' : '<span class="wt">لسه متسجلش</span>'}</small></div>
+      ${before || future ? '' : `<div class="ub">${UNITS.map(u => `<button type="button" data-d="${d}" data-u="${u}" class="${rec && rec.u === u ? 'on' : ''}">${U_BTN[u]}</button>`).join('')}</div>`}</div>`;
+  };
+  const adv = a => `<div class="ar" data-adv="${esc(a.id)}"><div class="nm"><b>${dayName(a.date)} ${dm(a.date)}</b><small>من ${esc(a.by)} · ${whenTxt(a.at)}${a.note ? ' · ' + esc(a.note) : ''}</small></div><b class="money neg">${fmt(a.amt)}</b></div>`;
+  const bon = b => `<div class="ar" data-bon="${esc(b.id)}"><div class="nm"><b>حافز${b.note ? ' · ' + esc(b.note) : ''}</b><small>من ${esc(b.by)} · ${whenTxt(b.at)}</small></div><b class="money ok">${fmt(b.amt)}</b></div>`;
+  modal(`<h3>${esc(r.name)}<small>أسبوع الخميس ${dm(thu)}${c.closed ? ' · 🔒 مقفول' : ''}</small></h3>
+    <div class="sn"><span>الصافي<br>${r.wages ? 'المرتب ' + fmt(r.wages) : ''}${ded(r) ? ' − خصم ' + fmt(ded(r)) : ''}</span><b class="money">${fmt(r.net)}</b></div>
+    ${r.carryOut ? `<div class="note" style="margin:6px 0 0">السلف أكتر من المرتب: عليه ${fmt(r.carryOut)} بتتخصم الخميس الجاي.</div>` : ''}
+    <div class="hd2"><span>الشغل</span><b>${unitsText(r.units)}${r.fridayPay ? ' + جمعة' : ''}</b></div>
+    <div class="days">${ds.slice(0, 6).map(dayRow).join('')}</div>
+    ${c.closed ? '<p class="hint" style="margin:6px 0 0">🔒 الأسبوع مقفول. أي تغيير هنا بيعيد حساب الأرقام وبيتسجل في السجل.</p>' : ''}
+    <div class="hd2"><span>السلف${advs.length ? ' · ' + advs.length : ''}</span><button class="mini-b" id="wsAdv" type="button">＋ سلفة</button></div>
+    <div class="days">${advs.length ? advs.map(adv).join('') : '<div class="none">مفيش سلف الأسبوع ده</div>'}</div>
+    ${bons.length ? `<div class="hd2"><span>الحافز</span><button class="mini-b" id="wsBon" type="button">＋ حافز</button></div><div class="days">${bons.map(bon).join('')}</div>` : ''}
+    <div class="hd2"><span>الحساب</span></div>
+    <div class="list" style="padding:2px 12px">
+      <div class="kv"><span>أيام الشغل</span><b class="money">${fmt(r.daysPay)}</b></div>
+      ${r.fridayPay ? `<div class="kv"><span>الجمعة ${dm(ds[6])}</span><b class="money">${fmt(r.fridayPay)}</b></div>` : ''}
+      ${r.bonus ? `<div class="kv"><span>حافز</span><b class="money">${fmt(r.bonus)}</b></div>` : ''}
+      <div class="kv"><span><b>المرتب</b></span><b class="money">${fmt(r.wages)}</b></div>
+      ${r.advances ? `<div class="kv"><span>سلف الأسبوع</span><b class="money neg">- ${fmt(r.advances)}</b></div>` : ''}
+      ${r.carryIn ? `<div class="kv"><span>عليه من الأسبوع اللي فات</span><b class="money neg">- ${fmt(r.carryIn)}</b></div>` : ''}
+      ${r.prevFridayDelta ? `<div class="kv"><span>فرق الجمعة (مجاش)</span><b class="money neg">- ${fmt(r.prevFridayDelta)}</b></div>` : ''}
+      ${r.oldBefore ? `<div class="kv"><span>خصم من السلف القديمة${r.oldSkip ? ' (متخصمش الأسبوع ده)' : ''}</span><b class="money ${r.oldApplied ? 'neg' : ''}">${r.oldApplied ? '- ' + fmt(r.oldApplied) : '—'}</b></div>
+        <div class="kv sub" id="wsOld"><span>الباقي عليه ${fmt(r.oldLeft)} · دوس تغيّر الخصم الأسبوع ده</span><span>✏️</span></div>` : ''}
+      <div class="kv tot"><span>الصافي</span><b class="money">${fmt(r.net)}</b></div>
+    </div>
+    ${bons.length ? '' : '<button class="lnk" id="wsBon" type="button">＋ حافز</button>'}
     ${!open && (r.net > 0 || p) ? (p && p.amt !== r.net ? `<div class="note">⚠ العامل ده اتعلّم إنه قبض ${fmt(p.amt)} والصافي دلوقتي ${fmt(r.net)} بعد التعديل.</div>` : '') + (p ? `<div class="info">✓ قبض ${fmt(p.amt)} · ${byTxt(p)}</div><button class="lnk" id="wsPay" type="button">لسه مقبضش؟</button>` : `<button class="big b-ok" id="wsPay" type="button">💵 قبض ${fmt(r.net)}</button>`) : ''}
+    <button class="lnk" id="wsEdit" type="button">✏️ بيانات العامل (الأجر، وقّفه…)</button>
     <button class="lnk" id="wsX" type="button">إغلاق</button>`);
+  backSheet = {wid, thu};
   $('#wsX').onclick = closeModal;
-  $$('#modal .days button').forEach(b => b.onclick = () => { if (open) nav('t/' + b.dataset.d); else dayModal(wid, b.dataset.d, thu); });
+  $('#wsEdit').onclick = () => workerModal(w);
+  $$('#modal .dr .ub button').forEach(b => b.onclick = () => {
+    const keep = $('#modal').scrollTop;
+    if (setDay(w, b.dataset.d, +b.dataset.u)) { touched(thu); commit(); render(); workerSheet(wid, thu); $('#modal').scrollTop = keep; }
+  });
   if ($('#wsOld')) $('#wsOld').onclick = () => wdedModal(wid, thu);
   if ($('#wsAdv')) $('#wsAdv').onclick = () => advModal(null, defDayIn(thu), wid);
   if ($('#wsBon')) $('#wsBon').onclick = () => bonModal(null, thu, wid);
   if ($('#wsPay')) $('#wsPay').onclick = () => payOut(wid, thu);
   $$('#modal [data-adv]').forEach(x => x.onclick = () => advModal(S.recs[x.dataset.adv]));
   $$('#modal [data-bon]').forEach(x => x.onclick = () => bonModal(S.recs[x.dataset.bon], thu));
-}
-/* تغيير يوم في أسبوع مقفول */
-function dayModal(wid, d, thu) {
-  const w = idx().W.get(wid), cur = idx().day.get(wid + '|' + d);
-  modal(`<h3>${esc(w.name)}<small>${dayFull(d)} · 🔒 أسبوع مقفول</small></h3>
-    <div class="ub" style="grid-template-columns:repeat(4,1fr);gap:6px">${UNITS.map(u => `<button type="button" data-u="${u}" class="${cur && cur.u === u ? 'on' : ''}" style="height:48px">${U_BTN[u]}</button>`).join('')}</div>
-    <p class="hint">التغيير بيعيد حساب الأسبوع ده واللي بعده.</p><button class="lnk" id="dmX" type="button">إغلاق</button>`);
-  $('#dmX').onclick = () => workerSheet(wid, thu);
-  $$('#modal .ub button').forEach(b => b.onclick = () => {
-    if (setDay(w, d, +b.dataset.u)) { touched(thu); commit(); toast('اتعدّل ✔'); }
-    render(); workerSheet(wid, thu);
-  });
 }
 /* خصم السلف القديمة للأسبوع ده بس: زي القاعدة / متخصمش / رقم تاني */
 function wdedModal(wid, thu) {
@@ -1131,15 +1167,18 @@ const defDayIn = thu => { const t = today(); return ownerThursday(t) === thu ? t
 function drawWorkers() {
   const all = [...idx().W.values()].sort((a, b) => (a.ord || 0) - (b.ord || 0));
   const on = all.filter(w => w.st === 'on'), stop = all.filter(w => w.st === 'stop'), gone = all.filter(w => w.st === 'gone');
-  const row = w => { const debt = oldLeftNow(w.id); return `<div class="row" data-w="${esc(w.id)}"><div class="m"><b>${esc(w.name)}${w.st === 'stop' ? '<span class="tag stop">واقف</span>' : w.st === 'gone' ? '<span class="tag gone">مشى</span>' : ''}${debt ? `<span class="tag debt">عليه ${fmt(debt)}</span>` : ''}</b><small>جمعة ${w.fri ? fmt(w.fri) : '—'}${w.from ? ' · من ' + dm(w.from) : ''}</small></div><div class="a"><b class="money">${fmt(w.rate)}</b></div></div>`; };
+  const row = w => { const debt = oldLeftNow(w.id); return `<div class="row" data-w="${esc(w.id)}"><div class="m"><b>${esc(w.name)}${w.st === 'stop' ? '<span class="tag stop">واقف</span>' : w.st === 'gone' ? '<span class="tag gone">مشى</span>' : ''}${debt ? `<span class="tag debt">عليه ${fmt(debt)}</span>` : ''}</b><small>${w.from ? 'بدأ ' + dm(w.from) : ''}${w.fri ? ' · جمعة ' + fmt(w.fri) : ''}</small></div><div class="a"><b class="money">${fmt(w.rate)}</b></div></div>`; };
   const sumRate = on.reduce((s, w) => s + (w.rate || 0), 0);
   $('#main').innerHTML = `<button class="big b-ok" id="kNew" type="button" style="margin-top:0">＋ عامل جديد</button>
     <div class="lbl"><span>الشغالين (${on.length})</span><span>اليومية${on.length ? ` · المجموع <b class="money">${fmt(sumRate)}</b>` : ''}</span></div>
-    <div class="list">${on.length ? on.map(row).join('') : '<div class="empty">لسه مفيش عمال</div>'}</div>
+    <div class="list">${on.length ? on.map(row).join('') : '<div class="empty">لسه مفيش عمال</div>'}</div>${on.length ? '<p class="hint">دوس على أي عامل تشوف أسبوعه: اشتغل إيه وخد سلف إيه</p>' : ''}
     ${stop.length ? `<div class="lbl"><span>واقفين (${stop.length})</span></div><div class="list">${stop.map(row).join('')}</div>` : ''}
     ${gone.length ? `<details class="more"><summary>اللي مشيوا (${gone.length})</summary><div class="list">${gone.map(row).join('')}</div></details>` : ''}`;
   $('#kNew').onclick = () => workerModal(null);
-  $$('#main .row[data-w]').forEach(r => r.onclick = () => workerModal(idx().W.get(r.dataset.w)));
+  $$('#main .row[data-w]').forEach(r => r.onclick = () => {
+    const w = idx().W.get(r.dataset.w), thu = ownerThursday(today());
+    if (w.st === 'on' && calcWeek(idx(), thu).rows[w.id]) workerSheet(w.id, thu); else workerModal(w);
+  });
 }
 /* أول خميس لسه مقفولش: السلف القديمة والقاعدة بتبدأ منه (الأسابيع اللي اتقفلت قبله مبتتغيرش) */
 function firstOpenThu() {

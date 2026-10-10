@@ -638,7 +638,7 @@ const MO = !!process.env.MARKET_ONLY;
     eq('الكاش المسلَّم اتنقل كتحويل خزنة لخزنة', await A.evaluate(([m0]) => { const t = IDX.tx.get('t_mk_' + Object.values(db.mkt.ops).find(o => o.t === 'hand').id); return [t.type, t.vault, t.to, t.amt, vaultBal('v_mkt'), vaultBal('v_main') - m0]; }, [mainB0]), ['tr', 'v_mkt', 'v_main', 100000, -275000, 100000]);
     await A.click('#p-mkt [data-mv]'); await A.waitForTimeout(250); await A.click('#mvOk'); await A.waitForTimeout(300);
     const finalCash = await M.evaluate(() => cashNow());
-    eq('بعد نقل الكل: خزنة السوق (المخفية) = اللي مع الشريك، والوارد بيعرض رقم الشريك بس من غير رصيد خزنة', [await vbal(A, 'v_mkt'), finalCash, await A.evaluate(() => mkPending().length), (await A.textContent('#p-mkt .mkbal')).includes('مش بيتعدل'), (await A.textContent('#p-mkt .mkbal')).includes('رصيد خزنة السوق')], [175000, 175000, 0, true, false]);
+    eq('بعد نقل الكل: خزنة السوق (المخفية) = اللي مع الشريك، ورصيدها ظاهر فوق في حركة السوق للعرض بس', [await vbal(A, 'v_mkt'), finalCash, await A.evaluate(() => mkPending().length), (await A.textContent('#p-mkt .mkbal')).includes('مش بيتعدل'), (await A.textContent('#p-mkt .mkvb b')).replace(/\D/g, '') === String(finalCash / 100), !!(await A.$('#p-mkt .mkvb input, #p-mkt .mkvb button'))], [175000, 175000, 0, true, true, false]);
     eq('خزنة السوق مخفية من الخزنة: مش في القايمة ولا الاختيارات ولا "رصيد كل الخزن"، وكاش الشريك ظاهر دخل', await A.evaluate(() => {
       const all = db.vaults.filter(v => !v.del && v.id !== 'v_mkt').reduce((s, v) => s + vaultBal(v.id), 0);
       go('cash'); renderCash(); const r = [vaultsL().some(v => v.id === 'v_mkt'), vaultOpts('').includes('v_mkt'), vaultBal('') === all, $('#p-cash').textContent.includes('خزنة السوق'),

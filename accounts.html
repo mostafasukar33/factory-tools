@@ -4429,8 +4429,8 @@ const mkRec = o => o.t === 'pay' || o.t === 'spay' || o.t === 'inv' || o.t === '
 /* اتنقلت؟ الحركة في الحسابات هي الأصل. لو لسه منزلتش على الجهاز ده من المزامنة، بنصدق حالة الشيت */
 function mkMoved(o) { const e = mkRec(o); if (e) return !e.del; const s = mkSt(o.id); return !!(s && s.done); }
 function mkState(o) { const s0 = mkSt(o.id); if (s0 && s0.ign) return 'ign'; if (mkMoved(o)) return 'done'; const s = mkSt(o.id); return s && s.back && s.bv === o.upd ? 'back' : 'new'; }
-/* التحويل (إنستا/فودافون) محتاج "وصل؟" قبل النقل. الباقي كاش مع الشريك */
-const mkNeeds = o => o.t === 'pay' && o.m !== 'cash';
+/* التحويل بيتحسب واصل من الأول (بطلب صاحب المشروع): مفيش "وصل؟" قبل النقل. الكود القديم (mkArrive) فاضل بس محدش بيوصله */
+const mkNeeds = () => false;
 const mkArrived = o => !mkNeeds(o) || !!(mkSt(o.id) && mkSt(o.id).ok && mkSt(o.id).ov === o.upd);
 /* الحساب اللي اتربط بيه: العميل الجديد بالـ id بتاعه، والمورد باسمه (علشان المرة الجاية يتقترح لوحده) */
 function mkAlias() {
@@ -4448,18 +4448,52 @@ function mkSetSt(opId, ch) {
   Object.assign(s, ch); s.upd = Math.max(Date.now(), (s.upd || 0) + 1); s.sy = 0;
 }
 /* المصروف بيوصل مصطفى كإشعار في الوارد، وهو بيختار: "سجّلها مصروف" (بند "مصاريف السوق" من خزنة السوق) أو "تجاهل" (mkIgnore). الشريك مبيشوفش أي حالة للمصروف ولا بيتقفل عليه.
-   لو الشريك عدّل المصروف أو مسحه بعد ما مصطفى سجّله: الحركة في الخزنة بتتعدل/بتتمسح لوحدها (mkFollowExp). المتجاهَل مبيرجعش. الفترة المقفولة مبتتعدلش */
-function mkFollowExp() {
+   الشريك بيعدّل ويمسح أي حركة في أي وقت (بطلب صاحب المشروع)، حتى بعد ما مصطفى ينقلها: الحركة في الحسابات/الخزنة بتتعدل أو بتتمسح
+   لوحدها (mkFollow) ومصطفى بيوصله إشعار بس. اللي مينفعش يتطبق لوحده (فاتورة مكتوب بنودها، أو فترة مقفولة) بيوصل عنه إشعار مرة واحدة
+   ويفضل عليه "اتعدلت بعد النقل" في الوارد علشان مصطفى يظبطه بإيده. المتجاهَل مبيرجعش */
+function mkFollow() {
+  const d = mkDb(), nv = d.nv = d.nv || {}, msgs = [];
   let n = 0;
-  Object.values(mkDb().ops).forEach(o => {
-    if (o.t !== 'exp') return;
-    const s = mkSt(o.id), rec = IDX.tx.get('t_mk_' + o.id);
-    if (!rec || !s || !s.done) return;
-    if (o.del) { if (!rec.del) { rec.del = true; rec.delAt = Date.now(); touch(rec); mkSetSt(o.id, {done: false, dv: 0}); n++; } return; }
-    const d = isoOf(o.ts);
-    if (!rec.del && s.dv !== o.upd && !isLocked(d)) { Object.assign(rec, {amt: o.amt, date: d, note: o.cat + (o.note ? ' — ' + o.note : '')}); touch(rec); mkSetSt(o.id, {dv: o.upd}); n++; }
+  Object.values(d.ops).forEach(o => {
+    if (!MK_T[o.t]) return;
+    const s = mkSt(o.id), rec = mkRec(o);
+    if (!rec || rec.del || !s || !s.done || s.dv === o.upd) return;
+    const isE = rec.party !== undefined, day = isoOf(o.ts);
+    if ((o.t === 'inv' && !rec.mkNL) || isLocked(rec.date) || (!o.del && isLocked(day))) {
+      if (nv[o.id] !== o.upd) { nv[o.id] = o.upd; n++; msgs.push(`⚠️ شريكك ${o.del ? 'مسح' : 'عدّل'}: ${mkLine(o)} — ${o.t === 'inv' && !rec.mkNL ? 'الفاتورة دي مكتوب بنودها' : 'الفترة مقفولة'}، ظبطها بإيدك`); }
+      return;
+    }
+    if (isE) (rec.hist = rec.hist || []).push(snapshot(rec));
+    if (o.del) {
+      rec.del = true; rec.delAt = Date.now(); touch(rec);
+      mkSetSt(o.id, {done: false, dv: 0}); n++;
+      msgs.push(`🗑 شريكك مسح: ${mkLine(o)} — واتشالت من الحسابات`);
+      return;
+    }
+    if (o.t === 'pay' || o.t === 'spay') {
+      Object.assign(rec, {amt: o.amt, date: day});
+      if (o.t === 'pay' && (o.m === 'cash') !== (rec.method === 'نقدي')) Object.assign(rec, {method: o.m === 'cash' ? 'نقدي' : 'تحويل', vault: o.m === 'cash' ? MKV : mkVaultFor(o.m)});
+      if (o.t === 'pay') rec.note = 'حركة السوق' + (o.m === 'cash' ? '' : ' — ' + MK_M[o.m]);
+    } else if (o.t === 'inv') { rec.date = day; rec.lines = [{name: MK_NL, unit: 'وحدة', qty: 1, price: o.amt}]; rec.disc = 0; }
+    else if (o.t === 'rt') Object.assign(rec, {amt: o.amt, date: day, note: 'مرتجع/شغل (السوق)' + (o.note ? ' — ' + o.note : '')});
+    else {
+      Object.assign(rec, {amt: o.amt, date: day});
+      if (o.t === 'exp') rec.note = o.cat + (o.note ? ' — ' + o.note : '');
+      if (o.t === 'cs') rec.note = 'بيع كاش من المصنع — ' + (o.buyer || '');
+    }
+    if (isE) { applyAmounts(rec); rec.desc = docDesc(rec); }
+    touch(rec); mkSetSt(o.id, {dv: o.upd}); n++;
+    msgs.push(`✏️ شريكك عدّل: ${mkLine(o)} — واتعدلت في الحسابات`);
   });
-  return n;
+  return {n, msgs};
+}
+/* إشعار التعديلات (شريط فوق + صوت) */
+function mkEditAlert(msgs) {
+  const b = $('#mkBar'); if (!b) return;
+  b.innerHTML = `<b>✏️ حركة السوق</b> ${esc(msgs.length === 1 ? msgs[0] : `${msgs.length} تعديلات — آخرها: ${msgs[msgs.length - 1]}`)} <u>افتح الوارد</u>`;
+  b.classList.add('on'); mkBeep();
+  b.onclick = () => { b.classList.remove('on'); go('mkt'); };
+  clearTimeout(mkBarT); mkBarT = setTimeout(() => b.classList.remove('on'), 15000);
 }
 function mkIgnore(o) {
   if (!o || o.t !== 'exp') return;
@@ -4554,7 +4588,7 @@ function mkNext() { mkQ = null; return mkSync(); }
 async function mkSyncOnce() {
   const cr = mkCreds(); if (!db || !cr || mkBusy) return false;
   mkBusy = true; const d0 = db;
-  let fresh = [], ch = false;
+  let fresh = [], ch = false, edits = [];
   try {
     const d = mkDb();
     if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}}); ch = true; }
@@ -4590,7 +4624,7 @@ async function mkSyncOnce() {
       d.cursor = j.next || d.cursor; more = !!j.more;
     }
     if (mkReconcile()) ch = true;
-    if (mkFollowExp()) ch = true;
+    const fl = mkFollow(); if (fl.n) { ch = true; if (!first) edits = fl.msgs; }
     mkErr = ''; mkLastOk = Date.now();
   } catch (e) { mkErr = String(e.message || e); }
   finally {
@@ -4598,6 +4632,7 @@ async function mkSyncOnce() {
     if (db === d0) {
       if (ch) flushSave();
       if (fresh.length) mkAlert(fresh);
+      else if (edits.length) mkEditAlert(edits);
       if (ch || fresh.length) mkRefresh();
     }
   }
@@ -4622,7 +4657,7 @@ function mkBeep() {
     [[880, 0], [1320, 0.16]].forEach(([f, d]) => { const o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; o.type = 'sine'; g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.25, t + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.22); o.connect(g); g.connect(a.destination); o.start(t + d); o.stop(t + d + 0.25); });
   } catch (e) {}
 }
-const mkLine = o => o.t === 'inv' ? `🧾 ${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${fmtP(o.amt)}` : o.t === 'exp' ? `مصروف ${o.cat}: ${fmtP(o.amt)}` : o.t === 'spay' ? `دفع للمورد ${o.sname} ${fmtP(o.amt)}` : o.t === 'hand' ? `سلّمك ${fmtP(o.amt)} كاش` : o.t === 'cs' ? `بيع كاش من المصنع ${fmtP(o.amt)}${o.buyer ? ' — ' + o.buyer : ''}` : `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${fmtP(o.amt)} ${MK_M[o.m] || ''}`;
+const mkLine = o => o.t === 'rt' ? `↩️ ${o.cname} مرتجع/شغل ${fmtP(o.amt)}${o.note ? ' — ' + o.note : ''}` : o.t === 'inv' ? `🧾 ${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${fmtP(o.amt)}` : o.t === 'exp' ? `مصروف ${o.cat}: ${fmtP(o.amt)}` : o.t === 'spay' ? `دفع للمورد ${o.sname} ${fmtP(o.amt)}` : o.t === 'hand' ? `سلّمك ${fmtP(o.amt)} كاش` : o.t === 'cs' ? `بيع كاش من المصنع ${fmtP(o.amt)}${o.buyer ? ' — ' + o.buyer : ''}` : `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${fmtP(o.amt)} ${MK_M[o.m] || ''}`;
 let mkBarT;
 function mkAlert(list) {
   const b = $('#mkBar'); if (!b) return;

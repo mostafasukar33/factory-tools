@@ -510,9 +510,7 @@ const MO = !!process.env.MARKET_ONLY;
     eq('مفيش حاجة دخلت الحسابات لوحدها', [await bal(A, C1), await vbal(A, 'v_mkt'), await A.evaluate(() => db.entries.filter(e => e.id.startsWith('e_mk_')).length)], [bal0, 0, 0]);
     await A.click('#mkGo'); await A.waitForTimeout(200);
     const card = `#p-mkt [data-mv="${pid1}"]`;
-    eq('الوارد متجمع بالعميل: 5,000 كاش + 3,000 إنستا = 8,000، والنقل مقفول لحد "وصل"', [(await A.textContent(`#p-mkt .ic:has([data-mv="${pid1}"])`)).replace(/\s+/g, ' ').includes('5,000 كاش + 3,000 تحويل = 8,000'), await A.isDisabled(card)], [true, true]);
-    await A.click('#p-mkt [data-ok]'); await A.click('#arOk'); await A.waitForTimeout(200);
-    eq('بعد "وصل" زرار النقل اشتغل', await A.isDisabled(card), false);
+    eq('الوارد متجمع بالعميل: 5,000 كاش + 3,000 تحويل = 8,000، والتحويل محسوب واصل من الأول (مفيش "وصل؟")', [(await A.textContent(`#p-mkt .ic:has([data-mv="${pid1}"])`)).replace(/\s+/g, ' ').includes('5,000 كاش + 3,000 تحويل = 8,000'), await A.isDisabled(card), await A.$('#p-mkt [data-ok]')], [true, false, null]);
     await A.click(card); await A.waitForTimeout(200);
     eq('شاشة التأكيد: الكاش ← خزنة السوق والتاريخ لوحده', await A.evaluate(() => [$$('#modal .mvr [data-f=v]').map(x => x.value)[0], $$('#modal .mvr [data-f=d]')[0].value, $('#modal').textContent.includes('عمليات')]), ['v_mkt', today, true]);
     await A.evaluate(() => { const s = $$('#modal .mvr [data-f=v]')[1]; s.value = ''; });   // التحويل: من غير خزنة (في حساب العميل بس)
@@ -531,7 +529,7 @@ const MO = !!process.env.MARKET_ONLY;
     await A.evaluate(() => { closeModal(); go('mkt'); }); await A.waitForTimeout(250);
     await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(800);
     eq('الشريك شاف ✓ اتنقلت، والرصيد عنده اتظبط', await M.evaluate(id => [liveOps().filter(o => opState(o) === 'done').length, customers().get(id).bal], pid1), [2, bal0 - 800000]);
-    eq('بعد النقل مفيش "امسحها" عند الشريك', await M.evaluate(() => { const o = liveOps().find(x => opState(x) === 'done'); nav('ok/' + o.id); return !!$('#sDel'); }), false);
+    eq('بعد النقل الشريك لسه يقدر يعدّل ويمسح', await M.evaluate(() => { const o = liveOps().find(x => opState(x) === 'done'); nav('ok/' + o.id); return [!!$('#sDel'), !!$('#sEdit')]; }), [true, true]);
 
     await A.click('#p-mkt [data-mv^="n:"]'); await A.waitForTimeout(200); await A.click('#lkNew'); await A.waitForTimeout(150); await A.click('#mvOk'); await A.waitForTimeout(300);
     eq('عميل جديد: اتفتحله حساب في عملاء السوق واتنقلت الدفعة', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل سوق جديد'); return p ? [p.sec, balance(p.id)] : null; }), ['mkt', -150000]);
@@ -720,6 +718,29 @@ const MO = !!process.env.MARKET_ONLY;
       [['adj', 'dn', 150000, 'مرتجع/شغل (السوق) — مرتجع 2 لفة 16 مم', true], -150000, 0]);
     await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForFunction(id => opState(S.ops[id]) === 'done', rtOp, {timeout: 15000}).catch(() => {});
     eq('الشريك: اتنقلت والرصيد عنده = رصيد الحسابات', await M.evaluate(([id, pid]) => [opState(S.ops[id]), customers().get(pid).bal], [rtOp, pid1]), ['done', rB0 - 150000]);
+
+    /* الشريك بيعدّل حركة اتنقلت: بتتعدل في الحسابات لوحدها ومصطفى يوصله إشعار */
+    await M.evaluate(i => { pyTab = 'pay'; nav('p/' + i); }, pid1); await M.waitForTimeout(200);
+    await M.click(`#tdy .row[data-o="${rtOp}"]`); await M.waitForTimeout(150);
+    eq('نافذة التعديل بتفتح على حركة اتنقلت، وفيها إن التعديل هيوصل لمصطفى', [!!(await M.$('#eOk')), (await M.textContent('#modal')).includes('يوصله إشعار')], [true, true]);
+    await M.fill('#eA', '2000'); await M.click('#eOk'); await M.waitForTimeout(300);
+    eq('عند الشريك: "التعديل عند مصطفى" لحد ما يتطبق', await M.evaluate(id => stHtml(S.ops[id]).includes('التعديل عند مصطفى'), rtOp), true);
+    await bg(M, 'sync()'); await A.evaluate(() => go('home')); await A.waitForTimeout(200); await bg(A, 'mkSync()'); await A.waitForTimeout(300);
+    eq('عند مصطفى: الخصم اتعدل لوحده لـ 2,000 والرصيد اتظبط، وطلعله إشعار بالتعديل', [await A.evaluate(id => E.get('e_mk_' + id).amt, rtOp), await bal(A, C1) - rB0, (await A.textContent('#mkBar')).includes('شريكك عدّل'), await A.evaluate(() => $('#mkBar').classList.contains('on'))], [200000, -200000, true, true]);
+    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForFunction(([id, v]) => !editPend(S.ops[id]) && customers().get(S.ops[id].cid).bal === v, [rtOp, rB0 - 200000], {timeout: 15000}).catch(() => {});
+    eq('عند الشريك: رجعت "اتنقلت" والرصيد = الحسابات', await M.evaluate(([id, pid]) => [stHtml(S.ops[id]).includes('✓ اتنقلت'), customers().get(pid).bal], [rtOp, pid1]), [true, rB0 - 200000]);
+    await M.click(`#tdy .row[data-o="${rtOp}"]`); await M.waitForTimeout(150); await M.click('#eDel'); await M.click('#aY'); await M.waitForTimeout(300);
+    await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.waitForTimeout(300);
+    eq('الشريك مسح حركة اتنقلت: اتشالت من الحسابات لوحدها وإشعار', [await A.evaluate(id => E.get('e_mk_' + id).del, rtOp), await bal(A, C1), (await A.textContent('#mkBar')).includes('شريكك مسح')], [true, rB0, true]);
+    await A.evaluate(() => { $('#mkBar').classList.remove('on'); mkView = 'in'; go('mkt'); }); await A.waitForTimeout(200);
+    /* دفعة كاش اتنقلت: الشريك غيّر المبلغ وخلاها تحويل، وبعدين رجّعها زي ما كانت */
+    const pyOp = await M.evaluate(() => liveOps().find(o => o.t === 'pay' && o.amt === 330000 && opState(o) === 'done').id), pV0 = await vbal(A, 'v_mkt'), pB0 = await bal(A, C1);
+    const editPay = async (amt, m) => { await M.evaluate(i => { pyTab = 'pay'; nav('p/' + i); }, pid1); await M.waitForTimeout(150); await M.click(`#tdy .row[data-o="${pyOp}"]`); await M.waitForTimeout(150); await M.fill('#eA', amt); await M.click(`#eM button[data-m=${m}]`); await M.click('#eOk'); await M.waitForTimeout(200); await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.waitForTimeout(200); };
+    await editPay('3000', 'tr');
+    eq('دفعة كاش اتنقلت والشريك خلاها تحويل 3,000: اتعدلت في الحساب وطلعت من خزنة السوق', [await A.evaluate(id => { const e = E.get('e_mk_' + id); return [e.amt, e.method, e.vault === 'v_mkt']; }, pyOp), await bal(A, C1) - pB0, await vbal(A, 'v_mkt') - pV0], [[300000, 'تحويل', false], 30000, -330000]);
+    await editPay('3300', 'cash');
+    eq('ورجّعها كاش 3,300: رجعت زي ما كانت', [await A.evaluate(id => { const e = E.get('e_mk_' + id); return [e.amt, e.method, e.vault]; }, pyOp), await bal(A, C1) - pB0, await vbal(A, 'v_mkt') - pV0], [[330000, 'نقدي', 'v_mkt'], 0, 0]);
+    await A.evaluate(() => { $('#mkBar').classList.remove('on'); mkView = 'in'; go('mkt'); }); await A.waitForTimeout(200);
 
     /* عميل جديد: فاتورة بإجمالي بس */
     await M.evaluate(() => nav('c')); await M.click('#bNew'); await M.fill('#ncN', 'عميل فاتورة جديد'); await M.click('#ncOk'); await M.click('#pyT button[data-v=inv]'); await M.fill('#amt', '2500'); await M.click('#invOk'); await M.waitForTimeout(1200);

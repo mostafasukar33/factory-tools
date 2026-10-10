@@ -128,6 +128,7 @@ html[data-theme=dark] .ctb tr.l-r td.nm{color:var(--red)}
 .cust div .money{font-size:21px}
 .cust div .z{font-size:14px;color:var(--sub);font-weight:700}
 .note{background:var(--red-l);color:var(--red);border-radius:10px;padding:7px 12px;font-weight:700;margin-top:10px;font-size:14px}
+.note.dn{background:var(--green-l);color:var(--green)}
 .amt{margin-top:10px;background:var(--card);border:1.5px solid var(--gold);border-radius:13px;height:68px;display:flex;align-items:center;justify-content:center;gap:10px;cursor:text}
 .amt input{width:62%;border:0;background:none;outline:none;text-align:center;font-size:36px;font-weight:800;direction:ltr;font-variant-numeric:tabular-nums;padding:0;caret-color:var(--gold)}
 .amt input::placeholder{color:#c9c2ad}
@@ -526,9 +527,11 @@ function refresh() {
 }
 
 /* ---------- حاجات مشتركة ---------- */
+/* اتنقلت وبعدين الشريك عدّلها: لحد ما الحسابات تطبّق التعديل (dv = upd العملية) */
+const editPend = o => { const s = stOf(o); return !!(s && s.done && s.dv && s.dv !== o.upd); };
 function stHtml(o) {
   const s = opState(o);
-  return s === 'exp' ? '' : s === 'done' ? '<span class="st ok">✓ اتنقلت</span>' : s === 'back' ? '<span class="st bk">🔴 راجعة</span>' : s === 'rm' ? '<span class="st bk">✖ مصطفى شالها</span>' : s === 'wait' ? '<span class="st wt">⏳ عند مصطفى</span>' : '<span class="st ns">⏳ لسه متبعتتش</span>';
+  return s === 'exp' ? '' : s === 'done' ? (editPend(o) ? '<span class="st wt">⏳ التعديل عند مصطفى</span>' : '<span class="st ok">✓ اتنقلت</span>') : s === 'back' ? '<span class="st bk">🔴 راجعة</span>' : s === 'rm' ? '<span class="st bk">✖ مصطفى شالها</span>' : s === 'wait' ? '<span class="st wt">⏳ عند مصطفى</span>' : '<span class="st ns">⏳ لسه متبعتتش</span>';
 }
 /* سطر عملية: دوسة عليه بتفتح التعديل */
 const opRow = (o, withDay, noName) => `<div class="row t-${o.t}" data-o="${esc(o.id)}"><div class="m"><b>${esc(noName ? opHow(o) : opWhat(o))}</b><small>${withDay ? dispDate(dayOf(o.ts)) + ' · ' : ''}${timeOf(o.ts)}${noName ? '' : ' · ' + esc(opHow(o))}</small></div><div class="a"><b class="money">${fmt(o.amt)}</b>${stHtml(o)}</div></div>`;
@@ -654,7 +657,7 @@ function drawPayInfo() {
   if (!c || !$('#cBox')) return;
   $('#cBox').innerHTML = `<b>${esc(c.name)}${c.nw ? '<span class="nw">عميل جديد</span>' : ''}</b><div>${c.bal > 0 ? `<span>عليه</span><b class="money">${fmt(c.bal)}</b>` : '<span class="z">مفيش عليه</span>'}</div>`;
   const ops = custOps(c.id, aliases()).sort((a, b) => b.ts - a.ts), shown = ops.slice(0, cShow);
-  $('#tdy').innerHTML = ops.length ? `<div class="lbl" style="margin-top:16px"><span>حركات العميل ده</span><span>دوس تعدّل</span></div><div class="list">${shown.map(o => opRow(o, true, true)).join('')}</div>${ops.length > shown.length ? '<button class="more" id="cMore" type="button" style="margin-top:10px">اعرض أقدم</button>' : ''}` : '';
+  $('#tdy').innerHTML = ops.length ? `<div class="lbl" style="margin-top:16px"><span>كل اللي سجلته على العميل ده (${ops.length})</span><span>دوس تعدّل أو تمسح</span></div><div class="list">${shown.map(o => opRow(o, true, true)).join('')}</div>${ops.length > shown.length ? '<button class="more" id="cMore" type="button" style="margin-top:10px">اعرض أقدم</button>' : ''}` : '';
   if ($('#cMore')) $('#cMore').onclick = () => { cShow += 15; drawPayInfo(); };
   bindOps('#tdy');
 }
@@ -713,17 +716,13 @@ async function saveInv(c) {
 const EDIT_TITLE = {rt: 'مرتجع / شغل', pay: 'دفعة عميل', inv: 'فاتورة (إجمالي)', exp: 'مصروف', spay: 'دفعة لمورد', hand: 'تسليم كاش لمصطفى', cs: 'بيع كاش من المصنع'};
 function editSheet(o) {
   if (!o || o.del) return;
+  /* التعديل والمسح في أي وقت (بطلب صاحب المشروع)، حتى بعد ما مصطفى ينقلها: التعديل بيتطبق عنده لوحده وبيوصله إشعار */
   const s = opState(o);
-  if (s === 'done') {
-    modal(`<h3>${EDIT_TITLE[o.t]}<small>${timeOf(o.ts)}</small></h3><p>${esc(opWhat(o))} — <span class="money">${fmt(o.amt)}</span> ${esc(opHow(o))}</p>
-      <p style="font-size:14px;color:var(--sub);font-weight:600">${o.t === 'hand' ? 'مصطفى استلمها' : 'اتنقلت لحسابات مصطفى'}، فمقفولة. أي تصحيح من عنده.</p>
-      <button class="big b-home" id="eX" type="button">تمام</button>`);
-    $('#eX').onclick = closeModal; return;
-  }
   let m = o.m;
   const bs = s === 'back' ? stOf(o) : null;
   modal(`<h3>${EDIT_TITLE[o.t]}${isCustOp(o) ? ' — ' + esc(o.cname) : ''}<small>${dispDate(dayOf(o.ts))} ${timeOf(o.ts)}</small></h3>
     ${bs ? `<div class="note" style="margin:0 0 6px">🔴 مصطفى رجّعها: ${esc(bs.back)}</div>` : ''}
+    ${s === 'done' ? `<div class="note dn" style="margin:0 0 6px">✓ ${o.t === 'hand' ? 'مصطفى استلمها' : 'اتنقلت لحسابات مصطفى'}. لو عدّلتها أو مسحتها هتتغير عنده لوحدها ويوصله إشعار.</div>` : ''}
     ${o.t === 'spay' ? `<label style="font-size:12.5px;font-weight:700;color:var(--sub)">اسم المورد</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.sname)}">` : ''}
     ${o.t === 'cs' ? `<label style="font-size:12.5px;font-weight:700;color:var(--sub)">اسم المشتري</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.buyer)}">` : ''}
     <label class="amt sm" for="eA" style="margin-top:6px"><input id="eA" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${fmt(o.amt)}"><em>جنيه</em></label>
@@ -746,14 +745,12 @@ function editSheet(o) {
     if (o.t === 'rt') { ch.note = $('#eRt').value.trim().replace(/\s+/g, ' '); if (!ch.note) return toast('اكتب الملاحظة'); }
     if (o.t === 'cs') { ch.buyer = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.buyer) return toast('اكتب اسم المشتري'); }
     if (o.t === 'spay') { ch.sname = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.sname) return toast('اكتب اسم المورد'); }
-    if (opState(o) === 'done') { closeModal(); return toast('دي اتنقلت خلاص'); }
     if (Object.keys(ch).every(k => (o[k] ?? '') === ch[k])) return closeModal();
     Object.assign(o, ch); bump(o); save(); sync(); closeModal(); toast('اتعدّلت ✔'); refresh();
   };
   $('#eDel').onclick = async () => { if (await delOp(o)) refresh(); };
 }
 async function delOp(o) {
-  if (opState(o) === 'done') { toast('دي اتنقلت للحسابات. أي تصحيح من عند مصطفى.', 4000); return false; }
   if (!(await ask(`تمسح ${o.t === 'pay' ? 'دفعة' : o.t === 'inv' ? 'فاتورة' : o.t === 'rt' ? 'مرتجع/شغل' : o.t === 'hand' ? 'تسليم' : o.t === 'cs' ? 'بيع كاش' : 'مصروف'} ${fmt(o.amt)} (${opWhat(o)}${o.t === 'pay' ? ' — ' + M_SAID[o.m] : ''})؟`, 'أيوه امسحها', 'لأ', true))) return false;
   o.del = true; bump(o); save(); sync();
   toast('اتمسحت ✔');
@@ -782,7 +779,7 @@ function drawSaved() {
         ${(isCustOp(o) || o.t === 'cs') && dayOf(o.ts) !== today() ? `<small>📅 بتاريخ ${dispDate(dayOf(o.ts))}</small>` : ''}<small class="${s === 'unsent' ? 'wt' : s === 'back' ? 'bk' : 'ok'}" id="sSt">${stTxt}</small></div></div>
     ${again ? `<button class="big b-again" id="sAgain" type="button" style="margin-top:18px">${again}</button>` : ''}
     <button class="big b-home" id="sHome" type="button"${again ? '' : ' style="margin-top:18px"'}>${isCustOp(o) ? 'رجوع للعملاء' : 'رجوع للرئيسية'}</button>
-    <div style="text-align:center">${s !== 'done' ? '<button class="oops n" id="sEdit" type="button">✏️ تعديل</button><button class="oops" id="sDel" type="button">غلطت، امسحها</button>' : ''}</div>`;
+    <div style="text-align:center"><button class="oops n" id="sEdit" type="button">✏️ تعديل</button><button class="oops" id="sDel" type="button">غلطت، امسحها</button></div>`;
   $('#sHome').onclick = () => nav(isCustOp(o) ? 'c' : '', true);
   if ($('#sAgain')) $('#sAgain').onclick = () => { if (isCustOp(o)) { pyTab = 'pay'; nav('p/' + cid, true); } else if (o.t === 'cs') nav('b', true); else { spTab = o.t; nav('x', true); } };
   if ($('#sEdit')) $('#sEdit').onclick = () => editSheet(o);

@@ -483,6 +483,7 @@ function refresh() {
   if (scr.v === 'c') drawCustomers($('#q') ? $('#q').value : '');
   else if (scr.v === 'pay') drawPayInfo();
   else if (scr.v === 'ok') drawSaved();
+  else if (scr.v === 'spend') drawSpendList();
   else if (scr.v === 'home') drawHome();
   else if (scr.v === 'a') drawArchive();
   else if (scr.v === 'day') drawDay();
@@ -738,8 +739,9 @@ function drawSpend() {
   lastSave = 0;
   $('#main').innerHTML = `<div class="seg sp" id="spT"><button type="button" data-v="exp" class="exp ${spTab === 'exp' ? 'on' : ''}">⛽ مصروف</button><button type="button" data-v="spay" class="spay ${spTab === 'spay' ? 'on' : ''}">🏭 دفعت لمورد</button></div>
     <div id="spBody"></div>
+    <div id="spList"></div>
     <p class="hint">بتتخصم من اللي معاك كاش (${fmtN(cashNow())})</p>`;
-  $$('#spT button').forEach(b => b.onclick = () => { spTab = b.dataset.v; $$('#spT button').forEach(x => x.classList.toggle('on', x === b)); body(); });
+  $$('#spT button').forEach(b => b.onclick = () => { spTab = b.dataset.v; $$('#spT button').forEach(x => x.classList.toggle('on', x === b)); body(); drawSpendList(); });
   const body = () => {
     const amtBox = `<label class="amt ${spTab}" for="amt"><input id="amt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>`;
     if (spTab === 'exp') {
@@ -760,7 +762,14 @@ function drawSpend() {
       setTimeout(() => $('#sn') && $('#sn').focus(), 100);
     }
   };
-  body();
+  body(); drawSpendList();
+}
+/* اللي اتسجل النهارده تحت خانة الكتابة (مؤقت للشاشة دي بس، وبيفضل برّه في الرئيسية والأرشيف). دوسة تعدّل */
+function drawSpendList() {
+  const el = $('#spList'); if (!el) return;
+  const ops = liveOps().filter(o => o.t === spTab && dayOf(o.ts) === today()).sort((a, b) => b.ts - a.ts);
+  el.innerHTML = ops.length ? `<div class="gh g-${spTab}" style="margin-top:18px"><span>${spTab === 'exp' ? 'مصروفات النهارده' : 'دفعات الموردين النهارده'} (${ops.length})</span><b class="money">${fmt(ops.reduce((a, o) => a + o.amt, 0))}</b></div><div class="list">${ops.map(o => opRow(o)).join('')}</div><p class="hint">دوس على أي سطر تعدّله أو تمسحه</p>` : '';
+  bindOps('#spList');
 }
 async function saveSpend(t, x) {
   if (Date.now() - lastSave < 700) return;
@@ -775,7 +784,9 @@ async function saveSpend(t, x) {
   const now = Date.now();
   const o = Object.assign({id: newId(), t, amt, ts: now, upd: now, del: false}, x);
   S.ops[o.id] = o; save(); sync();
-  nav('ok/' + o.id, true);
+  try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
+  drawSpend(); lastSave = Date.now();   // نفس الشاشة جاهزة للي بعده، واللي اتسجل بيظهر تحتها
+  toast(`✔ اتسجل: ${t === 'exp' ? x.cat : x.sname} — ${fmt(amt)} جنيه`, 3000);
 }
 
 /* ---------- بيع كاش من المصنع: المبلغ واسم المشتري بس، من غير ما يتسجل في العملاء ---------- */

@@ -183,6 +183,7 @@ table.ldg{width:100%;border-collapse:collapse;font-size:13.5px}
 .ldg td.b{background:#F7F2E4;border-inline-start:2px solid #9C7420}
 .ldg td.l{text-align:right;min-width:130px}.ldg td.l small{display:block;font-size:11px;color:#9C7420;font-weight:700}
 .ldg td.dt{white-space:nowrap;font-size:12.5px}.ldg td.q{white-space:nowrap;font-size:12.5px}
+.ldg tr.more td{padding:10px}.ldg tr.more a{cursor:pointer;font-weight:800;color:#9C7420;text-decoration:underline}
 .ldg td.n{direction:ltr;white-space:nowrap}.ldg td.b{direction:ltr;white-space:nowrap;font-weight:800}
 .ldg tr{cursor:pointer}.ldg tr:nth-child(even) td{background:#FBF8EF}
 .ldg tr.f td{border-top:1.5px solid #E2D6B5}
@@ -884,8 +885,6 @@ html[data-theme=dark] .ifoot .btn.off,html[data-theme=dark] .ifoot .btn:disabled
 <div id="render"></div>
 
 <script src="lib/datepick.js"></script>
-<script src="lib/html2canvas.min.js"></script>
-<script src="lib/jspdf.umd.min.js"></script>
 <script>
 'use strict';
 /*
@@ -1445,6 +1444,7 @@ function renderParty(id) {
   if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
   $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => openEntry(p, E.get(el.dataset.id)));
   if ($('#ppEnd')) $('#ppEnd').onclick = () => jumpTo(true);
+  if ($('#ldgOld')) $('#ldgOld').onclick = () => { ldgAll.add(id); renderParty(id); };
   runCounters($('#p-party'));
 }
 function entryCard(e, runB) {
@@ -1777,12 +1777,16 @@ function ledgerHintOnce() {
   try { if (localStorage.getItem('fo_hint_ledger')) return ''; localStorage.setItem('fo_hint_ledger', '1'); } catch (e) { return ''; }
   return '<p class="hint">دوس على أي سطر علشان تعدّله. الدفعات أخضر، والمرتجعات والخصومات برتقاني، والشيكات المرتجعة أحمر. (الجملة دي بتظهر مرة واحدة بس)</p>';
 }
+/* الحساب الطويل أوي: بنرسم آخر LDG_SHOW سطر بس علشان الشاشة تفتح بسرعة، والأقدم بدوسة (ldgAll = الحسابات اللي اتفتح أقدمها) */
+const LDG_MAX = 300, LDG_SHOW = 200, ldgAll = new Set();
 function ledgerTable(p) {
   const s = stmtData(p.id, '', '');
+  const cut = s.rows.length > LDG_MAX && !ldgAll.has(p.id) ? s.rows.length - LDG_SHOW : 0;
   if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده.<br><small style="color:#9a937f">ابدأ بفاتورة أو دفعة من الأزرار اللي فوق.</small></div>';
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
-    ${s.rows.map(r => `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
+    ${cut ? `<tr class="more"><td colspan="7"><a id="ldgOld">↑ عرض الحركات الأقدم (${cut} سطر)</a></td></tr>` : ''}
+    ${(cut ? s.rows.slice(cut) : s.rows).map(r => `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b data-ck="pe:${esc(p.id)}" data-cnt="${s.close * s.sg}">${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>
     ${ledgerHintOnce()}`;
@@ -1824,6 +1828,7 @@ function stmtData(pid, from, to, fromEnt) {
 const opLabel = s => s.lastInv ? 'الرصيد قبل الفاتورة' : 'رصيد أول المدة';
 const periodText = s => s.lastInv ? `آخر فاتورة — ${dispDate(s.lastInv.date)}` : s.from ? `من ${dispDate(s.from)} إلى ${dispDate(s.to)}` : (s.to && s.to !== todayISO() ? `الحساب كله حتى ${dispDate(s.to)}` : 'الحساب كله');
 function stmtModal(p) {
+  loadPdfLibs().catch(() => {});   // نجهّز أداة الـ PDF من دلوقتي علشان تبقى جاهزة لما يدوس
   const t = todayISO(), y = t.slice(0, 4);
   const lastInv = partyEntries(p.id).filter(e => e.kind === (p.sec === 'sup' ? 'pur' : 'inv')).pop();
   let mode = lastInv ? 'last' : 'all';
@@ -2115,7 +2120,9 @@ function renderSyncBox() {
   $('#syNow').onclick = () => syncNow(true);
 }
 addEventListener('online', () => syncNow());
-setInterval(() => { if (db && (pendingRecs().length || Date.now() - lastPullAt > 120000)) syncNow(); }, 30000);
+/* في الخلفية: بنبعت اللي مستني بس، والسحب من الشيت بيستنى لحد ما البرنامج يتفتح تاني (توفير نت وبطارية) */
+setInterval(() => { if (db && (pendingRecs().length || (!document.hidden && Date.now() - lastPullAt > 120000))) syncNow(); }, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && db && Date.now() - lastPullAt > 120000) setTimeout(() => syncNow(), 900); });
 
 /* ====================== الإعدادات ====================== */
 const KEY_RE = /^[A-Za-z0-9؀-ۿ_\-@#.!]{8,64}$/;
@@ -3158,7 +3165,7 @@ async function cashSync(force) {
   } catch (e) { cashSyncErr = String(e.message || e); return false; }
   finally { cashSyncing = false; }
 }
-setInterval(() => cashSync(), 120000);
+setInterval(() => { if (!document.hidden) cashSync(); }, 120000);   // في الخلفية مبيسحبش، وبيسحب أول ما يتفتح (تحت)
 document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => cashSync(), 1200); });
 addEventListener('online', () => cashSync(true));
 /* بيقرا رابط الربط اللي الدفتر بيعمله (cashjoin=...)، أو لينك + مفتاح مكتوبين */
@@ -3555,6 +3562,7 @@ function buildReport() {
     sum: [['عدد الأصناف', String(list.filter(x => x.unit).length)]], fin: [sale ? 'إجمالي المبيعات' : 'إجمالي المشتريات', fmtP(tot)]};
 }
 function renderReports() {
+  loadPdfLibs().catch(() => {});   // نجهّز أداة الـ PDF من دلوقتي علشان تبقى جاهزة لما يدوس
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
   const needRange = repKind === 'cash' || repKind === 'item' || repKind === 'profit';
   $('#p-rep').innerHTML = `
@@ -3629,7 +3637,15 @@ async function exportReport(R, how) {
 }
 /* اسم الملف: نضيف، من غير علامات الاتجاه الخفية (اللي كانت بتلخبط الاسم) */
 const cleanName = t => String(t || '').replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+/* مكتبات الـ PDF تقيلة (حوالي 600 كيلو)، فبتتحمّل بس أول مرة حد يعمل PDF مش مع كل فتحة للبرنامج */
+let pdfLibsP = null;
+function loadPdfLibs() {
+  if (window.jspdf && window.html2canvas) return Promise.resolve();
+  const one = src => new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = src; sc.onload = ok; sc.onerror = () => no(new Error('مش قادر يحمّل أداة الـ PDF، اتأكد من النت وجرب تاني')); document.head.appendChild(sc); });
+  return pdfLibsP = pdfLibsP || Promise.all([one('lib/html2canvas.min.js'), one('lib/jspdf.umd.min.js')]).catch(e => { pdfLibsP = null; throw e; });
+}
 async function pagesToPdf(build, title, fileName) {
+  await loadPdfLibs();
   await Promise.all(['400', '600', '700', '800'].map(w => document.fonts.load(w + ' 16px Cairo', 'نص عربي 123abc')));
   const pages = build();
   await Promise.all([...$('#render').querySelectorAll('img')].map(i => i.decode ? i.decode().catch(() => {}) : 0));

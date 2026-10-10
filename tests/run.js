@@ -400,6 +400,18 @@ const MO = !!process.env.MARKET_ONLY;
 
     eq('مفيش أرقام فواتير: لا خانة ولا عرض في الكشف ولا العنوان', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv'); const f = !!$('#dcNo'); closeModal();
       const e = partyEntries(p.id).find(x => x.kind === 'inv'); return [f, /رقم/.test(docTitle(e)), /رقم/.test(docDesc(e)), stmtData(p.id, '', '').rows.some(r => isDoc(r.e) && r.ref)]; }), [false, false, false, false]);
+    eq('دوسة على بند في الكشف بتفتح البند لوحده وتعدّله من غير ما تلمس باقي الفاتورة', await A.evaluate(() => {
+      const p = liveParties().find(x => x.name === 'عميل تجربة واحد');
+      const e = partyEntries(p.id).find(x => x.kind === 'inv' && x.lines.length > 1);
+      if (!e) return 'no multi-line invoice';
+      const r = [ledgerTable(p).includes('data-li="1"')], tot0 = docTotal(e), l1 = JSON.stringify(e.lines[1]), l0 = e.lines[0], h0 = (e.hist || []).length;
+      lineModal(p, e, 0);
+      r.push(!!$('#lnName') && !$('#dcLines') && $('#lnName').value === l0.name);
+      $('#lnQty').value = String(l0.qty + 1); $('#lnQty').dispatchEvent(new Event('input')); $('#lnOk').click();
+      r.push(docTotal(e) === tot0 + l0.price, JSON.stringify(e.lines[1]) === l1, e.hist.length === h0 + 1);
+      lineModal(p, e, 0); $('#lnQty').value = String(l0.qty); $('#lnQty').dispatchEvent(new Event('input')); $('#lnOk').click();
+      r.push(docTotal(e) === tot0);
+      return r; }), [true, true, true, true, true, true]);
     eq('اقتراحات الفاتورة: أصناف الحساب بسعرها القديم، والدوسة تملّي الاسم والسعر، والكتابة بتفلتر', await A.evaluate(() => {
       const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv');
       const mine = custItems(p.id, 'inv'), n = $('#dcLines [data-f=name]'), box = $('#dcLines .sg');

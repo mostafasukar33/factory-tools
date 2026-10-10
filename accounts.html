@@ -1780,7 +1780,7 @@ function renderParty(id) {
   $('#ppRet').onclick = () => docModal(p, sup ? 'rpur' : 'rinv');
   $('#ppAdj').onclick = () => adjModal(p);
   if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
-  $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => el.dataset.g ? mkGrpModal(p, el.dataset.g.split(',')) : openEntry(p, E.get(el.dataset.id)));
+  $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => el.dataset.g ? mkGrpModal(p, el.dataset.g.split(',')) : el.dataset.li !== undefined ? lineModal(p, E.get(el.dataset.id), +el.dataset.li) : openEntry(p, E.get(el.dataset.id)));
   if ($('#ppEnd')) $('#ppEnd').onclick = () => jumpTo(true);
   if ($('#ldgOld')) $('#ldgOld').onclick = () => { ldgAll.add(id); renderParty(id); };
   if (isFwdSrc(p)) fwBind(p);
@@ -1804,6 +1804,45 @@ function entryCard(e, runB) {
     <div class="dh"><b>${e.kind === 'pay' || e.kind === 'ppay' ? '💵 ' : ''}${esc(docTitle(e))}</b><span>${dispDate(e.date)}${flags}</span></div>
     ${e.note && (e.kind === 'pay' || e.kind === 'ppay') ? `<div class="nt">${esc(e.note)}</div>` : ''}
     <div class="dl tot"><span>${e.kind === 'pay' ? 'نزلت من اللي عليه' : e.kind === 'ppay' ? 'نزلت من اللي ليه' : e.cr ? 'دائن' : 'مدين'}</span><span class="money ${side}">${e.cr ? '−' : '+'} ${fmtP(amt)}</span></div>${balLine}</div>`;
+}
+/* دوسة على بند في كشف الحساب = نافذة للبند ده لوحده (الاسم والوحدة والكمية والسعر)، ومن جواها "افتح الفاتورة كاملة" */
+function lineModal(p, e, i) {
+  if (!e || e.del || !isDoc(e) || e.mkNL || isLocked(e.date) || !(e.lines || [])[i]) return openEntry(p, e);
+  const l = e.lines[i], ret = isRet(e), many = e.lines.length > 1;
+  modal(`<h3>تعديل بند — ${esc(p.name)}</h3>
+    <p class="hint" style="margin:-6px 0 10px">${esc(docTitle(e))} — ${dispDate(e.date)}</p>
+    <div class="fld"><label>اسم الصنف</label><input class="inp" id="lnName" value="${esc(l.name)}" autocomplete="off"></div>
+    <div class="g4"><div><label>الوحدة</label><select class="inp" id="lnUnit">${[...new Set(UNITS.concat(l.unit ? [l.unit] : []))].map(u => `<option ${u === l.unit ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select></div>
+      <div><label>الكمية</label><input class="inp num" id="lnQty" inputmode="decimal" value="${esc(fmtQ(l.qty))}"></div>
+      <div><label>السعر</label><input class="inp num" id="lnPrice" value="${esc(fmtP(l.price))}"></div>
+      <div><label>الإجمالي</label><div class="lt2" id="lnTot">—</div></div></div>
+    <div class="mfoot"><div class="dtot"><span>${ret ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}</span><b id="lnAll">0</b></div>
+      <div class="msec"><button class="btn line sm" id="lnFull" type="button">📄 افتح الفاتورة كاملة</button>${many ? '<button class="btn red sm" id="lnDel" type="button">امسح البند ده</button>' : ''}</div>
+      <div class="mrow"><button class="btn gold" id="lnOk" type="button">حفظ البند</button><button class="btn line" id="lnX" type="button">رجوع</button></div></div>`, true);
+  bindMoney($('#lnPrice'));
+  $('#lnQty').addEventListener('input', () => { $('#lnQty').value = normDigits($('#lnQty').value).replace(/[^\d.]/g, ''); });
+  const cur = () => ({name: $('#lnName').value.trim().replace(/\s+/g, ' '), unit: $('#lnUnit').value, qty: Math.round(num($('#lnQty').value) * 1000) / 1000, price: toP($('#lnPrice').value)});
+  const withLine = nl => e.lines.map((x, k) => k === i ? nl : x);
+  const calc = () => { const c = cur(), lt = Math.round(c.qty * c.price); $('#lnTot').textContent = lt ? fmtP(lt) : '—'; $('#lnAll').textContent = fmtP(docTotal({kind: e.kind, lines: withLine(c), disc: e.disc || 0})) + ' ' + CUR; };
+  ['#lnName', '#lnQty', '#lnPrice'].forEach(q => $(q).addEventListener('input', calc)); calc();
+  const apply = (ls, msg) => {
+    const doc = Object.assign({}, e, {lines: ls});
+    if (docTotal(doc) <= 0) return toast('الخصم أكبر من الإجمالي');
+    (e.hist = e.hist || []).push(snapshot(e));
+    e.lines = ls; e.desc = docDesc(e); applyAmounts(e); touch(e);
+    saveDB(); closeModal(); route(); toast(msg);
+  };
+  $('#lnX').onclick = closeModal;
+  $('#lnFull').onclick = () => { closeModal(); setTimeout(() => docModal(p, e.kind, e), 80); };
+  if ($('#lnDel')) $('#lnDel').onclick = () => apply(e.lines.filter((x, k) => k !== i), 'اتمسح البند ✔ (والنسخة القديمة محفوظة)');
+  $('#lnOk').onclick = () => {
+    const c = cur();
+    if (!c.name) return toast('اكتب اسم الصنف');
+    if (!(c.qty > 0)) return toast('اكتب الكمية');
+    if (!(c.price > 0)) return toast('اكتب السعر');
+    if (JSON.stringify([l.name, l.unit, l.qty, l.price]) === JSON.stringify([c.name, c.unit, c.qty, c.price])) return closeModal();
+    apply(withLine(c), 'اتعدّل البند ✔ (والنسخة القديمة محفوظة)');
+  };
 }
 function openEntry(p, e) {
   if (e.del) return cancelledModal(e);
@@ -2187,7 +2226,7 @@ function ledgerTable(p) {
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
     ${cut ? `<tr class="more"><td colspan="7"><a id="ldgOld">↑ عرض الحركات الأقدم (${cut} سطر)</a></td></tr>` : ''}
-    ${(cut ? s.rows.slice(cut) : s.rows).map(r => (yPrev !== null && (r.date || '').slice(0, 4) !== yPrev ? `<tr class="yr"><td colspan="7">${yPrev = (r.date || '').slice(0, 4)}</td></tr>` : '') + `<tr data-id="${esc(r.e.id)}"${r.grp && r.grp.length > 1 ? ` data-g="${esc(r.grp.map(x => x.id).join(','))}"` : ''} class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${fwTag(r)}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
+    ${(cut ? s.rows.slice(cut) : s.rows).map(r => (yPrev !== null && (r.date || '').slice(0, 4) !== yPrev ? `<tr class="yr"><td colspan="7">${yPrev = (r.date || '').slice(0, 4)}</td></tr>` : '') + `<tr data-id="${esc(r.e.id)}"${r.li !== undefined ? ` data-li="${r.li}"` : ''}${r.grp && r.grp.length > 1 ? ` data-g="${esc(r.grp.map(x => x.id).join(','))}"` : ''} class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${fwTag(r)}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b data-ck="pe:${esc(p.id)}" data-cnt="${s.close * s.sg}">${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>
     ${ledgerHintOnce()}`;
@@ -2200,7 +2239,7 @@ function rowsOf(e) {
   const ref = '';
   if (isDoc(e)) {
     const up = e.kind === 'inv' || e.kind === 'rpur', ret = isRet(e);   // up = بيتحط في المدين
-    const out = (e.lines || []).map(l => ({date: e.date, desc: (ret ? 'مرتجع: ' : '') + l.name, ref, qty: `${fmtQ(l.qty)} ${l.unit}`, price: l.price, dr: up ? lineTot(l) : 0, cr: up ? 0 : lineTot(l), ret}));
+    const out = (e.lines || []).map((l, li) => ({li, date: e.date, desc: (ret ? 'مرتجع: ' : '') + l.name, ref, qty: `${fmtQ(l.qty)} ${l.unit}`, price: l.price, dr: up ? lineTot(l) : 0, cr: up ? 0 : lineTot(l), ret}));
     if (e.disc) out.push({date: e.date, desc: 'خصم', ref, dr: up ? 0 : e.disc, cr: up ? e.disc : 0, ret});
     return out;
   }

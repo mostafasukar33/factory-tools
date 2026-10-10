@@ -752,7 +752,7 @@ const IC = {
   s: SVG('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/>')
 };
 const TABS = [['t', 'النهارده'], ['w', 'الأسبوع'], ['k', 'العمال'], ['a', 'الأرشيف'], ['e', 'مصاريف'], ['l', 'السجل']];
-const TITLE = {t: 'المرتبات', w: 'الأسبوع', k: 'العمال', a: 'الأرشيف', e: 'المصاريف', l: 'السجل', s: 'الإعدادات'};
+const TITLE = {u: 'كشف العامل', t: 'المرتبات', w: 'الأسبوع', k: 'العمال', a: 'الأرشيف', e: 'المصاريف', l: 'السجل', s: 'الإعدادات'};
 let scr = {v: 't'};
 function dotHtml() {
   if (!S.u) return '<span class="dot off"><i></i>مش متربط</span>';
@@ -771,8 +771,8 @@ function drawTabs() {
   $('#main').classList.toggle('tabbed', on);
   if (!on) { el.innerHTML = ''; el.style.display = 'none'; return; }
   el.style.display = '';
-  el.innerHTML = TABS.map(([t, n]) => `<button type="button" data-t="${t}" class="${t === scr.v ? 'on' : ''}">${IC[t]}<span>${n}</span></button>`).join('');
-  $$('#tabs button').forEach(b => b.onclick = () => { if (b.dataset.t !== scr.v) nav(b.dataset.t === 't' ? '' : b.dataset.t); });
+  el.innerHTML = TABS.map(([t, n]) => `<button type="button" data-t="${t}" class="${t === (scr.v === 'u' ? 'k' : scr.v) ? 'on' : ''}">${IC[t]}<span>${n}</span></button>`).join('');
+  $$('#tabs button').forEach(b => b.onclick = () => { if (b.dataset.t !== (scr.v === 'u' ? 'k' : scr.v)) nav(b.dataset.t === 't' ? '' : b.dataset.t); });
 }
 function nav(h, replace) {
   const u = location.pathname + (h ? '#' + h : '');
@@ -788,13 +788,13 @@ const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 function route() {
   mPush = false; hideModal();
   const h = decodeURIComponent(location.hash.slice(1)), [a, b] = h.split('/');
-  scr = a === 'w' ? {v: 'w', thu: isDay(b) ? ownerThursday(b) : null} : a === 'k' ? {v: 'k'} : a === 'a' ? {v: 'a'} : a === 'e' ? {v: 'e'} : a === 'l' ? {v: 'l'} : a === 's' ? {v: 's'} : {v: 't', day: isDay(b) ? b : null};
+  scr = a === 'w' ? {v: 'w', thu: isDay(b) ? ownerThursday(b) : null} : a === 'u' && b ? {v: 'u', wid: b} : a === 'k' ? {v: 'k'} : a === 'a' ? {v: 'a'} : a === 'e' ? {v: 'e'} : a === 'l' ? {v: 'l'} : a === 's' ? {v: 's'} : {v: 't', day: isDay(b) ? b : null};
   render(); window.scrollTo(0, 0);
 }
 function render() {
   drawTop(); drawTabs();
   if (!me()) return drawLogin();
-  ({w: drawWeek, k: drawWorkers, a: drawArchive, e: drawExp, l: drawLog, s: drawSettings}[scr.v] || drawToday)();
+  ({u: drawStmt, w: drawWeek, k: drawWorkers, a: drawArchive, e: drawExp, l: drawLog, s: drawSettings}[scr.v] || drawToday)();
 }
 function refresh() {
   if ($('#mask').classList.contains('on')) return;
@@ -1187,11 +1187,13 @@ function workerSheet(wid, thu) {
     </div>
     ${bons.length ? '' : '<button class="lnk" id="wsBon" type="button">＋ حافز</button>'}
     ${!open && (r.net > 0 || p) ? (p && p.amt !== r.net ? `<div class="note">⚠ العامل ده اتعلّم إنه قبض ${fmt(p.amt)} والصافي دلوقتي ${fmt(r.net)} بعد التعديل.</div>` : '') + (p ? `<div class="info">✓ قبض ${fmt(p.amt)} · ${byTxt(p)}</div><button class="lnk" id="wsPay" type="button">لسه مقبضش؟</button>` : `<button class="big b-ok" id="wsPay" type="button">💵 قبض ${fmt(r.net)}</button>`) : ''}
+    <button class="lnk" id="wsStmt" type="button">📋 كشف العامل الكامل (كل حاجة بالتفصيل)</button>
     <button class="lnk" id="wsEdit" type="button">✏️ بيانات العامل (الأجر، وقّفه…)</button>
     <button class="lnk" id="wsX" type="button">إغلاق</button>`);
   backSheet = {wid, thu};
   $('#wsX').onclick = closeModal;
   $('#wsEdit').onclick = () => workerModal(w);
+  $('#wsStmt').onclick = () => { closeModal(); nav('u/' + wid); };
   $$('#modal .dr .ub button').forEach(b => b.onclick = () => {
     const keep = $('#modal').scrollTop;
     if (setDay(w, b.dataset.d, +b.dataset.u)) { touched(thu); commit(); render(); workerSheet(wid, thu); $('#modal').scrollTop = keep; }
@@ -1232,10 +1234,66 @@ function wdedModal(wid, thu) {
 const defDayIn = thu => { const t = today(); return ownerThursday(t) === thu ? t : thu; };
 
 /* ---------- العمال ---------- */
+/* كشف العامل الكامل: كل حاجة بالتفصيل — المرتبات، اللي قبضه، السلف الجديدة، السلف القديمة (إضافة وخصم والباقي)، وأسبوع بأسبوع */
+function drawStmt() {
+  const I = idx(), w = I.W.get(scr.wid);
+  if (!w) return nav('k', true);
+  const nowThu = ownerThursday(today()), weeks = [];
+  for (let thu = I.first && I.first < nowThu ? I.first : nowThu; thu <= nowThu; thu = addDays(thu, 7)) { const c = calcWeek(I, thu), r = c.rows[w.id]; if (r) weeks.push({thu, c, r, p: I.pd.get(thu + '|' + w.id)}); }
+  const sum = f => weeks.reduce((s, x) => s + f(x), 0);
+  const advAll = I.adv.filter(a => a.w === w.id).sort((a, b) => a.date.localeCompare(b.date) || a.at - b.at);
+  const wages = sum(x => x.r.wages), net = sum(x => x.r.net), paid = sum(x => x.p ? x.p.amt : 0), oldDed = sum(x => x.r.oldApplied || 0);
+  const unpaid = sum(x => x.c.closed && !x.p ? x.r.net : 0), left = oldLeftNow(w.id), ru = I.rule.get(w.id);
+  const ruTxt = !ru || ru.mode === 'none' ? 'مفيش خصم تلقائي' : ru.mode === 'auto' ? 'تلقائي (كل الباقي)' : 'مبلغ ثابت ' + fmt(ru.amt) + ' كل أسبوع';
+  /* حساب السلف القديمة: إضافة (سلفة قديمة أو على أقساط) وخصم أسبوعي، بالترتيب، والباقي بعد كل حركة */
+  const led = I.old.filter(o => o.w === w.id).map(o => ({d: o.date || addDays(o.eff, -6), t: 'سلفة قديمة' + (o.note ? ' · ' + o.note : ''), amt: o.amt, sg: 1, id: o.id, k: 'o'}))
+    .concat(advAll.filter(a => a.inst).map(a => ({d: a.date, t: 'سلفة على أقساط' + (a.note ? ' · ' + a.note : ''), amt: a.amt, sg: 1, id: a.id, k: 'a'})))
+    .concat(weeks.filter(x => x.r.oldApplied).map(x => ({d: x.thu, t: 'خصم أسبوع الخميس ' + dm(x.thu), amt: x.r.oldApplied, sg: -1, k: 'w', thu: x.thu})))
+    .sort((a, b) => a.d.localeCompare(b.d) || b.sg - a.sg);
+  let run = 0; led.forEach(x => { run += x.sg * x.amt; x.run = run; });
+  const kv = (l, v, cls) => `<div class="kv"><span>${l}</span><b class="money ${cls || ''}">${v}</b></div>`;
+  $('#main').innerHTML = `<button class="lnk" id="uBack" type="button" style="text-align:right;margin:0 0 6px">→ العمال</button>
+    <section class="panel"><div class="p1"><span style="color:var(--ink);font-size:18px;font-weight:800">${esc(w.name)}${w.st === 'gone' ? ' · مشى' : w.st === 'stop' ? ' · واقف' : ''}</span><b class="money">${fmt(w.rate)}<small class="sm"> اليومية${w.fri ? ' · جمعة ' + fmt(w.fri) : ''}</small></b></div></section>
+    <div class="lbl"><span>الملخص (من أول ما اشتغل)</span></div>
+    <div class="list" style="padding:2px 12px">
+      ${kv('إجمالي المرتبات', fmt(wages))}
+      ${kv('سلف جديدة اتسلّمت له (كل اللي خده)', advAll.length ? '- ' + fmt(advAll.reduce((s, a) => s + a.amt, 0)) : '—', 'neg')}
+      ${kv('اتخصم من السلف القديمة', oldDed ? '- ' + fmt(oldDed) : '—', 'neg')}
+      ${kv('إجمالي الصافي', fmt(net))}
+      ${kv('اللي قبضه فعلاً', fmt(paid), 'ok')}
+      ${unpaid ? kv('لسه مقبضوش (أسابيع مقفولة)', fmt(unpaid), 'bk') : ''}
+      <div class="kv tot"><span>الباقي عليه من السلف القديمة</span><b class="money ${left ? 'neg' : ''}">${fmt(left)}</b></div>
+    </div>
+    <div class="lbl"><span>حساب السلف القديمة</span><span>الطريقة: ${ruTxt}</span></div>
+    ${led.length ? `<div class="list">${led.map(x => `<div class="ar" ${x.k === 'o' ? `data-o="${esc(x.id)}"` : x.k === 'a' ? `data-adv="${esc(x.id)}"` : `data-thu="${x.thu}"`}><div class="nm"><b>${x.t}</b><small>${dayFull(x.d)}</small></div><div style="text-align:left"><b class="money ${x.sg > 0 ? 'neg' : 'ok'}">${x.sg > 0 ? '+' : '-'}${fmt(x.amt)}</b><small class="sm money">الباقي ${fmt(x.run)}</small></div></div>`).join('')}</div>` : '<div class="list"><div class="empty">مفيش سلف قديمة</div></div>'}
+    <button class="big b-home" id="uOld" type="button">💳 إدارة السلف القديمة وطريقة الخصم</button>
+    <div class="lbl"><span>كل السلف الجديدة (${advAll.length})</span><span>دوس تعدّل</span></div>
+    ${advAll.length ? `<div class="list">${advAll.slice().reverse().map(a => `<div class="ar" data-adv="${esc(a.id)}"><div class="nm"><b>${dayName(a.date)} ${dm(a.date)}${a.inst ? ' · على أقساط' : ''}</b><small>من ${esc(a.by)} · ${whenTxt(a.at)}${a.note ? ' · ' + esc(a.note) : ''}</small></div><b class="money neg">${fmt(a.amt)}</b></div>`).join('')}</div>` : '<div class="list"><div class="empty">مفيش سلف جديدة</div></div>'}
+    <div class="lbl"><span>أسبوع بأسبوع (${weeks.length})</span><span>دوس على الأسبوع تفاصيله</span></div>
+    ${weeks.length ? weeks.slice().reverse().map(x => { const r = x.r, ad = advAll.filter(a => !a.inst && ownerThursday(a.date) === x.thu), ds = weekDates(x.thu); return `<section class="panel" data-thu="${x.thu}" style="margin-bottom:8px;cursor:pointer">
+      <div class="p1"><span style="color:var(--ink);font-size:15px;font-weight:800">أسبوع الخميس ${dm(x.thu)} <small class="sm" style="display:inline">${x.c.closed ? '🔒 مقفول' : 'لسه مفتوح'}</small></span><b class="money">${fmt(r.net)}</b></div>
+      <div class="kv"><span>أيام الشغل (${unitsText(r.units)})</span><b class="money">${fmt(r.daysPay)}</b></div>
+      ${r.fridayPay ? `<div class="kv"><span>الجمعة</span><b class="money">${fmt(r.fridayPay)}</b></div>` : ''}
+      ${r.bonus ? `<div class="kv"><span>حافز</span><b class="money ok">+ ${fmt(r.bonus)}</b></div>` : ''}
+      ${ad.map(a => `<div class="kv"><span>سلفة ${dayName(a.date)} ${dm(a.date)}${a.note ? ' · ' + esc(a.note) : ''}</span><b class="money neg">- ${fmt(a.amt)}</b></div>`).join('')}
+      ${r.instAdv ? `<div class="kv"><span>سلفة على أقساط (اتضافت للقديمة)</span><b class="money">${fmt(r.instAdv)}</b></div>` : ''}
+      ${r.oldApplied ? `<div class="kv"><span>خصم من السلف القديمة</span><b class="money neg">- ${fmt(r.oldApplied)}</b></div>` : ''}
+      ${r.carryIn ? `<div class="kv"><span>عليه من الأسبوع اللي فات</span><b class="money neg">- ${fmt(r.carryIn)}</b></div>` : ''}
+      ${r.prevFridayDelta ? `<div class="kv"><span>فرق الجمعة</span><b class="money neg">- ${fmt(r.prevFridayDelta)}</b></div>` : ''}
+      ${r.carryOut ? `<div class="kv"><span>عليه للأسبوع الجاي</span><b class="money bk">${fmt(r.carryOut)}</b></div>` : ''}
+      <div class="kv"><span>القبض</span><b class="${x.p ? 'ok' : x.c.closed && r.net > 0 ? 'bk' : ''}">${x.p ? '✓ قبض ' + fmt(x.p.amt) + ' · ' + esc(x.p.by) + ' ' + whenTxt(x.p.at) : x.c.closed ? (r.net > 0 ? 'لسه مقبضش' : '—') : 'لسه الأسبوع مفتوح'}</b></div></section>`; }).join('') : '<div class="list"><div class="empty">لسه مفيش أسابيع</div></div>'}
+    <button class="lnk" id="uEdit" type="button">✏️ بيانات العامل (الأجر، وقّفه…)</button>`;
+  $('#uBack').onclick = () => nav('k');
+  $('#uOld').onclick = () => oldModal(w.id);
+  $('#uEdit').onclick = () => workerModal(w);
+  $$('#main [data-adv]').forEach(x => x.onclick = () => advModal(S.recs[x.dataset.adv]));
+  $$('#main [data-o]').forEach(x => x.onclick = () => oldEntryModal(w.id, S.recs[x.dataset.o]));
+  $$('#main [data-thu]').forEach(x => x.onclick = () => workerSheet(w.id, x.dataset.thu));
+}
 function drawWorkers() {
   const all = [...idx().W.values()].sort((a, b) => (a.ord || 0) - (b.ord || 0));
   const on = all.filter(w => w.st === 'on'), stop = all.filter(w => w.st === 'stop'), gone = all.filter(w => w.st === 'gone');
-  const row = w => { const debt = oldLeftNow(w.id); return `<div class="row" data-w="${esc(w.id)}"><div class="m"><b>${esc(w.name)}${w.st === 'stop' ? '<span class="tag stop">واقف</span>' : w.st === 'gone' ? '<span class="tag gone">مشى</span>' : ''}${debt ? `<span class="tag debt">عليه ${fmt(debt)}</span>` : ''}</b><small>${w.from ? 'بدأ ' + dm(w.from) : ''}${w.fri ? ' · جمعة ' + fmt(w.fri) : ''}</small></div><div class="a"><b class="money">${fmt(w.rate)}</b></div></div>`; };
+  const row = w => { const debt = oldLeftNow(w.id); return `<div class="row" data-w="${esc(w.id)}"><div class="m"><b>${esc(w.name)}${w.st === 'stop' ? '<span class="tag stop">واقف</span>' : w.st === 'gone' ? '<span class="tag gone">مشى</span>' : ''}${debt ? `<span class="tag debt">عليه ${fmt(debt)}</span>` : ''}</b><small>${w.from ? 'بدأ ' + dm(w.from) : ''}${w.fri ? ' · جمعة ' + fmt(w.fri) : ''}</small></div><div class="a"><b class="money">${fmt(w.rate)}</b><button class="mini-b" data-u="${esc(w.id)}" type="button" style="height:26px;padding:0 9px;font-size:12px;margin-top:2px">📋 كشف</button></div></div>`; };
   const sumRate = on.reduce((s, w) => s + (w.rate || 0), 0);
   $('#main').innerHTML = `<button class="big b-ok" id="kNew" type="button" style="margin-top:0">＋ عامل جديد</button>
     <div class="lbl"><span>الشغالين (${on.length})</span><span>اليومية${on.length ? ` · المجموع <b class="money">${fmt(sumRate)}</b>` : ''}</span></div>
@@ -1243,6 +1301,7 @@ function drawWorkers() {
     ${stop.length ? `<div class="lbl"><span>واقفين (${stop.length})</span></div><div class="list">${stop.map(row).join('')}</div>` : ''}
     ${gone.length ? `<details class="more"><summary>اللي مشيوا (${gone.length})</summary><div class="list">${gone.map(row).join('')}</div></details>` : ''}`;
   $('#kNew').onclick = () => workerModal(null);
+  $$('#main .row[data-w] [data-u]').forEach(b => b.onclick = e => { e.stopPropagation(); nav('u/' + b.dataset.u); });
   $$('#main .row[data-w]').forEach(r => r.onclick = () => {
     const w = idx().W.get(r.dataset.w), thu = ownerThursday(today());
     if (w.st === 'on' && calcWeek(idx(), thu).rows[w.id]) workerSheet(w.id, thu); else workerModal(w);
@@ -1284,7 +1343,7 @@ function oldModal(wid) {
   const hint = () => { $('#olFx').style.display = mode === 'fixed' ? '' : 'none'; $('#olHint').textContent = mode === 'auto' ? 'بيتخصم كل الباقي من أول مرتب لحد ما يخلص (بحد أقصى المرتب).' : mode === 'fixed' ? 'بيتخصم المبلغ ده كل أسبوع لحد ما الباقي يخلص.' : 'مفيش حاجة بتتخصم لوحدها. تقدر تخصم أسبوع بأسبوع من تفاصيل العامل.'; };
   hint();
   $$('#olMode button').forEach(b => b.onclick = () => { mode = b.dataset.v; $$('#olMode button').forEach(x => x.classList.toggle('on', x === b)); hint(); });
-  $('#olX').onclick = () => { closeModal(); if (scr.v === 'k') drawWorkers(); };
+  $('#olX').onclick = () => { closeModal(); if (scr.v === 'k') drawWorkers(); else if (scr.v === 'u') drawStmt(); };
   $('#olAdd').onclick = () => oldEntryModal(wid, null);
   $$('#modal [data-o]').forEach(x => x.onclick = () => oldEntryModal(wid, S.recs[x.dataset.o]));
   $$('#modal [data-ia]').forEach(x => x.onclick = () => advModal(S.recs[x.dataset.ia]));

@@ -483,6 +483,20 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     eq('الباقي على العامل زاد 500', (await A.evaluate(id => calcWeek(idx(), '2026-10-29').rows[id].oldBefore, aId)) - oldB, 50000);
     eq('في المصاريف السلفة دي بتنزل من العهدة مرة واحدة بس (مش القسط)', await A.evaluate(() => { nav('e', true); return [...document.querySelectorAll('#main .row')].filter(x => x.textContent.includes('على أقساط')).length; }), 1);
 
+    console.log('\n١٧) كشف العامل الكامل');
+    await A.evaluate(() => nav('k', true));
+    await A.click(`#main .row[data-w="${aId}"] [data-u]`); await A.waitForSelector('#uBack');
+    const st = await A.textContent('#main');
+    eq('الكشف فيه الملخص وحساب السلف القديمة وأسبوع بأسبوع', ['إجمالي المرتبات', 'اللي قبضه فعلاً', 'الباقي عليه من السلف القديمة', 'حساب السلف القديمة', 'أسبوع بأسبوع', 'كل السلف الجديدة', 'خصم من السلف القديمة', 'سلفة على أقساط'].map(t => st.includes(t)), [true, true, true, true, true, true, true, true]);
+    eq('الباقي في آخر سطر الحساب = الباقي عليه', await A.evaluate(id => { const rows = [...document.querySelectorAll('#main .ar small.money')].map(x => x.textContent.replace(/[^\d.,]/g, '')); return [rows.length > 1, document.querySelector('.kv.tot b').textContent.trim() === (oldLeftNow(id) / 100).toLocaleString('en-US', {maximumFractionDigits: 2})]; }, aId), [true, true]);
+    eq('الأسابيع المقفولة والمفتوحة ظاهرة وتحتها حالة القبض', await A.evaluate(() => [document.querySelectorAll('#main section[data-thu]').length >= 2, document.body.textContent.includes('✓ قبض'), document.body.textContent.includes('لسه الأسبوع مفتوح')]), [true, true, true]);
+    await A.click('#main section[data-thu]'); await A.waitForSelector('#wsStmt');
+    eq('دوسة على أسبوع بتفتح تفاصيله وفيها رجوع للكشف', await A.evaluate(() => !!document.querySelector('#wsStmt')), true);
+    await A.click('#wsX'); await A.waitForTimeout(150);
+    eq('ورجوع الموبايل من الكشف بيرجع للعمال', await A.evaluate(() => { history.back(); return true; }), true);
+    await A.waitForTimeout(250);
+    eq('الرجوع من كشف العامل للعمال', await A.evaluate(() => scr.v), 'k');
+
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();

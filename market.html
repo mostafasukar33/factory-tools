@@ -75,7 +75,10 @@ main.tabbed{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 html[data-theme=dark] .qb.g{color:#0b1a10}
 html[data-theme=dark] .seg button.on{background:#3a352a;color:#ECE8DC}
 .qb:active{transform:scale(.98)}
-.qb.qs{display:block;width:100%;margin-top:8px;border-color:var(--gold);background:var(--gold-l);color:var(--gold-d);font-weight:800;font-size:15.5px}
+.qa2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 4px}
+.qa2 .qb{height:66px;font-size:16px;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.2;white-space:normal;padding:4px 6px}
+.qa2 .qb i{font-style:normal;font-size:22px;line-height:1}
+.qb.qs{border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
 .list{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 12px;min-height:48px;border-bottom:1px solid var(--row);cursor:pointer}
 .row:last-child{border-bottom:0}
@@ -499,8 +502,7 @@ function drawHome() {
   $('#main').innerHTML = `${bk.length ? `<button class="alert" id="bk" type="button">🔴 مصطفى رجّعلك ${bk.length === 1 ? 'عملية' : bk.length + ' عمليات'} تصلحها — دوس هنا</button>` : ''}
     <section class="panel"><div class="p1"><span>معاك كاش دلوقتي</span><b class="money ${cn < 0 ? 'neg' : ''}" id="cashT">${fmtN(cn)}</b></div>
       <div class="cap">النهارده</div>${pnHtml(s, 3, true)}</section>
-    <div class="qa"><button class="qb g" id="qPay" type="button">＋ دفعة أو فاتورة</button><button class="qb" id="qSp" type="button">صرفت</button><button class="qb" id="qHand" type="button">سلمت لمصطفى</button></div>
-    <button class="qb qs" id="qSale" type="button">🏭 بيع كاش من المصنع</button>
+    <div class="qa2"><button class="qb g" id="qPay" type="button"><i>💵</i>دفعة أو فاتورة</button><button class="qb qs" id="qSale" type="button"><i>🏭</i>بيع كاش من المصنع</button><button class="qb" id="qSp" type="button"><i>⛽</i>صرفت</button><button class="qb" id="qHand" type="button"><i>🤝</i>سلمت لمصطفى</button></div>
     <div class="lbl"><span>حركات النهارده</span><span>دوس على أي حركة تعدّلها</span></div>
     ${ops.length ? `<div class="list">${ops.map(o => opRow(o)).join('')}</div>` : '<div class="list"><div class="empty">لسه مسجلتش حاجة النهارده</div></div>'}
     ${earlier.map(d => `<div class="lbl dh"><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}</span><span>حصّلت <b class="money">${fmt(sums(byDay.get(d)).col)}</b></span></div><div class="list">${byDay.get(d).map(o => opRow(o)).join('')}</div>`).join('')}

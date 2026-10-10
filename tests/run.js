@@ -494,7 +494,7 @@ const MO = !!process.env.MARKET_ONLY;
     await M.evaluate(() => nav('')); await M.waitForTimeout(200);
     eq('الرئيسية: اللي معاه وإجمالي النهارده (حصّلت | صرفت | سلّمت لمصطفى)', await M.evaluate(() => [$('#cashT').textContent, [...document.querySelectorAll('.panel .pn b')].map(b => b.textContent), document.querySelectorAll('#main .row[data-o]').length]), ['1,750', ['9,000', '3,250', '4,000'], 6]);
     await M.click('#tabs button[data-t=a]'); await M.waitForTimeout(200);
-    eq('الأرشيف: إجمالي الأسبوع (حصّلت | صرفت | سلّمت لمصطفى | معايا)', await M.evaluate(() => [...document.querySelector('.wk .pn').querySelectorAll('b')].map(b => b.textContent)), ['9,000', '3,250', '4,000', '1,750']);
+    eq('الأرشيف: إجمالي الأسبوع (حصّلت | صرفت | سلّمت لمصطفى | معايا)', await M.evaluate(() => [...document.querySelector('.wk tfoot tr').querySelectorAll('td')].slice(1).map(b => b.textContent.trim())), ['9,000', '3,250', '4,000', '1,750']);
     eq('الأرشيف: سطر النهارده بنفس الأرقام ومعاه اسم اليوم', await M.evaluate(() => { const r = [...document.querySelectorAll('.wk tr[data-d]')[0].querySelectorAll('td')].map(x => x.textContent.trim()); return [r.slice(1), r[0].startsWith(AR_DAYS[dowOf(today())])]; }), [['9,000', '3,250', '4,000', '1,750'], true]);
     await M.click('.wk tr[data-d]'); await M.waitForTimeout(200);
     eq('يوم النهارده: كل حركاته (6) وإجماليه', await M.evaluate(() => [document.querySelectorAll('#main .row[data-o]').length, [...document.querySelector('.panel .pn').querySelectorAll('b')].map(b => b.textContent)]), [6, ['9,000', '3,250', '4,000', '1,750']]);
@@ -601,7 +601,7 @@ const MO = !!process.env.MARKET_ONLY;
     await A.fill('.li [data-f=name]', 'صنف تجربة جديد'); await A.fill('.li [data-f=qty]', '1'); await A.fill('.li [data-f=price]', '2500'); await A.click('#dcOk'); await closed(A); await A.waitForTimeout(300);
     eq('اتفتحله حساب في عملاء السوق وفيه الفاتورة بالبنود', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل فاتورة جديد'); return p ? [p.sec, balance(p.id), partyEntries(p.id).map(e => e.kind)] : null; }), ['mkt', 250000, ['inv']]);
     await M.evaluate(() => nav('a')); await M.waitForTimeout(200);
-    eq('الأرشيف عند الشريك: الفواتير في سطر لوحدها في الأسبوع', (await M.textContent('.wk .invln')).includes('12,500'), true);
+    eq('الأرشيف عند الشريك: الفواتير في سطر لوحدها في الأسبوع', (await M.textContent('.wk .inr')).includes('12,500'), true);
     eq('الشيت: كل عملية مرة واحدة', new Set(mkRows('op').map(r => r[0])).size, mkRows('op').length);
 
     console.log('\n١٩) حركة السوق: بيع كاش من المصنع (اسم مشتري ومبلغ بس، من غير عملاء)');

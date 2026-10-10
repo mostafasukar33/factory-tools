@@ -448,6 +448,20 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await A.click('#main .row[data-e="x_wk_2026-10-22"]'); await A.click('#exDel'); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(150);
     eq('مسح مصروف بيرجّع الصافي', await A.textContent('.panel .p1 b'), money(12000 - 2000 - advSum));
 
+    console.log('\n١٥) زرار الرجوع بتاع الموبايل');
+    const Z = await device(browser, base, gas, 'payroll.html' + (await A.evaluate(() => joinLink())).replace(/^[^#]*/, ''), at('2026-10-24T13:00:00')); pages.push(Z);
+    await Z.waitForSelector('.gate .chip', {timeout: 15000});
+    await Z.click('.gate .chip[data-s]'); await Z.fill('#lgP', '1234'); await Z.waitForSelector('#tabs button');
+    await Z.click('#tabs button[data-t=k]'); await Z.click('#tabs button[data-t=e]');
+    await Z.goBack(); await Z.waitForTimeout(150);
+    eq('الرجوع من مصاريف بيرجع للعمال (مش بيخرج)', await Z.evaluate(() => scr.v), 'k');
+    await Z.click('#kNew'); await Z.waitForSelector('#wkN');
+    await Z.goBack(); await Z.waitForTimeout(150);
+    eq('الرجوع وفي نافذة مفتوحة بيقفلها ويفضل في نفس الصفحة', await Z.evaluate(() => [scr.v, $('#mask').classList.contains('on')]), ['k', false]);
+    await Z.click('#kNew'); await Z.waitForSelector('#wkN'); await Z.click('#wkX'); await Z.waitForTimeout(300);
+    await Z.goBack(); await Z.waitForTimeout(150);
+    eq('قفل النافذة بزرارها مبيسيبش خانة زيادة: الرجوع بيروح للصفحة اللي قبلها', await Z.evaluate(() => scr.v), 't');
+
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();

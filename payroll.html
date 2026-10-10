@@ -707,8 +707,18 @@ function autoClose() {
 let toastT;
 function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms); }
 let backSheet = null;   // تفاصيل العامل المفتوحة حالياً (علشان نرجعلها بعد سلفة/حافز)
-function modal(html) { backSheet = null; $('#modal').innerHTML = html; $('#mask').classList.add('on'); }
-function closeModal() { backSheet = null; $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; }
+/* زرار الرجوع بتاع الموبايل: النافذة بتاخد خانة في التاريخ، فالرجوع بيقفلها بدل ما يخرّج من التطبيق، والتبويبات كل واحد خانة فالرجوع بيرجع للتبويب اللي قبله */
+let mPush = false, popIgnore = 0, mTimer = 0;
+const hideModal = () => { backSheet = null; $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; };
+function modal(html) {
+  backSheet = null; $('#modal').innerHTML = html; $('#mask').classList.add('on');
+  if (!mPush) { try { history.pushState({pm: 1}, '', location.href); mPush = true; } catch (e) {} }
+}
+function closeModal() {
+  hideModal(); clearTimeout(mTimer);
+  /* لو نافذة تانية اتفتحت على طول (تنقل بين نوافذ) بنفضل على نفس الخانة، وغير كده بنشيل خانة النافذة من التاريخ */
+  if (mPush) mTimer = setTimeout(() => { if (mPush && !$('#mask').classList.contains('on')) { mPush = false; popIgnore++; history.back(); } }, 60);
+}
 $('#mask').addEventListener('click', e => { if (e.target.id === 'mask') closeModal(); });
 function ask(msg, yes, no = 'لأ', danger = false) {
   return new Promise(res => {
@@ -761,17 +771,21 @@ function drawTabs() {
   if (!on) { el.innerHTML = ''; el.style.display = 'none'; return; }
   el.style.display = '';
   el.innerHTML = TABS.map(([t, n]) => `<button type="button" data-t="${t}" class="${t === scr.v ? 'on' : ''}">${IC[t]}<span>${n}</span></button>`).join('');
-  $$('#tabs button').forEach(b => b.onclick = () => nav(b.dataset.t === 't' ? '' : b.dataset.t, true));
+  $$('#tabs button').forEach(b => b.onclick = () => { if (b.dataset.t !== scr.v) nav(b.dataset.t === 't' ? '' : b.dataset.t); });
 }
 function nav(h, replace) {
   const u = location.pathname + (h ? '#' + h : '');
   if (replace) history.replaceState(null, '', u); else history.pushState(null, '', u);
   route();
 }
-addEventListener('popstate', route);
+addEventListener('popstate', () => {
+  if (popIgnore) { popIgnore--; return; }
+  if (mPush) { mPush = false; if ($('#mask').classList.contains('on')) { hideModal(); return; } }
+  route();
+});
 const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 function route() {
-  closeModal();
+  mPush = false; hideModal();
   const h = decodeURIComponent(location.hash.slice(1)), [a, b] = h.split('/');
   scr = a === 'w' ? {v: 'w', thu: isDay(b) ? ownerThursday(b) : null} : a === 'k' ? {v: 'k'} : a === 'a' ? {v: 'a'} : a === 'e' ? {v: 'e'} : a === 'l' ? {v: 'l'} : a === 's' ? {v: 's'} : {v: 't', day: isDay(b) ? b : null};
   render(); window.scrollTo(0, 0);

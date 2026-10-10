@@ -751,9 +751,11 @@ html[data-theme=dark] .ilsum{color:#B9B3A1}html[data-theme=dark] .ilsum b{color:
 html[data-theme=dark] .mtag.insta{background:#2a2240;color:#B9A6F0}html[data-theme=dark] .mtag.voda{color:#FF8A80}
 /* مصروف / صفحات الوارد الجديدة */
 .mtag.exp{background:#FFF3CD;color:#8A6200}
+.mtag.inv{background:#E3EEFB;color:#1F5FA8}
 .seg.s2{grid-template-columns:1fr 1fr}
 #mkBody .dnav{margin-bottom:0}
 html[data-theme=dark] .mtag.exp{background:#3a3216;color:#E9C46A}
+html[data-theme=dark] .mtag.inv{background:#1d2a3d;color:#8DB8F0}
 html[data-theme=dark] .ifoot .btn.off,html[data-theme=dark] .ifoot .btn:disabled{background:#3a3833;color:#8d8776}
 </style>
 </head>
@@ -1512,7 +1514,8 @@ function lastPrice(pid, kind, name) {
 }
 
 /* ---------- فاتورة بيع / شراء ---------- */
-function docModal(p, kind, e) {
+/* opts.mk = عملية فاتورة من شريك السوق: التاريخ بتاعها، والإجمالي لازم يطابق، والفاتورة بتتسجل بـ id ثابت وبتتعلّم اتنقلت */
+function docModal(p, kind, e, opts = {}) {
   const isNew = !e, sale = kind === 'inv', ret = kind === 'rinv' || kind === 'rpur', base = kind === 'rinv' ? 'inv' : kind === 'rpur' ? 'pur' : kind;
   const ttl = {inv: '🧾 فاتورة بيع', pur: '🧾 فاتورة شراء', rinv: '↩ مرتجع بيع', rpur: '↩ مرتجع شراء'}[kind];
   if (e && isLocked(e.date)) return lockedView(p, e);
@@ -1520,8 +1523,9 @@ function docModal(p, kind, e) {
   const book = itemBook();
   const lastDoc = isNew ? db.entries.filter(x => x.party === p.id && x.kind === kind && !x.del && x.lines && x.lines.length).sort(entCmp).pop() : null;
   modal(`<h3>${isNew ? ttl : 'تعديل ' + esc(docTitle(e))} — ${esc(p.name)}</h3>
+    ${opts.mk ? `<div class="sync" style="margin:0 0 10px;display:block">📥 فاتورة من شريكك في السوق — إجمالي: <b class="money">${fmtP(opts.mk.amt)}</b><br><small>اكتب البنود (كمية وسعر) والإجمالي لازم يطابق ده.</small><div id="dcMk" style="margin-top:4px;font-weight:800"></div></div>` : ''}
     ${ret ? `<p class="hint" style="margin:-6px 0 10px">البضاعة اللي ${kind === 'rinv' ? 'رجعت من العميل' : 'رجعتها للمورد'}. قيمتها ${kind === 'rinv' ? 'بتنزل من اللي عليه' : 'بتنزل من اللي ليه'}.</p>` : ''}
-    <div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${e ? e.date : todayISO()}"></div>
+    <div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${e ? e.date : opts.mk ? isoOf(opts.mk.ts) : todayISO()}"></div>
     <datalist id="dlItems">${[...book.values()].map(x => `<option value="${esc(x.name)}">`).join('')}</datalist>
     <div id="dcLines"></div>
     <div class="mtools"><button class="btn line sm" id="dcAdd" type="button">+ صنف كمان</button>
@@ -1531,7 +1535,7 @@ function docModal(p, kind, e) {
     <details class="mmore" ${(e && (e.disc || e.note)) ? 'open' : ''}><summary>+ خصم أو ملاحظة</summary>
       <div class="g2"><div class="fld"><label>خصم على الفاتورة</label><input class="inp num" id="dcDisc" placeholder="0" value="${e && e.disc ? fmtP(e.disc) : ''}"></div>
         <div class="fld"><label>ملاحظة</label><input class="inp" id="dcNote" value="${esc(e ? e.note || '' : '')}"></div></div></details>
-    ${isNew && !ret ? `<div class="g2"><div class="fld"><label>${sale ? 'العميل دفع دلوقتي (اختياري)' : 'دفعت للمورد دلوقتي (اختياري)'}</label><input class="inp num" id="dcPaid" placeholder="0"></div>
+    ${isNew && !ret && !opts.mk ? `<div class="g2"><div class="fld"><label>${sale ? 'العميل دفع دلوقتي (اختياري)' : 'دفعت للمورد دلوقتي (اختياري)'}</label><input class="inp num" id="dcPaid" placeholder="0"></div>
       <div class="fld"><label>${sale ? 'دخلت خزنة' : 'من خزنة'}</label><select class="inp" id="dcPV">${(ensureVaults(), vaultOpts(defVault()))}</select></div></div>` : ''}
     ${e ? histHtml(e) : ''}
     <div id="dcWarn"></div>
@@ -1548,6 +1552,7 @@ function docModal(p, kind, e) {
     });
     t -= toP($('#dcDisc').value);
     $('#dcTot').textContent = fmtP(t) + ' ' + CUR; $('#dcTot').style.color = t < 0 ? 'var(--red)' : '';
+    if (opts.mk) $('#dcMk').innerHTML = t === opts.mk.amt ? '<span style="color:var(--green)">✓ مطابق لإجمالي شريكك</span>' : `<span style="color:var(--red)">الفرق عن إجمالي شريكك: ${fmtP(t - opts.mk.amt)}</span>`;
   };
   const draw = ls => {
     $('#dcLines').innerHTML = ls.map((l, i) => `<div class="li">
@@ -1620,12 +1625,14 @@ function docModal(p, kind, e) {
     if (isNew && !warned) {
       const w = [];
       if (db.entries.some(x => !x.del && x.party === p.id && x.kind === kind && x.date === date && docTotal(x) === docTotal(doc))) w.push(`فيه ${KIND[kind]} بنفس المبلغ (${fmtP(docTotal(doc))}) لنفس الحساب في نفس اليوم. متأكد إنها مش متكررة؟`);
+      if (opts.mk && docTotal(doc) !== opts.mk.amt) w.push(`إجمالي البنود (${fmtP(docTotal(doc))}) مش مساوي لإجمالي شريكك (${fmtP(opts.mk.amt)}). متأكد؟`);
       if (kind === 'inv') { const nb = balance(p.id) + docTotal(doc) - toP(($('#dcPaid') || {}).value), lim = limitsOf(p); if (nb >= lim.r) w.push(`رصيد العميل هيبقى ${fmtP(nb)}، وده فوق الحد الأحمر (${fmtP(lim.r)}).`); }
       if (w.length) { warned = true; $('#dcWarn').innerHTML = `<div class="sync warn">${w.map(esc).join('<br>')}</div>`; $('#dcOk').textContent = 'متأكد، احفظ برضه'; return; }
     }
     doc.desc = docDesc(doc);
     if (isNew) {
-      const ne = addEntry(Object.assign({party: p.id}, doc)); applyAmounts(ne);
+      const ne = addEntry(Object.assign({party: p.id}, opts.mk ? {id: 'e_mk_' + opts.mk.id} : {}, doc)); applyAmounts(ne);
+      if (opts.mk) mkSetSt(opts.mk.id, {done: true, dv: opts.mk.upd, back: '', bv: 0, pid: p.id});
       const paid = $('#dcPaid') ? toP($('#dcPaid').value) : 0;
       if (paid > 0) { const pe = addEntry({party: p.id, kind: sale ? 'pay' : 'ppay', date, amt: paid, method: 'نقدي', vault: $('#dcPV').value, note: `مع ${docTitle(ne)}`, at: ne.at + 1}); rememberVault('نقدي', pe.vault); pe.desc = docDesc(pe); applyAmounts(pe); }
       toast(ret ? 'اتسجل المرتجع ✔' : 'اتسجلت الفاتورة ✔');
@@ -1634,8 +1641,10 @@ function docModal(p, kind, e) {
       if (same) return closeModal();
       (e.hist = e.hist || []).push(snapshot(e));
       Object.assign(e, doc); applyAmounts(e); touch(e); toast('اتعدّلت ✔ (والنسخة القديمة محفوظة)');
+      if (opts.mk) mkSetSt(opts.mk.id, {done: true, dv: opts.mk.upd, back: '', bv: 0, pid: p.id});
     }
     saveDB(); closeModal(); route();
+    if (opts.mk) { renderMkHome(); mkSync(); }
   };
   if (!isNew) $('#dcDel').onclick = () => cancelEntry(e);
 }
@@ -3879,12 +3888,13 @@ function money_(q) {
 function opText_(d) {
   const a = money_(d.amt);
   if (d.t === 'pay') return (d.cname || 'عميل') + (d.newc ? ' (عميل جديد)' : '') + ' دفع ' + a + ' ' + (MW[d.m] || '');
+  if (d.t === 'inv') return (d.cname || 'عميل') + (d.newc ? ' (عميل جديد)' : '') + ' فاتورة بـ ' + a;
   if (d.t === 'exp') return 'مصروف' + (d.cat ? ' ' + d.cat : '') + ': ' + a + (d.note ? ' — ' + d.note : '');
   if (d.t === 'spay') return 'دفع للمورد ' + (d.sname || '') + ' ' + a;
   if (d.t === 'hand') return 'سلّمك ' + a + ' كاش';
   return 'حركة ' + a;
 }
-const ICON = {pay: '💵', exp: '⛽', spay: '🏭', hand: '🤝'};
+const ICON = {pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝'};
 function opMsg_(old, d, del) {
   const ic = ICON[d.t] || '•';
   if (del) return old && !old.del ? '🗑 اتمسحت: ' + opText_(old) : '';
@@ -3940,10 +3950,10 @@ const MK_M = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون'};
 const mkCreds = () => { const s = db && getSet('mktSheet', null); return s && s.u && s.k ? s : null; };
 function mkDb() { return db.mkt = db.mkt || {u: '', cursor: 0, ops: {}, st: {}, cs: {}}; }
 const mkSt = id => mkDb().st['st_' + id];
-/* أنواع العمليات: pay دفعة عميل، spay دفعة مورد (كاش)، exp مصروف، hand كاش سلّمه الشريك لمصطفى.
-   لما تتنقل: pay/spay بتبقى دفعة على الحساب (e_mk_<id>)، وexp/hand بيبقوا حركة خزنة (t_mk_<id>) */
-const MK_T = {pay: 1, spay: 1, exp: 1, hand: 1};
-const mkRec = o => o.t === 'pay' || o.t === 'spay' ? E.get('e_mk_' + o.id) : IDX.tx.get('t_mk_' + o.id);
+/* أنواع العمليات: pay دفعة عميل، inv فاتورة عميل (إجمالي بس من الشريك، ومصطفى بيكتب بنودها)، spay دفعة مورد (كاش)، exp مصروف، hand كاش سلّمه الشريك لمصطفى.
+   لما تتنقل: pay/spay بتبقى دفعة على الحساب (e_mk_<id>)، وinv فاتورة بيع على الحساب (e_mk_<id>)، وexp/hand بيبقوا حركة خزنة (t_mk_<id>) */
+const MK_T = {pay: 1, spay: 1, exp: 1, hand: 1, inv: 1};
+const mkRec = o => o.t === 'pay' || o.t === 'spay' || o.t === 'inv' ? E.get('e_mk_' + o.id) : IDX.tx.get('t_mk_' + o.id);
 /* اتنقلت؟ الحركة في الحسابات هي الأصل. لو لسه منزلتش على الجهاز ده من المزامنة، بنصدق حالة الشيت */
 function mkMoved(o) { const e = mkRec(o); if (e) return !e.del; const s = mkSt(o.id); return !!(s && s.done); }
 function mkState(o) { if (mkMoved(o)) return 'done'; const s = mkSt(o.id); return s && s.back && s.bv === o.upd ? 'back' : 'new'; }
@@ -4098,7 +4108,7 @@ function mkBeep() {
     [[880, 0], [1320, 0.16]].forEach(([f, d]) => { const o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; o.type = 'sine'; g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.25, t + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.22); o.connect(g); g.connect(a.destination); o.start(t + d); o.stop(t + d + 0.25); });
   } catch (e) {}
 }
-const mkLine = o => o.t === 'exp' ? `مصروف ${o.cat}: ${fmtP(o.amt)}` : o.t === 'spay' ? `دفع للمورد ${o.sname} ${fmtP(o.amt)}` : o.t === 'hand' ? `سلّمك ${fmtP(o.amt)} كاش` : `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${fmtP(o.amt)} ${MK_M[o.m] || ''}`;
+const mkLine = o => o.t === 'inv' ? `🧾 ${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${fmtP(o.amt)}` : o.t === 'exp' ? `مصروف ${o.cat}: ${fmtP(o.amt)}` : o.t === 'spay' ? `دفع للمورد ${o.sname} ${fmtP(o.amt)}` : o.t === 'hand' ? `سلّمك ${fmtP(o.amt)} كاش` : `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${fmtP(o.amt)} ${MK_M[o.m] || ''}`;
 let mkBarT;
 function mkAlert(list) {
   const b = $('#mkBar'); if (!b) return;
@@ -4126,15 +4136,15 @@ function renderMkHome() {
 
 /* ---------- شاشة وارد السوق ---------- */
 const mkTag = m => `<span class="mtag ${m}">${MK_M[m] || m}</span>`;
-const mkLTag = o => o.t === 'exp' ? `<span class="mtag exp">${esc(o.cat)}</span>` : mkTag(o.m || 'cash');
-const mkWhat = o => o.t === 'pay' ? o.cname + ' — ' + (MK_M[o.m] || '') : o.t === 'exp' ? 'مصروف: ' + o.cat + (o.note ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعة لمورد: ' + o.sname : 'كاش سلّمه لك';
+const mkLTag = o => o.t === 'exp' ? `<span class="mtag exp">${esc(o.cat)}</span>` : o.t === 'inv' ? '<span class="mtag inv">فاتورة</span>' : mkTag(o.m || 'cash');
+const mkWhat = o => o.t === 'pay' ? o.cname + ' — ' + (MK_M[o.m] || '') : o.t === 'inv' ? 'فاتورة: ' + o.cname + ' (إجمالي بس)' : o.t === 'exp' ? 'مصروف: ' + o.cat + (o.note ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعة لمورد: ' + o.sname : 'كاش سلّمه لك';
 /* حصّلت / راح لمصطفى / مصروف / معايا — نفس حسبة شريكك */
 function mkSums(ops) {
-  let col = 0, toM = 0, sp = 0;
-  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
-  return {col, toM, sp, left: col - toM - sp};
+  let col = 0, toM = 0, sp = 0, inv = 0;
+  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'inv') inv += o.amt; else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
+  return {col, toM, sp, inv, left: col - toM - sp};
 }
-const mkSign = o => o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : -1;
+const mkSign = o => o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'inv' ? 0 : -1;
 function mkGroups() {
   const al = mkAlias(), g = new Map(), old = Date.now() - 3 * 86400000;
   mkLive().forEach(o => {
@@ -4144,7 +4154,7 @@ function mkGroups() {
     if (o.t === 'exp') { k = 'x:exp'; name = 'مصاريف السوق'; }
     else if (o.t === 'hand') { k = 'x:hand'; name = 'كاش سلّمه لك'; }
     else { pid = mkPid(o, al); k = pid || (o.t === 'spay' ? 's:' + norm(o.sname) : 'n:' + o.cid); name = pid ? P.get(pid).name : o.t === 'spay' ? o.sname : o.cname; }
-    if (!g.has(k)) g.set(k, {k, kind: o.t, pid, cid: o.cid, name, nw: !pid && (o.t === 'pay' || o.t === 'spay'), ops: []});
+    if (!g.has(k)) g.set(k, {k, kind: o.t === 'inv' ? 'pay' : o.t, pid, cid: o.cid, name, nw: !pid && (o.t === 'pay' || o.t === 'inv' || o.t === 'spay'), ops: []});
     g.get(k).ops.push(o);
   });
   const arr = [...g.values()];
@@ -4177,6 +4187,7 @@ function mkInbox() {
     </div>`;
   $$('#mkBody [data-op]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkOpMenu(mkDb().ops[el.dataset.op]); });
   $$('#mkBody [data-ok]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkArrive(mkDb().ops[el.dataset.ok]); });
+  $$('#mkBody [data-inv]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkInvFlow(mkDb().ops[el.dataset.inv]); });
   $$('#mkBody [data-mv]').forEach(el => el.onclick = () => { const g = gs.find(x => x.k === el.dataset.mv); if (g) mkMoveFlow(g, g.pend); });
   $$('#mkBody [data-bk]').forEach(el => el.onclick = () => { const g = gs.find(x => x.k === el.dataset.bk); if (g) mkReturn(g.pend.length ? g.pend : g.ops.filter(o => mkState(o) === 'back'), g.name); });
 }
@@ -4186,8 +4197,8 @@ function mkArch() {
   const t = todayISO(), d = mkDay || t, ops = mkLive().filter(o => isoOf(o.ts) === d).sort((a, b) => b.ts - a.ts), s = mkSums(ops);
   $('#mkBody').innerHTML = `<div class="card"><div class="dnav"><button type="button" id="maPrev" title="اليوم اللي قبله">›</button><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}${d === t ? ' · النهارده' : ''}</span><button type="button" id="maNext" title="اليوم اللي بعده">‹</button></div>
       <label style="margin-top:8px">📅 اختار يوم</label><input class="inp" type="date" id="maDay" value="${d}"></div>
-    ${ops.length ? `<div class="ic">${ops.map(o => `<div class="il ${mkState(o) === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<span><b>${esc(o.t === 'pay' ? o.cname : o.t === 'spay' ? o.sname : o.t === 'exp' ? (o.note || o.cat) : 'تسليم كاش')}</b><br><small class="tm">${dispTime(o.ts)}</small></span></span><span style="text-align:left"><b class="money">${fmtP(o.amt)}</b><br>${mkStTxt(o)}</span></div>`).join('')}</div>` : '<div class="card empty">مفيش حركات من الشريك في اليوم ده.</div>'}
-    <div class="card mkbal"><div class="bl"><span>حصّلت</span><b>${fmtP(s.col)}</b></div><div class="bl"><span>راح لمصطفى (تحويلات + كاش سلّمه)</span><b>${fmtP(s.toM)}</b></div><div class="bl"><span>مصروف (مصروفات + دفعات موردين)</span><b>${fmtP(s.sp)}</b></div><div class="bl k"><span>معاه</span><b>${fmtP(s.left)}</b></div></div>`;
+    ${ops.length ? `<div class="ic">${ops.map(o => `<div class="il ${mkState(o) === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<span><b>${esc(o.t === 'pay' || o.t === 'inv' ? o.cname : o.t === 'spay' ? o.sname : o.t === 'exp' ? (o.note || o.cat) : 'تسليم كاش')}</b><br><small class="tm">${dispTime(o.ts)}</small></span></span><span style="text-align:left"><b class="money">${fmtP(o.amt)}</b><br>${mkStTxt(o)}</span></div>`).join('')}</div>` : '<div class="card empty">مفيش حركات من الشريك في اليوم ده.</div>'}
+    <div class="card mkbal"><div class="bl"><span>حصّلت</span><b>${fmtP(s.col)}</b></div><div class="bl"><span>راح لمصطفى (تحويلات + كاش سلّمه)</span><b>${fmtP(s.toM)}</b></div><div class="bl"><span>مصروف (مصروفات + دفعات موردين)</span><b>${fmtP(s.sp)}</b></div><div class="bl k"><span>معاه</span><b>${fmtP(s.left)}</b></div>${s.inv ? `<div class="bl"><span>🧾 فواتير (إجمالي بس)</span><b>${fmtP(s.inv)}</b></div>` : ''}</div>`;
   $('#maPrev').onclick = () => { mkDay = addDays(d, -1); mkArch(); };
   $('#maNext').onclick = () => { if (d < t) { mkDay = addDays(d, 1); mkArch(); } };
   $('#maDay').onchange = () => { if (/^\d{4}-\d{2}-\d{2}$/.test($('#maDay').value)) { mkDay = $('#maDay').value; mkArch(); } };
@@ -4201,20 +4212,24 @@ const MK_FOOT = {
 };
 const MK_ICON = {pay: '', spay: '🏭 ', exp: '⛽ ', hand: '🤝 '};
 function mkCard(g) {
-  const tot = (g.pend.length ? g.pend : g.ops).reduce((s, o) => s + o.amt, 0), blocked = g.pend.some(o => !mkArrived(o));
+  /* كارت العميل فيه دفعاته وفواتيره: الإجمالي والنقل للدفعات بس، والفاتورة ليها زرار "اكتب البنود" لوحدها */
+  const isC = g.kind === 'pay', pays = isC ? g.ops.filter(o => o.t === 'pay') : g.ops, pendPays = isC ? g.pend.filter(o => o.t === 'pay') : g.pend;
+  const base = isC ? (pendPays.length ? pendPays : pays.length ? pays : g.ops) : (g.pend.length ? g.pend : g.ops);
+  const tot = base.reduce((s, o) => s + o.amt, 0), blocked = pendPays.some(o => !mkArrived(o));
   const line = o => {
     const st = mkState(o), s = mkSt(o.id);
     const right = st === 'done' ? `<span class="vok">✓ اتنقلت${(s && s.dv && s.dv !== o.upd) ? ' <small class="cr">(اتعدلت بعد النقل)</small>' : ''}</span>`
       : st === 'back' ? '<span class="vbk">🔴 راجعة للشريك</span>'
+      : o.t === 'inv' ? `<button class="vbtn" data-inv="${esc(o.id)}" type="button">📝 اكتب البنود</button>`
       : mkNeeds(o) ? (mkArrived(o) ? '<span class="vok">✓ وصل</span>' : `<button class="vbtn" data-ok="${esc(o.id)}" type="button">🔔 وصل؟</button>`)
       : `<span class="tm">${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</span>`;
     const fixed = st === 'new' && s && s.back && s.bv !== o.upd ? ' <small class="fx">اتصلحت</small>' : '';
     return `<div class="il ${st === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<b class="money">${fmtP(o.amt)}</b>${o.t === 'exp' && o.note ? `<small class="tm">${esc(o.note)}</small>` : ''}${fixed}</span>${right}</div>
       ${st === 'back' && s ? `<div class="ilnote">ملاحظتك: ${esc(s.back)}</div>` : ''}`;
   };
-  const sum = g.kind === 'pay' && g.pend.length > 1 ? `<div class="ilsum">${['cash', 'insta', 'voda'].map(m => { const t = g.pend.filter(o => o.m === m).reduce((a, o) => a + o.amt, 0); return t ? `${fmtP(t)} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ')} = <b>${fmtP(tot)}</b></div>` : '';
+  const sum = g.kind === 'pay' && pendPays.length > 1 ? `<div class="ilsum">${['cash', 'insta', 'voda'].map(m => { const t = pendPays.filter(o => o.m === m).reduce((a, o) => a + o.amt, 0); return t ? `${fmtP(t)} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ')} = <b>${fmtP(tot)}</b></div>` : '';
   const foot = !g.pend.length ? ''
-    : `<div class="ifoot"><button class="btn ${blocked ? 'off' : ''}" data-mv="${esc(g.k)}" type="button" ${blocked ? 'disabled' : ''}>${MK_FOOT[g.kind](g)}</button><button class="btn red" data-bk="${esc(g.k)}" type="button"${g.kind === 'pay' && !g.nw ? '' : ' style="flex:.55"'}>رجّعها</button></div>`;
+    : `<div class="ifoot">${pendPays.length ? `<button class="btn ${blocked ? 'off' : ''}" data-mv="${esc(g.k)}" type="button" ${blocked ? 'disabled' : ''}>${MK_FOOT[g.kind](g)}</button>` : ''}<button class="btn red" data-bk="${esc(g.k)}" type="button"${pendPays.length && !(g.kind === 'pay' && !g.nw) ? ' style="flex:.55"' : ''}>رجّعها</button></div>`;
   const tagTxt = g.kind === 'pay' && g.nw ? 'عميل جديد' : g.kind === 'spay' ? (g.nw ? 'مورد — مش مربوط' : 'مورد') : '';
   return `<div class="ic ${g.pend.length ? '' : 'dn'}"><div class="ich"><b>${MK_ICON[g.kind]}${esc(g.name)}${tagTxt ? ` <span class="nwt">${tagTxt}</span>` : ''}</b><b class="money">${fmtP(tot)}</b></div>
     ${g.ops.map(line).join('')}${sum}${blocked ? '<p class="hint" style="margin:4px 14px 0">اتأكد إن التحويل وصلك (من رسالة التحويل) ودوس "وصل؟" الأول.</p>' : ''}${foot}</div>`;
@@ -4236,7 +4251,7 @@ function mkOpMenu(o) {
     $('#omX').onclick = closeModal; if ($('#omP')) $('#omP').onclick = () => { closeModal(); go('p/' + e.party); };
     return;
   }
-  const mvTxt = o.t === 'exp' ? 'سجّلها مصروف' : o.t === 'hand' ? 'استلمت ✓' : pid ? 'انقل الدفعة دي بس' : o.t === 'spay' ? 'اربطها بحساب المورد وانقلها' : 'اربطها بحساب وانقلها';
+  const mvTxt = o.t === 'inv' ? 'اكتب البنود وسجّل الفاتورة' : o.t === 'exp' ? 'سجّلها مصروف' : o.t === 'hand' ? 'استلمت ✓' : pid ? 'انقل الدفعة دي بس' : o.t === 'spay' ? 'اربطها بحساب المورد وانقلها' : 'اربطها بحساب وانقلها';
   modal(`<h3>${esc(mkWhat(o))} — <span class="money">${amt}</span></h3>
     <p class="hint" style="margin:-6px 0 12px">اتسجلت عند الشريك ${dispDate(isoOf(o.ts))} ${dispTime(o.ts)}${st === 'back' ? ` — 🔴 راجعة للشريك: ${esc(mkSt(o.id).back)}` : ''}</p>
     <div class="stack">
@@ -4246,12 +4261,12 @@ function mkOpMenu(o) {
       <button class="btn line" id="omX" type="button">إغلاق</button></div>`);
   $('#omX').onclick = closeModal;
   if ($('#omA')) $('#omA').onclick = () => mkArrive(o);
-  if ($('#omM')) $('#omM').onclick = () => { if (!mkArrived(o)) return; const g = mkGroups().find(x => x.ops.includes(o)); mkMoveFlow(g || {pid, nw: !pid, name: o.cname || o.sname || '', cid: o.cid, kind: o.t}, [o]); };
+  if ($('#omM')) $('#omM').onclick = () => { if (o.t === 'inv') return mkInvFlow(o); if (!mkArrived(o)) return; const g = mkGroups().find(x => x.ops.includes(o)); mkMoveFlow(g || {pid, nw: !pid, name: o.cname || o.sname || '', cid: o.cid, kind: o.t}, [o]); };
   if ($('#omB')) $('#omB').onclick = () => mkReturn([o], mkWhat(o));
 }
 function mkReturn(ops, name) {
   if (!ops.length) return;
-  modal(`<h3>رجّعها لشريكك</h3><p style="font-size:15.5px">${esc(name)}: ${ops.map(o => fmtP(o.amt) + ' ' + (o.t === 'pay' ? MK_M[o.m] : o.t === 'exp' ? o.cat : o.t === 'spay' ? 'دفعة مورد' : 'تسليم')).join(' + ')}</p>
+  modal(`<h3>رجّعها لشريكك</h3><p style="font-size:15.5px">${esc(name)}: ${ops.map(o => fmtP(o.amt) + ' ' + (o.t === 'pay' ? MK_M[o.m] : o.t === 'inv' ? 'فاتورة' : o.t === 'exp' ? o.cat : o.t === 'spay' ? 'دفعة مورد' : 'تسليم')).join(' + ')}</p>
     <div class="fld"><label>اكتبله إيه الغلط (هيظهرله عنده)</label><input class="inp" id="rtN" autocomplete="off" placeholder="مثلاً: المبلغ 4,500 مش 5,000"></div>
     <div class="g2"><button class="btn red" id="rtOk" type="button">رجّعها</button><button class="btn line" id="rtX" type="button">إلغاء</button></div>`);
   $('#rtX').onclick = closeModal;
@@ -4262,28 +4277,53 @@ function mkReturn(ops, name) {
     flushSave(); closeModal(); renderMkt(); mkSync(); toast('رجعت للشريك ✔');
   };
 }
-/* العميل أو المورد الجديد: يتربط بحساب موجود أو يتفتحله حساب جديد، وبعدين شاشة التأكيد */
-function mkMoveFlow(g, ops) {
-  ops = ops.filter(o => mkState(o) === 'new');
-  if (!ops.length) return;
-  if (ops.some(o => !mkArrived(o))) return toast('اتأكد إن التحويل وصلك ودوس "وصل" الأول');
-  const kind = ops[0].t;
-  if (kind === 'exp' || kind === 'hand') return mkConfirm(ops, {});
-  if (g.pid) return mkConfirm(ops, {pid: g.pid});
-  const sec = kind === 'spay' ? 'sup' : 'mkt', ps = liveParties().filter(p => p.sec === sec).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
-  modal(`<h3>اربط "${esc(g.name)}" بحساب ${kind === 'spay' ? 'مورد' : ''}</h3>
-    <button class="btn gold" id="lkNew" type="button" style="margin-bottom:10px">＋ افتحله حساب ${kind === 'spay' ? 'في الموردين' : 'جديد في عملاء السوق'} باسم "${esc(g.name)}"</button>
+/* العميل أو المورد الجديد: يتربط بحساب موجود أو يتفتحله حساب جديد (cb بتستلم {pid} أو {newName, sec}) */
+function mkLinkModal(g, sec, cb) {
+  const ps = liveParties().filter(p => p.sec === sec).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  modal(`<h3>اربط "${esc(g.name)}" بحساب ${sec === 'sup' ? 'مورد' : ''}</h3>
+    <button class="btn gold" id="lkNew" type="button" style="margin-bottom:10px">＋ افتحله حساب ${sec === 'sup' ? 'في الموردين' : 'جديد في عملاء السوق'} باسم "${esc(g.name)}"</button>
     <input class="inp" id="lkQ" type="search" placeholder="🔍 أو دوّر على حساب موجود" autocomplete="off" style="margin-bottom:8px">
     <div id="lkL" style="max-height:45vh;overflow:auto"></div>
     <button class="btn line" id="lkX" type="button" style="margin-top:10px">إلغاء</button>`, true);
   const draw = () => {
     const q = norm($('#lkQ').value), l = ps.filter(p => !q || norm(p.name).includes(q)).sort((a, b) => (norm(b.name) === norm(g.name)) - (norm(a.name) === norm(g.name)));
     $('#lkL').innerHTML = l.length ? l.slice(0, 80).map(p => `<div class="pt ${sec === 'sup' ? 'sup' : ''}" data-p="${esc(p.id)}"><div class="m"><b>${esc(p.name)}</b></div><div class="a"><b>${fmtP(Math.abs(balance(p.id)))}</b><small>${balWord(balance(p.id))}</small></div></div>`).join('') : '<div class="empty">مفيش حساب بالاسم ده</div>';
-    $$('#lkL .pt').forEach(el => el.onclick = () => mkConfirm(ops, {pid: el.dataset.p}));
+    $$('#lkL .pt').forEach(el => el.onclick = () => cb({pid: el.dataset.p}));
   };
   draw(); $('#lkQ').oninput = draw;
   $('#lkX').onclick = closeModal;
-  $('#lkNew').onclick = () => mkConfirm(ops, {newName: g.name, sec});
+  $('#lkNew').onclick = () => cb({newName: g.name, sec});
+}
+/* بيرجّع id الحساب: الموجود، أو بيفتح حساب جديد بالاسم (ولو فيه حساب بنفس الاسم في القسم بيستخدمه) */
+function mkEnsureParty(sec, to) {
+  if (to.pid) return to.pid;
+  const ex = liveParties().find(p => p.sec === sec && norm(p.name) === norm(to.newName));
+  if (ex) return ex.id;
+  const now = Date.now(), np = {id: newId('p_'), sec, name: to.newName, phone: '', note: 'من حركة السوق', noTot: false, at: now, upd: now, del: false};
+  db.parties.push(np); P.set(np.id, np);
+  return np.id;
+}
+function mkMoveFlow(g, ops) {
+  ops = ops.filter(o => mkState(o) === 'new' && o.t !== 'inv');   // الفاتورة ليها مسار لوحدها (mkInvFlow)
+  if (!ops.length) return;
+  if (ops.some(o => !mkArrived(o))) return toast('اتأكد إن التحويل وصلك ودوس "وصل" الأول');
+  const kind = ops[0].t;
+  if (kind === 'exp' || kind === 'hand') return mkConfirm(ops, {});
+  if (g.pid) return mkConfirm(ops, {pid: g.pid});
+  mkLinkModal(g, kind === 'spay' ? 'sup' : 'mkt', to => mkConfirm(ops, to));
+}
+/* فاتورة الشريك (إجمالي بس): مصطفى بيكتب البنود في نافذة الفاتورة العادية، والإجمالي لازم يطابق، وبتتسجل بـ id ثابت e_mk_<id> */
+function mkInvFlow(o) {
+  if (!o || mkState(o) !== 'new') return;
+  const open = pid => {
+    const p = P.get(pid), rec = mkRec(o);
+    if (rec && !rec.del) return toast('الفاتورة دي اتسجلت قبل كده');
+    if (rec) { rec.del = false; delete rec.delAt; touch(rec); }   // كانت اتسجلت واتمسحت: بترجع للتعديل
+    docModal(p, 'inv', rec || undefined, {mk: o});
+  };
+  const pid = mkPid(o);
+  if (pid) return open(pid);
+  mkLinkModal({name: o.cname}, 'mkt', to => open(mkEnsureParty('mkt', to)));
 }
 /* شاشة التأكيد (إجبارية قبل أي نقل): المبلغ والتاريخ والخزنة لكل عملية. الخزنة اختيار حر، والدفعات تقدر تبقى من غير خزنة.
    المصروف والكاش المسلَّم لازم يبقوا على خزنة. الكاش المسلَّم = تحويل من خزنة لخزنة */
@@ -4315,14 +4355,7 @@ function mkConfirm(ops, to) {
       if (r.o.t === 'hand' && (!r.vault || !r.to || r.vault === r.to)) return toast('اختار خزنتين مختلفتين للتحويل');
     }
     let pid = to.pid || '';
-    if (kind === 'pay' || kind === 'spay') {
-      const sec = kind === 'spay' ? 'sup' : 'mkt';
-      if (!pid) {
-        const ex = liveParties().find(p => p.sec === sec && norm(p.name) === norm(to.newName));
-        if (ex) pid = ex.id;
-        else { const now = Date.now(), np = {id: newId('p_'), sec, name: to.newName, phone: '', note: 'من حركة السوق', noTot: false, at: now, upd: now, del: false}; db.parties.push(np); P.set(np.id, np); pid = np.id; }
-      }
-    }
+    if (kind === 'pay' || kind === 'spay') pid = mkEnsureParty(kind === 'spay' ? 'sup' : 'mkt', to);
     let n = 0;
     rows.forEach(r => { if (mkMove(r.o, {pid, amt: r.amt, date: r.date, vault: r.vault, to: r.to})) n++; db.cfg.mkv = Object.assign({}, db.cfg.mkv, {[key(r.o)]: r.vault}, r.o.t === 'hand' ? {handTo: r.to} : {}); });
     saveDB(); closeModal(); renderMkt(); renderMkHome(); mkSync();

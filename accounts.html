@@ -888,12 +888,12 @@ nav .ngrp,nav button.lap,.top .bell,#mkPop{display:none}
   #mkPop .btn{margin-top:10px;min-height:38px;font-size:14px}
 }
 /* ============ اللاب: القايمة الجانبية فاتحة ومرتبة + الشاشة بتتظبط على قد حجم الشباك (مش زوم) ============ */
-:root{--sbw:184px;--lw:340px;--sb-bg:#FFFFFF;--sb-tx:#2f2b22;--sb-mut:#9a917b;--sb-hov:#F7F2E6;--sb-on:#FBF3DF;--sb-line:#ECE5D3;--sb-ic:#B08A33}
-html[data-theme=dark]{--sb-bg:#191813;--sb-tx:#E6E1D3;--sb-mut:#7f7a6a;--sb-hov:#24221b;--sb-on:#2e2716;--sb-line:#2e2c25;--sb-ic:#DDB765}
+:root{--sbw:184px;--lw:340px;--sb-bg:#F3E7CB;--sb-bg2:#EADBB6;--sb-tx:#3a2f17;--sb-mut:#8c7442;--sb-hov:#FBF5E6;--sb-on:#FFFFFF;--sb-line:#DCC89B;--sb-ic:#9C7420}
+html[data-theme=dark]{--sb-bg:#231e13;--sb-bg2:#1b170f;--sb-tx:#EDE4CC;--sb-mut:#9b8a63;--sb-hov:#2f281a;--sb-on:#3a3020;--sb-line:#3a321f;--sb-ic:#DDB765}
 @media (min-width:1000px){
   html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
   body{padding-inline-start:var(--sbw)}
-  nav,html[data-theme=dark] nav{width:var(--sbw);background:var(--sb-bg);border-inline-end:1px solid var(--sb-line);padding:72px 10px 70px;overflow-y:auto;scrollbar-width:thin}
+  nav,html[data-theme=dark] nav{width:var(--sbw);background:linear-gradient(180deg,var(--sb-bg),var(--sb-bg2));box-shadow:inset 1px 0 0 #fff6;border-inline-end:1px solid var(--sb-line);padding:72px 10px 70px;overflow-y:auto;scrollbar-width:thin}
   .top{width:var(--sbw);border-bottom:1px solid var(--sb-line);background:var(--sb-bg);padding:13px 14px}
   .top h1{color:var(--sb-tx)}.top small{color:var(--sb-ic)}
   .top img{box-shadow:0 0 0 1px var(--sb-line)}
@@ -901,7 +901,7 @@ html[data-theme=dark]{--sb-bg:#191813;--sb-tx:#E6E1D3;--sb-mut:#7f7a6a;--sb-hov:
   nav button,html[data-theme=dark] nav button{color:var(--sb-tx);min-height:40px;font-size:14.5px;font-weight:700;border-radius:9px;background:transparent}
   nav button svg,nav button.on svg,html[data-theme=dark] nav button.on svg{color:var(--sb-ic)}
   nav button:hover,html[data-theme=dark] nav button:hover{background:var(--sb-hov);color:var(--sb-tx)}
-  nav button.on,html[data-theme=dark] nav button.on{background:var(--sb-on);color:var(--sb-tx);font-weight:800;box-shadow:inset -3px 0 0 var(--gold)}
+  nav button.on,html[data-theme=dark] nav button.on{background:var(--sb-on);color:var(--sb-tx);font-weight:800;box-shadow:inset -4px 0 0 var(--gold-d),0 2px 8px #7a5a1426}
   nav .qk{border-inline-start:1.5px solid var(--sb-line);margin:0 21px 4px 0;padding:1px 0}
   nav .qk button.lap{display:flex}
   nav .qk button,html[data-theme=dark] nav .qk button{min-height:28px;font-size:13px;font-weight:700;color:var(--sb-mut);padding:2px 12px;border-radius:7px;box-shadow:none}

@@ -400,6 +400,15 @@ const MO = !!process.env.MARKET_ONLY;
 
     eq('مفيش أرقام فواتير: لا خانة ولا عرض في الكشف ولا العنوان', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv'); const f = !!$('#dcNo'); closeModal();
       const e = partyEntries(p.id).find(x => x.kind === 'inv'); return [f, /رقم/.test(docTitle(e)), /رقم/.test(docDesc(e)), stmtData(p.id, '', '').rows.some(r => isDoc(r.e) && r.ref)]; }), [false, false, false, false]);
+    eq('اقتراحات الفاتورة: أصناف الحساب بسعرها القديم، والدوسة تملّي الاسم والسعر، والكتابة بتفلتر', await A.evaluate(() => {
+      const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv');
+      const mine = custItems(p.id, 'inv'), n = $('#dcLines [data-f=name]'), box = $('#dcLines .sg');
+      n.dispatchEvent(new Event('focus'));
+      const first = box.querySelector('.sr'), shown = box.classList.contains('on'), showsPrice = first.textContent.includes(fmtP(mine[0].price));
+      first.click();
+      const r = [mine.length > 0, shown, showsPrice, n.value === mine[0].name, $('#dcLines [data-f=price]').value === fmtP(mine[0].price), !box.classList.contains('on')];
+      n.value = 'zzzz'; n.dispatchEvent(new Event('input')); r.push(!box.classList.contains('on'));
+      closeModal(); return r; }), [true, true, true, true, true, true, true]);
     const PGN = await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); const pg = buildStmtPages(p, stmtData(p.id, '', '')); const c = pg[0].querySelectorAll('thead th').length; const fs = parseFloat(getComputedStyle(pg[0].querySelector('tbody td.l')).fontSize); $('#render').innerHTML = ''; return [c, fs >= 16]; });
     eq('كشف الـ PDF: 7 أعمدة وخط كبير', PGN, [7, true]);
     eq('كشف العميل مفيهوش "عميل سوق/مواقع"، والمورد فيه "مورد"', await A.evaluate(() => { const ps = liveParties(), c = ps.find(x => x.sec === 'mkt'), m = ps.find(x => x.sec === 'sup');

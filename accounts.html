@@ -637,6 +637,17 @@ html[data-theme=dark] .fab2,html[data-theme=dark] .cbar{background:linear-gradie
 .mrow3{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}
 .msec{display:flex;gap:6px;margin-bottom:8px}.msec .btn{flex:1}
 .mtools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.mtools .btn{width:auto;flex:1;white-space:nowrap}
+.sg{display:none;border:1.5px solid var(--line);border-radius:10px;background:#fff;margin:0 0 6px;overflow:hidden}
+.sg.on{display:block}
+.sg .sh{font-size:12px;font-weight:800;color:var(--gold-d);background:var(--gold-l);padding:3px 10px}
+.sg .sr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;font-weight:700;font-size:15px;border-top:1px solid var(--line);cursor:pointer}
+.sg .sh+.sr{border-top:0}
+.sg .sr:active,.sg .sr:hover{background:var(--gold-l)}
+.sg .sr small{display:block;color:#7a7360;font-weight:700;font-size:12.5px}
+.sg .sr b{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums lining-nums;color:var(--gold-d);white-space:nowrap;font-size:16px}
+html[data-theme=dark] .sg{background:#1f1e19;border-color:#37342b;color:#ECE8DC}
+html[data-theme=dark] .sg .sr{border-color:#37342b}
+html[data-theme=dark] .sg .sr small{color:#a9a392}
 .mmore{margin:0 0 10px}.mmore summary{cursor:pointer;font-weight:700;color:var(--gold-d);font-size:14.5px;padding:4px 0;list-style:none}
 .mmore summary::-webkit-details-marker{display:none}.mmore[open] summary{margin-bottom:6px}
 @media (max-width:640px){.mfoot{bottom:calc(-14px - env(safe-area-inset-bottom));margin:10px -14px calc(-14px - env(safe-area-inset-bottom));padding:10px 14px calc(14px + env(safe-area-inset-bottom))}}
@@ -1839,6 +1850,16 @@ function lastPrice(pid, kind, name) {
   return r;
 }
 
+/* أصناف الحساب ده بس (اللي اتكتبت له قبل كده) بآخر سعر وآخر تاريخ، الأحدث فوق: اقتراحات اسم الصنف في الفاتورة */
+function custItems(pid, kind) {
+  const m = new Map();
+  db.entries.filter(e => e.party === pid && e.kind === kind && !e.del && !e.mkNL).sort(entCmp).forEach(e => (e.lines || []).forEach(l => {
+    const k = norm(l.name), o = m.get(k);
+    m.set(k, {name: l.name, unit: l.unit, price: l.price, date: e.date, n: (o ? o.n : 0) + 1});
+  }));
+  return [...m.values()].sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : b.n - a.n);
+}
+
 /* ---------- فاتورة بيع / شراء ---------- */
 /* opts.mk = عملية فاتورة من شريك السوق: التاريخ بتاعها، والإجمالي لازم يطابق، والفاتورة بتتسجل بـ id ثابت وبتتعلّم اتنقلت */
 function docModal(p, kind, e, opts = {}) {
@@ -1848,7 +1869,7 @@ function docModal(p, kind, e, opts = {}) {
   /* nl = فاتورة من السوق اتنقلت بالإجمالي وبنودها لسه: بتفتح فاضية، والإجمالي لازم يطابق، وأول حفظ بيشيل التنبيه */
   const nl = !!(e && e.mkNL), mkT = opts.mk ? opts.mk.amt : nl ? docTotal(e) : null, fill = isNew || nl;
   const lines = e && !nl ? e.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty), price: fmtP(l.price)})) : [{name: '', unit: 'كيلو', qty: '', price: ''}];
-  const book = itemBook();
+  const book = itemBook(), mine = custItems(p.id, base);
   const lastDoc = fill ? db.entries.filter(x => x.party === p.id && x.kind === kind && !x.del && !x.mkNL && x.lines && x.lines.length).sort(entCmp).pop() : null;
   modal(`<h3>${isNew ? ttl : nl ? '📝 اكتب بنود الفاتورة' : 'تعديل ' + esc(docTitle(e))} — ${esc(p.name)}</h3>
     ${mkT !== null ? `<div class="sync" style="margin:0 0 10px;display:block">📥 فاتورة من شريكك في السوق${nl ? ' (اتنقلت بالإجمالي)' : ''} — إجمالي: <b class="money">${fmtP(mkT)}</b><br><small>اكتب البنود (كمية وسعر) والإجمالي لازم يطابق ده.</small><div id="dcMk" style="margin-top:4px;font-weight:800"></div></div>` : ''}
@@ -1856,7 +1877,6 @@ function docModal(p, kind, e, opts = {}) {
     ${e && e.fwFrom ? `<div class="fwbox from"><span>↩ الفاتورة دي منقولة من حساب ${esc((P.get((E.get(e.fwFrom) || {}).party) || {}).name || 'فرعي')}. التعديل يكون هناك وبعدين "انقل التعديل".</span></div>` : ''}
     ${ret ? `<p class="hint" style="margin:-6px 0 10px">البضاعة اللي ${kind === 'rinv' ? 'رجعت من العميل' : 'رجعتها للمورد'}. قيمتها ${kind === 'rinv' ? 'بتنزل من اللي عليه' : 'بتنزل من اللي ليه'}.</p>` : ''}
     <div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${e ? e.date : opts.mk ? isoOf(opts.mk.ts) : todayISO()}"></div>
-    <datalist id="dlItems">${[...book.values()].map(x => `<option value="${esc(x.name)}">`).join('')}</datalist>
     <div id="dcLines"></div>
     <div class="mtools"><button class="btn line sm" id="dcAdd" type="button">+ صنف كمان</button>
       ${lastDoc ? `<button class="btn line sm" id="dcLast" type="button">↻ زي آخر ${ret ? 'مرتجع' : 'فاتورة'} (${dispDate(lastDoc.date)})</button>` : ''}
@@ -1889,7 +1909,8 @@ function docModal(p, kind, e, opts = {}) {
   };
   const draw = ls => {
     $('#dcLines').innerHTML = ls.map((l, i) => `<div class="li">
-      <div class="lh"><span class="badge">${i + 1}</span><input class="inp" data-f="name" list="dlItems" placeholder="اسم الصنف" value="${esc(l.name)}" autocomplete="off">${ls.length > 1 ? `<button class="ibtn d" data-del="${i}" type="button">✕</button>` : ''}</div>
+      <div class="lh"><span class="badge">${i + 1}</span><input class="inp" data-f="name" placeholder="اسم الصنف" value="${esc(l.name)}" autocomplete="off">${ls.length > 1 ? `<button class="ibtn d" data-del="${i}" type="button">✕</button>` : ''}</div>
+      <div class="sg"></div>
       <div class="g4"><div><label>الوحدة</label><select class="inp" data-f="unit">${[...new Set(UNITS.concat(l.unit ? [l.unit] : []))].map(u => `<option ${u === l.unit ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select></div>
         <div><label>الكمية</label><input class="inp num" data-f="qty" inputmode="decimal" placeholder="0" value="${esc(l.qty)}"></div>
         <div><label>السعر</label><input class="inp num" data-f="price" placeholder="0" value="${esc(l.price)}"></div>
@@ -1897,6 +1918,33 @@ function docModal(p, kind, e, opts = {}) {
     $$('#dcLines [data-f=price]').forEach(bindMoney);
     $$('#dcLines [data-f=qty]').forEach(el => el.addEventListener('input', () => { el.value = normDigits(el.value).replace(/[^\d.]/g, ''); }));
     $$('#dcLines input').forEach(el => el.addEventListener('input', calc));
+    /* اقتراحات الاسم: أصناف الحساب ده الأول بآخر سعر واتكتب إمتى، وبعدها باقي الأصناف لو بتكتب. دوسة = الاسم والوحدة والسعر */
+    $$('#dcLines [data-f=name]').forEach(el => {
+      const li = el.closest('.li'), box = li.querySelector('.sg');
+      let rows = [];
+      const hide = () => { box.classList.remove('on'); box.innerHTML = ''; };
+      const show = () => {
+        const q = norm(el.value), mk = new Set(mine.map(x => norm(x.name)));
+        const a = mine.filter(x => !q || norm(x.name).includes(q)).slice(0, 5);
+        const b = q ? [...book.values()].filter(x => !mk.has(norm(x.name)) && norm(x.name).includes(q)).slice(0, 4) : [];
+        rows = a.concat(b);
+        if (!rows.length || (rows.length === 1 && norm(rows[0].name) === q)) return hide();
+        box.innerHTML = rows.map((x, i) => (i === 0 && a.length ? `<div class="sh">${base === 'inv' ? 'اتباع للحساب ده قبل كده' : 'اتشرى من الحساب ده قبل كده'}</div>` : '') + (i === a.length && b.length ? '<div class="sh">أصناف تانية</div>' : '')
+          + `<div class="sr" data-i="${i}"><span>${esc(x.name)}${x.date ? `<small>${esc(x.unit || '')} — آخر مرة ${dispDate(x.date)}</small>` : x.unit ? `<small>${esc(x.unit)}</small>` : ''}</span>${x.price ? `<b>${fmtP(x.price)}</b>` : ''}</div>`).join('');
+        box.classList.add('on');
+      };
+      box.onmousedown = ev => ev.preventDefault();
+      box.onclick = ev => {
+        const r = ev.target.closest('.sr'); if (!r) return;
+        const x = rows[+r.dataset.i]; if (!x) return;
+        el.value = x.name;
+        if (x.unit) { const s = li.querySelector('[data-f=unit]'); if (![...s.options].some(o => o.value === x.unit)) s.add(new Option(x.unit)); s.value = x.unit; }
+        if (x.price) li.querySelector('[data-f=price]').value = fmtP(x.price);
+        hide(); calc(); li.querySelector('[data-f=qty]').focus();
+      };
+      el.addEventListener('focus', show); el.addEventListener('input', show);
+      el.addEventListener('blur', () => setTimeout(hide, 200));
+    });
     $$('#dcLines [data-f=name]').forEach(el => el.addEventListener('change', () => {
       const li = el.closest('.li'), pr = li.querySelector('[data-f=price]');
       if (!el.value.trim() || pr.value) return;

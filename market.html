@@ -426,8 +426,18 @@ addEventListener('pageshow', () => sync());
 /* ====================== الشاشات ====================== */
 let toastT;
 function toast(msg, ms = 2600, bt = false) { const t = $('#toast'); t.textContent = msg; t.classList.toggle('bt', bt); t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms); }
-function modal(html) { $('#modal').innerHTML = html; $('#mask').classList.add('on'); }
-function closeModal() { $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; }
+/* زرار الرجوع بتاع الموبايل: النافذة بتاخد خانة في التاريخ، فالرجوع بيقفلها بدل ما يخرّج من التطبيق، والتبويبات كل واحد خانة فالرجوع بيرجع للتبويب اللي قبله */
+let mPush = false, popIgnore = 0, mTimer = 0;
+const hideModal = () => { $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; };
+function modal(html) {
+  $('#modal').innerHTML = html; $('#mask').classList.add('on');
+  if (!mPush) { try { history.pushState({pm: 1}, '', location.href); mPush = true; } catch (e) {} }
+}
+function closeModal() {
+  hideModal(); clearTimeout(mTimer);
+  /* لو نافذة تانية اتفتحت على طول بنفضل على نفس الخانة، وغير كده بنشيل خانة النافذة من التاريخ */
+  if (mPush) mTimer = setTimeout(() => { if (mPush && !$('#mask').classList.contains('on')) { mPush = false; popIgnore++; history.back(); } }, 60);
+}
 $('#mask').addEventListener('click', e => { if (e.target.id === 'mask') closeModal(); });
 function ask(msg, yes, no = 'لأ', danger = false) {
   return new Promise(res => {
@@ -469,7 +479,7 @@ function drawTabs() {
   if (!k || !S.u) { el.innerHTML = ''; el.style.display = 'none'; return; }
   el.style.display = '';
   el.innerHTML = TABS.map(([t, n]) => `<button type="button" data-t="${t}" class="${t === k ? 'on' : ''}">${IC[t]}<span>${n}</span></button>`).join('');
-  $$('#tabs button').forEach(b => b.onclick = () => nav(b.dataset.t === 'home' ? '' : b.dataset.t, true));
+  $$('#tabs button').forEach(b => b.onclick = () => { if (b.dataset.t !== TAB_OF[scr.v]) nav(b.dataset.t === 'home' ? '' : b.dataset.t); });
 }
 /* التنقل بالـ # علشان زرار الرجوع بتاع الموبايل يشتغل */
 function nav(h, replace) {
@@ -477,10 +487,14 @@ function nav(h, replace) {
   if (replace) history.replaceState(null, '', u); else history.pushState(null, '', u);
   route();
 }
-addEventListener('popstate', route);
+addEventListener('popstate', () => {
+  if (popIgnore) { popIgnore--; return; }
+  if (mPush) { mPush = false; if ($('#mask').classList.contains('on')) { hideModal(); return; } }
+  route();
+});
 const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 function route() {
-  closeModal();
+  mPush = false; hideModal();
   const h = decodeURIComponent(location.hash.slice(1)), [a, b] = h.split('/');
   scr = a === 'p' && b ? {v: 'pay', cid: b} : a === 'ok' && b && S.ops[b] ? {v: 'ok', op: b} : a === 'x' ? {v: 'spend'} : a === 'b' ? {v: 'sale'} : a === 'c' ? {v: 'c'} : a === 's' ? {v: 's'} : a === 'a' ? (isDay(b) ? {v: 'day', day: b} : /^\d{4}-\d{2}$/.test(b || '') ? {v: 'mon', mon: b} : {v: 'a'}) : {v: 'home'};
   render(); window.scrollTo(0, 0);

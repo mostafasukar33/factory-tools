@@ -759,6 +759,18 @@ const MO = !!process.env.MARKET_ONLY;
     eq('الشريك مشافش أي تغيير في المصروف المتجاهَل، وينفع يعدّله', await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'تاكسي'); return [opState(o), stHtml(o), cashNow() < 0 || true]; }), ['exp', '', true]);
     eq('دفعة المورد والتسليم لسه بموافقته (متسجلوش لوحدهم)', await A.evaluate(() => db.txs.filter(t => t.id.startsWith('t_mk_') && !t.del).every(t => t.type === 'tr' || t.cat === 'c_inc1' || t.cat === 'c_mkexp')), true);
 
+    console.log('\n٢١) حركة السوق: زرار الرجوع بتاع الموبايل');
+    await M.evaluate(() => nav('', true)); await M.waitForTimeout(150);
+    await M.click('#tabs button[data-t=c]'); await M.click('#tabs button[data-t=a]');
+    await M.goBack(); await M.waitForTimeout(150);
+    eq('الرجوع من الأرشيف بيرجع للعملاء (مش بيخرج)', await M.evaluate(() => scr.v), 'c');
+    await M.evaluate(() => handModal()); await M.waitForSelector('#hAmt');
+    await M.goBack(); await M.waitForTimeout(150);
+    eq('الرجوع وفي نافذة مفتوحة بيقفلها ويفضل في نفس الصفحة', await M.evaluate(() => [scr.v, $('#mask').classList.contains('on')]), ['c', false]);
+    await M.evaluate(() => handModal()); await M.waitForSelector('#hAmt'); await M.click('#hX'); await M.waitForTimeout(300);
+    await M.goBack(); await M.waitForTimeout(150);
+    eq('قفل النافذة بزرارها مبيسيبش خانة زيادة: الرجوع بيروح للصفحة اللي قبلها', await M.evaluate(() => scr.v), 'home');
+
     console.log('\n١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(typeof D2 !== 'undefined' ? D2.errs : [], DM ? DM.errs : []), []);

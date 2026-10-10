@@ -761,6 +761,7 @@ html[data-theme=dark] .ifoot .btn.off,html[data-theme=dark] .ifoot .btn:disabled
 /* ============ اللاب توب: شكل البرنامج الاحترافي (بطلب صاحب المشروع، اللاب بس ≥1000 والموبايل زي ما هو) ============
    الشريط الأسود اللي فوق بقى راس القايمة الجانبية الغامقة، وقايمة الحسابات سطور رفيعة، وراس الحساب سطر واحد، والجدول سطر لكل حركة */
 .ldg tr.yr{display:none}
+#hList .pth{display:none}
 :root{--pane:#fff;--pane2:#FBF9F3;--mut:#8a8270;--rowl:#EFE9DA}
 html[data-theme=dark]{--pane:#1f1e19;--pane2:#1a1914;--mut:#B9B3A1;--rowl:#2d2b24}
 @media (min-width:1000px){
@@ -807,6 +808,8 @@ html[data-theme=dark]{--pane:#1f1e19;--pane2:#1a1914;--mut:#B9B3A1;--rowl:#2d2b2
   main.split .pt .m b{font-size:14.5px}main.split .pt .a{display:flex;align-items:baseline;gap:5px}
   main.split .pt .a b{font-size:14.5px;font-variant-numeric:tabular-nums}main.split .pt .a small{font-size:11px}
   main.split .pt.zero .a b{color:#aaa}
+  main.split .pt .a small.same{display:none}
+  main.split #hList .pth{display:flex;justify-content:space-between;position:sticky;top:0;z-index:2;background:var(--pane2);border-bottom:1px solid var(--line);padding:3px 14px;font-size:12px;font-weight:800;color:var(--mut)}
   main.split .pt:hover{background:var(--pane2)}
   main.split .pt.cur{outline:0;background:var(--gold-l)!important;box-shadow:inset -3px 0 0 var(--gold)}
   main.split .pt.lim-y{box-shadow:inset 3px 0 0 #E9C46A}main.split .pt.lim-r{box-shadow:inset 3px 0 0 #E57373}
@@ -1377,11 +1380,13 @@ function renderList(bal) {
   else ps.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
   if (!ps.length) { $('#hList').innerHTML = `<div class="empty">${liveParties().length ? 'مفيش حساب بالاسم ده' : 'لسه مفيش حسابات. اضغط "+ حساب جديد".'}</div>`; return; }
   $('#hList').classList.toggle('srch', !!q);
-  $('#hList').innerHTML = ps.map(p => {
+  /* على اللاب: كلمة "عليه/ليه" مكتوبة مرة واحدة فوق عمود الأرقام (ثابتة)، وجنب الرقم بتظهر بس لو مختلفة عنها */
+  const hw = !q && tab === 'sup' ? 'ليه' : 'عليه';
+  $('#hList').innerHTML = `<div class="pth"><span>الاسم</span><span>${hw}</span></div>` + ps.map(p => {
     const b = bal.get(p.id) || 0;
     return `<div class="pt ${p.id === curParty ? 'cur' : ''} ${p.sec === 'sup' ? 'sup' : ''} ${b ? '' : 'zero'} ${b < 0 ? 'neg' : ''} ${limitClass(p, b)}" data-id="${esc(p.id)}">
       <div class="m"><b>${esc(p.name)}</b><small><span class="tag ${p.sec === 'sup' ? 'sup' : ''}">${SEC1[p.sec]}</span>${p.noTot ? '<span class="tag off">خارج الإجمالي</span>' : ''}<span class="ph">${esc(p.phone || '')}</span></small></div>
-      <div class="a"><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b><small>${balWord(b)}</small></div></div>`;
+      <div class="a"><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b><small${!b || balWord(b) === hw ? ' class="same"' : ''}>${balWord(b)}</small></div></div>`;
   }).join('');
   $$('#hList .pt').forEach(el => el.onclick = () => go('p/' + el.dataset.id));
 }

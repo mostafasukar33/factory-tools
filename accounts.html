@@ -1651,7 +1651,7 @@ function fwState(e) { const c = fwCopyOf(e); return !c ? (e.fwMan ? 'ok' : 'no')
 const fwKey = e => [e.date, docTotal(e), (e.lines || []).map(l => [norm(l.name), +l.qty || 0, +l.price || 0].join('~')).sort().join('|')].join('#');
 function fwAutoLink(p) {
   const m = fwdMain(p); if (!m) return 0;
-  const free = partyEntries(m.id).filter(x => x.kind === 'inv' && !x.fwFrom);
+  const free = partyEntries(m.id).filter(x => x.kind === 'inv' && (!x.fwFrom || (E.get(x.fwFrom) || {del: true}).del));   // من غير ربط، أو أصلها اتمسح من الفرعي
   let n = 0;
   partyEntries(p.id).filter(e => e.kind === 'inv' && !fwCopyOf(e)).forEach(e => {
     const k = fwKey(e), i = free.findIndex(x => fwKey(x) === k);
@@ -1675,16 +1675,13 @@ function fwMove(p, e) {
   applyAmounts(c); touch(c);
   return true;
 }
-/* نسخ في الأساسي فاتورتها الأصلية اتلغت من الفرعي */
-const fwOrphans = p => db.entries.filter(c => c.fwFrom && !c.del && (E.get(c.fwFrom) || {}).party === p.id && E.get(c.fwFrom).del);
 function fwBar(p) {
   const m = fwdMain(p), inv = partyEntries(p.id).filter(e => e.kind === 'inv');
   const st = {ok: 0, no: 0, chg: 0}; inv.forEach(e => st[fwState(e)]++);
-  const orph = fwOrphans(p).length, todo = st.no + st.chg;
-  return `<div class="fwbar ${todo || orph ? 'todo' : 'done'}"><div class="fwt1">📤 فواتير الحساب ده بتتنقل لحساب ${m ? `<b>${esc(m.name)}</b>` : '<b style="color:var(--red)">(مش لاقي الحساب الأساسي — اختاره من تعديل البيانات)</b>'}</div>
+  const todo = st.no + st.chg;
+  return `<div class="fwbar ${todo ? 'todo' : 'done'}"><div class="fwt1">📤 فواتير الحساب ده بتتنقل لحساب ${m ? `<b>${esc(m.name)}</b>` : '<b style="color:var(--red)">(مش لاقي الحساب الأساسي — اختاره من تعديل البيانات)</b>'}</div>
     <div class="fwt2"><span class="ok">✓ اتنقلت: <b>${st.ok}</b></span><span class="no">⏳ لسه: <b>${st.no}</b></span>${st.chg ? `<span class="chg">⚠ اتعدلت بعد النقل: <b>${st.chg}</b></span>` : ''}</div>
     ${!p.noTot ? '<div class="fwt3">⚠ الحساب ده لسه داخل الإجماليات، فالفواتير المنقولة هتتحسب مرتين. علّم "حساب فرعي" من تعديل البيانات.</div>' : ''}
-    ${orph ? `<div class="fwt3">⚠ ${orph} ${orph === 1 ? 'فاتورة اتلغت' : 'فواتير اتلغت'} هنا وهي لسه في الحساب الأساسي. <a id="fwOrph">شيلها من الأساسي</a></div>` : ''}
     ${m && todo ? `<button class="btn gold" id="fwAll" type="button">📤 انقل اللي لسه للحساب الأساسي (${todo})</button>` : ''}</div>`;
 }
 function fwBind(p) {
@@ -1693,12 +1690,6 @@ function fwBind(p) {
     if (!(await confirmBox(`تنقل ${list.length} ${list.length === 1 ? 'فاتورة' : 'فواتير'} (إجمالي ${fmtP(list.reduce((s, e) => s + docTotal(e), 0))}) لحساب "${m.name}"؟ الفواتير هتفضل هنا كمان بعلامة "اتنقلت".`, 'انقلها'))) return;
     let n = 0; for (const e of list) if (fwMove(p, e)) n++;
     saveDB(); route(); if (n) toast(`✔ اتنقلت ${n} ${n === 1 ? 'فاتورة' : 'فواتير'} لحساب ${m.name}`);
-  };
-  if ($('#fwOrph')) $('#fwOrph').onclick = async () => {
-    const L = fwOrphans(p);
-    if (L.some(c => isLocked(c.date))) return lockToast();
-    if (!(await confirmBox(`تلغي ${L.length} ${L.length === 1 ? 'فاتورة' : 'فواتير'} من الحساب الأساسي (اللي اتلغت هنا)؟`, 'الغيها', true))) return;
-    L.forEach(c => { c.del = true; c.delAt = Date.now(); touch(c); }); saveDB(); route(); toast('اتلغت من الحساب الأساسي');
   };
 }
 
@@ -1790,6 +1781,9 @@ function cancelledModal(e) {
 function snapshot(e) { const s = {t: Date.now(), kind: e.kind, date: e.date, desc: e.desc, dr: e.dr || 0, cr: e.cr || 0}; ['no', 'lines', 'disc', 'amt', 'method', 'note', 'vault', 'chk', 'dir'].forEach(k => { if (e[k] !== undefined) s[k] = JSON.parse(JSON.stringify(e[k])); }); return s; }
 async function cancelEntry(e) {
   if (isLocked(e.date)) return lockToast();
+  /* الهاشمية قنا: مسح فاتورة اتنقلت عادي من غير أي تحذير (اللي في الأساسي بيفضل). التحذير مرة واحدة بس لو لسه متنقلتش */
+  if (e.kind === 'inv' && !e.del && isFwdSrc(P.get(e.party)) && fwState(e) === 'no'
+    && !(await confirmBox(`الفاتورة دي لسه متنقلتش للحساب الأساسي${fwdMain(P.get(e.party)) ? ' (' + fwdMain(P.get(e.party)).name + ')' : ''}. تمسحها برضه؟`, 'امسحها', true))) return;
   const aff = [e];
   if (e.chk && e.chk.bnc) { const b = E.get(e.chk.bnc); if (b && !b.del) aff.push(b); }
   if (e.kind === 'bnc') { const o = E.get(e.ref); if (o && o.chk && o.chk.st === 'b') aff.push(o); }

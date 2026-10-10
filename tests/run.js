@@ -230,6 +230,18 @@ const MO = !!process.env.MARKET_ONLY;
     eq('"دي متنقلة بالفعل": بقت اتنقلت من غير ما تتنسخ', await A.evaluate(([m, c]) => [fwState(E.get(c)), db.entries.some(x => x.fwFrom === c), !E.get('e_fw_' + c)], [fwM, fwC]), ['ok', false, true]);
     await A.evaluate(id => openEntry(P.get(E.get(id).party), E.get(id)), fwC); await A.waitForTimeout(150); await A.click('#fwUn'); await A.waitForTimeout(250);
     eq('"رجّعها متنقلتش" بترجّعها', await A.evaluate(c => fwState(E.get(c)), fwC), 'no');
+    /* المسح من الفرعي: المنقولة تتمسح عادي من غير تحذير والأساسي زي ما هو، واللي لسه متنقلتش تحذير مرة واحدة وقت المسح */
+    const mBal = await A.evaluate(m => balance(m), fwM);
+    await A.evaluate(a => { cancelEntry(E.get(a)); }, fwA); await A.waitForTimeout(250);
+    eq('مسح فاتورة منقولة: من غير سؤال، والأساسي زي ما هو، ومفيش تحذير فاضل', await A.evaluate(([a, m]) => [E.get(a).del, !$('#cOk'), balance(m), $('.fwbar').textContent.includes('اتلغت')], [fwA, fwM]), [true, true, mBal, false]);
+    await A.evaluate(c => { cancelEntry(E.get(c)); }, fwC); await A.waitForTimeout(200);
+    eq('مسح فاتورة لسه متنقلتش: بيسأل الأول', [(await A.textContent('#modal')).includes('لسه متنقلتش'), await A.evaluate(c => E.get(c).del, fwC)], [true, false]);
+    await A.click('#cNo'); await A.waitForTimeout(150);
+    eq('"إلغاء" = الفاتورة فاضلة', await A.evaluate(c => E.get(c).del, fwC), false);
+    await A.evaluate(c => { cancelEntry(E.get(c)); }, fwC); await A.waitForTimeout(200); await A.click('#cOk'); await A.waitForTimeout(250);
+    eq('"امسحها" = اتمسحت', await A.evaluate(c => E.get(c).del, fwC), true);
+    const fwA2 = await A.evaluate(([s, a]) => { const o = E.get(a), e = addEntry({party: s, kind: 'inv', date: o.date, lines: JSON.parse(JSON.stringify(o.lines))}); applyAmounts(e); saveDB(); route(); return e.id; }, [fwS, fwA]); await A.waitForTimeout(250);
+    eq('فاتورة جديدة بنفس التاريخ والبنود بعد المسح: بتتعرف "اتنقلت" على نفس اللي في الأساسي (من غير تكرار)', await A.evaluate(([a2, m, b]) => [fwState(E.get(a2)), balance(m)], [fwA2, fwM, mBal]), ['ok', mBal]);
     await A.evaluate(([m, s]) => { [m, s].forEach(id => partyEntries(id).forEach(e => { e.del = true; e.delAt = Date.now(); touch(e); })); saveDB(); }, [fwM, fwS]);
     await openParty(A, 'عميل تجربة واحد');
     eq('باقي العملا مفيهمش الشريط ولا العلامات', [await A.$('.fwbar'), (await A.textContent('#p-party .ldg')).includes('متنقلتش')], [null, false]);

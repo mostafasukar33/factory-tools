@@ -138,6 +138,7 @@ html[data-theme=dark] .ctb tr.l-r td.nm{color:var(--red)}
 .b-cash{background:var(--green);color:#fff}
 .b-insta{background:var(--insta);color:#fff}
 .b-voda{background:var(--voda);color:#fff}
+.b-tr{background:#2F6690;color:#fff}
 html[data-theme=dark] .b-cash{color:#0b1a10}
 .b-again{background:#24211b;color:#fff}
 html[data-theme=dark] .b-again{background:#34312a}
@@ -223,6 +224,9 @@ html[data-theme=dark] .chk{color:#0b1a10}
 .modal .row2{display:grid;grid-template-columns:1.6fr 1fr;gap:8px}
 .modal .lnk{margin-top:4px}
 #toast{position:fixed;top:calc(62px + env(safe-area-inset-top));inset-inline:16px;margin:auto;max-width:420px;background:#17150f;color:#fff;border:1px solid var(--gold);padding:10px 14px;border-radius:12px;text-align:center;font-weight:700;font-size:14.5px;z-index:60;display:none;pointer-events:none}
+/* إشعار "اتسجلت": تحت علشان ميغطيش اسم العميل ورصيده اللي بيتحدث فوق */
+#toast.bt{top:auto;bottom:calc(76px + env(safe-area-inset-bottom));background:var(--green);border-color:var(--green);font-size:16px;padding:12px 14px}
+html[data-theme=dark] #toast.bt{color:#0b1a10}
 .gate{text-align:center;padding:50px 18px}
 .gate img{width:90px;border-radius:18px;background:#fff;box-shadow:0 4px 18px #0002}
 .gate h2{font-size:22px;margin:14px 0 6px}
@@ -261,9 +265,10 @@ const pad2 = n => String(n).padStart(2, '0');
 const dayOf = ms => { const d = new Date(ms); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
 const today = () => dayOf(Date.now());
 const timeOf = ms => { const d = new Date(ms), h = d.getHours(); return `${h % 12 || 12}:${pad2(d.getMinutes())} ${h < 12 ? 'ص' : 'م'}`; };
-const M_BTN = {cash: '💵 كاش معايا', insta: '📱 إنستا لمصطفى', voda: '📱 فودافون لمصطفى'};
-const M_TXT = {cash: 'كاش معايا', insta: 'إنستا لمصطفى', voda: 'فودافون لمصطفى'};
-const M_SAID = {cash: 'كاش', insta: 'إنستا لمصطفى', voda: 'فودافون لمصطفى'};
+/* طريقتين بس للدفعة الجديدة: فلوس معايا أو تحويل لمصطفى (إنستا/فودافون القديمة بتفضل تتعرض زي ما هي) */
+const M_BTN = {cash: '💵 فلوس معايا', tr: '📲 تحويل لمصطفى'};
+const M_TXT = {cash: 'كاش معايا', tr: 'تحويل لمصطفى', insta: 'إنستا لمصطفى', voda: 'فودافون لمصطفى'};
+const M_SAID = {cash: 'كاش', tr: 'تحويل لمصطفى', insta: 'إنستا لمصطفى', voda: 'فودافون لمصطفى'};
 const AR_DAYS = ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت'];
 const RLM = '\u200F';
 const dispDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}${RLM}/${RLM}${m}${RLM}/${RLM}${y}` : ''; };
@@ -376,7 +381,7 @@ function merge(r) {
 }
 /* نص تنبيه تليجرام بيتبعت جاهز مع العملية، فكود الشيت مش محتاج يتحدّث لو الجمل اتغيرت */
 const TG_IC = {pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭'};
-const tgText = o => { const a = fmt(o.amt), w = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون كاش'};
+const tgText = o => { const a = fmt(o.amt), w = {cash: 'كاش', tr: 'تحويل', insta: 'إنستا', voda: 'فودافون كاش'};
   return o.t === 'pay' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${a} ${w[o.m] || ''}` : o.t === 'inv' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${a}`
     : o.t === 'exp' ? `مصروف ${o.cat || ''}: ${a}${o.note ? ' — ' + o.note : ''}` : o.t === 'spay' ? `دفع للمورد ${o.sname || ''} ${a}` : o.t === 'hand' ? `سلّمك ${a} كاش` : o.t === 'cs' ? `بيع كاش من المصنع ${a} — ${o.buyer || ''}` : 'حركة ' + a; };
 const view = o => [dayOf(o.ts) + ' ' + timeOf(o.ts), (o.t === 'pay' || o.t === 'inv') ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, o.t === 'pay' ? M_SAID[o.m] || o.m : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة'}[o.t], ''];
@@ -420,7 +425,7 @@ addEventListener('pageshow', () => sync());
 
 /* ====================== الشاشات ====================== */
 let toastT;
-function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms); }
+function toast(msg, ms = 2600, bt = false) { const t = $('#toast'); t.textContent = msg; t.classList.toggle('bt', bt); t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms); }
 function modal(html) { $('#modal').innerHTML = html; $('#mask').classList.add('on'); }
 function closeModal() { $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; }
 $('#mask').addEventListener('click', e => { if (e.target.id === 'mask') closeModal(); });
@@ -604,7 +609,7 @@ function drawPay() {
   bindAmt(inp); bindDate('pyD');
   const btns = () => {
     $('#pyBtns').innerHTML = pyTab === 'pay'
-      ? `${['cash', 'insta', 'voda'].map(m => `<button class="big b-${m}" data-m="${m}" type="button">${M_BTN[m]}</button>`).join('')}<p class="hint">دوسة على الزرار بتحفظ على طول</p>`
+      ? `${['cash', 'tr'].map(m => `<button class="big b-${m}" data-m="${m}" type="button">${M_BTN[m]}</button>`).join('')}<p class="hint">دوسة على الزرار بتحفظ على طول</p>`
       : `<button class="big b-again" id="invOk" type="button">🧾 سجّل الفاتورة</button><p class="hint">اكتب إجمالي الفاتورة بس (من غير بنود). بتتضاف على حساب العميل عندك، ومصطفى بيكتب البنود من عنده.</p>`;
     $$('#pyBtns .big[data-m]').forEach(b => {
       b.addEventListener('mousedown', e => e.preventDefault());   // علشان الكيبورد ميقفلش ويتحرك الزرار قبل الدوسة
@@ -629,6 +634,13 @@ function drawPayInfo() {
   if ($('#cMore')) $('#cMore').onclick = () => { cShow += 15; drawPayInfo(); };
   bindOps('#tdy');
 }
+/* بعد الحفظ: مفيش شاشة كبيرة. إشعار صغير وبيفضل في نفس الصفحة (المبلغ بيتمسح، والرصيد والحركات بيتحدثوا) */
+function savedHere(msg) {
+  try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
+  const i = $('#amt'); if (i) { i.value = ''; i.blur(); }
+  lastSave = Date.now(); refresh();
+  toast(msg + (online === false ? ' (هتتبعت أول ما النت يرجع)' : ''), 3000, true);
+}
 async function savePay(c, m) {
   if (Date.now() - lastSave < 700) return;   // دوستين ورا بعض = دوسة واحدة
   const amt = amtOf($('#amt'));
@@ -641,7 +653,7 @@ async function savePay(c, m) {
   const o = {id: newId(), t: 'pay', cid: c.id, cname: c.name, newc: !!c.nw, amt, m, ts: tsOnDay(dateOf('pyD')), cr: now, upd: now, del: false};
   S.ops[o.id] = o;
   save(); sync();
-  nav('ok/' + o.id, true);
+  savedHere(`✔ اتسجلت دفعة ${fmt(amt)} — ${M_TXT[m]}`);
 }
 
 async function saveInv(c) {
@@ -655,7 +667,7 @@ async function saveInv(c) {
   const o = {id: newId(), t: 'inv', cid: c.id, cname: c.name, newc: !!c.nw, amt, ts: tsOnDay(dateOf('pyD')), cr: now, upd: now, del: false};
   S.ops[o.id] = o;
   save(); sync();
-  nav('ok/' + o.id, true);
+  savedHere(`✔ اتسجلت فاتورة ${fmt(amt)}`);
 }
 
 /* ---------- تعديل أي حركة بسهولة (نافذة من تحت): المبلغ والنوع والاسم، أو مسحها ---------- */
@@ -677,7 +689,7 @@ function editSheet(o) {
     ${o.t === 'cs' ? `<label style="font-size:12.5px;font-weight:700;color:var(--sub)">اسم المشتري</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.buyer)}">` : ''}
     <label class="amt sm" for="eA" style="margin-top:6px"><input id="eA" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${fmt(o.amt)}"><em>جنيه</em></label>
     ${o.t === 'pay' || o.t === 'inv' || o.t === 'cs' ? datePick('eD', dayOf(o.ts)) : ''}
-    ${o.t === 'pay' ? `<div class="seg" id="eM" style="--n:3;margin-top:10px">${['cash', 'insta', 'voda'].map(k => `<button type="button" data-m="${k}" class="${k === m ? 'on' : ''}">${{cash: 'كاش معايا', insta: 'إنستا', voda: 'فودافون'}[k]}</button>`).join('')}</div>` : ''}
+    ${o.t === 'pay' ? `<div class="seg" id="eM" style="--n:2;margin-top:10px">${['cash', 'tr'].map(k => `<button type="button" data-m="${k}" class="${k === m || (k === 'tr' && m !== 'cash') ? 'on' : ''}">${{cash: 'فلوس معايا', tr: 'تحويل لمصطفى'}[k]}</button>`).join('')}</div>` : ''}
     ${o.t === 'exp' ? `<label class="wh" for="eNt">المصروف ده إيه؟</label><input class="inp2 exp" id="eNt" autocomplete="off" placeholder="اكتب المصروف" value="${esc(o.cat + (o.note ? ' — ' + o.note : ''))}" style="margin-top:6px">` : ''}
     <div class="row2" style="margin-top:12px"><button class="big b-cash" id="eOk" type="button" style="margin-top:0">حفظ</button><button class="big b-redo" id="eDel" type="button" style="margin-top:0">🗑 مسح</button></div>
     <button class="lnk" id="eX" type="button">إغلاق</button>`);
@@ -827,7 +839,7 @@ async function saveSale() {
   if (dup && !(await ask(`سجلت بيع ${fmt(amt)} لـ ${buyer} من شوية. دي مرة تانية؟`, 'أيوه، مرة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
   const now = Date.now(), o = {id: newId(), t: 'cs', buyer, amt, ts: tsOnDay(dateOf('bD')), cr: now, upd: now, del: false};
   S.ops[o.id] = o; save(); sync();
-  nav('ok/' + o.id, true);
+  drawSale(); savedHere(`✔ اتسجل بيع ${fmt(amt)} — ${buyer}`);
 }
 
 /* ---------- سلمت لمصطفى (كاش) ---------- */
@@ -849,7 +861,7 @@ function handModal() {
     if (dup && !(await ask(`سجلت تسليم ${fmt(amt)} من شوية. دي مرة تانية؟`, 'أيوه، مرة تانية', 'لأ، دي نفسها'))) return;
     const now = Date.now(), o = {id: newId(), t: 'hand', amt, ts: now, upd: now, del: false};
     S.ops[o.id] = o; save(); sync(); closeModal();
-    nav('ok/' + o.id, true);
+    savedHere(`✔ اتسجل: سلمت لمصطفى ${fmt(amt)}`);
   };
 }
 

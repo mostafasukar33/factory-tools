@@ -736,7 +736,7 @@ html[data-theme=dark] .dnav span{color:#F3EFE3}
 .ilnote{font-size:13px;color:var(--red);font-weight:700;padding:2px 14px 6px;border-bottom:1px dashed #EFE9DA}
 .ilsum{font-size:13.5px;color:#666;font-weight:700;padding:6px 14px;text-align:left;direction:rtl}.ilsum b{direction:ltr;unicode-bidi:isolate;color:var(--ink)}
 .mtag{font-size:12px;font-weight:800;border-radius:6px;padding:1px 8px}
-.mtag.cash{background:var(--green-l);color:var(--green)}.mtag.insta{background:#EEE8FA;color:#5B3FA8}.mtag.voda{background:var(--red-l);color:#C8102E}
+.mtag.cash{background:var(--green-l);color:var(--green)}.mtag.insta{background:#EEE8FA;color:#5B3FA8}.mtag.voda{background:var(--red-l);color:#C8102E}.mtag.tr{background:#E6EEF5;color:#2F6690}
 .il .tm{font-size:12px;color:#999;font-weight:600}
 .vbtn{border:1.5px solid #B7791F;color:#B7791F;background:#fff;border-radius:8px;font-weight:800;font-size:13px;height:32px;padding:0 10px;cursor:pointer;font-family:inherit}
 .vok{color:var(--green);font-size:13px;font-weight:800}.vbk{color:var(--red);font-size:13px;font-weight:800}
@@ -749,7 +749,7 @@ html[data-theme=dark] :is(.ic,.mvr,.vbtn){background:#1f1e19;border-color:#37342
 html[data-theme=dark] :is(.ich,.il,.ilnote){border-color:#2d2b24}
 html[data-theme=dark] .mkh .n,html[data-theme=dark] .nwt{background:#0d0c0a}
 html[data-theme=dark] .ilsum{color:#B9B3A1}html[data-theme=dark] .ilsum b{color:#F3EFE3}
-html[data-theme=dark] .mtag.insta{background:#2a2240;color:#B9A6F0}html[data-theme=dark] .mtag.voda{color:#FF8A80}
+html[data-theme=dark] .mtag.insta{background:#2a2240;color:#B9A6F0}html[data-theme=dark] .mtag.voda{color:#FF8A80}html[data-theme=dark] .mtag.tr{background:#1c2a36;color:#8FBCE0}
 /* مصروف / صفحات الوارد الجديدة */
 .mtag.exp{background:#FFF3CD;color:#8A6200}
 .mtag.inv{background:#E3EEFB;color:#1F5FA8}
@@ -4311,7 +4311,7 @@ function tgTest_() {
 }
 function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }`;
 
-const MK_M = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون'};
+const MK_M = {cash: 'كاش', tr: 'تحويل', insta: 'إنستا', voda: 'فودافون'};   // tr = "تحويل لمصطفى" (الشريك بقى عنده كاش أو تحويل بس)
 const mkCreds = () => { const s = db && getSet('mktSheet', null); return s && s.u && s.k ? s : null; };
 function mkDb() { return db.mkt = db.mkt || {u: '', cursor: 0, ops: {}, st: {}, cs: {}}; }
 const mkSt = id => mkDb().st['st_' + id];
@@ -4658,7 +4658,7 @@ function mkCard(g) {
     return `<div class="il ${st === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<b class="money">${fmtP(o.amt)}</b>${o.t === 'exp' && o.note ? `<small class="tm">${esc(o.note)}</small>` : ''}${o.t === 'cs' && o.buyer ? `<small class="tm">${esc(o.buyer)}</small>` : ''}${fixed}</span>${right}</div>
       ${st === 'back' && s ? `<div class="ilnote">ملاحظتك: ${esc(s.back)}</div>` : ''}`;
   };
-  const sum = g.kind === 'pay' && pendPays.length > 1 ? `<div class="ilsum">${['cash', 'insta', 'voda'].map(m => { const t = pendPays.filter(o => o.m === m).reduce((a, o) => a + o.amt, 0); return t ? `${fmtP(t)} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ')} = <b>${fmtP(tot)}</b></div>` : '';
+  const sum = g.kind === 'pay' && pendPays.length > 1 ? `<div class="ilsum">${['cash', 'tr', 'insta', 'voda'].map(m => { const t = pendPays.filter(o => o.m === m).reduce((a, o) => a + o.amt, 0); return t ? `${fmtP(t)} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ')} = <b>${fmtP(tot)}</b></div>` : '';
   const foot = !g.pend.length ? ''
     : `<div class="ifoot">${pendPays.length ? `<button class="btn ${blocked ? 'off' : ''}" data-mv="${esc(g.k)}" type="button" ${blocked ? 'disabled' : ''}>${MK_FOOT[g.kind](g)}</button>` : ''}${g.kind === 'exp' ? '' : `<button class="btn red" data-bk="${esc(g.k)}" type="button"${pendPays.length && !(g.kind === 'pay' && !g.nw) ? ' style="flex:.55"' : ''}>رجّعها</button>`}</div>`;
   const tagTxt = g.kind === 'pay' && g.nw ? 'عميل جديد' : g.kind === 'spay' ? (g.nw ? 'مورد — مش مربوط' : 'مورد') : '';

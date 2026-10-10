@@ -3892,9 +3892,10 @@ function opText_(d) {
   if (d.t === 'exp') return 'مصروف' + (d.cat ? ' ' + d.cat : '') + ': ' + a + (d.note ? ' — ' + d.note : '');
   if (d.t === 'spay') return 'دفع للمورد ' + (d.sname || '') + ' ' + a;
   if (d.t === 'hand') return 'سلّمك ' + a + ' كاش';
+  if (d.t === 'cs') return 'بيع كاش من المصنع ' + a + (d.buyer ? ' — ' + d.buyer : '');
   return 'حركة ' + a;
 }
-const ICON = {pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝'};
+const ICON = {pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭'};
 function opMsg_(old, d, del) {
   const ic = ICON[d.t] || '•';
   if (del) return old && !old.del ? '🗑 اتمسحت: ' + opText_(old) : '';
@@ -3952,7 +3953,7 @@ function mkDb() { return db.mkt = db.mkt || {u: '', cursor: 0, ops: {}, st: {}, 
 const mkSt = id => mkDb().st['st_' + id];
 /* أنواع العمليات: pay دفعة عميل، inv فاتورة عميل (إجمالي بس من الشريك، ومصطفى بيكتب بنودها)، spay دفعة مورد (كاش)، exp مصروف، hand كاش سلّمه الشريك لمصطفى.
    لما تتنقل: pay/spay بتبقى دفعة على الحساب (e_mk_<id>)، وinv فاتورة بيع على الحساب (e_mk_<id>)، وexp/hand بيبقوا حركة خزنة (t_mk_<id>) */
-const MK_T = {pay: 1, spay: 1, exp: 1, hand: 1, inv: 1};
+const MK_T = {pay: 1, spay: 1, exp: 1, hand: 1, inv: 1, cs: 1};
 const mkRec = o => o.t === 'pay' || o.t === 'spay' || o.t === 'inv' ? E.get('e_mk_' + o.id) : IDX.tx.get('t_mk_' + o.id);
 /* اتنقلت؟ الحركة في الحسابات هي الأصل. لو لسه منزلتش على الجهاز ده من المزامنة، بنصدق حالة الشيت */
 function mkMoved(o) { const e = mkRec(o); if (e) return !e.del; const s = mkSt(o.id); return !!(s && s.done); }
@@ -3986,7 +3987,7 @@ function ensureMktVault() {
 /* الاقتراح الجاهز (مصطفى بيغيّره براحته): الكاش والمصروف ودفعة المورد ← خزنة السوق، الإنستا ← خزنة إنستا، الفودافون ← خزنة فودافون (أو آخر اختيار) */
 function mkVaultFor(m) {
   const ok = id => id && IDX.vault.get(id) && !IDX.vault.get(id).del;
-  if ((m === 'cash' || m === 'spay' || m === 'exp' || m === 'hand') && ok('v_mkt')) return 'v_mkt';
+  if ((m === 'cash' || m === 'spay' || m === 'exp' || m === 'hand' || m === 'cs') && ok('v_mkt')) return 'v_mkt';
   const re = m === 'insta' ? /انستا|إنستا|insta/i : m === 'voda' ? /فودافون|vodafone|voda/i : null;
   const v = re && vaultsL().find(x => re.test(x.name)); if (v) return v.id;
   const r = (db.cfg.mkv || {})[m]; if (r === '' || ok(r)) return r;
@@ -4007,6 +4008,7 @@ function mkMove(o, f) {
     else { const e = addEntry(Object.assign({id: 'e_mk_' + o.id}, x)); applyAmounts(e); }
   } else {
     const x = o.t === 'exp' ? {type: 'exp', amt: f.amt, vault: f.vault, to: '', cat: 'c_mkexp', note: o.cat + (o.note ? ' — ' + o.note : '')}
+      : o.t === 'cs' ? {type: 'inc', amt: f.amt, vault: f.vault, to: '', cat: 'c_inc1', note: 'بيع كاش من المصنع — ' + (o.buyer || '')}
       : {type: 'tr', amt: f.amt, vault: f.vault, to: f.to, cat: '', note: 'كاش من شريكك'};
     if (rec) { Object.assign(rec, x, {date: f.date, at: now, del: false}); delete rec.delAt; touch(rec); }
     else { const r = Object.assign({id: 't_mk_' + o.id, date: f.date, at: now, upd: now, del: false, hist: []}, x); db.txs.push(r); IDX.tx.set(r.id, r); }
@@ -4036,7 +4038,7 @@ function mkCustRows() {
   Object.keys(d.cs).forEach(id => { if (!seen.has(id) && d.cs[id] !== '-') out.push({row: {id, kind: 'cust', upd: now, del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-'}); });
   return out;
 }
-const mkStView = s => { const o = mkDb().ops[s.op] || {}; return ['', cell(o.cname || o.sname || o.cat || (o.t === 'hand' ? 'تسليم كاش' : '')), o.amt ? o.amt / 100 : '', 'حالة', cell([s.done ? 'اتنقلت' : '', s.ok ? 'وصل' : '', s.back ? 'راجعة: ' + s.back : ''].filter(Boolean).join(' — '))]; };
+const mkStView = s => { const o = mkDb().ops[s.op] || {}; return ['', cell(o.cname || o.sname || o.cat || o.buyer || (o.t === 'hand' ? 'تسليم كاش' : '')), o.amt ? o.amt / 100 : '', 'حالة', cell([s.done ? 'اتنقلت' : '', s.ok ? 'وصل' : '', s.back ? 'راجعة: ' + s.back : ''].filter(Boolean).join(' — '))]; };
 let mkBusy = false, mkErr = '', mkLastOk = 0;
 async function mkSync() {
   const cr = mkCreds(); if (!db || !cr || mkBusy) return false;
@@ -4108,7 +4110,7 @@ function mkBeep() {
     [[880, 0], [1320, 0.16]].forEach(([f, d]) => { const o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; o.type = 'sine'; g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.25, t + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.22); o.connect(g); g.connect(a.destination); o.start(t + d); o.stop(t + d + 0.25); });
   } catch (e) {}
 }
-const mkLine = o => o.t === 'inv' ? `🧾 ${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${fmtP(o.amt)}` : o.t === 'exp' ? `مصروف ${o.cat}: ${fmtP(o.amt)}` : o.t === 'spay' ? `دفع للمورد ${o.sname} ${fmtP(o.amt)}` : o.t === 'hand' ? `سلّمك ${fmtP(o.amt)} كاش` : `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${fmtP(o.amt)} ${MK_M[o.m] || ''}`;
+const mkLine = o => o.t === 'inv' ? `🧾 ${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${fmtP(o.amt)}` : o.t === 'exp' ? `مصروف ${o.cat}: ${fmtP(o.amt)}` : o.t === 'spay' ? `دفع للمورد ${o.sname} ${fmtP(o.amt)}` : o.t === 'hand' ? `سلّمك ${fmtP(o.amt)} كاش` : o.t === 'cs' ? `بيع كاش من المصنع ${fmtP(o.amt)}${o.buyer ? ' — ' + o.buyer : ''}` : `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${fmtP(o.amt)} ${MK_M[o.m] || ''}`;
 let mkBarT;
 function mkAlert(list) {
   const b = $('#mkBar'); if (!b) return;
@@ -4136,15 +4138,15 @@ function renderMkHome() {
 
 /* ---------- شاشة وارد السوق ---------- */
 const mkTag = m => `<span class="mtag ${m}">${MK_M[m] || m}</span>`;
-const mkLTag = o => o.t === 'exp' ? `<span class="mtag exp">${esc(o.cat)}</span>` : o.t === 'inv' ? '<span class="mtag inv">فاتورة</span>' : mkTag(o.m || 'cash');
-const mkWhat = o => o.t === 'pay' ? o.cname + ' — ' + (MK_M[o.m] || '') : o.t === 'inv' ? 'فاتورة: ' + o.cname + ' (إجمالي بس)' : o.t === 'exp' ? 'مصروف: ' + o.cat + (o.note ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعة لمورد: ' + o.sname : 'كاش سلّمه لك';
+const mkLTag = o => o.t === 'cs' ? '<span class="mtag exp">بيع كاش</span>' : o.t === 'exp' ? `<span class="mtag exp">${esc(o.cat)}</span>` : o.t === 'inv' ? '<span class="mtag inv">فاتورة</span>' : mkTag(o.m || 'cash');
+const mkWhat = o => o.t === 'pay' ? o.cname + ' — ' + (MK_M[o.m] || '') : o.t === 'inv' ? 'فاتورة: ' + o.cname + ' (إجمالي بس)' : o.t === 'exp' ? 'مصروف: ' + o.cat + (o.note ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعة لمورد: ' + o.sname : o.t === 'cs' ? 'بيع كاش من المصنع: ' + (o.buyer || '') : 'كاش سلّمه لك';
 /* حصّلت / راح لمصطفى / مصروف / معايا — نفس حسبة شريكك */
 function mkSums(ops) {
   let col = 0, toM = 0, sp = 0, inv = 0;
-  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'inv') inv += o.amt; else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
+  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'cs') col += o.amt; else if (o.t === 'inv') inv += o.amt; else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
   return {col, toM, sp, inv, left: col - toM - sp};
 }
-const mkSign = o => o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'inv' ? 0 : -1;
+const mkSign = o => o.t === 'cs' ? 1 : o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'inv' ? 0 : -1;
 function mkGroups() {
   const al = mkAlias(), g = new Map(), old = Date.now() - 3 * 86400000;
   mkLive().forEach(o => {
@@ -4153,6 +4155,7 @@ function mkGroups() {
     let k, name, pid = '';
     if (o.t === 'exp') { k = 'x:exp'; name = 'مصاريف السوق'; }
     else if (o.t === 'hand') { k = 'x:hand'; name = 'كاش سلّمه لك'; }
+    else if (o.t === 'cs') { k = 'x:cs'; name = 'بيع كاش من المصنع'; }
     else { pid = mkPid(o, al); k = pid || (o.t === 'spay' ? 's:' + norm(o.sname) : 'n:' + o.cid); name = pid ? P.get(pid).name : o.t === 'spay' ? o.sname : o.cname; }
     if (!g.has(k)) g.set(k, {k, kind: o.t === 'inv' ? 'pay' : o.t, pid, cid: o.cid, name, nw: !pid && (o.t === 'pay' || o.t === 'inv' || o.t === 'spay'), ops: []});
     g.get(k).ops.push(o);
@@ -4197,7 +4200,7 @@ function mkArch() {
   const t = todayISO(), d = mkDay || t, ops = mkLive().filter(o => isoOf(o.ts) === d).sort((a, b) => b.ts - a.ts), s = mkSums(ops);
   $('#mkBody').innerHTML = `<div class="card"><div class="dnav"><button type="button" id="maPrev" title="اليوم اللي قبله">›</button><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}${d === t ? ' · النهارده' : ''}</span><button type="button" id="maNext" title="اليوم اللي بعده">‹</button></div>
       <label style="margin-top:8px">📅 اختار يوم</label><input class="inp" type="date" id="maDay" value="${d}"></div>
-    ${ops.length ? `<div class="ic">${ops.map(o => `<div class="il ${mkState(o) === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<span><b>${esc(o.t === 'pay' || o.t === 'inv' ? o.cname : o.t === 'spay' ? o.sname : o.t === 'exp' ? (o.note || o.cat) : 'تسليم كاش')}</b><br><small class="tm">${dispTime(o.ts)}</small></span></span><span style="text-align:left"><b class="money">${fmtP(o.amt)}</b><br>${mkStTxt(o)}</span></div>`).join('')}</div>` : '<div class="card empty">مفيش حركات من الشريك في اليوم ده.</div>'}
+    ${ops.length ? `<div class="ic">${ops.map(o => `<div class="il ${mkState(o) === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<span><b>${esc(o.t === 'pay' || o.t === 'inv' ? o.cname : o.t === 'spay' ? o.sname : o.t === 'exp' ? (o.note || o.cat) : o.t === 'cs' ? (o.buyer || 'بيع كاش') : 'تسليم كاش')}</b><br><small class="tm">${dispTime(o.ts)}</small></span></span><span style="text-align:left"><b class="money">${fmtP(o.amt)}</b><br>${mkStTxt(o)}</span></div>`).join('')}</div>` : '<div class="card empty">مفيش حركات من الشريك في اليوم ده.</div>'}
     <div class="card mkbal"><div class="bl"><span>حصّلت</span><b>${fmtP(s.col)}</b></div><div class="bl"><span>راح لمصطفى (تحويلات + كاش سلّمه)</span><b>${fmtP(s.toM)}</b></div><div class="bl"><span>مصروف (مصروفات + دفعات موردين)</span><b>${fmtP(s.sp)}</b></div><div class="bl k"><span>معاه</span><b>${fmtP(s.left)}</b></div>${s.inv ? `<div class="bl"><span>🧾 فواتير (إجمالي بس)</span><b>${fmtP(s.inv)}</b></div>` : ''}</div>`;
   $('#maPrev').onclick = () => { mkDay = addDays(d, -1); mkArch(); };
   $('#maNext').onclick = () => { if (d < t) { mkDay = addDays(d, 1); mkArch(); } };
@@ -4208,9 +4211,10 @@ const MK_FOOT = {
   pay: g => g.nw ? 'اربطه بحساب وانقل' : 'انقل للحساب',
   spay: g => g.nw ? 'اربطه بحساب المورد وانقل' : 'انقل للمورد',
   exp: () => 'سجّلها مصروف',
-  hand: () => 'استلمت ✓'
+  hand: () => 'استلمت ✓',
+  cs: () => 'سجّلها إيراد'
 };
-const MK_ICON = {pay: '', spay: '🏭 ', exp: '⛽ ', hand: '🤝 '};
+const MK_ICON = {pay: '', spay: '🏭 ', exp: '⛽ ', hand: '🤝 ', cs: '💰 '};
 function mkCard(g) {
   /* كارت العميل فيه دفعاته وفواتيره: الإجمالي والنقل للدفعات بس، والفاتورة ليها زرار "اكتب البنود" لوحدها */
   const isC = g.kind === 'pay', pays = isC ? g.ops.filter(o => o.t === 'pay') : g.ops, pendPays = isC ? g.pend.filter(o => o.t === 'pay') : g.pend;
@@ -4224,7 +4228,7 @@ function mkCard(g) {
       : mkNeeds(o) ? (mkArrived(o) ? '<span class="vok">✓ وصل</span>' : `<button class="vbtn" data-ok="${esc(o.id)}" type="button">🔔 وصل؟</button>`)
       : `<span class="tm">${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</span>`;
     const fixed = st === 'new' && s && s.back && s.bv !== o.upd ? ' <small class="fx">اتصلحت</small>' : '';
-    return `<div class="il ${st === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<b class="money">${fmtP(o.amt)}</b>${o.t === 'exp' && o.note ? `<small class="tm">${esc(o.note)}</small>` : ''}${fixed}</span>${right}</div>
+    return `<div class="il ${st === 'done' ? 'dn' : ''}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<b class="money">${fmtP(o.amt)}</b>${o.t === 'exp' && o.note ? `<small class="tm">${esc(o.note)}</small>` : ''}${o.t === 'cs' && o.buyer ? `<small class="tm">${esc(o.buyer)}</small>` : ''}${fixed}</span>${right}</div>
       ${st === 'back' && s ? `<div class="ilnote">ملاحظتك: ${esc(s.back)}</div>` : ''}`;
   };
   const sum = g.kind === 'pay' && pendPays.length > 1 ? `<div class="ilsum">${['cash', 'insta', 'voda'].map(m => { const t = pendPays.filter(o => o.m === m).reduce((a, o) => a + o.amt, 0); return t ? `${fmtP(t)} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ')} = <b>${fmtP(tot)}</b></div>` : '';
@@ -4251,7 +4255,7 @@ function mkOpMenu(o) {
     $('#omX').onclick = closeModal; if ($('#omP')) $('#omP').onclick = () => { closeModal(); go('p/' + e.party); };
     return;
   }
-  const mvTxt = o.t === 'inv' ? 'اكتب البنود وسجّل الفاتورة' : o.t === 'exp' ? 'سجّلها مصروف' : o.t === 'hand' ? 'استلمت ✓' : pid ? 'انقل الدفعة دي بس' : o.t === 'spay' ? 'اربطها بحساب المورد وانقلها' : 'اربطها بحساب وانقلها';
+  const mvTxt = o.t === 'inv' ? 'اكتب البنود وسجّل الفاتورة' : o.t === 'exp' ? 'سجّلها مصروف' : o.t === 'cs' ? 'سجّلها إيراد' : o.t === 'hand' ? 'استلمت ✓' : pid ? 'انقل الدفعة دي بس' : o.t === 'spay' ? 'اربطها بحساب المورد وانقلها' : 'اربطها بحساب وانقلها';
   modal(`<h3>${esc(mkWhat(o))} — <span class="money">${amt}</span></h3>
     <p class="hint" style="margin:-6px 0 12px">اتسجلت عند الشريك ${dispDate(isoOf(o.ts))} ${dispTime(o.ts)}${st === 'back' ? ` — 🔴 راجعة للشريك: ${esc(mkSt(o.id).back)}` : ''}</p>
     <div class="stack">
@@ -4308,7 +4312,7 @@ function mkMoveFlow(g, ops) {
   if (!ops.length) return;
   if (ops.some(o => !mkArrived(o))) return toast('اتأكد إن التحويل وصلك ودوس "وصل" الأول');
   const kind = ops[0].t;
-  if (kind === 'exp' || kind === 'hand') return mkConfirm(ops, {});
+  if (kind === 'exp' || kind === 'hand' || kind === 'cs') return mkConfirm(ops, {});
   if (g.pid) return mkConfirm(ops, {pid: g.pid});
   mkLinkModal(g, kind === 'spay' ? 'sup' : 'mkt', to => mkConfirm(ops, to));
 }
@@ -4330,12 +4334,12 @@ function mkInvFlow(o) {
 function mkConfirm(ops, to) {
   ensureMktVault();
   const kind = ops[0].t, name = to.pid ? P.get(to.pid).name : to.newName;
-  const title = kind === 'exp' ? 'تأكيد المصروف' : kind === 'hand' ? 'تأكيد الاستلام' : 'تأكيد النقل للحسابات';
-  const who = kind === 'exp' ? `<b>مصاريف السوق</b>` : kind === 'hand' ? '<b>كاش من شريكك</b> ← تحويل بين الخزن' : `${kind === 'spay' ? 'من' : 'من'} <b>${esc(name)}</b>${to.newName ? ` <span class="nwt">${kind === 'spay' ? 'حساب مورد جديد' : 'حساب جديد في عملاء السوق'}</span>` : ''}`;
+  const title = kind === 'cs' ? 'تأكيد البيع الكاش' : kind === 'exp' ? 'تأكيد المصروف' : kind === 'hand' ? 'تأكيد الاستلام' : 'تأكيد النقل للحسابات';
+  const who = kind === 'cs' ? '<b>بيع كاش من المصنع</b> ← إيراد في الخزنة' : kind === 'exp' ? `<b>مصاريف السوق</b>` : kind === 'hand' ? '<b>كاش من شريكك</b> ← تحويل بين الخزن' : `${kind === 'spay' ? 'من' : 'من'} <b>${esc(name)}</b>${to.newName ? ` <span class="nwt">${kind === 'spay' ? 'حساب مورد جديد' : 'حساب جديد في عملاء السوق'}</span>` : ''}`;
   const key = o => o.t === 'pay' ? o.m : o.t;
   modal(`<h3>${title}</h3>
     <p style="margin-bottom:8px">${ops.length > 1 ? `${ops.length} عمليات` : 'عملية'} ${kind === 'spay' ? 'دفعة لمورد' : kind === 'pay' ? 'دفعة' : ''} ${who}</p>
-    ${ops.map((o, i) => `<div class="mvr" data-i="${i}"><div class="mvh">${mkLTag(o)} <small>${o.t === 'exp' && o.note ? esc(o.note) + ' — ' : ''}اتسجلت ${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</small></div>
+    ${ops.map((o, i) => `<div class="mvr" data-i="${i}"><div class="mvh">${mkLTag(o)} <small>${o.t === 'exp' && o.note ? esc(o.note) + ' — ' : ''}${o.t === 'cs' && o.buyer ? esc(o.buyer) + ' — ' : ''}اتسجلت ${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</small></div>
       <div class="g2"><div class="fld"><label>المبلغ</label><input class="inp num" data-f="amt" value="${fmtP(o.amt)}"></div>
         <div class="fld"><label>${o.t === 'hand' ? 'من خزنة' : o.t === 'exp' || o.t === 'spay' ? 'من خزنة' : '← الخزنة'}</label><select class="inp" data-f="v">${vaultOpts(mkVaultFor(key(o)), o.t === 'pay' || o.t === 'spay' ? 'من غير خزنة (في حساب ' + (o.t === 'spay' ? 'المورد' : 'العميل') + ' بس)' : '')}</select></div></div>
       ${o.t === 'hand' ? `<div class="fld"><label>← لخزنة</label><select class="inp" data-f="t">${vaultOpts(mkHandTo())}</select></div>` : ''}

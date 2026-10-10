@@ -74,6 +74,7 @@ main.tabbed{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 html[data-theme=dark] .qb.g{color:#0b1a10}
 html[data-theme=dark] .seg button.on{background:#3a352a;color:#ECE8DC}
 .qb:active{transform:scale(.98)}
+.qb.qs{display:block;width:100%;margin-top:8px;border-color:var(--gold);background:var(--gold-l);color:var(--gold-d);font-weight:800;font-size:15.5px}
 .list{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 12px;min-height:48px;border-bottom:1px solid var(--row);cursor:pointer}
 .row:last-child{border-bottom:0}
@@ -314,16 +315,16 @@ function customers() {
 }
 const custOps = (cid, al) => custAll().filter(o => (al[o.cid] || o.cid) === cid);
 /* اللي معايا كاش دلوقتي = كاش حصّلته − مصروفات − دفعات موردين − كاش سلمته لمصطفى (التحويلات مش على الشريك) */
-const cashSign = o => o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'inv' ? 0 : -1;
+const cashSign = o => o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'cs' ? 1 : o.t === 'inv' ? 0 : -1;
 const cashNow = () => liveOps().reduce((s, o) => s + cashSign(o) * o.amt, 0);
 /* حصّلت / راح لمصطفى (تحويلات + كاش سلمته) / مصروف (مصروفات + دفعات موردين) / معايا */
 function sums(ops) {
   let col = 0, toM = 0, sp = 0, inv = 0;
-  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'inv') inv += o.amt; else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
+  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'cs') col += o.amt; else if (o.t === 'inv') inv += o.amt; else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
   return {col, toM, sp, inv, left: col - toM - sp};
 }
-const opWhat = o => o.t === 'pay' ? o.cname : o.t === 'inv' ? 'فاتورة ' + o.cname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعت لـ ' + o.sname : 'سلمت لمصطفى';
-const opHow = o => o.t === 'pay' ? M_TXT[o.m] : o.t === 'inv' ? 'فاتورة (إجمالي بس)' : o.t === 'hand' ? 'كاش' : o.t === 'exp' ? 'مصروف' : 'دفعة مورد';
+const opWhat = o => o.t === 'cs' ? 'بيع كاش — ' + o.buyer : o.t === 'pay' ? o.cname : o.t === 'inv' ? 'فاتورة ' + o.cname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعت لـ ' + o.sname : 'سلمت لمصطفى';
+const opHow = o => o.t === 'cs' ? 'من المصنع' : o.t === 'pay' ? M_TXT[o.m] : o.t === 'inv' ? 'فاتورة (إجمالي بس)' : o.t === 'hand' ? 'كاش' : o.t === 'exp' ? 'مصروف' : 'دفعة مورد';
 const pending = () => Object.values(S.ops).filter(o => o.sy !== o.upd);
 const backs = () => liveOps().filter(o => opState(o) === 'back').sort((a, b) => b.ts - a.ts);
 
@@ -346,7 +347,7 @@ function merge(r) {
   box[r.id] = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del}, r.kind === 'op' ? {sy: r.upd} : {});
   return true;
 }
-const view = o => [dayOf(o.ts) + ' ' + timeOf(o.ts), (o.t === 'pay' || o.t === 'inv') ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, o.t === 'pay' ? M_SAID[o.m] || o.m : {exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة'}[o.t], ''];
+const view = o => [dayOf(o.ts) + ' ' + timeOf(o.ts), (o.t === 'pay' || o.t === 'inv') ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, o.t === 'pay' ? M_SAID[o.m] || o.m : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة'}[o.t], ''];
 async function sync() {
   if (!S.u || S.bad) return;
   if (syncing) { again = true; return; }
@@ -409,7 +410,7 @@ const IC = {
 };
 const TABS = [['home', 'الرئيسية'], ['c', 'العملاء'], ['a', 'الأرشيف'], ['s', 'الإعدادات']];
 const TAB_OF = {home: 'home', c: 'c', a: 'a', day: 'a', mon: 'a', s: 's'};
-const TITLE = {home: 'حركة السوق', c: 'العملاء', a: 'الأرشيف', day: 'الأرشيف', mon: 'الأرشيف', s: 'الإعدادات', pay: 'دفعة', spend: 'صرفت', ok: ''};
+const TITLE = {home: 'حركة السوق', c: 'العملاء', a: 'الأرشيف', day: 'الأرشيف', mon: 'الأرشيف', s: 'الإعدادات', pay: 'دفعة', spend: 'صرفت', sale: 'بيع كاش من المصنع', ok: ''};
 let scr = {v: 'home'};
 function dotHtml() {
   if (!S.u) return '';
@@ -420,7 +421,7 @@ function dotHtml() {
   return '<span class="dot" id="dot"><i></i>متصل</span>';
 }
 function drawTop() {
-  const t = $('#top'), sub = scr.v === 'pay' || scr.v === 'spend' || scr.v === 'ok';
+  const t = $('#top'), sub = scr.v === 'pay' || scr.v === 'spend' || scr.v === 'sale' || scr.v === 'ok';
   t.innerHTML = sub ? `<button class="back" id="bBack" type="button">→ رجوع</button>${TITLE[scr.v] ? `<b style="font-size:16px">${TITLE[scr.v]}</b>` : ''}${dotHtml()}`
     : `${LOGO}<h1>${TITLE[scr.v] || 'حركة السوق'}${scr.v === 'home' ? '<small>فلاش أون</small>' : ''}</h1>${dotHtml()}`;
   if ($('#bBack')) $('#bBack').onclick = () => nav(scr.v === 'pay' ? 'c' : '');
@@ -444,13 +445,13 @@ const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 function route() {
   closeModal();
   const h = decodeURIComponent(location.hash.slice(1)), [a, b] = h.split('/');
-  scr = a === 'p' && b ? {v: 'pay', cid: b} : a === 'ok' && b && S.ops[b] ? {v: 'ok', op: b} : a === 'x' ? {v: 'spend'} : a === 'c' ? {v: 'c'} : a === 's' ? {v: 's'} : a === 'a' ? (isDay(b) ? {v: 'day', day: b} : /^\d{4}-\d{2}$/.test(b || '') ? {v: 'mon', mon: b} : {v: 'a'}) : {v: 'home'};
+  scr = a === 'p' && b ? {v: 'pay', cid: b} : a === 'ok' && b && S.ops[b] ? {v: 'ok', op: b} : a === 'x' ? {v: 'spend'} : a === 'b' ? {v: 'sale'} : a === 'c' ? {v: 'c'} : a === 's' ? {v: 's'} : a === 'a' ? (isDay(b) ? {v: 'day', day: b} : /^\d{4}-\d{2}$/.test(b || '') ? {v: 'mon', mon: b} : {v: 'a'}) : {v: 'home'};
   render(); window.scrollTo(0, 0);
 }
 function render() {
   drawTop(); drawTabs();
   if (!S.u) { $('#main').innerHTML = `<div class="gate">${LOGO}<h2>حركة السوق</h2><p>التطبيق ده لسه متربطش.<br>اطلب من مصطفى يبعتلك الرابط على الواتساب وافتحه من هنا.</p></div>`; return; }
-  ({pay: drawPay, ok: drawSaved, spend: drawSpend, c: drawCustomers, a: drawArchive, mon: drawMonth, day: drawDay, s: drawSettings}[scr.v] || drawHome)();
+  ({pay: drawPay, ok: drawSaved, spend: drawSpend, sale: drawSale, c: drawCustomers, a: drawArchive, mon: drawMonth, day: drawDay, s: drawSettings}[scr.v] || drawHome)();
 }
 /* لما يوصل جديد من الشيت: نرسم من غير ما نبوّظ اللي بيكتبه */
 function refresh() {
@@ -485,6 +486,7 @@ function drawHome() {
     <section class="panel"><div class="p1"><span>معاك كاش دلوقتي</span><b class="money ${cn < 0 ? 'neg' : ''}" id="cashT">${fmtN(cn)}</b></div>
       <div class="cap">النهارده</div>${pnHtml(s, 3, true)}</section>
     <div class="qa"><button class="qb g" id="qPay" type="button">＋ دفعة أو فاتورة</button><button class="qb" id="qSp" type="button">صرفت</button><button class="qb" id="qHand" type="button">سلمت لمصطفى</button></div>
+    <button class="qb qs" id="qSale" type="button">🏭 بيع كاش من المصنع</button>
     <div class="lbl"><span>حركات النهارده</span><span>دوس على أي حركة تعدّلها</span></div>
     ${ops.length ? `<div class="list">${ops.map(o => opRow(o)).join('')}</div>` : '<div class="list"><div class="empty">لسه مسجلتش حاجة النهارده</div></div>'}
     <button class="lnk" id="goArch" type="button">الأرشيف (أسابيع وشهور) ›</button>`;
@@ -492,6 +494,7 @@ function drawHome() {
   $('#qPay').onclick = () => { nav('c', true); setTimeout(() => $('#q') && $('#q').focus(), 120); };
   $('#qSp').onclick = () => { spTab = 'exp'; nav('x'); };
   $('#qHand').onclick = handModal;
+  $('#qSale').onclick = () => nav('b');
   $('#goArch').onclick = () => nav('a', true);
   bindOps('#main');
 }
@@ -502,7 +505,9 @@ const limOf = c => c.bal > 0 ? (c.lim || '') : '';
 const custTbl = list => `<table class="ctb"><thead><tr><th>#</th><th>العميل</th><th>الرصيد (عليه)</th></tr></thead><tbody>${list.map(c => `<tr class="${limOf(c) ? 'l-' + limOf(c) : ''}" data-c="${esc(c.id)}"><td class="no">${custNo.get(c.id) || ''}</td><td class="nm">${esc(c.name)}${c.nw ? '<span class="nw">جديد</span>' : ''}</td><td class="bl ${c.bal > 0 ? 'money' : 'z'}">${c.bal > 0 ? fmt(c.bal) : '—'}</td></tr>`).join('')}</tbody></table>`;
 function drawCustomers(q0) {
   const cs = customers();
-  $('#main').innerHTML = `<div class="sr"><input class="search" id="q" type="search" placeholder="🔍 دوّر على عميل…" autocomplete="off" value="${esc(q0 || '')}"><button class="sbtn" id="bNew" type="button">＋ عميل جديد</button></div><div id="lists"></div>`;
+  const owed = [...cs.values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0);
+  $('#main').innerHTML = `<section class="panel" style="margin-bottom:10px"><div class="p1"><span>إجمالي اللي على العملاء</span><b class="money" style="color:var(--red)">${fmt(owed)}</b></div></section>
+    <div class="sr"><input class="search" id="q" type="search" placeholder="🔍 دوّر على عميل…" autocomplete="off" value="${esc(q0 || '')}"><button class="sbtn" id="bNew" type="button">＋ عميل جديد</button></div><div id="lists"></div>`;
   const draw = () => {
     const q = norm($('#q').value), all = [...cs.values()].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
     custNo = new Map(all.map((c, i) => [c.id, i + 1]));
@@ -610,7 +615,7 @@ async function saveInv(c) {
 }
 
 /* ---------- تعديل أي حركة بسهولة (نافذة من تحت): المبلغ والنوع والاسم، أو مسحها ---------- */
-const EDIT_TITLE = {pay: 'دفعة عميل', inv: 'فاتورة (إجمالي)', exp: 'مصروف', spay: 'دفعة لمورد', hand: 'تسليم كاش لمصطفى'};
+const EDIT_TITLE = {pay: 'دفعة عميل', inv: 'فاتورة (إجمالي)', exp: 'مصروف', spay: 'دفعة لمورد', hand: 'تسليم كاش لمصطفى', cs: 'بيع كاش من المصنع'};
 function editSheet(o) {
   if (!o || o.del) return;
   const s = opState(o);
@@ -625,8 +630,9 @@ function editSheet(o) {
   modal(`<h3>${EDIT_TITLE[o.t]}${o.t === 'pay' || o.t === 'inv' ? ' — ' + esc(o.cname) : ''}<small>${dispDate(dayOf(o.ts))} ${timeOf(o.ts)}</small></h3>
     ${bs ? `<div class="note" style="margin:0 0 6px">🔴 مصطفى رجّعها: ${esc(bs.back)}</div>` : ''}
     ${o.t === 'spay' ? `<label style="font-size:12.5px;font-weight:700;color:var(--sub)">اسم المورد</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.sname)}">` : ''}
+    ${o.t === 'cs' ? `<label style="font-size:12.5px;font-weight:700;color:var(--sub)">اسم المشتري</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.buyer)}">` : ''}
     <label class="amt sm" for="eA" style="margin-top:6px"><input id="eA" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${fmt(o.amt)}"><em>جنيه</em></label>
-    ${o.t === 'pay' || o.t === 'inv' ? datePick('eD', dayOf(o.ts)) : ''}
+    ${o.t === 'pay' || o.t === 'inv' || o.t === 'cs' ? datePick('eD', dayOf(o.ts)) : ''}
     ${o.t === 'pay' ? `<div class="seg" id="eM" style="--n:3;margin-top:10px">${['cash', 'insta', 'voda'].map(k => `<button type="button" data-m="${k}" class="${k === m ? 'on' : ''}">${{cash: 'كاش معايا', insta: 'إنستا', voda: 'فودافون'}[k]}</button>`).join('')}</div>` : ''}
     ${o.t === 'exp' ? `<div class="chips" id="eC">${SP_CATS.map(([c]) => `<button type="button" class="chip ${c === cat ? 'on' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div><input class="inp2" id="eNt" autocomplete="off" placeholder="ملاحظة (اختياري)" value="${esc(o.note || '')}">` : ''}
     <div class="row2" style="margin-top:12px"><button class="big b-cash" id="eOk" type="button" style="margin-top:0">حفظ</button><button class="big b-redo" id="eDel" type="button" style="margin-top:0">🗑 مسح</button></div>
@@ -642,6 +648,7 @@ function editSheet(o) {
     if (o.t === 'pay') ch.m = m;
     if ($('#eD')) { const nd = dateOf('eD'); if (nd !== dayOf(o.ts)) ch.ts = tsOnDay(nd, o.ts); }
     if (o.t === 'exp') Object.assign(ch, {cat, note: $('#eNt').value.trim()});
+    if (o.t === 'cs') { ch.buyer = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.buyer) return toast('اكتب اسم المشتري'); }
     if (o.t === 'spay') { ch.sname = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.sname) return toast('اكتب اسم المورد'); }
     if (opState(o) === 'done') { closeModal(); return toast('دي اتنقلت خلاص'); }
     if (Object.keys(ch).every(k => (o[k] ?? '') === ch[k])) return closeModal();
@@ -651,7 +658,7 @@ function editSheet(o) {
 }
 async function delOp(o) {
   if (opState(o) === 'done') { toast('دي اتنقلت للحسابات. أي تصحيح من عند مصطفى.', 4000); return false; }
-  if (!(await ask(`تمسح ${o.t === 'pay' ? 'دفعة' : o.t === 'inv' ? 'فاتورة' : o.t === 'hand' ? 'تسليم' : 'مصروف'} ${fmt(o.amt)} (${opWhat(o)}${o.t === 'pay' ? ' — ' + M_SAID[o.m] : ''})؟`, 'أيوه امسحها', 'لأ', true))) return false;
+  if (!(await ask(`تمسح ${o.t === 'pay' ? 'دفعة' : o.t === 'inv' ? 'فاتورة' : o.t === 'hand' ? 'تسليم' : o.t === 'cs' ? 'بيع كاش' : 'مصروف'} ${fmt(o.amt)} (${opWhat(o)}${o.t === 'pay' ? ' — ' + M_SAID[o.m] : ''})؟`, 'أيوه امسحها', 'لأ', true))) return false;
   o.del = true; bump(o); save(); sync();
   toast('اتمسحت ✔');
   return true;
@@ -662,6 +669,7 @@ function sentHtml(o, c) {
   const m = `<b class="money">${fmt(o.amt)}</b>`;
   return o.t === 'pay' ? `${esc(c ? c.name : o.cname)}<br>دفع ${m} جنيه ${esc(M_SAID[o.m])}`
     : o.t === 'inv' ? `فاتورة ${esc(c ? c.name : o.cname)}<br>إجمالي ${m} جنيه`
+    : o.t === 'cs' ? `بيع كاش من المصنع<br>${esc(o.buyer)} — ${m} جنيه`
     : o.t === 'exp' ? `صرفت ${m} جنيه<br>${esc(o.cat)}${o.note ? ' — ' + esc(o.note) : ''}`
     : o.t === 'spay' ? `دفعت لـ ${esc(o.sname)}<br>${m} جنيه`
     : `سلمت لمصطفى<br>${m} جنيه كاش`;
@@ -670,16 +678,16 @@ function drawSaved() {
   const o = S.ops[scr.op]; if (!o) return nav('', true);
   const al = aliases(), cid = al[o.cid] || o.cid, c = customers().get(cid), s = opState(o);
   const stTxt = s === 'unsent' ? '⏳ هتتبعت أول ما النت يرجع' : s === 'done' ? (o.t === 'hand' ? '✓ مصطفى استلمها' : '✓ اتنقلت للحسابات') : s === 'back' ? '🔴 مصطفى رجّعها' : '✓ وصلت لمصطفى';
-  const again = {pay: 'في فلوس تانية من نفس العميل', inv: 'العميل دفع حاجة دلوقتي؟', exp: 'صرفت حاجة تانية', spay: 'دفعت لمورد تاني'}[o.t];
+  const again = {pay: 'في فلوس تانية من نفس العميل', inv: 'العميل دفع حاجة دلوقتي؟', exp: 'صرفت حاجة تانية', spay: 'دفعت لمورد تاني', cs: 'بيع كاش تاني'}[o.t];
   $('#main').innerHTML = o.del ? `<div class="done"><h2 style="color:var(--red)">اتمسحت</h2></div><button class="big b-home" id="sHome" type="button" style="margin-top:20px">${o.t === 'pay' || o.t === 'inv' ? 'رجوع للعملاء' : 'رجوع للرئيسية'}</button>` : `<div class="done">
       <div class="chk">✓</div><h2>${o.upd !== o.ts ? 'اتعدّلت' : 'اتسجلت'}</h2>
       <div class="sent">${sentHtml(o, c)}
-        ${(o.t === 'pay' || o.t === 'inv') && dayOf(o.ts) !== today() ? `<small>📅 بتاريخ ${dispDate(dayOf(o.ts))}</small>` : ''}<small class="${s === 'unsent' ? 'wt' : s === 'back' ? 'bk' : 'ok'}" id="sSt">${stTxt}</small></div></div>
+        ${(o.t === 'pay' || o.t === 'inv' || o.t === 'cs') && dayOf(o.ts) !== today() ? `<small>📅 بتاريخ ${dispDate(dayOf(o.ts))}</small>` : ''}<small class="${s === 'unsent' ? 'wt' : s === 'back' ? 'bk' : 'ok'}" id="sSt">${stTxt}</small></div></div>
     ${again ? `<button class="big b-again" id="sAgain" type="button" style="margin-top:18px">${again}</button>` : ''}
     <button class="big b-home" id="sHome" type="button"${again ? '' : ' style="margin-top:18px"'}>${o.t === 'pay' || o.t === 'inv' ? 'رجوع للعملاء' : 'رجوع للرئيسية'}</button>
     <div style="text-align:center">${s !== 'done' ? '<button class="oops n" id="sEdit" type="button">✏️ تعديل</button><button class="oops" id="sDel" type="button">غلطت، امسحها</button>' : ''}</div>`;
   $('#sHome').onclick = () => nav(o.t === 'pay' || o.t === 'inv' ? 'c' : '', true);
-  if ($('#sAgain')) $('#sAgain').onclick = () => { if (o.t === 'pay' || o.t === 'inv') { pyTab = 'pay'; nav('p/' + cid, true); } else { spTab = o.t; nav('x', true); } };
+  if ($('#sAgain')) $('#sAgain').onclick = () => { if (o.t === 'pay' || o.t === 'inv') { pyTab = 'pay'; nav('p/' + cid, true); } else if (o.t === 'cs') nav('b', true); else { spTab = o.t; nav('x', true); } };
   if ($('#sEdit')) $('#sEdit').onclick = () => editSheet(o);
   if ($('#sDel')) $('#sDel').onclick = async () => { if (await delOp(o)) nav(o.t === 'pay' || o.t === 'inv' ? 'p/' + cid : '', true); };
 }
@@ -732,6 +740,39 @@ async function saveSpend(t, x) {
   if (dup && !(await ask(`سجلت ${fmt(amt)} (${t === 'exp' ? x.cat : x.sname}) من شوية. دي مرة تانية؟`, 'أيوه، مرة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
   const now = Date.now();
   const o = Object.assign({id: newId(), t, amt, ts: now, upd: now, del: false}, x);
+  S.ops[o.id] = o; save(); sync();
+  nav('ok/' + o.id, true);
+}
+
+/* ---------- بيع كاش من المصنع: المبلغ واسم المشتري بس، من غير ما يتسجل في العملاء ---------- */
+function buyerNames() {
+  const seen = new Map();
+  Object.values(S.ops).filter(o => o.t === 'cs').sort((a, b) => b.ts - a.ts).forEach(o => { const k = norm(o.buyer); if (!seen.has(k)) seen.set(k, o.buyer); });
+  return [...seen.values()].slice(0, 8);
+}
+function drawSale() {
+  lastSave = 0;
+  const names = buyerNames();
+  $('#main').innerHTML = `<input class="inp2" id="bn" autocomplete="off" placeholder="اسم المشتري" style="margin-top:0">
+    ${names.length ? `<div class="chips">${names.map(n => `<button class="chip" type="button" data-n="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}
+    <label class="amt" for="amt"><input id="amt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>
+    ${datePick('bD', today())}
+    <button class="big b-cash" id="bOk" type="button">حفظ البيع</button>
+    <p class="hint">الفلوس بتتضاف لـ "معاك كاش". مش بتتسجل في العملاء.</p>`;
+  bindAmt($('#amt')); bindDate('bD');
+  $$('#main .chip').forEach(c => c.onclick = () => { $('#bn').value = c.dataset.n; $('#amt').focus(); });
+  $('#bOk').onclick = saveSale;
+  setTimeout(() => $('#bn') && $('#bn').focus(), 100);
+}
+async function saveSale() {
+  if (Date.now() - lastSave < 700) return;
+  const buyer = $('#bn').value.trim().replace(/\s+/g, ' '), amt = amtOf($('#amt'));
+  if (!buyer) { toast('اكتب اسم المشتري'); $('#bn').focus(); return; }
+  if (!(amt > 0)) { toast('اكتب المبلغ'); $('#amt').focus(); return; }
+  lastSave = Date.now();
+  const dup = liveOps().find(o => o.t === 'cs' && o.amt === amt && norm(o.buyer) === norm(buyer) && Date.now() - (o.cr || o.ts) < 120000);
+  if (dup && !(await ask(`سجلت بيع ${fmt(amt)} لـ ${buyer} من شوية. دي مرة تانية؟`, 'أيوه، مرة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
+  const now = Date.now(), o = {id: newId(), t: 'cs', buyer, amt, ts: tsOnDay(dateOf('bD')), cr: now, upd: now, del: false};
   S.ops[o.id] = o; save(); sync();
   nav('ok/' + o.id, true);
 }

@@ -3978,28 +3978,24 @@ function mkSetSt(opId, ch) {
   const s = d.st[id] = d.st[id] || {id, op: opId, ok: false, ov: 0, done: false, dv: 0, back: '', bv: 0, pid: '', upd: 0};
   Object.assign(s, ch); s.upd = Math.max(Date.now(), (s.upd || 0) + 1); s.sy = 0;
 }
-/* المصروفات بتتسجل في الخزنة لوحدها من غير موافقة (بند "مصاريف السوق" من خزنة السوق، id ثابت t_mk_<id>). تعديل الشريك بيتنقل، ومسحه بيمسح الحركة.
-   مصطفى بيتجاهلها بزرار "تجاهل" (mkIgnore) أو لو مسح الحركة من الخزنة بإيده. الفترة المقفولة بتفضل مستنياه في الوارد. الباقي (دفعات/موردين/تسليم/بيع/فواتير) زي ما هو بموافقته */
-function mkAutoExp() {
+/* المصروف بيوصل مصطفى كإشعار في الوارد، وهو بيختار: "سجّلها مصروف" (بند "مصاريف السوق" من خزنة السوق) أو "تجاهل" (mkIgnore). الشريك مبيشوفش أي حالة للمصروف ولا بيتقفل عليه.
+   لو الشريك عدّل المصروف أو مسحه بعد ما مصطفى سجّله: الحركة في الخزنة بتتعدل/بتتمسح لوحدها (mkFollowExp). المتجاهَل مبيرجعش. الفترة المقفولة مبتتعدلش */
+function mkFollowExp() {
   let n = 0;
   Object.values(mkDb().ops).forEach(o => {
     if (o.t !== 'exp') return;
     const s = mkSt(o.id), rec = IDX.tx.get('t_mk_' + o.id);
-    if (s && s.ign) return;
-    if (o.del) { if (rec && !rec.del && s && s.auto) { rec.del = true; rec.delAt = Date.now(); touch(rec); mkSetSt(o.id, {done: false, dv: 0}); n++; } return; }
-    if (rec && rec.del) { if (s && s.auto) { mkSetSt(o.id, {ign: true, done: false, dv: 0}); n++; } return; }
+    if (!rec || !s || !s.done) return;
+    if (o.del) { if (!rec.del) { rec.del = true; rec.delAt = Date.now(); touch(rec); mkSetSt(o.id, {done: false, dv: 0}); n++; } return; }
     const d = isoOf(o.ts);
-    if (rec) { if (s && s.auto && s.dv !== o.upd && !isLocked(d)) { Object.assign(rec, {amt: o.amt, date: d, note: o.cat + (o.note ? ' — ' + o.note : '')}); touch(rec); mkSetSt(o.id, {dv: o.upd}); n++; } return; }
-    if (isLocked(d)) return;
-    ensureMktVault();
-    if (mkMove(o, {amt: o.amt, date: d, vault: 'v_mkt'})) { mkSetSt(o.id, {auto: true}); n++; }
+    if (!rec.del && s.dv !== o.upd && !isLocked(d)) { Object.assign(rec, {amt: o.amt, date: d, note: o.cat + (o.note ? ' — ' + o.note : '')}); touch(rec); mkSetSt(o.id, {dv: o.upd}); n++; }
   });
   return n;
 }
 function mkIgnore(o) {
   if (!o || o.t !== 'exp') return;
   const rec = IDX.tx.get('t_mk_' + o.id), reg = rec && !rec.del;
-  modal(`<h3>تجاهل المصروف ده؟</h3><p>${esc(mkWhat(o))} — <b class="money">${fmtP(o.amt)}</b><br><small style="color:#777">${reg ? 'هتتشال من خزنة السوق وتقارير الأرباح، ' : ''}والشريك هيشوف إنك تجاهلتها.</small></p>
+  modal(`<h3>تجاهل المصروف ده؟</h3><p>${esc(mkWhat(o))} — <b class="money">${fmtP(o.amt)}</b><br><small style="color:#777">${reg ? 'هتتشال من خزنة السوق وتقارير الأرباح. ' : ''}الشريك مش هيشوف أي تغيير.</small></p>
     <div class="g2"><button class="btn red" id="igOk" type="button">تجاهل</button><button class="btn line" id="igX" type="button">رجوع</button></div>`);
   $('#igX').onclick = closeModal;
   $('#igOk').onclick = () => {
@@ -4111,7 +4107,7 @@ async function mkSync() {
       d.cursor = j.next || d.cursor; more = !!j.more;
     }
     if (mkReconcile()) ch = true;
-    if (mkAutoExp()) ch = true;
+    if (mkFollowExp()) ch = true;
     mkErr = ''; mkLastOk = Date.now();
   } catch (e) { mkErr = String(e.message || e); }
   finally {
@@ -4256,8 +4252,8 @@ function mkCard(g) {
   const tot = base.reduce((s, o) => s + o.amt, 0), blocked = pendPays.some(o => !mkArrived(o));
   const line = o => {
     const st = mkState(o), s = mkSt(o.id);
-    const igBtn = o.t === 'exp' && st !== 'ign' ? ` <button class="vbtn" data-ig="${esc(o.id)}" type="button">✖ تجاهل</button>` : '';
-    const right = ((st === 'ign' ? '<span class="tm">⛔ تجاهلتها</span>' : st === 'done' && o.t === 'exp' && s && s.auto ? `<span class="vok">✓ اتسجلت لوحدها${(s.dv && s.dv !== o.upd) ? ' <small class="cr">(اتعدلت)</small>' : ''}</span>` : '') || (st === 'done' ? `<span class="vok">✓ اتنقلت${(s && s.dv && s.dv !== o.upd) ? ' <small class="cr">(اتعدلت بعد النقل)</small>' : ''}</span>`
+    const igBtn = o.t === 'exp' && (st === 'new' || st === 'back') ? ` <button class="vbtn" data-ig="${esc(o.id)}" type="button">✖ تجاهل</button>` : '';
+    const right = ((st === 'ign' ? '<span class="tm">⛔ تجاهلتها</span>' : '') || (st === 'done' ? `<span class="vok">✓ اتنقلت${(s && s.dv && s.dv !== o.upd) ? ' <small class="cr">(اتعدلت بعد النقل)</small>' : ''}</span>`
       : st === 'back' ? '<span class="vbk">🔴 راجعة للشريك</span>'
       : o.t === 'inv' ? `<button class="vbtn" data-inv="${esc(o.id)}" type="button">📝 اكتب البنود</button>`
       : mkNeeds(o) ? (mkArrived(o) ? '<span class="vok">✓ وصل</span>' : `<button class="vbtn" data-ok="${esc(o.id)}" type="button">🔔 وصل؟</button>`)
@@ -4268,7 +4264,7 @@ function mkCard(g) {
   };
   const sum = g.kind === 'pay' && pendPays.length > 1 ? `<div class="ilsum">${['cash', 'insta', 'voda'].map(m => { const t = pendPays.filter(o => o.m === m).reduce((a, o) => a + o.amt, 0); return t ? `${fmtP(t)} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ')} = <b>${fmtP(tot)}</b></div>` : '';
   const foot = !g.pend.length ? ''
-    : `<div class="ifoot">${pendPays.length ? `<button class="btn ${blocked ? 'off' : ''}" data-mv="${esc(g.k)}" type="button" ${blocked ? 'disabled' : ''}>${MK_FOOT[g.kind](g)}</button>` : ''}<button class="btn red" data-bk="${esc(g.k)}" type="button"${pendPays.length && !(g.kind === 'pay' && !g.nw) ? ' style="flex:.55"' : ''}>رجّعها</button></div>`;
+    : `<div class="ifoot">${pendPays.length ? `<button class="btn ${blocked ? 'off' : ''}" data-mv="${esc(g.k)}" type="button" ${blocked ? 'disabled' : ''}>${MK_FOOT[g.kind](g)}</button>` : ''}${g.kind === 'exp' ? '' : `<button class="btn red" data-bk="${esc(g.k)}" type="button"${pendPays.length && !(g.kind === 'pay' && !g.nw) ? ' style="flex:.55"' : ''}>رجّعها</button>`}</div>`;
   const tagTxt = g.kind === 'pay' && g.nw ? 'عميل جديد' : g.kind === 'spay' ? (g.nw ? 'مورد — مش مربوط' : 'مورد') : '';
   return `<div class="ic ${g.pend.length ? '' : 'dn'}"><div class="ich"><b>${MK_ICON[g.kind]}${esc(g.name)}${tagTxt ? ` <span class="nwt">${tagTxt}</span>` : ''}</b><b class="money">${fmtP(tot)}</b></div>
     ${g.ops.map(line).join('')}${sum}${blocked ? '<p class="hint" style="margin:4px 14px 0">اتأكد إن التحويل وصلك (من رسالة التحويل) ودوس "وصل؟" الأول.</p>' : ''}${foot}</div>`;

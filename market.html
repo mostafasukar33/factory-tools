@@ -56,6 +56,7 @@ main.tabbed{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 #tabs button.on{color:var(--gold-d)}
 #tabs button.on::before{content:'';position:absolute;top:-1px;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--gold)}
 /* أساسيات */
+.lbl.dh{margin-top:16px;font-size:14px;color:var(--ink)}.lbl.dh .money{color:var(--green);font-size:16px;margin-inline-start:4px}
 .lbl{font-size:12.5px;font-weight:700;color:var(--sub);margin:14px 4px 5px;display:flex;justify-content:space-between;align-items:center}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 14px;box-shadow:var(--shadow)}
 .p1{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -489,8 +490,12 @@ const pnHtml = (s, cols, first) => cols === 3
   : `<div class="pn ${first ? 'first' : ''}" style="--c:4"><div><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div><div><span>صرفت</span><b class="money">${fmt(s.sp)}</b></div><div><span>سلّمت لمصطفى</span><b class="money">${fmt(s.toM)}</b></div><div><span>معايا</span><b class="money ${s.left < 0 ? 'neg' : ''}">${fmtN(s.left)}</b></div></div>${invLn(s)}`;
 
 /* ---------- الرئيسية: اللي معايا + حركات النهارده ---------- */
+let homeDays = 3;   // أيام فاتت بتفضل ظاهرة تحت النهارده، وبيزود بزرار
 function drawHome() {
-  const t = today(), ops = liveOps().filter(o => dayOf(o.ts) === t).sort((a, b) => b.ts - a.ts), s = sums(ops), cn = cashNow(), bk = backs();
+  const t = today(), all = liveOps().sort((a, b) => b.ts - a.ts), ops = all.filter(o => dayOf(o.ts) === t), s = sums(ops), cn = cashNow(), bk = backs();
+  const byDay = new Map();
+  all.forEach(o => { const d = dayOf(o.ts); if (d !== t) { if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(o); } });
+  const days = [...byDay.keys()].sort().reverse(), earlier = days.slice(0, homeDays);
   $('#main').innerHTML = `${bk.length ? `<button class="alert" id="bk" type="button">🔴 مصطفى رجّعلك ${bk.length === 1 ? 'عملية' : bk.length + ' عمليات'} تصلحها — دوس هنا</button>` : ''}
     <section class="panel"><div class="p1"><span>معاك كاش دلوقتي</span><b class="money ${cn < 0 ? 'neg' : ''}" id="cashT">${fmtN(cn)}</b></div>
       <div class="cap">النهارده</div>${pnHtml(s, 3, true)}</section>
@@ -498,6 +503,8 @@ function drawHome() {
     <button class="qb qs" id="qSale" type="button">🏭 بيع كاش من المصنع</button>
     <div class="lbl"><span>حركات النهارده</span><span>دوس على أي حركة تعدّلها</span></div>
     ${ops.length ? `<div class="list">${ops.map(o => opRow(o)).join('')}</div>` : '<div class="list"><div class="empty">لسه مسجلتش حاجة النهارده</div></div>'}
+    ${earlier.map(d => `<div class="lbl dh"><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}</span><span>حصّلت <b class="money">${fmt(sums(byDay.get(d)).col)}</b></span></div><div class="list">${byDay.get(d).map(o => opRow(o)).join('')}</div>`).join('')}
+    ${days.length > earlier.length ? '<button class="more" id="hMore" type="button" style="margin-top:12px">اعرض أيام أقدم</button>' : ''}
     <button class="lnk" id="goArch" type="button">الأرشيف (أسابيع وشهور) ›</button>`;
   if ($('#bk')) $('#bk').onclick = () => editSheet(bk[0]);
   $('#qPay').onclick = () => { nav('c', true); setTimeout(() => $('#q') && $('#q').focus(), 120); };
@@ -505,6 +512,7 @@ function drawHome() {
   $('#qHand').onclick = handModal;
   $('#qSale').onclick = () => nav('b');
   $('#goArch').onclick = () => nav('a', true);
+  if ($('#hMore')) $('#hMore').onclick = () => { homeDays += 5; drawHome(); };
   bindOps('#main');
 }
 
@@ -560,7 +568,7 @@ let pyTab = 'pay';
 function drawPay() {
   const cs = customers(), c = cs.get(scr.cid);
   if (!c) return nav('c', true);
-  lastSave = 0;
+  lastSave = 0; cShow = 15;
   $('#main').innerHTML = `<div class="cust" id="cBox"></div>
     <div class="seg" id="pyT" style="margin-top:10px"><button type="button" data-v="pay" class="${pyTab === 'pay' ? 'on' : ''}">💵 دفعة</button><button type="button" data-v="inv" class="${pyTab === 'inv' ? 'on' : ''}">🧾 فاتورة</button></div>
     <label class="amt" for="amt"><input id="amt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>
@@ -586,12 +594,14 @@ function drawPay() {
   drawPayInfo();
 }
 /* الجزء اللي بيتحدث لوحده (الرصيد واللي اتسجل النهارده) من غير ما نلمس خانة المبلغ */
+let cShow = 15;
 function drawPayInfo() {
   const cs = customers(), c = cs.get(scr.cid);
   if (!c || !$('#cBox')) return;
   $('#cBox').innerHTML = `<b>${esc(c.name)}${c.nw ? '<span class="nw">عميل جديد</span>' : ''}</b><div>${c.bal > 0 ? `<span>عليه</span><b class="money">${fmt(c.bal)}</b>` : '<span class="z">مفيش عليه</span>'}</div>`;
-  const ops = custOps(c.id, aliases()).filter(o => dayOf(o.cr || o.ts) === today() || opState(o) === 'back').sort((a, b) => b.ts - a.ts);
-  $('#tdy').innerHTML = ops.length ? `<div class="lbl" style="margin-top:16px"><span>اتسجل للعميل ده النهارده</span><span>دوس تعدّل</span></div><div class="list">${ops.map(o => opRow(o, false, true)).join('')}</div>` : '';
+  const ops = custOps(c.id, aliases()).sort((a, b) => b.ts - a.ts), shown = ops.slice(0, cShow);
+  $('#tdy').innerHTML = ops.length ? `<div class="lbl" style="margin-top:16px"><span>حركات العميل ده</span><span>دوس تعدّل</span></div><div class="list">${shown.map(o => opRow(o, true, true)).join('')}</div>${ops.length > shown.length ? '<button class="more" id="cMore" type="button" style="margin-top:10px">اعرض أقدم</button>' : ''}` : '';
+  if ($('#cMore')) $('#cMore').onclick = () => { cShow += 15; drawPayInfo(); };
   bindOps('#tdy');
 }
 async function savePay(c, m) {

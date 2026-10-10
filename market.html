@@ -171,7 +171,9 @@ html[data-theme=dark] .chk{color:#0b1a10}
 .dnav span{flex:1;text-align:center;border:1px solid var(--gold);background:var(--gold-l);border-radius:10px;padding:6px 10px;font-weight:800;font-size:15px;color:var(--gold-d)}
 .pick{position:relative;display:block;text-align:center;border:1px solid var(--field);background:var(--card);border-radius:10px;height:46px;line-height:44px;font-weight:700;font-size:16px;margin-bottom:10px;cursor:pointer;overflow:hidden}
 .pick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
-.pick.dt{margin:10px 0 0;border-color:var(--gold);background:var(--gold-l);color:var(--gold-d);font-weight:800}
+.dpk{display:grid;grid-template-columns:48px 1fr 48px;gap:6px;margin-top:10px}
+.dpk button{border:1px solid var(--field);background:var(--card);border-radius:10px;font-size:26px;font-weight:800;line-height:1;color:var(--ink);cursor:pointer;padding:0}.dpk button:disabled{opacity:.3}.dpk button:active{background:var(--gold-l)}
+.pick.dt{margin:0;height:48px;line-height:46px;border-color:var(--gold);background:var(--gold-l);color:var(--gold-d);font-weight:800;font-size:16px}
 .pick.dt b{color:var(--ink)}
 .more{display:block;width:100%;border:1px dashed var(--field);background:none;border-radius:12px;height:44px;font-weight:700;color:var(--gold-d);cursor:pointer;font-size:14.5px}
 /* إعدادات */
@@ -246,8 +248,14 @@ const shortD = iso => { const [, m, d] = iso.split('-'); return `${+d}${RLM}/${R
 const monLabel = ym => `${MONTHS[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
 /* التاريخ المختار: نفس ساعة الحركة (أو دلوقتي) على اليوم ده */
 const tsOnDay = (iso, base) => { if (iso === today() && !base) return Date.now(); const [y, m, d] = iso.split('-').map(Number), b = new Date(base || Date.now()); return new Date(y, m - 1, d, b.getHours(), b.getMinutes(), b.getSeconds()).getTime(); };
-const datePick = (id, iso) => `<label class="pick dt" for="${id}">📅 التاريخ: <b id="${id}T">${dispDate(iso)}</b>${iso === today() ? ' · النهارده' : ''}<input type="date" id="${id}" value="${iso}" max="${today()}"></label>`;
-const bindDate = id => { const i = $('#' + id); i.addEventListener('change', () => { if (!isDay(i.value)) i.value = today(); $('#' + id + 'T').textContent = dispDate(i.value); }); };
+const datePick = (id, iso) => `<div class="dpk"><button type="button" data-st="-1" aria-label="اليوم اللي قبله">›</button><label class="pick dt" for="${id}">📅 <b id="${id}T"></b><input type="date" id="${id}" value="${iso}" max="${today()}"></label><button type="button" data-st="1" aria-label="اليوم اللي بعده">‹</button></div>`;
+const bindDate = id => {
+  const i = $('#' + id), box = i.closest('.dpk'), nx = box.querySelector('[data-st="1"]');
+  const draw = () => { if (!isDay(i.value) || i.value > today()) i.value = today(); $('#' + id + 'T').textContent = dispDate(i.value) + (i.value === today() ? ' · النهارده' : ' · ' + AR_DAYS[dowOf(i.value)]); nx.disabled = i.value >= today(); };
+  i.addEventListener('change', draw);
+  box.querySelectorAll('button').forEach(b => b.onclick = () => { if (!b.disabled) { i.value = addDays(isDay(i.value) ? i.value : today(), +b.dataset.st); draw(); } });
+  draw();
+};
 const dateOf = id => { const v = $('#' + id).value; return isDay(v) && v <= today() ? v : today(); };
 const fmtN = p => (p < 0 ? '-' : '') + fmt(p);
 

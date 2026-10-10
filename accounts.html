@@ -4305,20 +4305,29 @@ function mkReconcile() {
   });
   return n;
 }
-/* أرصدة عملاء السوق بس (اسم + رصيد) بتتبعت للشيت علشان الشريك يشوفها. اللي اتبعت قبل كده بيتحفظ علشان مبعتش نفس الحاجة تاني */
+/* أرصدة عملاء السوق بس (اسم + رصيد) بتتبعت للشيت علشان الشريك يشوفها. اللي اتبعت قبل كده بيتحفظ علشان مبعتش نفس الحاجة تاني.
+   الوقت (upd) = آخر تعديل في الحسابات والحركات والإعدادات (مش وقت الإرسال)، علشان لو جهاز حسابات تاني لسه موصلهوش آخر تعديل
+   وبعت رصيد قديم، الشيت يرفضه وميكتبش فوق الرصيد الصح. الـ 1e13 علشان يكسب السطور القديمة اللي كانت بوقت الإرسال (مرة واحدة) */
 function mkCustRows() {
-  const d = mkDb(), bal = allBalances(), out = [], seen = new Set(), now = Date.now();
+  let ver = 0; for (const k of ['parties', 'entries', 'sets']) for (const r of db[k]) if (r.upd > ver) ver = r.upd;
+  const d = mkDb(), bal = allBalances(), out = [], seen = new Set(), now = 1e13 + ver;
   liveParties().filter(p => p.sec === 'mkt').forEach(p => {
     seen.add(p.id);
-    const b = bal.get(p.id) || 0, lim = limitClass(p, b) === 'lim-r' ? 'r' : limitClass(p, b) === 'lim-y' ? 'y' : '', sig = p.name + '|' + b + '|' + lim;
+    const b = bal.get(p.id) || 0, lim = limitClass(p, b) === 'lim-r' ? 'r' : limitClass(p, b) === 'lim-y' ? 'y' : '', sig = 'v2|' + p.name + '|' + b + '|' + lim;
     if (d.cs[p.id] !== sig) out.push({row: {id: p.id, kind: 'cust', upd: now, del: false, view: ['', cell(p.name), b / 100, 'رصيد عميل', ''], data: {name: p.name, bal: b, lim}}, sig});
   });
   Object.keys(d.cs).forEach(id => { if (!seen.has(id) && d.cs[id] !== '-') out.push({row: {id, kind: 'cust', upd: now, del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-'}); });
   return out;
 }
 const mkStView = s => { const o = mkDb().ops[s.op] || {}; return ['', cell(o.cname || o.sname || o.cat || o.buyer || (o.t === 'hand' ? 'تسليم كاش' : '')), o.amt ? o.amt / 100 : '', 'حالة', cell([s.done ? 'اتنقلت' : '', s.ok ? 'وصل' : '', s.back ? 'راجعة: ' + s.back : ''].filter(Boolean).join(' — '))]; };
-let mkBusy = false, mkErr = '', mkLastOk = 0;
-async function mkSync() {
+let mkBusy = false, mkErr = '', mkLastOk = 0, mkCur = null, mkQ = null;
+/* لو فيه مزامنة شغالة، الطلب الجديد مبيضيعش: بيستنى اللي شغالة تخلص ويعيد مرة واحدة (علشان الرصيد الجديد بعد النقل يتبعت على طول، مش بعد 8 ثواني) */
+function mkSync() {
+  if (!mkCur) return mkCur = mkSyncOnce().finally(() => { mkCur = null; });
+  return mkQ || (mkQ = mkCur.then(mkNext, mkNext));
+}
+function mkNext() { mkQ = null; return mkSync(); }
+async function mkSyncOnce() {
   const cr = mkCreds(); if (!db || !cr || mkBusy) return false;
   mkBusy = true; const d0 = db;
   let fresh = [], ch = false;

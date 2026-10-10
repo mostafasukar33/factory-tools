@@ -347,6 +347,11 @@ function merge(r) {
   box[r.id] = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del}, r.kind === 'op' ? {sy: r.upd} : {});
   return true;
 }
+/* نص تنبيه تليجرام بيتبعت جاهز مع العملية، فكود الشيت مش محتاج يتحدّث لو الجمل اتغيرت */
+const TG_IC = {pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭'};
+const tgText = o => { const a = fmt(o.amt), w = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون كاش'};
+  return o.t === 'pay' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${a} ${w[o.m] || ''}` : o.t === 'inv' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${a}`
+    : o.t === 'exp' ? `مصروف ${o.cat || ''}: ${a}${o.note ? ' — ' + o.note : ''}` : o.t === 'spay' ? `دفع للمورد ${o.sname || ''} ${a}` : o.t === 'hand' ? `سلّمك ${a} كاش` : o.t === 'cs' ? `بيع كاش من المصنع ${a} — ${o.buyer || ''}` : 'حركة ' + a; };
 const view = o => [dayOf(o.ts) + ' ' + timeOf(o.ts), (o.t === 'pay' || o.t === 'inv') ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, o.t === 'pay' ? M_SAID[o.m] || o.m : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة'}[o.t], ''];
 async function sync() {
   if (!S.u || S.bad) return;
@@ -356,7 +361,7 @@ async function sync() {
     let p = pending();
     while (p.length) {
       const batch = p.slice(0, 40);
-      const rows = batch.map(o => { const d = Object.assign({}, o); delete d.sy; return {id: o.id, kind: 'op', upd: o.upd, del: !!o.del, view: view(o), data: d}; });
+      const rows = batch.map(o => { const d = Object.assign({}, o, {tg: tgText(o)}); delete d.sy; return {id: o.id, kind: 'op', upd: o.upd, del: !!o.del, view: view(o), data: d}; });
       const j = await callSheet({action: 'push', who: 'm', rows});
       if (j && j.error === 'key') { S.bad = true; throw new Error('key'); }
       if (!j || j.ok !== true) throw new Error('push');

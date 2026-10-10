@@ -3799,6 +3799,7 @@ const SHEET = 'الحركات';
 const HEAD = ['id','النوع','آخر تعديل','رقم المزامنة','ملغي','الوقت','الاسم','المبلغ','الطريقة','الحالة','البيانات (لا تعدّلها)'];
 const W = HEAD.length;
 const TG = 'https://api.telegram.org/bot';
+const VER = 2;   /* 2 = نص تليجرام بييجي جاهز من تطبيق الشريك (data.tg)، فمش هتحتاج تحدّث الكود تاني لو الجمل اتغيرت */
 const MW = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون كاش'};
 function sh_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -3823,7 +3824,7 @@ function doPost(e) {
   try { req = JSON.parse(e.postData.contents); } catch (x) { return out_({ok: false, error: 'bad'}); }
   if (!req || !key_(req.key)) return out_({ok: false, error: 'key'});
   const p = PropertiesService.getScriptProperties();
-  if (req.action === 'ping') return out_({ok: true, app: 'fo-mkt', v: 1, n: Math.max(sh_().getLastRow() - 1, 0), seq: Number(p.getProperty('SEQ')) || 0});
+  if (req.action === 'ping') return out_({ok: true, app: 'fo-mkt', v: VER, n: Math.max(sh_().getLastRow() - 1, 0), seq: Number(p.getProperty('SEQ')) || 0});
   if (req.action === 'push') return out_(push_(req.rows || [], req.who));
   if (req.action === 'pull') return out_(pull_(Number(req.since) || 0));
   if (req.action === 'tg') return out_(tgSet_(req.token));
@@ -3896,11 +3897,12 @@ function opText_(d) {
   return 'حركة ' + a;
 }
 const ICON = {pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭'};
+function txt_(d) { return d.tg || opText_(d); }
 function opMsg_(old, d, del) {
   const ic = ICON[d.t] || '•';
-  if (del) return old && !old.del ? '🗑 اتمسحت: ' + opText_(old) : '';
-  if (!old || old.del) return ic + ' ' + opText_(d);
-  const a = opText_(old), b = opText_(d);
+  if (del) return old && !old.del ? '🗑 اتمسحت: ' + txt_(old) : '';
+  if (!old || old.del) return ic + ' ' + txt_(d);
+  const a = txt_(old), b = txt_(d);
   return a === b ? '' : '✏️ اتعدلت: ' + a + '\\nبقت: ' + b;
 }
 function tgGet_(t, method, payload) {
@@ -3938,7 +3940,7 @@ function tgSet_(token) {
 }
 function tgState_() {
   const p = PropertiesService.getScriptProperties(), t = p.getProperty('TG_TOKEN');
-  return {ok: true, token: !!t, bot: p.getProperty('TG_BOT') || '', chat: !!(t && tgChat_(t))};
+  return {ok: true, v: VER, token: !!t, bot: p.getProperty('TG_BOT') || '', chat: !!(t && tgChat_(t))};
 }
 function tgTest_() {
   const st = tgState_();
@@ -4404,6 +4406,25 @@ function mktHelp() {
     catch (e) { $('#mhShow').click(); const r = document.createRange(); r.selectNodeContents($('#mhCode')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('اضغط مطوّل على الكود واختار نسخ (Copy)', 6000); }
   };
 }
+const MK_VER = 2;
+/* تحديث كود شيت السوق من الموبايل (بعد ما يتعمل مرة، نص تليجرام بييجي من التطبيق فمش هيحتاج تحديث تاني) */
+function mktUpdateHelp() {
+  const code = marketScript();
+  modal(`<h3>تحديث كود شيت السوق (من الموبايل)</h3>
+  <ol class="steps">
+    <li>دوس <b>"انسخ الكود"</b> تحت.</li>
+    <li>دوس <b>"افتح Apps Script"</b>. هيفتح في كروم. من القايمة (⋮) فعّل <b>"موقع سطح المكتب" (Desktop site)</b>.</li>
+    <li>افتح مشروع <b>حركة السوق</b> (أو الاسم اللي سمّيته). جوه الكود: دوس مطوّل ← <b>تحديد الكل</b> ← الصق (<b>Paste</b>) فوق القديم. الكود الصح بيخلص عند السطر رقم ${code.split('\n').length}.</li>
+    <li>دوس أيقونة الحفظ 💾.</li>
+    <li>فوق: <b>نشر (Deploy)</b> ← <b>إدارة عمليات النشر (Manage deployments)</b> ← القلم ✏️ ← في <b>Version</b> اختار <b>New version</b> ← <b>Deploy</b>. <b>اللينك بيفضل زي ما هو</b>، ومتعملش نشر جديد.</li>
+  </ol>
+  <div class="stack" style="margin-top:12px"><button class="btn green" id="muCopy" type="button">انسخ الكود</button><a class="btn gold" href="https://script.google.com/home" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">افتح Apps Script</a><button class="btn line" id="muX" type="button">إغلاق</button></div>`, true);
+  $('#muX').onclick = closeModal;
+  $('#muCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(code); toast('اتنسخ الكود ✔ دلوقتي افتح Apps Script والصقه', 5000); }
+    catch (e) { toast('الموبايل مش مدّيني أنسخ. من "كود شيت السوق والخطوات" اعرض الكود وانسخه.', 6000); }
+  };
+}
 let tgInfo = null;
 /* بنطلّع التوكن من أي حاجة اتلصقت: علامات الاتجاه الخفية، الأرقام العربي، النقطتين العريضة، والكلام اللي حواليه.
    خانة الكتابة بتشيل سطور الرسالة، فكلمة "Keep your token…" بتلزق في آخر التوكن. التوكن بتاع تليجرام آخره 35 حرف بالظبط، فبنجرب ده الأول */
@@ -4469,9 +4490,11 @@ function renderMktSettings() {
     const el = $('#tgSt'); if (!el) return;
     if (!j) { el.innerHTML = '⚠️ معرفتش أوصل لشيت السوق دلوقتي.'; return; }
     tgInfo = j;
-    el.innerHTML = !j.token ? 'لسه مفيش بوت. اعمله من الخطوات تحت (مرة واحدة).'
+    el.innerHTML = (!j.v || j.v < MK_VER ? '<div class="sync warn" id="mkOld" style="margin-bottom:8px">⚠️ كود شيت السوق قديم (مش بيبعت تنبيهات البيع الكاش بشكلها الصح). <a>حدّثه من الموبايل</a></div>' : '')
+      + (!j.token ? 'لسه مفيش بوت. اعمله من الخطوات تحت (مرة واحدة).'
       : !j.chat ? `<b style="color:var(--gold-d)">⏳ البوت @${esc(j.bot)} محفوظ. افتحه في تليجرام وابعتله "ابدأ"، وبعدين دوس "جرّب التنبيه".</b>`
-      : `<b style="color:var(--green)">✔ التنبيهات شغالة على البوت @${esc(j.bot)}.</b>`;
+      : `<b style="color:var(--green)">✔ التنبيهات شغالة على البوت @${esc(j.bot)}.</b>`);
+    if ($('#mkOld')) $('#mkOld').onclick = mktUpdateHelp;
     if ($('#tgHow') && !j.token) $('#tgHow').open = true;
   };
   if (tgInfo) showTg(tgInfo);

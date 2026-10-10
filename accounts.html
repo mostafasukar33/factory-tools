@@ -758,6 +758,98 @@ html[data-theme=dark] .mtag.insta{background:#2a2240;color:#B9A6F0}html[data-the
 html[data-theme=dark] .mtag.exp{background:#3a3216;color:#E9C46A}
 html[data-theme=dark] .mtag.inv{background:#1d2a3d;color:#8DB8F0}
 html[data-theme=dark] .ifoot .btn.off,html[data-theme=dark] .ifoot .btn:disabled{background:#3a3833;color:#8d8776}
+/* ============ اللاب توب: شكل البرنامج الاحترافي (بطلب صاحب المشروع، اللاب بس ≥1000 والموبايل زي ما هو) ============
+   الشريط الأسود اللي فوق بقى راس القايمة الجانبية الغامقة، وقايمة الحسابات سطور رفيعة، وراس الحساب سطر واحد، والجدول سطر لكل حركة */
+.ldg tr.yr{display:none}
+:root{--pane:#fff;--pane2:#FBF9F3;--mut:#8a8270;--rowl:#EFE9DA}
+html[data-theme=dark]{--pane:#1f1e19;--pane2:#1a1914;--mut:#B9B3A1;--rowl:#2d2b24}
+@media (min-width:1000px){
+  body{padding-inline-start:176px}
+  .top{position:fixed;top:0;inset-inline-start:0;width:176px;z-index:31;background:transparent;border-bottom:1px solid #2c2a24;padding:12px;gap:8px}
+  .top img{width:34px;height:34px}
+  .top h1{font-size:15px}.top small{font-size:11.5px}
+  .top .homebtn{position:fixed;bottom:12px;margin:0;min-height:36px;padding:6px 10px;font-size:13.5px;background:transparent;color:#e8e2d0;border:1px solid #3a372f;justify-content:center}
+  .top .homebtn:hover{border-color:var(--gold);color:var(--gold)}
+  .top #bTheme{inset-inline-start:12px;width:52px}
+  .top #bLock{inset-inline-start:70px;width:94px}
+  nav{width:176px;background:var(--ink);border-inline-end:0;padding:70px 10px 64px;gap:3px}
+  nav button{color:#d9d4c5;border:0;font-size:14.5px;min-height:38px;border-radius:9px}
+  nav button svg{color:var(--gold)}
+  nav button:hover{background:#26241f;color:#fff}
+  nav button.on{background:var(--gold);color:#111;border:0}
+  nav .qk{flex-direction:column;gap:0;margin:0 0 4px}
+  nav .qk button{min-height:26px;padding:2px 38px 2px 8px;justify-content:flex-start;font-size:13px;font-weight:700;border:0;background:transparent;color:#a39d8c}
+  nav .qk button:hover{background:transparent;color:#fff}
+  nav .qk button.on{background:transparent;color:var(--gold)}
+  html[data-theme=dark] nav .qk button{background:transparent;color:#a39d8c}
+  html[data-theme=dark] nav .qk button.on{background:transparent;color:var(--gold)}
+  html[data-theme=dark] nav{background:#0d0c0a}
+  /* العمودين بطول الشاشة كلها */
+  main.split{padding:0;gap:0;grid-template-columns:340px minmax(0,1fr)}
+  main.split #p-home,html[data-fs=z] main.split #p-home{top:0;height:100vh;background:var(--pane);border-inline-end:1px solid var(--line)}
+  html[data-fs=z] main.split #p-home{height:calc(100vh/var(--z))}
+  main.split #p-party,html[data-fs=z] main.split #p-party{top:0;height:100vh;padding:0 20px 0 14px}
+  html[data-fs=z] main.split #p-party{height:calc(100vh/var(--z))}
+  /* قايمة الحسابات */
+  main.split #hTots{order:0;margin:0;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none}
+  main.split #hTots div{padding:7px 10px;text-align:start}
+  main.split #hTots div b{font-size:15.5px}main.split #hTots .k b{font-size:15.5px}
+  main.split #hAlerts{order:1;padding:6px 10px 0}
+  main.split #hAlerts .sync{font-size:12px;padding:2px 8px;margin-bottom:3px;border-radius:6px}
+  main.split .tabs{order:2;padding:6px 10px 0;margin:0 0 6px;gap:4px}
+  main.split .tabs button{min-height:34px;font-size:13.5px;flex-direction:row;gap:5px;border-radius:8px;padding:2px 6px;white-space:nowrap}
+  main.split .tabs button small{font-size:12px}
+  main.split .srow{padding:0 10px;margin-bottom:6px;grid-template-columns:1fr 92px 36px 36px}
+  main.split .srow .inp{min-height:36px;font-size:14px;padding:4px 10px}
+  html main.split .srow #bSearch,html main.split .srow #bNewParty{width:36px;min-height:36px;font-size:16px;margin:0!important}
+  main.split #hList{padding:0;border-top:1px solid var(--line)}
+  main.split .pt{margin:0;border:0;border-bottom:1px solid var(--rowl);border-radius:0;padding:5px 14px;background:transparent;gap:8px}
+  main.split .pt .m b{font-size:14.5px}main.split .pt .a{display:flex;align-items:baseline;gap:5px}
+  main.split .pt .a b{font-size:14.5px;font-variant-numeric:tabular-nums}main.split .pt .a small{font-size:11px}
+  main.split .pt.zero .a b{color:#aaa}
+  main.split .pt:hover{background:var(--pane2)}
+  main.split .pt.cur{outline:0;background:var(--gold-l)!important;box-shadow:inset -3px 0 0 var(--gold)}
+  main.split .pt.lim-y{box-shadow:inset 3px 0 0 #E9C46A}main.split .pt.lim-r{box-shadow:inset 3px 0 0 #E57373}
+  /* شريط فوق/آخر حركة/تعديل */
+  .ppbar{padding:6px 0;margin:0!important}
+  .ppbar .jb button{height:28px;padding:0 10px;font-size:12.5px;border-radius:7px;border-width:1px}
+  .ppbar a{font-size:13.5px}
+  /* راس الحساب: سطر واحد */
+  #p-party .phd{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"h m b" "s m b" "l m b";column-gap:26px;align-items:center;background:var(--pane);color:inherit;border:1px solid var(--line);border-bottom:2px solid var(--gold);border-radius:10px;padding:10px 16px;margin:4px 0 8px}
+  #p-party .phd h2{grid-area:h;font-size:20px;color:inherit}
+  #p-party .phd>small{grid-area:s;color:var(--mut);font-size:12.5px}
+  #p-party .phd .limw{grid-area:l;justify-self:start;margin-top:4px;font-size:12px;padding:1px 9px;border-radius:20px}
+  #p-party .phd .mini2{grid-area:m;margin:0;flex-direction:column;gap:2px;color:var(--mut);font-size:12.5px}
+  #p-party .phd .mini2 b{color:inherit;font-size:14px}
+  #p-party .phd .bal{grid-area:b;margin:0;padding:0;border:0;flex-direction:column;align-items:center;gap:0}
+  #p-party .phd .bal span{color:var(--gold-d);font-size:12.5px}
+  #p-party .phd .bal b{font-size:26px;color:inherit;white-space:nowrap}#p-party .phd .bal b.cr{color:var(--red)}
+  html[data-theme=dark] #p-party .phd .mini2 b,html[data-theme=dark] #p-party .phd .bal b:not(.cr){color:#F3EFE3}
+  /* الأزرار: شريط أدوات صغير */
+  #p-party .acts{gap:6px;margin-bottom:8px}
+  #p-party .acts .btn{width:auto;flex:0 0 auto;min-height:34px;font-size:13.5px;padding:4px 14px;border-radius:8px;border-width:1px}
+  #p-party .acts #ppStmt{margin-inline-start:auto}
+  #ppDoc::after,#ppPay::after{font-size:10.5px;opacity:.6;margin-inline-start:6px;font-weight:700}
+  #ppDoc::after{content:'F2'}#ppPay::after{content:'F3'}
+  /* الجدول: سطر لكل حركة */
+  #p-party .ldgw{border-radius:10px;border-width:1px}
+  #p-party table.ldg{font-size:14px}
+  #p-party .ldg th{background:#F1ECDF;color:#5d5442;border:0;border-bottom:1px solid var(--line);padding:7px 6px;font-size:12.5px;top:40px}
+  #p-party .ldg td{border:0;border-bottom:1px solid var(--rowl);padding:5px 8px;font-variant-numeric:tabular-nums}
+  #p-party .ldg td.b{border-inline-start:1px solid var(--line)}
+  #p-party .ldg td.l small:not(.qp){display:inline;margin-inline-start:6px;font-size:11.5px}
+  #p-party .ldg td.l .qp,#p-party .ldg td.dt small{display:none}
+  #p-party .ldg td.q small{display:inline;margin-inline-start:4px;font-size:12px}
+  #p-party .ldg td.q{font-size:14px}#p-party .ldg td.dt{font-size:13px;color:var(--mut)}
+  #p-party .ldg tr.f td{border-top:0}
+  #p-party .ldg tr.yr{display:table-row;cursor:default}
+  #p-party .ldg tr.yr td{background:var(--pane2);color:var(--gold-d);font-size:12px;font-weight:800;text-align:right;padding:3px 10px}
+  html[data-theme=dark] #p-party .ldg th{background:#0d0c0a;color:#E8CE93}
+  #p-party .ldgf{padding:8px 18px;border-radius:10px;border:0;border-top:2px solid var(--gold);background:var(--pane);box-shadow:0 -4px 12px #0001}
+  #p-party .ldgf span{font-size:15px;color:inherit}
+  #p-party .ldgf b{font-size:22px;color:inherit}
+  html[data-theme=dark] #p-party .ldgf{background:var(--pane)}
+}
 </style>
 </head>
 <body>
@@ -1294,6 +1386,25 @@ function renderList(bal) {
   $$('#hList .pt').forEach(el => el.onclick = () => go('p/' + el.dataset.id));
 }
 $('#hSearch').addEventListener('input', () => renderList());
+/* اختصارات الكيبورد (اللاب توب): Ctrl+K البحث، F2 فاتورة، F3 دفعة، وفي خانة البحث الأسهم بتتنقل بين الحسابات وEnter بيفتح */
+addEventListener('keydown', e => {
+  if (!db || $('#lock').classList.contains('on') || $('#mask').classList.contains('on')) return;
+  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') {
+    e.preventDefault();
+    if (!$('#hSearch').offsetParent) go('home');
+    setTimeout(() => { $('#hSearch').focus(); $('#hSearch').select(); }, 60);
+    return;
+  }
+  if ((e.key === 'F2' || e.key === 'F3') && $('#ppDoc') && $('#ppDoc').offsetParent) { e.preventDefault(); $(e.key === 'F2' ? '#ppDoc' : '#ppPay').click(); return; }
+  if (document.activeElement === $('#hSearch') && ['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) {
+    const L = $$('#hList .pt[data-id]'); if (!L.length) return;
+    e.preventDefault();
+    const i = L.findIndex(x => x.classList.contains('cur'));
+    const n = e.key === 'Enter' ? (i < 0 ? 0 : i) : e.key === 'ArrowDown' ? Math.min(L.length - 1, i + 1) : Math.max(0, i - 1);
+    L.forEach(x => x.classList.remove('cur')); L[n].classList.add('cur'); L[n].scrollIntoView({block: 'nearest'});
+    if (e.key === 'Enter' || $('main').classList.contains('split')) go('p/' + L[n].dataset.id);
+  }
+});
 $('#hSort').addEventListener('change', () => renderList());
 $('#bNewParty').onclick = () => partyModal();
 $('#bSearch').onclick = searchModal;
@@ -1782,11 +1893,12 @@ const LDG_MAX = 300, LDG_SHOW = 200, ldgAll = new Set();
 function ledgerTable(p) {
   const s = stmtData(p.id, '', '');
   const cut = s.rows.length > LDG_MAX && !ldgAll.has(p.id) ? s.rows.length - LDG_SHOW : 0;
+  let yPrev = matchMedia('(min-width:1000px)').matches ? '' : null;   // سطر السنة بيظهر بس لما السنة تتغير، على اللاب بس (في الموبايل مبيترسمش علشان ألوان الصفوف متتلخبطش)
   if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده.<br><small style="color:#9a937f">ابدأ بفاتورة أو دفعة من الأزرار اللي فوق.</small></div>';
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
     ${cut ? `<tr class="more"><td colspan="7"><a id="ldgOld">↑ عرض الحركات الأقدم (${cut} سطر)</a></td></tr>` : ''}
-    ${(cut ? s.rows.slice(cut) : s.rows).map(r => `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
+    ${(cut ? s.rows.slice(cut) : s.rows).map(r => (yPrev !== null && (r.date || '').slice(0, 4) !== yPrev ? `<tr class="yr"><td colspan="7">${yPrev = (r.date || '').slice(0, 4)}</td></tr>` : '') + `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b data-ck="pe:${esc(p.id)}" data-cnt="${s.close * s.sg}">${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>
     ${ledgerHintOnce()}`;
@@ -3752,7 +3864,7 @@ function route() {
   if (pg === 'mkt') { $('#mkBar').classList.remove('on'); renderMkt(); } else if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
 }
 /* شريط أعلى صفحة الحساب ثابت (مبيخبّيش وانت بتنزل): رجوع، فوق، تحت، تعديل */
-function setHdr() { const h = document.querySelector('header.top'); if (h) document.documentElement.style.setProperty('--hh', h.offsetHeight + 'px'); }
+function setHdr() { const h = document.querySelector('header.top'); if (h) document.documentElement.style.setProperty('--hh', (getComputedStyle(h).position === 'fixed' ? 0 : h.offsetHeight) + 'px'); }   // على اللاب الشريط في القايمة الجانبية فمفيش مسافة فوق
 addEventListener('resize', setHdr); setTimeout(setHdr, 0); setTimeout(setHdr, 600);
 function bindBar() {
   const up = $('#jUp'), dn = $('#jDn'); if (!up) return;

@@ -384,7 +384,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     eq('العملاء: عملاء السوق بس بأرصدتهم', await M.evaluate(() => [...customers().values()].map(c => [c.name, c.bal]).sort()), (await A.evaluate(() => liveParties().filter(p => p.sec === 'mkt').map(p => [p.name, balance(p.id)]))).sort());
     eq('الرئيسية: معاك كاش 0، ومفيهاش قايمة العملاء (ليها تبويب لوحدها) وفيه 4 تبويبات', [await M.textContent('#cashT'), await M.$('#lists'), await M.evaluate(() => document.querySelectorAll('#tabs button').length)], ['0', null, 4]);
     await M.click('#tabs button[data-t=c]'); await M.waitForTimeout(150);
-    await M.click(`#lists .row[data-c="${pid1}"]`);
+    await M.click(`#lists tr[data-c="${pid1}"]`);
     eq('شاشة الدفعة: خانة المبلغ مفتوحة على لوحة الأرقام', await M.evaluate(() => [document.activeElement.id, $('#amt').inputMode]), ['amt', 'numeric']);
     await M.fill('#amt', '5000'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(1500);
     eq('اتسجلت: الكلام بالعربي ووصلت لمصطفى', [(await M.innerText('.sent')).replace(/\s+/g, ' ').trim(), await M.textContent('#top .dot')], [`${C1} دفع 5,000 جنيه كاش ✓ وصلت لمصطفى`, 'متصل']);
@@ -397,7 +397,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
     eq('الرصيد عند الشريك = رصيد الحسابات − اللي اتسجل ولسه متنقلش', await M.evaluate(id => customers().get(id).bal, pid1), bal0 - 800000);
     eq('اتسجل للعميل ده النهارده بحالته', await M.evaluate(() => { const t = $('#tdy').textContent.replace(/\s+/g, ' '); return ['إنستا لمصطفى', '3,000', '⏳ عند مصطفى', 'كاش معايا', '5,000'].every(x => t.includes(x)); }), true);
     await M.click('#bBack'); await M.waitForTimeout(150);
-    eq('آخر زيارات فوق', await M.evaluate(() => $('#lists .lbl').textContent + '|' + $('#lists .list .row b').textContent), 'آخر زيارات|' + C1);
+    eq('آخر زيارات فوق', await M.evaluate(() => $('#lists .lbl').textContent + '|' + $('#lists .ctb .nm').textContent), 'آخر زيارات|' + C1);
 
     DM.netDown = true;
     await M.click('#bNew'); await M.fill('#ncN', 'عميل سوق جديد'); await M.click('#ncOk'); await M.fill('#amt', '1500'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(1500);

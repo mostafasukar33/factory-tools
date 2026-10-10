@@ -4030,8 +4030,8 @@ function mkCustRows() {
   const d = mkDb(), bal = allBalances(), out = [], seen = new Set(), now = Date.now();
   liveParties().filter(p => p.sec === 'mkt').forEach(p => {
     seen.add(p.id);
-    const b = bal.get(p.id) || 0, sig = p.name + '|' + b;
-    if (d.cs[p.id] !== sig) out.push({row: {id: p.id, kind: 'cust', upd: now, del: false, view: ['', cell(p.name), b / 100, 'رصيد عميل', ''], data: {name: p.name, bal: b}}, sig});
+    const b = bal.get(p.id) || 0, lim = limitClass(p, b) === 'lim-r' ? 'r' : limitClass(p, b) === 'lim-y' ? 'y' : '', sig = p.name + '|' + b + '|' + lim;
+    if (d.cs[p.id] !== sig) out.push({row: {id: p.id, kind: 'cust', upd: now, del: false, view: ['', cell(p.name), b / 100, 'رصيد عميل', ''], data: {name: p.name, bal: b, lim}}, sig});
   });
   Object.keys(d.cs).forEach(id => { if (!seen.has(id) && d.cs[id] !== '-') out.push({row: {id, kind: 'cust', upd: now, del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-'}); });
   return out;

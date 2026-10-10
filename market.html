@@ -83,6 +83,19 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:#ECE8DC}
 .row .m small{display:block;color:var(--sub);font-size:12px;font-weight:600}
 .row .a{text-align:left;flex:none}
 .row .a .money{display:block;font-size:16px}
+.ctb{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.ctb th{background:var(--row);color:var(--sub);font-size:12px;font-weight:800;padding:6px 10px;text-align:right}
+.ctb th:last-child,.ctb td.bl{text-align:left}
+.ctb td{padding:9px 10px;border-top:1px solid var(--row);font-size:15px;font-weight:700;cursor:pointer}
+.ctb td.no{width:34px;text-align:center;color:var(--sub);font-size:12.5px;font-variant-numeric:tabular-nums;border-inline-end:1px solid var(--row)}
+.ctb th:first-child{text-align:center;width:34px}
+.ctb td.bl{white-space:nowrap;font-size:15.5px}.ctb td.bl.z{color:var(--sub);font-weight:600}
+.ctb tr:active td{background:var(--gold-l)}
+.ctb tr.l-y td{background:#FFF8DC}.ctb tr.l-r td{background:#FDECEA}
+.ctb tr.l-y td.no,.ctb tr.l-y td{border-top-color:#E9C46A55}.ctb tr.l-r td{border-top-color:#F0B9B3}
+.ctb tr.l-r td.nm{color:#B3261E}
+html[data-theme=dark] .ctb tr.l-y td{background:#3a3216}html[data-theme=dark] .ctb tr.l-r td{background:#3a1d1a}
+html[data-theme=dark] .ctb tr.l-r td.nm{color:var(--red)}
 .row .bal{font-size:16px;white-space:nowrap;flex:none}
 .row .bal.z{color:var(--sub);font-weight:600;font-size:14px}
 .nw{font-size:11px;font-weight:800;background:#17150f;color:var(--gold);border-radius:6px;padding:0 6px;margin-inline-start:6px;vertical-align:middle}
@@ -274,7 +287,7 @@ const payOps = () => liveOps().filter(o => o.t === 'pay');
 const custAll = () => liveOps().filter(o => o.t === 'pay' || o.t === 'inv');
 function customers() {
   const al = aliases(), m = new Map();
-  Object.values(S.cust).forEach(c => { if (!c.del) m.set(c.id, {id: c.id, name: c.name, bal: c.bal || 0}); });
+  Object.values(S.cust).forEach(c => { if (!c.del) m.set(c.id, {id: c.id, name: c.name, bal: c.bal || 0, lim: c.lim || ''}); });
   S.newc.forEach(c => { if (!al[c.id] && !m.has(c.id)) m.set(c.id, {id: c.id, name: c.name, bal: 0, nw: true}); });
   custAll().forEach(o => { const id = al[o.cid] || o.cid; if (!m.has(id)) m.set(id, {id, name: o.cname, bal: 0, nw: id.startsWith('n_')}); });
   /* الصافي = رصيده في الحسابات + الفواتير اللي اتسجلت هنا − الدفعات اللي اتسجلت هنا، لسه متنقلتش */
@@ -465,23 +478,25 @@ function drawHome() {
 }
 
 /* ---------- العملاء (تبويب لوحده) ---------- */
-const balHtml = b => b > 0 ? `<span class="bal money">عليه ${fmt(b)}</span>` : '<span class="bal z">مفيش عليه</span>';
-const rowHtml = c => `<div class="row" data-c="${esc(c.id)}"><div class="m"><b>${esc(c.name)}${c.nw ? '<span class="nw">عميل جديد</span>' : ''}</b></div>${balHtml(c.bal)}</div>`;
+let custNo = new Map();
+const limOf = c => c.bal > 0 ? (c.lim || '') : '';
+const custTbl = list => `<table class="ctb"><thead><tr><th>#</th><th>العميل</th><th>الرصيد (عليه)</th></tr></thead><tbody>${list.map(c => `<tr class="${limOf(c) ? 'l-' + limOf(c) : ''}" data-c="${esc(c.id)}"><td class="no">${custNo.get(c.id) || ''}</td><td class="nm">${esc(c.name)}${c.nw ? '<span class="nw">جديد</span>' : ''}</td><td class="bl ${c.bal > 0 ? 'money' : 'z'}">${c.bal > 0 ? fmt(c.bal) : '—'}</td></tr>`).join('')}</tbody></table>`;
 function drawCustomers(q0) {
   const cs = customers(), al = aliases();
   $('#main').innerHTML = `<div class="sr"><input class="search" id="q" type="search" placeholder="🔍 دوّر على عميل…" autocomplete="off" value="${esc(q0 || '')}"><button class="sbtn" id="bNew" type="button">＋ عميل جديد</button></div><div id="lists"></div>`;
   const draw = () => {
     const q = norm($('#q').value), all = [...cs.values()].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
-    if (q) { const f = all.filter(c => norm(c.name).includes(q)); $('#lists').innerHTML = f.length ? `<div class="lbl"><span>نتيجة البحث</span></div><div class="list">${f.map(rowHtml).join('')}</div>` : '<div class="empty">مفيش عميل بالاسم ده.<br>لو جديد دوس "＋ عميل جديد".</div>'; }
+    custNo = new Map(all.map((c, i) => [c.id, i + 1]));
+    if (q) { const f = all.filter(c => norm(c.name).includes(q)); $('#lists').innerHTML = f.length ? `<div class="lbl"><span>نتيجة البحث</span></div>${custTbl(f)}` : '<div class="empty">مفيش عميل بالاسم ده.<br>لو جديد دوس "＋ عميل جديد".</div>'; }
     else {
       /* آخر زيارات = آخر العملاء اللي اتسجلهم حاجة (آخر شهر) */
       const seen = [], since = Date.now() - 30 * 86400000;
       custAll().filter(o => o.ts >= since).sort((a, b) => b.ts - a.ts).forEach(o => { const id = al[o.cid] || o.cid; if (!seen.includes(id) && cs.has(id) && seen.length < 5) seen.push(id); });
       const rest = all.filter(c => !seen.includes(c.id));
-      $('#lists').innerHTML = (seen.length ? `<div class="lbl"><span>آخر زيارات</span></div><div class="list">${seen.map(id => rowHtml(cs.get(id))).join('')}</div>` : '')
-        + `<div class="lbl"><span>كل العملاء</span><span>${all.length}</span></div>` + (rest.length ? `<div class="list">${rest.map(rowHtml).join('')}</div>` : `<div class="empty">${cs.size ? '' : 'لسه العملاء منزلوش. استنى ثواني والنت شغال.'}</div>`);
+      $('#lists').innerHTML = (seen.length ? `<div class="lbl"><span>آخر زيارات</span></div>${custTbl(seen.map(id => cs.get(id)))}` : '')
+        + `<div class="lbl"><span>كل العملاء</span><span>${all.length}</span></div>` + (rest.length ? `${custTbl(rest)}` : `<div class="empty">${cs.size ? '' : 'لسه العملاء منزلوش. استنى ثواني والنت شغال.'}</div>`);
     }
-    $$('#lists .row').forEach(r => r.onclick = () => { pyTab = 'pay'; nav('p/' + r.dataset.c); });
+    $$('#lists tr[data-c]').forEach(r => r.onclick = () => { pyTab = 'pay'; nav('p/' + r.dataset.c); });
   };
   draw();
   $('#q').oninput = draw;

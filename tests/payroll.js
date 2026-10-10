@@ -68,6 +68,42 @@ eq('الأسبوع المقفول ثابت على اللقطة', [E.calcWeek(I, 
 eq('الأيام الناقصة: عامل جديد من الأربع ومتسجلوش حاجة', J(E.missingDays(E.buildIdx(recs.concat([{id: 'w3', k: 'wk', name: 'عامل تجربة ج', rate: 1, st: 'on', from: '2026-10-21', ord: 3}])), '2026-10-22')).map(m => m.w + ' ' + m.date), ['w3 2026-10-21', 'w3 2026-10-22']);
 eq('العامل الواقف مبيتطلبش له أيام', E.missingDays(E.buildIdx([Object.assign({}, W1, {st: 'stop'})]), '2026-10-15').length, 0);
 
+
+/* ---- المرحلة التانية: فرق الجمعة ---- */
+console.log('\n١-ب) فرق الجمعة (اللي اتدفعلهم ومجوش)');
+const wk3 = E.weekDates('2026-10-29').slice(0, 6);
+const w1days = [wk1, wk2, wk3].flatMap(w => w.map(d => day('w1', d, 1, 25000)));
+const lockOf = (rs, thu) => { const cc = E.calcWeek(E.buildIdx(rs), thu, true); return {id: 'lk_' + thu, k: 'lk', thu, snap: {fri: cc.fri, rows: cc.rows, total: cc.total, oldPaid: cc.oldPaid}}; };
+const rowOf = (rs, thu, id = 'w1') => J(E.calcWeek(E.buildIdx(rs), thu).rows[id]);
+let f0 = [W1, ...w1days, {id: 'ws_2026-10-15', k: 'wst', thu: '2026-10-15', fri: 'work'}];
+f0 = f0.concat([lockOf(f0, '2026-10-15')]);
+eq('الأسبوع اللي فيه جمعة شغل: 1,500 + 300', [rowOf(f0, '2026-10-15').wages, rowOf(f0, '2026-10-15').net], [180000, 180000]);
+eq('من غير ما نعلّم حاجة: محسوب إنه جه، مفيش خصم', [rowOf(f0, '2026-10-22').prevFridayDelta, rowOf(f0, '2026-10-22').net], [0, 150000]);
+const fdOf = done => ({id: 'fd_2026-10-22_w1', k: 'fdf', thu: '2026-10-22', w: 'w1', done});
+eq('مجاش: أجر الجمعة بيتخصم من الخميس الجاي', [rowOf(f0.concat([fdOf(0)]), '2026-10-22').prevFridayDelta, rowOf(f0.concat([fdOf(0)]), '2026-10-22').net], [30000, 120000]);
+eq('جه: مفيش خصم', rowOf(f0.concat([fdOf(1)]), '2026-10-22').prevFridayDelta, 0);
+eq('مجاش وسلفة كبيرة: الفرق بيترحّل', J((({prevFridayDelta, net, carryOut}) => ({prevFridayDelta, net, carryOut}))(rowOf(f0.concat([fdOf(0), {id: 'a9', k: 'adv', w: 'w1', date: '2026-10-20', amt: 160000}]), '2026-10-22'))), {prevFridayDelta: 30000, net: 0, carryOut: 40000});
+const fOff = [W1, ...w1days]; fOff.push(lockOf(fOff, '2026-10-15'));
+eq('الجمعة إجازة: مفيش حاجة تتخصم حتى لو معلّم مجاش', rowOf(fOff.concat([fdOf(0)]), '2026-10-22').prevFridayDelta, 0);
+
+/* ---- السلف القديمة ---- */
+console.log('\n١-ج) السلف القديمة وطرق الخصم');
+const o0 = [W1, ...w1days, {id: 'o1', k: 'old', w: 'w1', amt: 100000, eff: '2026-10-15', date: '2026-01-01'}];
+const ruleOf = (mode, amt) => ({id: 'ru_w1', k: 'rule', w: 'w1', mode, amt: amt || 0, eff: '2026-10-15'});
+const od = (rs, thu) => { const r = rowOf(rs, thu); return [r.oldApplied, r.oldLeft, r.net]; };
+eq('مفيش خصم: السلف القديمة مبتتخصمش', od(o0.concat([ruleOf('none')]), '2026-10-15'), [0, 100000, 150000]);
+eq('بدون قاعدة خالص: مفيش خصم برضه', od(o0, '2026-10-15'), [0, 100000, 150000]);
+const fx = o0.concat([ruleOf('fixed', 40000)]);
+eq('مبلغ ثابت: 400 كل أسبوع', [od(fx, '2026-10-15'), od(fx, '2026-10-22'), od(fx, '2026-10-29')], [[40000, 60000, 110000], [40000, 20000, 110000], [20000, 0, 130000]]);
+const au = o0.concat([ruleOf('auto')]);
+eq('تلقائي: كل الباقي من أول مرتب', [od(au, '2026-10-15'), od(au, '2026-10-22')], [[100000, 0, 50000], [0, 0, 150000]]);
+eq('تلقائي ومرتب أقل من الباقي: بيخصم لحد المرتب وبيكمل بعدين', od(o0.concat([ruleOf('auto'), {id: 'a8', k: 'adv', w: 'w1', date: '2026-10-12', amt: 100000}]), '2026-10-15').concat(od(o0.concat([ruleOf('auto'), {id: 'a8', k: 'adv', w: 'w1', date: '2026-10-12', amt: 100000}]), '2026-10-22')), [50000, 50000, 0, 50000, 0, 100000]);
+const wd = (mode, amt) => ({id: 'wd_2026-10-15_w1', k: 'wded', thu: '2026-10-15', w: 'w1', mode, amt: amt || 0});
+eq('متخصمش الأسبوع ده بس: الأسبوع اللي بعده زي القاعدة', [od(fx.concat([wd('skip')]), '2026-10-15'), od(fx.concat([wd('skip')]), '2026-10-22')], [[0, 100000, 150000], [40000, 60000, 110000]]);
+eq('رقم تاني للأسبوع ده بس', [od(fx.concat([wd('amt', 25000)]), '2026-10-15'), od(fx.concat([wd('amt', 25000)]), '2026-10-22')], [[25000, 75000, 125000], [40000, 35000, 110000]]);
+eq('رقم تاني أكبر من الباقي: بيتقص للباقي', od(fx.concat([wd('amt', 999999)]), '2026-10-15'), [100000, 0, 50000]);
+eq('السلف القديمة بتبدأ من eff: أسبوع قبلها مفيهوش خصم', od(o0.concat([ruleOf('auto')]).map(x => x.id === 'o1' ? Object.assign({}, x, {eff: '2026-10-22'}) : x), '2026-10-15'), [0, 0, 150000]);
+
 /* ====================== 2 و 3) الشيت والتطبيق ====================== */
 function serve() {
   const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json'};
@@ -238,6 +274,64 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     eq('الحركة اتحفظت على الموبايل ومستنية', await B.evaluate(() => [pending().length > 0, online]), [true, false]);
     B.ctx.netDown = false; await settle_(B); await settle_(A);
     eq('أول ما النت رجع اتبعتت ووصلت', await A.evaluate(() => [...idx().day.values()].filter(d => d.date === '2026-10-24').length), 3);
+
+    console.log('\n٩) التعديل بعد القفل وإعادة الحساب');
+    await A.clock.setFixedTime(at('2026-10-24T11:00:00'));
+    await A.evaluate(() => nav('w/2026-10-15', true));
+    await A.click('#main tr[data-w]:nth-child(1)'); await A.waitForSelector('#modal .days button');
+    await A.click('#modal .days button:nth-child(1)'); await A.waitForSelector('#modal .ub button[data-u="0"]');
+    await A.click('#modal .ub button[data-u="0"]'); await A.waitForSelector('#modal .days');
+    const aw = await A.evaluate(() => { const id = [...idx().W.values()].find(w => w.name === 'عامل تجربة أ').id, r = calcWeek(idx(), '2026-10-15').rows[id], p = idx().pd.get('2026-10-15|' + id); return [r.net, p.amt, idx().lk.get('2026-10-15').snap.rows[id].net, idx().lk.get('2026-10-15').closer]; });
+    eq('تغيير يوم في أسبوع مقفول: الصافي اتحسب تاني (−250) واللقطة اتحدّثت واسم اللي قفل فضل', aw, [112500, 137500, 112500, 'مشرف تجربة 1']);
+    eq('عامل اتعلّم إنه قبض والرقم اتغير: تحذير', (await A.textContent('#modal')).includes('اتعلّم إنه قبض 1,375 والصافي دلوقتي 1,125'), true);
+    await A.click('#wsX');
+    eq('الأسبوع في الأرشيف بيتحدّث: الإجمالي بقى 2,725', await A.evaluate(() => calcWeek(idx(), '2026-10-15').total), 297500 - 25000);
+    /* سلفة كبيرة بعد القفل عند "ب": بتترحّل، والأسبوع المقفول اللي بعده بيتعدّل معاه */
+    const bId = await A.evaluate(() => [...idx().W.values()].find(w => w.name === 'عامل تجربة ب').id);
+    const c22 = await A.evaluate(id => { const r = calcWeek(idx(), '2026-10-22').rows[id]; return [r.carryIn, r.carryOut]; }, bId);
+    await A.click('#main tr[data-w]:nth-child(2)'); await A.waitForSelector('#wsAdv');
+    await A.click('#wsAdv'); await A.fill('#avA', '2000'); await A.click('#avOk');
+    await A.waitForSelector('#modal .days');
+    eq('قبل التعديل: ب ماكانش عليه مرحّل داخل الأسبوع التاني', c22, [0, 50000]);
+    eq('بعد سلفة 2,000 في أسبوع مقفول: الأسبوع ده عليه 500، والأسبوع المقفول اللي بعده بيتعدل (المرحّل 500 دخل)', await A.evaluate(id => { const a = calcWeek(idx(), '2026-10-15').rows[id], b = calcWeek(idx(), '2026-10-22').rows[id]; return [a.net, a.carryOut, b.carryIn, b.carryOut]; }, bId), [0, 50000, 50000, 100000]);
+    eq('السجل بيقول إنه بعد القفل', await A.evaluate(() => idx().log.some(l => l.txt.includes('سجّل سلفة لـ عامل تجربة ب 2,000') && l.txt.includes('بعد القفل'))), true);
+    await A.click('#wsX');
+    /* الجمعة في الأسبوع المقفول التاني: بتفتح كارت فرق الجمعة في الأسبوع الحالي */
+    await A.evaluate(() => nav('w/2026-10-22', true));
+    await A.click('#fri button[data-v=work]'); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(150);
+    eq('تغيير الجمعة في أسبوع مقفول بيعيد حسابه (جمعة شغل بقت في اللقطة)', await A.evaluate(() => [idx().lk.get('2026-10-22').snap.fri, Object.values(idx().lk.get('2026-10-22').snap.rows).some(r => r.fridayPay > 0)]), ['work', true]);
+    await A.evaluate(() => nav('w', true));
+    eq('كارت فرق الجمعة ظهر في الأسبوع الحالي', (await A.textContent('#main')).includes('جمعة 23') || (await A.textContent('#main')).includes('اتدفعت مع الخميس اللي فات'), true);
+    const aId = await A.evaluate(() => [...idx().W.values()].find(w => w.name === 'عامل تجربة أ').id);
+    await A.click(`#main .ub button[data-fd="${aId}"][data-u="0"]`); await A.waitForTimeout(150);
+    eq('علّمنا "أ" مجاش: أجر جمعته (300) اتخصم من الأسبوع الحالي (مرتبه يوم واحد بس فاتحول مرحّل 50)', await A.evaluate(id => { const r = calcWeek(idx(), '2026-10-29').rows[id]; return [r.prevFridayDelta, r.net, r.carryOut]; }, aId), [30000, 0, 5000]);
+    eq('السجل: مجاش', await A.evaluate(() => idx().log.some(l => l.txt.includes('"مجاش"') && l.txt.includes('هيتخصم 300'))), true);
+
+    console.log('\n١٠) السلف القديمة من شاشة العمال');
+    await A.evaluate(id => { ['2026-10-25', '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29'].forEach(d => put('day', {id: 'd_' + id + '_' + d, w: id, date: d, u: 1, rate: 25000})); commit(); }, aId);
+    await A.evaluate(id => oldModal(id), aId);
+    await A.click('#olAdd'); await A.fill('#oeA', '1000'); await A.click('#oeOk'); await A.waitForSelector('#olMode');
+    await A.click('#olMode button[data-v=fixed]'); await A.fill('#olA', '100'); await A.click('#olSave'); await A.waitForTimeout(150);
+    eq('سلفة قديمة 1,000 وقاعدة 100 كل أسبوع', await A.evaluate(id => [oldLeftNow(id) > 0, idx().rule.get(id).mode, idx().rule.get(id).amt, idx().old.length], aId), [true, 'fixed', 10000, 1]);
+    await A.evaluate(() => { closeModal(); nav('w', true); });
+    const od1 = await A.evaluate(id => { const r = calcWeek(idx(), '2026-10-29').rows[id]; return [r.oldBefore, r.oldApplied, r.oldLeft]; }, aId);
+    eq('الأسبوع الحالي: اتخصم 100 والباقي 900', od1, [100000, 10000, 90000]);
+    await A.click(`#main tr[data-w="${aId}"]`); await A.click('#wsOld'); await A.click('#wdSkip'); await A.waitForSelector('#modal .days');
+    eq('متخصمش الأسبوع ده: الخصم صفر والباقي زي ما هو', await A.evaluate(id => { const r = calcWeek(idx(), '2026-10-29').rows[id]; return [r.oldApplied, r.oldLeft, r.oldSkip]; }, aId), [0, 100000, true]);
+    await A.click('#wsOld'); await A.fill('#wdA', '250'); await A.click('#wdAmt'); await A.waitForSelector('#modal .days');
+    eq('رقم تاني للأسبوع ده: 250', await A.evaluate(id => calcWeek(idx(), '2026-10-29').rows[id].oldApplied, aId), 25000);
+    await A.click('#wsOld'); await A.click('#wdRule'); await A.waitForSelector('#modal .days');
+    eq('زي القاعدة: رجع 100', await A.evaluate(id => calcWeek(idx(), '2026-10-29').rows[id].oldApplied, aId), 10000);
+    await A.click('#wsX');
+    eq('السجل بيقول مين غيّر طريقة الخصم', await A.evaluate(() => idx().log.some(l => l.txt.includes('غيّر طريقة خصم السلف القديمة') && l.txt.includes('مبلغ ثابت 100'))), true);
+    await settle_(A); await settle_(B);
+    eq('الشريك شايف السلف القديمة والقاعدة', await B.evaluate(id => [idx().old.length, idx().rule.get(id).mode], aId), [1, 'fixed']);
+
+    console.log('\n١١) الأرشيف: كل 4 أسابيع شهر');
+    eq('المجموعات: 5 أسابيع = شهر كامل + شهر لسه', await A.evaluate(() => { const mk = (t, n) => ({thu: t, snap: {total: n}}); const g = archiveGroups(['2026-10-15', '2026-10-22', '2026-10-29', '2026-11-05', '2026-11-12'].map((t, i) => mk(t, (i + 1) * 100))); return g.map(x => [x.n, x.weeks.length, x.total, monthName(x.n)]); }), [[1, 4, 1000, 'الشهر الأول'], [2, 1, 500, 'الشهر التاني']]);
+    await A.evaluate(() => nav('a', true));
+    eq('شاشة الأرشيف: الشهر الأول (لسه) فيه الأسبوعين المقفولين بإجماليهم', await A.evaluate(() => { const t = $('#main').textContent; return [t.includes('الشهر الأول'), t.includes('(لسه)'), $$('#main .row[data-thu]').length]; }), [true, true, 2]);
+    await settle_(A);
 
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }

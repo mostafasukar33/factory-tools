@@ -149,8 +149,14 @@ const MO = !!process.env.MARKET_ONLY;
 
     await A.setViewportSize({width: 1300, height: 800}); await A.waitForTimeout(200);
     eq('اللاب توب: الحساب مفتوح جنب القايمة', await A.evaluate(() => [$('main').classList.contains('split'), getComputedStyle($('#p-home')).display, !!$('#hList .pt.cur'), getComputedStyle($('nav')).width]), [true, 'flex', true, '176px']);
+    /* زرار "احفظ نسخة" في القايمة الجانبية: بيختار المكان ويكتب ملف متشفر بكل البيانات */
+    await A.evaluate(() => { window.__bkFile = null; window.showSaveFilePicker = async o => ({createWritable: async () => { let d = ''; return {write: async b => { d += await b.text(); }, close: async () => { window.__bkFile = {name: o.suggestedName, d}; }}; }}); });
+    await A.click('#bBk'); await A.waitForFunction(() => window.__bkFile, null, {timeout: 10000});
+    eq('اللاب: احفظ نسخة بيكتب ملف متشفر فيه كل الحسابات', await A.evaluate(async () => { const f = window.__bkFile, box = JSON.parse(f.d), d = await unseal(cryptoKey, box); return [f.name.startsWith('flash-on-accounts-'), box.app, f.d.includes('عميل تجربة'), d.entries.length === db.entries.length, d.parties.length === db.parties.length]; }), [true, 'flash-on-accounts-backup', false, true, true]);
+    eq('زرار احفظ نسخة ظاهر على اللاب', await A.evaluate(() => getComputedStyle($('#bBk')).display !== 'none'), true);
     await A.setViewportSize({width: 400, height: 860}); await A.waitForTimeout(200);
     eq('الموبايل: صفحة واحدة', await A.evaluate(() => [$('main').classList.contains('split'), getComputedStyle($('#p-home')).display]), [false, 'none']);
+    eq('زرار احفظ نسخة مخفي على الموبايل', await A.evaluate(() => getComputedStyle($('#bBk')).display), 'none');
 
     console.log('\n٥) الخزنة');
     await A.click('nav button[data-go=cash]'); await A.click('#cExp'); await A.fill('#txA', '30'); await A.click('#txOk'); await closed(A);

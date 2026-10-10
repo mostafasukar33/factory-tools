@@ -945,6 +945,19 @@ html[data-theme=dark]{--sb-bg:#231e13;--sb-bg2:#1b170f;--sb-tx:#EDE4CC;--sb-mut:
   main.split #p-party{padding:0 40px 0 28px}
   main:not(.split){max-width:1600px}
 }
+/* نقل فواتير الحساب الفرعي للأساسي (الهاشمية قنا) */
+.fwbar{border:1.5px solid var(--line);border-inline-start:5px solid var(--gold);background:var(--gold-l);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-weight:700;font-size:14.5px}
+.fwbar.done{border-inline-start-color:var(--green)}
+.fwbar .fwt2{display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;font-size:14px}
+.fwbar .fwt2 .ok{color:var(--green)}.fwbar .fwt2 .no{color:#8A4B00}.fwbar .fwt2 .chg{color:var(--red)}
+.fwbar .fwt3{margin-top:6px;font-size:13px;color:var(--red)}.fwbar .fwt3 a{text-decoration:underline;cursor:pointer;margin-inline-start:6px}
+.fwbar .btn{margin-top:8px;min-height:42px;font-size:15px}
+.ldg td.l small.fwt{display:block;font-size:11.5px;font-weight:800}
+.ldg td.l small.fwt.ok{color:var(--green)}.ldg td.l small.fwt.no{color:#B26A00}.ldg td.l small.fwt.chg{color:var(--red)}.ldg td.l small.fwt.from{color:var(--blue)}
+.fwbox{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;border-radius:10px;padding:8px 12px;margin:0 0 10px;font-weight:800;font-size:14.5px;background:#FFF4E0;color:#8A4B00}
+.fwbox.ok{background:var(--green-l);color:var(--green)}.fwbox.chg{background:var(--red-l);color:var(--red)}.fwbox.from{background:#EAF0F3;color:var(--blue)}
+.fwbox small{font-weight:600}.fwbox .btn{width:auto;min-height:36px}
+html[data-theme=dark] .fwbox:not(.ok):not(.chg){background:#33281a;color:#F0B46A}
 </style>
 </head>
 <body>
@@ -1527,6 +1540,7 @@ function partyModal(p) {
     <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="pmNote" value="${esc(p ? p.note || '' : '')}"></div>
     <div class="chkrow"><input type="checkbox" id="pmNoTot" ${p && p.noTot ? 'checked' : ''}><label for="pmNoTot">حساب فرعي: ميدخلش في أي إجماليات</label></div>
     <p class="hint" style="margin:-4px 0 10px">زي فاتورة فرع محسوبة أصلاً في حساب الشركة الأساسية. الحساب بيفضل موجود بكشفه، بس رصيده مش بيتجمع مع ليا وعليا.</p>
+    ${p && isFwdSrc(p) ? `<div class="fld"><label>فواتيره بتتنقل لحساب</label><select class="inp" id="pmFwd">${liveParties().filter(x => x.id !== p.id && x.sec !== 'sup').sort((a, b) => a.name.localeCompare(b.name, 'ar')).map(x => `<option value="${esc(x.id)}" ${fwdMain(p) && fwdMain(p).id === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` : ''}
     ${isNew ? `<div class="card" style="background:var(--gold-l);margin:4px 0 12px">
       <label>رصيد أول المدة (لو ليه رصيد قديم، وإلا سيبه فاضي)</label>
       <div class="seg dir" id="pmDir"><button type="button" data-v="dr" class="on">عليه (فلوس ليا عنده)</button><button type="button" data-v="cr">ليه (فلوس عليا له)</button></div>
@@ -1554,7 +1568,7 @@ function partyModal(p) {
       if (amt > 0) addEntry({party: np.id, kind: 'open', date, desc: 'رصيد أول المدة', dr: dir === 'dr' ? amt : 0, cr: dir === 'cr' ? amt : 0});
       saveDB(); closeModal(); toast('اتضاف الحساب ✔'); go('p/' + np.id);
     } else {
-      Object.assign(p, {sec, name, phone, note, noTot}); touch(p); saveDB(); closeModal(); route(); toast('اتحفظ ✔');
+      Object.assign(p, {sec, name, phone, note, noTot}); if ($('#pmFwd') && $('#pmFwd').value) p.fwd = $('#pmFwd').value; touch(p); saveDB(); closeModal(); route(); toast('اتحفظ ✔');
     }
   };
   if (!isNew) $('#pmDel').onclick = async () => {
@@ -1616,6 +1630,60 @@ function docDesc(e) {
   return e.desc;
 }
 
+/* ====== نقل فواتير حساب فرعي لحسابه الأساسي (بطلب صاحب المشروع: "الهاشمية قنا" ← "الهاشمية" بس) ======
+   الفاتورة بتفضل في الحساب الفرعي (اللي برا الإجماليات)، ونسخة منها بتتسجل في الأساسي بـ id ثابت e_fw_<id الفاتورة>،
+   فمفيش تكرار بين الأجهزة. الحالة بتتحسب: مفيش نسخة = لسه، النسخة زي الأصل = اتنقلت، الأصل اتعدل بعدها = محتاجة تتنقل تاني.
+   الحساب بيتعرف بالاسم (هاشمي + قنا) أو بالإعداد p.fwd من "تعديل البيانات" (بيظهر لنفس الحساب بس). */
+const isFwdSrc = p => !!p && !p.del && p.sec !== 'sup' && (!!p.fwd || (/هاشمي/.test(norm(p.name)) && /قنا/.test(norm(p.name))));
+function fwdMain(p) {
+  if (!isFwdSrc(p)) return null;
+  if (p.fwd) { const m = P.get(p.fwd); return m && !m.del && m.id !== p.id ? m : null; }
+  const c = liveParties().filter(x => x.id !== p.id && x.sec !== 'sup' && /هاشمي/.test(norm(x.name)) && !/قنا/.test(norm(x.name)));
+  c.sort((a, b) => (!!a.noTot - !!b.noTot) || a.name.length - b.name.length);
+  return c[0] || null;
+}
+const fwSig = e => JSON.stringify([e.date, e.lines || [], e.disc || 0]);
+function fwState(e) { const c = E.get('e_fw_' + e.id); return !c || c.del ? 'no' : c.fwSig === fwSig(e) ? 'ok' : 'chg'; }
+const FW_TAG = {ok: '✓ اتنقلت للحساب الأساسي', no: '⏳ لسه متنقلتش', chg: '⚠ اتعدلت بعد النقل — انقلها تاني'};
+const FW_SHORT = {ok: '✓ اتنقلت', no: '⏳ متنقلتش', chg: '⚠ اتعدلت'};   // في الجدول (علشان الموبايل)
+function fwMove(p, e) {
+  const m = fwdMain(p);
+  if (!m) { toast('مش لاقي الحساب الأساسي. اختاره من "تعديل البيانات".', 5000); return false; }
+  if (isLocked(e.date)) { lockToast(); return false; }
+  const data = {party: m.id, kind: 'inv', date: e.date, lines: JSON.parse(JSON.stringify(e.lines || [])), disc: e.disc || 0, note: e.note || '', fwFrom: e.id, fwSig: fwSig(e)};
+  let c = E.get('e_fw_' + e.id);
+  if (c) { if (!c.del) (c.hist = c.hist || []).push(snapshot(c)); Object.assign(c, data, {del: false}); delete c.delAt; }
+  else c = addEntry(Object.assign({id: 'e_fw_' + e.id}, data));
+  applyAmounts(c); touch(c);
+  return true;
+}
+/* نسخ في الأساسي فاتورتها الأصلية اتلغت من الفرعي */
+const fwOrphans = p => db.entries.filter(c => c.fwFrom && !c.del && (E.get(c.fwFrom) || {}).party === p.id && E.get(c.fwFrom).del);
+function fwBar(p) {
+  const m = fwdMain(p), inv = partyEntries(p.id).filter(e => e.kind === 'inv');
+  const st = {ok: 0, no: 0, chg: 0}; inv.forEach(e => st[fwState(e)]++);
+  const orph = fwOrphans(p).length, todo = st.no + st.chg;
+  return `<div class="fwbar ${todo || orph ? 'todo' : 'done'}"><div class="fwt1">📤 فواتير الحساب ده بتتنقل لحساب ${m ? `<b>${esc(m.name)}</b>` : '<b style="color:var(--red)">(مش لاقي الحساب الأساسي — اختاره من تعديل البيانات)</b>'}</div>
+    <div class="fwt2"><span class="ok">✓ اتنقلت: <b>${st.ok}</b></span><span class="no">⏳ لسه: <b>${st.no}</b></span>${st.chg ? `<span class="chg">⚠ اتعدلت بعد النقل: <b>${st.chg}</b></span>` : ''}</div>
+    ${!p.noTot ? '<div class="fwt3">⚠ الحساب ده لسه داخل الإجماليات، فالفواتير المنقولة هتتحسب مرتين. علّم "حساب فرعي" من تعديل البيانات.</div>' : ''}
+    ${orph ? `<div class="fwt3">⚠ ${orph} ${orph === 1 ? 'فاتورة اتلغت' : 'فواتير اتلغت'} هنا وهي لسه في الحساب الأساسي. <a id="fwOrph">شيلها من الأساسي</a></div>` : ''}
+    ${m && todo ? `<button class="btn gold" id="fwAll" type="button">📤 انقل اللي لسه للحساب الأساسي (${todo})</button>` : ''}</div>`;
+}
+function fwBind(p) {
+  if ($('#fwAll')) $('#fwAll').onclick = async () => {
+    const list = partyEntries(p.id).filter(e => e.kind === 'inv' && fwState(e) !== 'ok'), m = fwdMain(p);
+    if (!(await confirmBox(`تنقل ${list.length} ${list.length === 1 ? 'فاتورة' : 'فواتير'} (إجمالي ${fmtP(list.reduce((s, e) => s + docTotal(e), 0))}) لحساب "${m.name}"؟ الفواتير هتفضل هنا كمان بعلامة "اتنقلت".`, 'انقلها'))) return;
+    let n = 0; for (const e of list) if (fwMove(p, e)) n++;
+    saveDB(); route(); if (n) toast(`✔ اتنقلت ${n} ${n === 1 ? 'فاتورة' : 'فواتير'} لحساب ${m.name}`);
+  };
+  if ($('#fwOrph')) $('#fwOrph').onclick = async () => {
+    const L = fwOrphans(p);
+    if (L.some(c => isLocked(c.date))) return lockToast();
+    if (!(await confirmBox(`تلغي ${L.length} ${L.length === 1 ? 'فاتورة' : 'فواتير'} من الحساب الأساسي (اللي اتلغت هنا)؟`, 'الغيها', true))) return;
+    L.forEach(c => { c.del = true; c.delAt = Date.now(); touch(c); }); saveDB(); route(); toast('اتلغت من الحساب الأساسي');
+  };
+}
+
 let showX = false;
 function addEntry(o) {
   const now = Date.now();
@@ -1641,6 +1709,7 @@ function renderParty(id) {
       ${limitClass(p, b) ? `<div class="limw ${limitClass(p, b)}">${limitClass(p, b) === 'lim-r' ? '🔴 رصيده فوق الحد الأحمر' : '🟡 رصيده فوق الحد الأصفر'} (${fmtP(limitClass(p, b) === 'lim-r' ? limitsOf(p).r : limitsOf(p).y)})</div>` : ''}
       <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}" data-ck="pb:${esc(id)}" data-cnt="${Math.abs(b)}">${fmtP(Math.abs(b))} <small style="font-size:14px;color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
+    ${isFwdSrc(p) ? fwBar(p) : ''}
     <div class="acts">
       <button class="btn" id="ppDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button>
       <button class="btn green" id="ppPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button>
@@ -1663,6 +1732,7 @@ function renderParty(id) {
   $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => openEntry(p, E.get(el.dataset.id)));
   if ($('#ppEnd')) $('#ppEnd').onclick = () => jumpTo(true);
   if ($('#ldgOld')) $('#ldgOld').onclick = () => { ldgAll.add(id); renderParty(id); };
+  if (isFwdSrc(p)) fwBind(p);
   runCounters($('#p-party'));
 }
 function entryCard(e, runB) {
@@ -1742,6 +1812,8 @@ function docModal(p, kind, e, opts = {}) {
   const lastDoc = isNew ? db.entries.filter(x => x.party === p.id && x.kind === kind && !x.del && x.lines && x.lines.length).sort(entCmp).pop() : null;
   modal(`<h3>${isNew ? ttl : 'تعديل ' + esc(docTitle(e))} — ${esc(p.name)}</h3>
     ${opts.mk ? `<div class="sync" style="margin:0 0 10px;display:block">📥 فاتورة من شريكك في السوق — إجمالي: <b class="money">${fmtP(opts.mk.amt)}</b><br><small>اكتب البنود (كمية وسعر) والإجمالي لازم يطابق ده.</small><div id="dcMk" style="margin-top:4px;font-weight:800"></div></div>` : ''}
+    ${e && kind === 'inv' && isFwdSrc(p) ? `<div class="fwbox ${fwState(e)}"><span>${FW_TAG[fwState(e)]}${fwState(e) !== 'no' && fwdMain(p) ? ` <small>(في حساب ${esc(fwdMain(p).name)})</small>` : ''}</span>${fwState(e) !== 'ok' && fwdMain(p) ? `<button class="btn gold sm" id="fwOne" type="button">📤 ${fwState(e) === 'chg' ? 'انقل التعديل' : 'انقلها للحساب الأساسي'}</button>` : ''}</div>` : ''}
+    ${e && e.fwFrom ? `<div class="fwbox from"><span>↩ الفاتورة دي منقولة من حساب ${esc((P.get((E.get(e.fwFrom) || {}).party) || {}).name || 'فرعي')}. التعديل يكون هناك وبعدين "انقل التعديل".</span></div>` : ''}
     ${ret ? `<p class="hint" style="margin:-6px 0 10px">البضاعة اللي ${kind === 'rinv' ? 'رجعت من العميل' : 'رجعتها للمورد'}. قيمتها ${kind === 'rinv' ? 'بتنزل من اللي عليه' : 'بتنزل من اللي ليه'}.</p>` : ''}
     <div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${e ? e.date : opts.mk ? isoOf(opts.mk.ts) : todayISO()}"></div>
     <datalist id="dlItems">${[...book.values()].map(x => `<option value="${esc(x.name)}">`).join('')}</datalist>
@@ -1761,6 +1833,7 @@ function docModal(p, kind, e, opts = {}) {
       <div class="dtot"><span>${ret ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}</span><b id="dcTot">0</b></div>
       ${!isNew ? `<div class="msec">${kind === 'inv' ? '<button class="btn line sm" id="dcDlv" type="button">🚚 إذن تسليم</button>' : ''}<button class="btn red sm" id="dcDel" type="button">${ret ? 'إلغاء المرتجع' : 'إلغاء الفاتورة'}</button></div>` : ''}
       <div class="mrow"><button class="btn gold" id="dcOk" type="button">${isNew ? 'حفظ الفاتورة' : 'حفظ التعديل'}</button><button class="btn line" id="dcX" type="button">رجوع</button></div></div>`, true);
+  if ($('#fwOne')) $('#fwOne').onclick = () => { if (fwMove(p, e)) { saveDB(); closeModal(); route(); toast(`✔ اتنقلت لحساب ${fwdMain(p).name}`); } };
   const readLines = () => $$('#dcLines .li').map(el => ({name: el.querySelector('[data-f=name]').value.trim().replace(/\s+/g, ' '), unit: el.querySelector('[data-f=unit]').value, qty: el.querySelector('[data-f=qty]').value, price: el.querySelector('[data-f=price]').value}));
   const calc = () => {
     let t = 0;
@@ -2000,12 +2073,13 @@ const LDG_MAX = 300, LDG_SHOW = 200, ldgAll = new Set();
 function ledgerTable(p) {
   const s = stmtData(p.id, '', '');
   const cut = s.rows.length > LDG_MAX && !ldgAll.has(p.id) ? s.rows.length - LDG_SHOW : 0;
+  const fw = isFwdSrc(p), fwTag = r => !r.first ? '' : fw && r.e.kind === 'inv' ? `<small class="fwt ${fwState(r.e)}">${FW_SHORT[fwState(r.e)]}</small>` : r.e.fwFrom ? `<small class="fwt from">↩ من ${esc((P.get((E.get(r.e.fwFrom) || {}).party) || {}).name || 'الحساب الفرعي')}</small>` : '';
   let yPrev = matchMedia('(min-width:1000px)').matches ? '' : null;   // سطر السنة بيظهر بس لما السنة تتغير، على اللاب بس (في الموبايل مبيترسمش علشان ألوان الصفوف متتلخبطش)
   if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده.<br><small style="color:#9a937f">ابدأ بفاتورة أو دفعة من الأزرار اللي فوق.</small></div>';
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
     ${cut ? `<tr class="more"><td colspan="7"><a id="ldgOld">↑ عرض الحركات الأقدم (${cut} سطر)</a></td></tr>` : ''}
-    ${(cut ? s.rows.slice(cut) : s.rows).map(r => (yPrev !== null && (r.date || '').slice(0, 4) !== yPrev ? `<tr class="yr"><td colspan="7">${yPrev = (r.date || '').slice(0, 4)}</td></tr>` : '') + `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
+    ${(cut ? s.rows.slice(cut) : s.rows).map(r => (yPrev !== null && (r.date || '').slice(0, 4) !== yPrev ? `<tr class="yr"><td colspan="7">${yPrev = (r.date || '').slice(0, 4)}</td></tr>` : '') + `<tr data-id="${esc(r.e.id)}" class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${fwTag(r)}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b data-ck="pe:${esc(p.id)}" data-cnt="${s.close * s.sg}">${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>
     ${ledgerHintOnce()}`;

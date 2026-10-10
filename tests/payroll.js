@@ -104,6 +104,15 @@ eq('رقم تاني للأسبوع ده بس', [od(fx.concat([wd('amt', 25000)])
 eq('رقم تاني أكبر من الباقي: بيتقص للباقي', od(fx.concat([wd('amt', 999999)]), '2026-10-15'), [100000, 0, 50000]);
 eq('السلف القديمة بتبدأ من eff: أسبوع قبلها مفيهوش خصم', od(o0.concat([ruleOf('auto')]).map(x => x.id === 'o1' ? Object.assign({}, x, {eff: '2026-10-22'}) : x), '2026-10-15'), [0, 0, 150000]);
 
+/* ---- سلفة جديدة + خصم السلف القديمة، وسلفة على أقساط ---- */
+console.log('\n١-د) السلف الجديدة والقديمة مع بعض');
+const mixed = o0.concat([ruleOf('fixed', 25000), {id: 'a5', k: 'adv', w: 'w1', date: '2026-10-13', amt: 30000}]);
+eq('سلفة جديدة 300 + خصم قديم 250 = 550 من مرتب الأسبوع', (r => [r.advances, r.oldApplied, r.net, r.oldLeft])(rowOf(mixed, '2026-10-15')), [30000, 25000, 95000, 75000]);
+const instR = o0.concat([ruleOf('fixed', 40000), {id: 'a6', k: 'adv', w: 'w1', date: '2026-10-13', amt: 100000, inst: true}]);
+eq('سلفة على أقساط: مبتنقّصش المرتب كله، بتتضاف للقديمة وتتخصم بالقسط', (r => [r.advances, r.instAdv, r.oldBefore, r.oldApplied, r.net, r.oldLeft])(rowOf(instR, '2026-10-15')), [0, 100000, 200000, 40000, 110000, 160000]);
+eq('والقسط بيكمل الأسابيع اللي بعده', [od(instR, '2026-10-22'), od(instR, '2026-10-29')], [[40000, 120000, 110000], [40000, 80000, 110000]]);
+eq('سلفة أقساط من غير قاعدة خصم: مفيش خصم والمبلغ فاضل عليه', (r => [r.oldApplied, r.oldLeft, r.net])(rowOf(o0.slice(0, o0.length - 1).concat([{id: 'a7', k: 'adv', w: 'w1', date: '2026-10-13', amt: 100000, inst: true}]), '2026-10-15')), [0, 100000, 150000]);
+
 /* ====================== 2 و 3) الشيت والتطبيق ====================== */
 function serve() {
   const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json'};
@@ -461,6 +470,18 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await Z.click('#kNew'); await Z.waitForSelector('#wkN'); await Z.click('#wkX'); await Z.waitForTimeout(300);
     await Z.goBack(); await Z.waitForTimeout(150);
     eq('قفل النافذة بزرارها مبيسيبش خانة زيادة: الرجوع بيروح للصفحة اللي قبلها', await Z.evaluate(() => scr.v), 't');
+
+    console.log('\n١٦) سلفة على أقساط من الشاشة');
+    await A.evaluate(id => { closeModal(); nav('w', true); advModal(null, '2026-10-24', id); }, aId);
+    await A.waitForSelector('#avI'); await A.fill('#avA', '500');
+    eq('الشرح وهو بيكتب: كلها الأسبوع ده مع خصم القديم', (await A.textContent('#avIH')).includes('هتتخصم كلها من مرتب الأسبوع ده'), true);
+    await A.click('#avI button[data-v="1"]');
+    eq('على أقساط: بيقول بتتضاف للقديمة', (await A.textContent('#avIH')).includes('بتتضاف على السلف القديمة'), true);
+    const oldB = await A.evaluate(id => calcWeek(idx(), '2026-10-29').rows[id] ? calcWeek(idx(), '2026-10-29').rows[id].oldBefore : 0, aId);
+    await A.click('#avOk'); await A.waitForTimeout(250);
+    eq('اتسجلت على أقساط واتضافت للسلف القديمة (500 زيادة)', await A.evaluate(id => { const a = idx().adv.find(x => x.inst); const r = calcWeek(idx(), '2026-10-29').rows[id]; return [!!a, a.amt, r.instAdv, r.advances]; }, aId), [true, 50000, 50000, 0]);
+    eq('الباقي على العامل زاد 500', (await A.evaluate(id => calcWeek(idx(), '2026-10-29').rows[id].oldBefore, aId)) - oldB, 50000);
+    eq('في المصاريف السلفة دي بتنزل من العهدة مرة واحدة بس (مش القسط)', await A.evaluate(() => { nav('e', true); return [...document.querySelectorAll('#main .row')].filter(x => x.textContent.includes('على أقساط')).length; }), 1);
 
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }

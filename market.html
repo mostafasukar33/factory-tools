@@ -66,8 +66,8 @@ main.tabbed{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 .invln{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:7px;border-top:1px dashed var(--row);font-size:13px;font-weight:700;color:var(--sub)}.invln b{font-size:14.5px;color:var(--ink)}
 .cap{margin-top:9px;border-top:1px solid var(--row);padding-top:7px;font-size:12px;color:var(--sub);font-weight:700}
 .pn div{text-align:center;border-inline-start:1px solid var(--row);padding:0 2px}.pn div:first-child{border-inline-start:0}
-.pn span{display:block;font-size:11.5px;color:var(--sub);font-weight:700;line-height:1.3;min-height:30px;display:flex;align-items:flex-end;justify-content:center}
-.pn b{display:block;font-size:15.5px;font-weight:800}.pn b.neg{color:var(--red)}
+.pn span{display:block;font-size:13px;color:var(--sub);font-weight:700;line-height:1.3;min-height:30px;display:flex;align-items:flex-end;justify-content:center}
+.pn b{display:block;font-size:17px;font-weight:800;letter-spacing:.2px}.pn b.neg{color:var(--red)}
 .qa{display:grid;grid-template-columns:1.45fr .8fr 1.25fr;gap:8px;margin-top:10px}
 .qb{height:44px;border:1px solid var(--line);background:var(--card);border-radius:11px;font-weight:700;font-size:14.5px;padding:0 4px;white-space:nowrap;cursor:pointer;box-shadow:var(--shadow)}
 .qb.g{background:var(--green);border-color:var(--green);color:#fff}
@@ -84,12 +84,12 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:#ECE8DC}
 .row .a{text-align:left;flex:none}
 .row .a .money{display:block;font-size:16px}
 .ctb{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
-.ctb th{background:var(--row);color:var(--sub);font-size:12px;font-weight:800;padding:6px 10px;text-align:right}
+.ctb th{background:var(--row);color:var(--sub);font-size:13.5px;font-weight:800;padding:8px 10px;text-align:right}
 .ctb th:last-child,.ctb td.bl{text-align:left}
-.ctb td{padding:9px 10px;border-top:1px solid var(--row);font-size:15px;font-weight:700;cursor:pointer}
-.ctb td.no{width:34px;text-align:center;color:var(--sub);font-size:12.5px;font-variant-numeric:tabular-nums;border-inline-end:1px solid var(--row)}
-.ctb th:first-child{text-align:center;width:34px}
-.ctb td.bl{white-space:nowrap;font-size:15.5px}.ctb td.bl.z{color:var(--sub);font-weight:600}
+.ctb td{padding:12px 10px;border-top:1px solid var(--row);font-size:18px;font-weight:700;line-height:1.35;cursor:pointer}
+.ctb td.no{width:36px;text-align:center;color:var(--sub);font-size:14px;font-variant-numeric:tabular-nums;border-inline-end:1px solid var(--row)}
+.ctb th:first-child{text-align:center;width:36px}
+.ctb td.bl{white-space:nowrap;font-size:19px;font-weight:800;letter-spacing:.2px}.ctb td.bl.z{color:var(--sub);font-weight:600}
 .ctb tr:active td{background:var(--gold-l)}
 .ctb tr.l-y td{background:#FFF8DC}.ctb tr.l-r td{background:#FDECEA}
 .ctb tr.l-y td.no,.ctb tr.l-y td{border-top-color:#E9C46A55}.ctb tr.l-r td{border-top-color:#F0B9B3}
@@ -157,20 +157,22 @@ html[data-theme=dark] .chk{color:#0b1a10}
 .wk{margin-bottom:12px}
 .wk>.panel{border-radius:14px 14px 0 0;border-bottom:0}
 .wk>.panel .t{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
-.wk>.panel .t b{font-size:15px}.wk>.panel .t span{font-size:12px;color:var(--sub);font-weight:600}
-.tbl{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:0 0 14px 14px;overflow:hidden;box-shadow:var(--shadow)}
-.tbl th{font-size:11.5px;color:var(--sub);font-weight:700;padding:6px 3px;background:var(--gold-l);line-height:1.25}
-.tbl td{padding:8px 3px;border-top:1px solid var(--row);text-align:center;font-weight:700;direction:ltr;font-variant-numeric:tabular-nums}
-.tbl td:first-child{direction:rtl;text-align:right;padding-inline-start:12px}
-.tbl td small{display:block;color:var(--sub);font-size:11px;font-weight:600}
+.wk>.panel .t b{font-size:17px}.wk>.panel .t span{font-size:13.5px;color:var(--sub);font-weight:600}
+.tbl{width:100%;border-collapse:collapse;font-size:16.5px;table-layout:fixed;background:var(--card);border:1px solid var(--line);border-radius:0 0 14px 14px;overflow:hidden;box-shadow:var(--shadow)}
+.tbl th{font-size:13px;color:var(--sub);font-weight:800;padding:8px 3px;background:var(--gold-l);line-height:1.25;border-inline-start:1px solid var(--row)}.tbl th:first-child{border-inline-start:0;width:24%}
+.tbl td{padding:12px 3px;border-top:1px solid var(--row);border-inline-start:1px solid var(--row);text-align:center;font-weight:800;direction:ltr;font-variant-numeric:tabular-nums;white-space:nowrap}.tbl td:first-child{border-inline-start:0}.tbl tfoot td{background:var(--gold-l);border-top:2px solid var(--gold);font-size:16.5px}
+.tbl td:first-child{direction:rtl;text-align:right;padding-inline-start:10px;font-size:15.5px}
+.tbl td small{display:block;color:var(--sub);font-size:12.5px;font-weight:600;margin-top:1px}
 .tbl tr[data-d]{cursor:pointer}.tbl tr[data-d]:active td{background:var(--gold-l)}
 .tbl .neg{color:var(--red)}.tbl .z{color:var(--sub);font-weight:500}
 .dnav{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 10px}
 .dnav button{width:42px;height:42px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:22px;font-weight:800;line-height:1;cursor:pointer;color:var(--ink);padding:0}
 .dnav button:disabled{opacity:.35}
 .dnav span{flex:1;text-align:center;border:1px solid var(--gold);background:var(--gold-l);border-radius:10px;padding:6px 10px;font-weight:800;font-size:15px;color:var(--gold-d)}
-.pick{position:relative;display:block;text-align:center;border:1px solid var(--field);background:var(--card);border-radius:10px;height:42px;line-height:40px;font-weight:700;font-size:14.5px;margin-bottom:10px;cursor:pointer;overflow:hidden}
+.pick{position:relative;display:block;text-align:center;border:1px solid var(--field);background:var(--card);border-radius:10px;height:46px;line-height:44px;font-weight:700;font-size:16px;margin-bottom:10px;cursor:pointer;overflow:hidden}
 .pick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.pick.dt{margin:10px 0 0;border-color:var(--gold);background:var(--gold-l);color:var(--gold-d);font-weight:800}
+.pick.dt b{color:var(--ink)}
 .more{display:block;width:100%;border:1px dashed var(--field);background:none;border-radius:12px;height:44px;font-weight:700;color:var(--gold-d);cursor:pointer;font-size:14.5px}
 /* إعدادات */
 .card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow)}
@@ -239,6 +241,14 @@ const RLM = '\u200F';
 const dispDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}${RLM}/${RLM}${m}${RLM}/${RLM}${y}` : ''; };
 const dowOf = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d, 12).getDay(); };
 const addDays = (iso, n) => { const [y, m, d] = iso.split('-').map(Number); return dayOf(new Date(y, m - 1, d + n, 12).getTime()); };
+const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+const shortD = iso => { const [, m, d] = iso.split('-'); return `${+d}${RLM}/${RLM}${+m}`; };      // يوم/شهر
+const monLabel = ym => `${MONTHS[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
+/* التاريخ المختار: نفس ساعة الحركة (أو دلوقتي) على اليوم ده */
+const tsOnDay = (iso, base) => { if (iso === today() && !base) return Date.now(); const [y, m, d] = iso.split('-').map(Number), b = new Date(base || Date.now()); return new Date(y, m - 1, d, b.getHours(), b.getMinutes(), b.getSeconds()).getTime(); };
+const datePick = (id, iso) => `<label class="pick dt" for="${id}">📅 التاريخ: <b id="${id}T">${dispDate(iso)}</b>${iso === today() ? ' · النهارده' : ''}<input type="date" id="${id}" value="${iso}" max="${today()}"></label>`;
+const bindDate = id => { const i = $('#' + id); i.addEventListener('change', () => { if (!isDay(i.value)) i.value = today(); $('#' + id + 'T').textContent = dispDate(i.value); }); };
+const dateOf = id => { const v = $('#' + id).value; return isDay(v) && v <= today() ? v : today(); };
 const fmtN = p => (p < 0 ? '-' : '') + fmt(p);
 
 /* ====================== التخزين على الموبايل ====================== */
@@ -390,8 +400,8 @@ const IC = {
   s: SVG('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>')
 };
 const TABS = [['home', 'الرئيسية'], ['c', 'العملاء'], ['a', 'الأرشيف'], ['s', 'الإعدادات']];
-const TAB_OF = {home: 'home', c: 'c', a: 'a', day: 'a', s: 's'};
-const TITLE = {home: 'حركة السوق', c: 'العملاء', a: 'الأرشيف', day: 'الأرشيف', s: 'الإعدادات', pay: 'دفعة', spend: 'صرفت', ok: ''};
+const TAB_OF = {home: 'home', c: 'c', a: 'a', day: 'a', mon: 'a', s: 's'};
+const TITLE = {home: 'حركة السوق', c: 'العملاء', a: 'الأرشيف', day: 'الأرشيف', mon: 'الأرشيف', s: 'الإعدادات', pay: 'دفعة', spend: 'صرفت', ok: ''};
 let scr = {v: 'home'};
 function dotHtml() {
   if (!S.u) return '';
@@ -426,13 +436,13 @@ const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 function route() {
   closeModal();
   const h = decodeURIComponent(location.hash.slice(1)), [a, b] = h.split('/');
-  scr = a === 'p' && b ? {v: 'pay', cid: b} : a === 'ok' && b && S.ops[b] ? {v: 'ok', op: b} : a === 'x' ? {v: 'spend'} : a === 'c' ? {v: 'c'} : a === 's' ? {v: 's'} : a === 'a' ? (isDay(b) ? {v: 'day', day: b} : {v: 'a'}) : {v: 'home'};
+  scr = a === 'p' && b ? {v: 'pay', cid: b} : a === 'ok' && b && S.ops[b] ? {v: 'ok', op: b} : a === 'x' ? {v: 'spend'} : a === 'c' ? {v: 'c'} : a === 's' ? {v: 's'} : a === 'a' ? (isDay(b) ? {v: 'day', day: b} : /^\d{4}-\d{2}$/.test(b || '') ? {v: 'mon', mon: b} : {v: 'a'}) : {v: 'home'};
   render(); window.scrollTo(0, 0);
 }
 function render() {
   drawTop(); drawTabs();
   if (!S.u) { $('#main').innerHTML = `<div class="gate">${LOGO}<h2>حركة السوق</h2><p>التطبيق ده لسه متربطش.<br>اطلب من مصطفى يبعتلك الرابط على الواتساب وافتحه من هنا.</p></div>`; return; }
-  ({pay: drawPay, ok: drawSaved, spend: drawSpend, c: drawCustomers, a: drawArchive, day: drawDay, s: drawSettings}[scr.v] || drawHome)();
+  ({pay: drawPay, ok: drawSaved, spend: drawSpend, c: drawCustomers, a: drawArchive, mon: drawMonth, day: drawDay, s: drawSettings}[scr.v] || drawHome)();
 }
 /* لما يوصل جديد من الشيت: نرسم من غير ما نبوّظ اللي بيكتبه */
 function refresh() {
@@ -443,6 +453,7 @@ function refresh() {
   else if (scr.v === 'home') drawHome();
   else if (scr.v === 'a') drawArchive();
   else if (scr.v === 'day') drawDay();
+  else if (scr.v === 'mon') drawMonth();
 }
 
 /* ---------- حاجات مشتركة ---------- */
@@ -468,7 +479,7 @@ function drawHome() {
     <div class="qa"><button class="qb g" id="qPay" type="button">＋ دفعة أو فاتورة</button><button class="qb" id="qSp" type="button">صرفت</button><button class="qb" id="qHand" type="button">سلمت لمصطفى</button></div>
     <div class="lbl"><span>حركات النهارده</span><span>دوس على أي حركة تعدّلها</span></div>
     ${ops.length ? `<div class="list">${ops.map(o => opRow(o)).join('')}</div>` : '<div class="list"><div class="empty">لسه مسجلتش حاجة النهارده</div></div>'}
-    <button class="lnk" id="goArch" type="button">الأرشيف وحساب الأسابيع ›</button>`;
+    <button class="lnk" id="goArch" type="button">الأرشيف (أسابيع وشهور) ›</button>`;
   if ($('#bk')) $('#bk').onclick = () => editSheet(bk[0]);
   $('#qPay').onclick = () => { nav('c', true); setTimeout(() => $('#q') && $('#q').focus(), 120); };
   $('#qSp').onclick = () => { spTab = 'exp'; nav('x'); };
@@ -482,19 +493,14 @@ let custNo = new Map();
 const limOf = c => c.bal > 0 ? (c.lim || '') : '';
 const custTbl = list => `<table class="ctb"><thead><tr><th>#</th><th>العميل</th><th>الرصيد (عليه)</th></tr></thead><tbody>${list.map(c => `<tr class="${limOf(c) ? 'l-' + limOf(c) : ''}" data-c="${esc(c.id)}"><td class="no">${custNo.get(c.id) || ''}</td><td class="nm">${esc(c.name)}${c.nw ? '<span class="nw">جديد</span>' : ''}</td><td class="bl ${c.bal > 0 ? 'money' : 'z'}">${c.bal > 0 ? fmt(c.bal) : '—'}</td></tr>`).join('')}</tbody></table>`;
 function drawCustomers(q0) {
-  const cs = customers(), al = aliases();
+  const cs = customers();
   $('#main').innerHTML = `<div class="sr"><input class="search" id="q" type="search" placeholder="🔍 دوّر على عميل…" autocomplete="off" value="${esc(q0 || '')}"><button class="sbtn" id="bNew" type="button">＋ عميل جديد</button></div><div id="lists"></div>`;
   const draw = () => {
     const q = norm($('#q').value), all = [...cs.values()].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
     custNo = new Map(all.map((c, i) => [c.id, i + 1]));
     if (q) { const f = all.filter(c => norm(c.name).includes(q)); $('#lists').innerHTML = f.length ? `<div class="lbl"><span>نتيجة البحث</span></div>${custTbl(f)}` : '<div class="empty">مفيش عميل بالاسم ده.<br>لو جديد دوس "＋ عميل جديد".</div>'; }
     else {
-      /* آخر زيارات = آخر العملاء اللي اتسجلهم حاجة (آخر شهر) */
-      const seen = [], since = Date.now() - 30 * 86400000;
-      custAll().filter(o => o.ts >= since).sort((a, b) => b.ts - a.ts).forEach(o => { const id = al[o.cid] || o.cid; if (!seen.includes(id) && cs.has(id) && seen.length < 5) seen.push(id); });
-      const rest = all.filter(c => !seen.includes(c.id));
-      $('#lists').innerHTML = (seen.length ? `<div class="lbl"><span>آخر زيارات</span></div>${custTbl(seen.map(id => cs.get(id)))}` : '')
-        + `<div class="lbl"><span>كل العملاء</span><span>${all.length}</span></div>` + (rest.length ? `${custTbl(rest)}` : `<div class="empty">${cs.size ? '' : 'لسه العملاء منزلوش. استنى ثواني والنت شغال.'}</div>`);
+      $('#lists').innerHTML = `<div class="lbl"><span>كل العملاء</span><span>${all.length}</span></div>` + (all.length ? custTbl(all) : `<div class="empty">لسه العملاء منزلوش. استنى ثواني والنت شغال.</div>`);
     }
     $$('#lists tr[data-c]').forEach(r => r.onclick = () => { pyTab = 'pay'; nav('p/' + r.dataset.c); });
   };
@@ -536,10 +542,11 @@ function drawPay() {
   $('#main').innerHTML = `<div class="cust" id="cBox"></div>
     <div class="seg" id="pyT" style="margin-top:10px"><button type="button" data-v="pay" class="${pyTab === 'pay' ? 'on' : ''}">💵 دفعة</button><button type="button" data-v="inv" class="${pyTab === 'inv' ? 'on' : ''}">🧾 فاتورة</button></div>
     <label class="amt" for="amt"><input id="amt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>
+    ${datePick('pyD', today())}
     <div id="pyBtns"></div>
     <div id="tdy"></div>`;
   const inp = $('#amt');
-  bindAmt(inp);
+  bindAmt(inp); bindDate('pyD');
   const btns = () => {
     $('#pyBtns').innerHTML = pyTab === 'pay'
       ? `${['cash', 'insta', 'voda'].map(m => `<button class="big b-${m}" data-m="${m}" type="button">${M_BTN[m]}</button>`).join('')}<p class="hint">دوسة على الزرار بتحفظ على طول</p>`
@@ -561,7 +568,7 @@ function drawPayInfo() {
   const cs = customers(), c = cs.get(scr.cid);
   if (!c || !$('#cBox')) return;
   $('#cBox').innerHTML = `<b>${esc(c.name)}${c.nw ? '<span class="nw">عميل جديد</span>' : ''}</b><div>${c.bal > 0 ? `<span>عليه</span><b class="money">${fmt(c.bal)}</b>` : '<span class="z">مفيش عليه</span>'}</div>`;
-  const ops = custOps(c.id, aliases()).filter(o => dayOf(o.ts) === today() || opState(o) === 'back').sort((a, b) => b.ts - a.ts);
+  const ops = custOps(c.id, aliases()).filter(o => dayOf(o.cr || o.ts) === today() || opState(o) === 'back').sort((a, b) => b.ts - a.ts);
   $('#tdy').innerHTML = ops.length ? `<div class="lbl" style="margin-top:16px"><span>اتسجل للعميل ده النهارده</span><span>دوس تعدّل</span></div><div class="list">${ops.map(o => opRow(o, false, true)).join('')}</div>` : '';
   bindOps('#tdy');
 }
@@ -571,10 +578,10 @@ async function savePay(c, m) {
   if (!(amt > 0)) { toast('اكتب المبلغ الأول'); $('#amt').focus(); return; }
   lastSave = Date.now();
   /* حماية من التكرار: نفس المبلغ لنفس العميل في خلال دقيقتين */
-  const al = aliases(), dup = custOps(c.id, al).find(o => o.t === 'pay' && o.amt === amt && Date.now() - o.ts < 120000);
+  const al = aliases(), dup = custOps(c.id, al).find(o => o.t === 'pay' && o.amt === amt && Date.now() - (o.cr || o.ts) < 120000);
   if (dup && !(await ask(`سجلت ${fmt(amt)} للعميل ده من شوية. دي دفعة تانية؟`, 'أيوه، دفعة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
   const now = Date.now();
-  const o = {id: newId(), t: 'pay', cid: c.id, cname: c.name, newc: !!c.nw, amt, m, ts: now, upd: now, del: false};
+  const o = {id: newId(), t: 'pay', cid: c.id, cname: c.name, newc: !!c.nw, amt, m, ts: tsOnDay(dateOf('pyD')), cr: now, upd: now, del: false};
   S.ops[o.id] = o;
   save(); sync();
   nav('ok/' + o.id, true);
@@ -585,10 +592,10 @@ async function saveInv(c) {
   const amt = amtOf($('#amt'));
   if (!(amt > 0)) { toast('اكتب إجمالي الفاتورة الأول'); $('#amt').focus(); return; }
   lastSave = Date.now();
-  const al = aliases(), dup = custOps(c.id, al).find(o => o.t === 'inv' && o.amt === amt && Date.now() - o.ts < 120000);
+  const al = aliases(), dup = custOps(c.id, al).find(o => o.t === 'inv' && o.amt === amt && Date.now() - (o.cr || o.ts) < 120000);
   if (dup && !(await ask(`سجلت فاتورة ${fmt(amt)} للعميل ده من شوية. دي فاتورة تانية؟`, 'أيوه، فاتورة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
   const now = Date.now();
-  const o = {id: newId(), t: 'inv', cid: c.id, cname: c.name, newc: !!c.nw, amt, ts: now, upd: now, del: false};
+  const o = {id: newId(), t: 'inv', cid: c.id, cname: c.name, newc: !!c.nw, amt, ts: tsOnDay(dateOf('pyD')), cr: now, upd: now, del: false};
   S.ops[o.id] = o;
   save(); sync();
   nav('ok/' + o.id, true);
@@ -611,11 +618,12 @@ function editSheet(o) {
     ${bs ? `<div class="note" style="margin:0 0 6px">🔴 مصطفى رجّعها: ${esc(bs.back)}</div>` : ''}
     ${o.t === 'spay' ? `<label style="font-size:12.5px;font-weight:700;color:var(--sub)">اسم المورد</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.sname)}">` : ''}
     <label class="amt sm" for="eA" style="margin-top:6px"><input id="eA" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${fmt(o.amt)}"><em>جنيه</em></label>
+    ${o.t === 'pay' || o.t === 'inv' ? datePick('eD', dayOf(o.ts)) : ''}
     ${o.t === 'pay' ? `<div class="seg" id="eM" style="--n:3;margin-top:10px">${['cash', 'insta', 'voda'].map(k => `<button type="button" data-m="${k}" class="${k === m ? 'on' : ''}">${{cash: 'كاش معايا', insta: 'إنستا', voda: 'فودافون'}[k]}</button>`).join('')}</div>` : ''}
     ${o.t === 'exp' ? `<div class="chips" id="eC">${SP_CATS.map(([c]) => `<button type="button" class="chip ${c === cat ? 'on' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div><input class="inp2" id="eNt" autocomplete="off" placeholder="ملاحظة (اختياري)" value="${esc(o.note || '')}">` : ''}
     <div class="row2" style="margin-top:12px"><button class="big b-cash" id="eOk" type="button" style="margin-top:0">حفظ</button><button class="big b-redo" id="eDel" type="button" style="margin-top:0">🗑 مسح</button></div>
     <button class="lnk" id="eX" type="button">إغلاق</button>`);
-  bindAmt($('#eA'));
+  bindAmt($('#eA')); if ($('#eD')) bindDate('eD');
   $$('#eM button').forEach(b => b.onclick = () => { m = b.dataset.m; $$('#eM button').forEach(x => x.classList.toggle('on', x === b)); });
   $$('#eC .chip').forEach(b => b.onclick = () => { cat = b.dataset.c; $$('#eC .chip').forEach(x => x.classList.toggle('on', x === b)); });
   $('#eX').onclick = closeModal;
@@ -624,6 +632,7 @@ function editSheet(o) {
     if (!(amt > 0)) return toast('اكتب المبلغ');
     const ch = {amt};
     if (o.t === 'pay') ch.m = m;
+    if ($('#eD')) { const nd = dateOf('eD'); if (nd !== dayOf(o.ts)) ch.ts = tsOnDay(nd, o.ts); }
     if (o.t === 'exp') Object.assign(ch, {cat, note: $('#eNt').value.trim()});
     if (o.t === 'spay') { ch.sname = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.sname) return toast('اكتب اسم المورد'); }
     if (opState(o) === 'done') { closeModal(); return toast('دي اتنقلت خلاص'); }
@@ -657,7 +666,7 @@ function drawSaved() {
   $('#main').innerHTML = o.del ? `<div class="done"><h2 style="color:var(--red)">اتمسحت</h2></div><button class="big b-home" id="sHome" type="button" style="margin-top:20px">${o.t === 'pay' || o.t === 'inv' ? 'رجوع للعملاء' : 'رجوع للرئيسية'}</button>` : `<div class="done">
       <div class="chk">✓</div><h2>${o.upd !== o.ts ? 'اتعدّلت' : 'اتسجلت'}</h2>
       <div class="sent">${sentHtml(o, c)}
-        <small class="${s === 'unsent' ? 'wt' : s === 'back' ? 'bk' : 'ok'}" id="sSt">${stTxt}</small></div></div>
+        ${(o.t === 'pay' || o.t === 'inv') && dayOf(o.ts) !== today() ? `<small>📅 بتاريخ ${dispDate(dayOf(o.ts))}</small>` : ''}<small class="${s === 'unsent' ? 'wt' : s === 'back' ? 'bk' : 'ok'}" id="sSt">${stTxt}</small></div></div>
     ${again ? `<button class="big b-again" id="sAgain" type="button" style="margin-top:18px">${again}</button>` : ''}
     <button class="big b-home" id="sHome" type="button"${again ? '' : ' style="margin-top:18px"'}>${o.t === 'pay' || o.t === 'inv' ? 'رجوع للعملاء' : 'رجوع للرئيسية'}</button>
     <div style="text-align:center">${s !== 'done' ? '<button class="oops n" id="sEdit" type="button">✏️ تعديل</button><button class="oops" id="sDel" type="button">غلطت، امسحها</button>' : ''}</div>`;
@@ -742,39 +751,77 @@ function handModal() {
   };
 }
 
-/* ---------- الأرشيف: كل أسبوع وكل يوم فيه حصّلت وصرفت وسلمت لمصطفى كام ---------- */
+/* ---------- الأرشيف: أسابيع أو شهور، وكل يوم فيه حصّلت وصرفت وسلمت لمصطفى كام ---------- */
 const weekStart = iso => addDays(iso, -((dowOf(iso) + 1) % 7));   // الأسبوع بيبدأ سبت
-const dayLabel = d => `${AR_DAYS[dowOf(d)]}<small>${+d.slice(8)}${RLM}/${RLM}${+d.slice(5, 7)}</small>`;
+const dayLabel = d => `${AR_DAYS[dowOf(d)]}<small>${shortD(d)}</small>`;
 const nz = n => n ? fmt(n) : '<span class="z">—</span>';
-let archWeeks = 4;
+const lftCell = x => `<td class="${x.left < 0 ? 'neg' : ''}">${x.left < 0 ? '-' : ''}${nz(Math.abs(x.left))}</td>`;
+const sumRow = x => `<td>${nz(x.col)}</td><td>${nz(x.sp)}</td><td>${nz(x.toM)}</td>${lftCell(x)}`;
+const TH4 = '<th>حصّلت</th><th>صرفت</th><th>سلّمت</th><th>معايا</th>';
+const sub4 = (first, s) => `<div class="pn ${first ? 'first' : ''}" style="--c:4"><div><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div><div><span>صرفت</span><b class="money">${fmt(s.sp)}</b></div><div><span>سلّمت لمصطفى</span><b class="money">${fmt(s.toM)}</b></div><div><span>معايا</span><b class="money ${s.left < 0 ? 'neg' : ''}">${fmtN(s.left)}</b></div></div>${invLn(s)}`;
+let archWeeks = 4, archMons = 6, archMode = 'w';
+const archHead = t => `<div class="seg" id="aM" style="margin-bottom:10px"><button type="button" data-v="w" class="${archMode === 'w' ? 'on' : ''}">أسابيع</button><button type="button" data-v="m" class="${archMode === 'm' ? 'on' : ''}">شهور</button></div>
+  <label class="pick">📅 اختار يوم تفتحه<input type="date" id="aDay" value="${t}" max="${t}"></label>`;
+function bindArch() {
+  $$('#aM button').forEach(b => b.onclick = () => { archMode = b.dataset.v; drawArchive(); });
+  $$('#main tr[data-d]').forEach(r => r.onclick = () => nav('a/' + r.dataset.d));
+  $$('#main tr[data-m]').forEach(r => r.onclick = () => nav('a/' + r.dataset.m));
+  if ($('#aDay')) $('#aDay').onchange = e => { if (isDay(e.target.value)) nav('a/' + e.target.value); };
+}
 function drawArchive() {
   const t = today(), all = liveOps(), byDay = new Map();
   all.forEach(o => { const d = dayOf(o.ts); if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(o); });
+  if (archMode === 'm') {
+    const mons = new Map();
+    [...byDay.keys()].forEach(d => { const m = d.slice(0, 7); if (!mons.has(m)) mons.set(m, []); mons.get(m).push(...byDay.get(d)); });
+    if (!mons.has(t.slice(0, 7))) mons.set(t.slice(0, 7), []);
+    const ms = [...mons.keys()].sort().reverse(), shown = ms.slice(0, archMons);
+    $('#main').innerHTML = `${archHead(t)}
+      <table class="tbl" style="border-radius:14px"><thead><tr><th>الشهر</th>${TH4}</tr></thead><tbody>
+      ${shown.map(m => `<tr data-m="${m}"><td>${MONTHS[+m.slice(5, 7) - 1]}<small>${m.slice(0, 4)}${m === t.slice(0, 7) ? ' · الحالي' : ''}</small></td>${sumRow(sums(mons.get(m)))}</tr>`).join('')}</tbody></table>
+      ${ms.length > shown.length ? '<button class="more" id="aMore" type="button" style="margin-top:10px">اعرض شهور أقدم</button>' : ''}
+      <p class="hint">دوس على أي شهر تشوف أيامه.<br>"سلّمت" = التحويلات (إنستا/فودافون) + الكاش اللي سلمته لمصطفى.</p>`;
+    bindArch();
+    if ($('#aMore')) $('#aMore').onclick = () => { archMons += 6; drawArchive(); };
+    return;
+  }
   const weeks = new Map();
   [...byDay.keys()].forEach(d => { const w = weekStart(d); if (!weeks.has(w)) weeks.set(w, []); weeks.get(w).push(d); });
   if (!weeks.has(weekStart(t))) weeks.set(weekStart(t), []);
   const ws = [...weeks.keys()].sort().reverse(), shown = ws.slice(0, archWeeks);
-  $('#main').innerHTML = `<label class="pick">📅 اختار يوم تفتحه<input type="date" id="aDay" value="${t}" max="${t}"></label>
+  $('#main').innerHTML = `${archHead(t)}
     ${shown.map(w => {
       const days = weeks.get(w).sort().reverse(), ops = days.flatMap(d => byDay.get(d)), s = sums(ops), cur = w === weekStart(t);
-      return `<section class="wk"><div class="panel"><div class="t"><b>${cur ? 'الأسبوع ده' : 'أسبوع'}</b><span>من ${+w.slice(8)}/${+w.slice(5, 7)} إلى ${+addDays(w, 6).slice(8)}/${+addDays(w, 6).slice(5, 7)}</span></div>${pnHtml(s, 4)}</div>
-        ${days.length ? `<table class="tbl"><thead><tr><th>اليوم</th><th>حصّلت</th><th>صرفت</th><th>سلّمت لمصطفى</th><th>معايا</th></tr></thead><tbody>
-          ${days.map(d => { const x = sums(byDay.get(d)); return `<tr data-d="${d}"><td>${dayLabel(d)}</td><td>${nz(x.col)}</td><td>${nz(x.sp)}</td><td>${nz(x.toM)}</td><td class="${x.left < 0 ? 'neg' : ''}">${x.left < 0 ? '-' : ''}${nz(Math.abs(x.left))}</td></tr>`; }).join('')}</tbody></table>` : '<div class="list" style="border-radius:0 0 14px 14px"><div class="empty">لسه مفيش حركات الأسبوع ده</div></div>'}</section>`;
+      return `<section class="wk"><div class="panel"><div class="t"><b>${cur ? 'الأسبوع ده' : 'أسبوع'}</b><span>من ${shortD(w)} إلى ${shortD(addDays(w, 6))}</span></div>${sub4(false, s)}</div>
+        ${days.length ? `<table class="tbl"><thead><tr><th>اليوم</th>${TH4}</tr></thead><tbody>
+          ${days.map(d => `<tr data-d="${d}"><td>${dayLabel(d)}</td>${sumRow(sums(byDay.get(d)))}</tr>`).join('')}</tbody></table>` : '<div class="list" style="border-radius:0 0 14px 14px"><div class="empty">لسه مفيش حركات الأسبوع ده</div></div>'}</section>`;
     }).join('')}
     ${ws.length > shown.length ? '<button class="more" id="aMore" type="button">اعرض أسابيع أقدم</button>' : ''}
-    <p class="hint">"سلّمت لمصطفى" = التحويلات (إنستا/فودافون) + الكاش اللي سلمته.<br>"معايا" = اللي فضل معاك كاش من اليوم ده.</p>`;
-  $$('#main tr[data-d]').forEach(r => r.onclick = () => nav('a/' + r.dataset.d));
-  $('#aDay').onchange = e => { if (isDay(e.target.value)) nav('a/' + e.target.value); };
+    <p class="hint">"سلّمت" = التحويلات (إنستا/فودافون) + الكاش اللي سلمته لمصطفى.<br>"معايا" = اللي فضل معاك كاش من اليوم ده.</p>`;
+  bindArch();
   if ($('#aMore')) $('#aMore').onclick = () => { archWeeks += 4; drawArchive(); };
+}
+function drawMonth() {
+  const t = today(), ym = scr.mon, ops = liveOps().filter(o => dayOf(o.ts).slice(0, 7) === ym), byDay = new Map();
+  ops.forEach(o => { const d = dayOf(o.ts); if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(o); });
+  const days = [...byDay.keys()].sort().reverse();
+  $('#main').innerHTML = `<div class="dnav"><span>${monLabel(ym)}</span></div>
+    <section class="panel">${sub4(true, sums(ops))}</section>
+    <div class="lbl"><span>أيام الشهر (${days.length})</span><span>دوس على اليوم تفتحه</span></div>
+    ${days.length ? `<table class="tbl" style="border-radius:14px"><thead><tr><th>اليوم</th>${TH4}</tr></thead><tbody>
+      ${days.map(d => `<tr data-d="${d}"><td>${dayLabel(d)}</td>${sumRow(sums(byDay.get(d)))}</tr>`).join('')}</tbody></table>` : '<div class="list"><div class="empty">مفيش حركات في الشهر ده</div></div>'}
+    <button class="lnk" id="aBack" type="button">‹ كل الشهور</button>`;
+  $$('#main tr[data-d]').forEach(r => r.onclick = () => nav('a/' + r.dataset.d));
+  $('#aBack').onclick = () => { archMode = 'm'; nav('a', true); };
 }
 function drawDay() {
   const t = today(), d = scr.day, ops = liveOps().filter(o => dayOf(o.ts) === d).sort((a, b) => b.ts - a.ts), s = sums(ops);
   $('#main').innerHTML = `<div class="dnav"><button type="button" id="aPrev" title="اليوم اللي قبله">›</button><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}${d === t ? ' · النهارده' : ''}</span><button type="button" id="aNext" title="اليوم اللي بعده"${d >= t ? ' disabled' : ''}>‹</button></div>
     <label class="pick">📅 اختار يوم<input type="date" id="aDay" value="${d}" max="${t}"></label>
-    <section class="panel">${pnHtml(s, 4, true)}</section>
+    <section class="panel">${sub4(true, s)}</section>
     <div class="lbl"><span>حركات اليوم (${ops.length})</span><span>دوس على أي حركة تعدّلها</span></div>
     ${ops.length ? `<div class="list">${ops.map(o => opRow(o)).join('')}</div>` : '<div class="list"><div class="empty">مفيش حركات في اليوم ده</div></div>'}
-    <button class="lnk" id="aBack" type="button">‹ كل الأسابيع</button>`;
+    <button class="lnk" id="aBack" type="button">‹ رجوع للأرشيف</button>`;
   $('#aPrev').onclick = () => nav('a/' + addDays(d, -1), true);
   $('#aNext').onclick = () => { if (d < t) nav('a/' + addDays(d, 1), true); };
   $('#aDay').onchange = e => { if (isDay(e.target.value)) nav('a/' + e.target.value, true); };

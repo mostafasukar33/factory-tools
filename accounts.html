@@ -855,6 +855,38 @@ html[data-theme=dark]{--pane:#1f1e19;--pane2:#1a1914;--mut:#B9B3A1;--rowl:#2d2b2
   #p-party .ldgf b{font-size:22px;color:inherit}
   html[data-theme=dark] #p-party .ldgf{background:var(--pane)}
 }
+/* القايمة الجانبية: مجموعات واضحة + زرار حركة السوق + جرس الإشعارات (اللاب بس) */
+nav .ngrp,nav button.lap,.top .bell,#mkPop{display:none}
+@media (min-width:1000px){
+  nav{width:176px;padding:76px 12px 112px;gap:2px}
+  nav .ngrp{display:block;font-size:11px;font-weight:800;color:#77715f;letter-spacing:.02em;padding:14px 10px 5px}
+  nav .ngrp:first-child{padding-top:4px}
+  nav button.lap{display:flex}
+  nav button{min-height:44px;font-size:15px;gap:11px;padding:6px 12px;border-radius:10px;transition:background .15s,color .15s}
+  nav svg{width:20px;height:20px}
+  nav button.on{background:var(--gold);color:#111;box-shadow:0 2px 10px #DAAE5733}
+  nav button.on svg{color:#111}
+  nav .nb{position:static;margin-inline-start:auto;display:inline-block;background:#C62828;min-width:22px;height:20px;line-height:20px;border-radius:10px;font-size:11.5px;text-align:center}
+  nav .nb:empty{display:none}
+  nav .qk{border-inline-start:1px solid #34312a;margin:2px 22px 6px 0;padding:2px 0}
+  nav .qk button{min-height:28px;padding:2px 14px;font-size:13.5px}
+  .top .bell{display:inline-flex;align-items:center;justify-content:center;position:fixed;top:16px;inset-inline-start:136px;width:30px;height:30px;border-radius:8px;border:0;background:transparent;color:#a39d8c;cursor:pointer;padding:0}
+  .top .bell:hover{background:#26241f;color:#fff}
+  .top .bell.has{color:var(--gold)}
+  .top .bell i{position:absolute;top:-4px;inset-inline-end:-6px;background:#C62828;color:#fff;font-style:normal;font-size:10.5px;font-weight:800;min-width:17px;height:17px;line-height:17px;border-radius:9px;padding:0 3px;text-align:center}
+  .top .bell i:empty{display:none}
+  .top .bell.has svg{animation:bellw 2.4s ease-in-out infinite}
+  @keyframes bellw{0%,88%,100%{transform:rotate(0)}91%{transform:rotate(14deg)}94%{transform:rotate(-12deg)}97%{transform:rotate(6deg)}}
+  #mkPop{position:fixed;top:54px;inset-inline-start:12px;width:360px;max-height:70vh;overflow:auto;z-index:140;background:var(--pane);color:inherit;border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:12px;box-shadow:0 12px 34px #0004;padding:12px}
+  #mkPop.on{display:block}
+  #mkPop h4{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:8px}
+  #mkPop h4 b{background:#C62828;color:#fff;border-radius:10px;font-size:12px;padding:0 8px}
+  #mkPop .mpi{display:flex;justify-content:space-between;gap:10px;padding:8px 6px;border-bottom:1px solid var(--rowl);font-size:13.5px;font-weight:700;cursor:pointer;border-radius:6px}
+  #mkPop .mpi:hover{background:var(--gold-l)}
+  #mkPop .mpi small{color:var(--mut);white-space:nowrap;font-size:11.5px}
+  #mkPop .mpe{color:var(--mut);font-size:13.5px;font-weight:700;padding:8px 4px}
+  #mkPop .btn{margin-top:10px;min-height:38px;font-size:14px}
+}
 </style>
 </head>
 <body>
@@ -869,6 +901,7 @@ html[data-theme=dark]{--pane:#1f1e19;--pane2:#1a1914;--mut:#B9B3A1;--rowl:#2d2b2
 <header class="top">
   <img src="icons/logo.jpg" alt="فلاش أون">
   <div><h1>فلاش أون</h1><small>الحسابات</small></div>
+  <button class="bell" id="bBell" type="button" title="إشعارات حركة السوق"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><i id="bellN"></i></button>
   <button class="homebtn lockbtn" id="bBk" type="button" title="احفظ نسخة من كل البيانات في مكان تختاره">💾 احفظ نسخة</button>
   <button class="homebtn lockbtn" id="bTheme" type="button" title="ليلي / فاتح" style="min-width:40px;justify-content:center;padding:8px 10px"></button>
   <button class="homebtn lockbtn" id="bLock" type="button" title="قفل"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>قفل</button>
@@ -969,16 +1002,21 @@ html[data-theme=dark]{--pane:#1f1e19;--pane2:#1a1914;--mut:#B9B3A1;--rowl:#2d2b2
 </main>
 
 <nav>
+  <div class="ngrp">الشغل اليومي</div>
   <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>الحسابات</button>
   <div class="qk"><button type="button" data-q="mkt">عملاء</button><button type="button" data-q="sup">موردين</button></div>
+  <button data-go="mkt" class="lap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg>حركة السوق<i class="nb" id="nbMkt"></i></button>
+  <div class="ngrp">الفلوس</div>
   <button data-go="cash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 10v5M18 10v5"/></svg>الخزنة</button>
   <button data-go="part"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3.2"/><circle cx="4.5" cy="9" r="2.4"/><circle cx="19.5" cy="9" r="2.4"/><path d="M6.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M1 19v-1a3.5 3.5 0 0 1 4.6-3.3M23 19v-1a3.5 3.5 0 0 0-4.6-3.3"/></svg>الشركاء</button>
   <button data-go="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 10h8M6 14h5M16 14h2"/></svg>الشيكات<i class="nb" id="nbChk"></i></button>
+  <div class="ngrp">المتابعة</div>
   <button data-go="rep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>التقارير</button>
   <button data-go="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>الإعدادات</button>
 </nav>
 <div id="toast"></div>
 <div id="mkBar"></div>
+<div id="mkPop"></div>
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
 <div id="render"></div>
 
@@ -3867,7 +3905,7 @@ function route() {
   if (h === 'set' || h === 'cash' || h === 'part' || (h === 'chk' && CHECKS_ON) || h === 'rep' || h === 'mkt') pg = h; else if (h.startsWith('p/')) pg = 'party';
   autoPartners();
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
-  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (pg === 'party' || pg === 'mkt' ? 'home' : pg)));
+  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (pg === 'party' || (pg === 'mkt' && !isWide()) ? 'home' : pg)));
   if (CHECKS_ON) { const nd = chkDue().length; $('#nbChk').textContent = nd || ''; $('#nbChk').style.display = nd ? '' : 'none'; }
   /* على اللاب توب: قايمة الحسابات على جنب والحساب المفتوح جنبها */
   const split = isWide() && (pg === 'home' || pg === 'party');
@@ -4298,6 +4336,30 @@ function mkAlert(list) {
   b.onclick = () => { b.classList.remove('on'); go('mkt'); };
   clearTimeout(mkBarT); mkBarT = setTimeout(() => b.classList.remove('on'), 12000);
 }
+/* اللاب: جرس الإشعارات فوق والعداد على زرار "حركة السوق" في القايمة الجانبية. دوسة على الجرس بتفتح آخر العمليات اللي مستنياك */
+function mkBell() {
+  const n = db && mkCreds() ? mkPending().length : 0, t = n > 99 ? '99+' : n || '';
+  $('#bellN').textContent = t; $('#nbMkt').textContent = t;
+  $('#bBell').classList.toggle('has', !!n);
+  if ($('#mkPop').classList.contains('on')) mkPop(true);
+}
+function mkPop(keep) {
+  const p = $('#mkPop');
+  if (!keep && p.classList.contains('on')) { p.classList.remove('on'); return; }
+  if (!db) return;
+  if (!mkCreds()) p.innerHTML = '<h4>إشعارات حركة السوق</h4><div class="mpe">تطبيق شريكك لسه متربطش.</div><button class="btn gold" id="mpGo" type="button">اربطه من الإعدادات</button>';
+  else {
+    const L = mkPending().slice().reverse(), n = L.length;
+    p.innerHTML = `<h4>إشعارات حركة السوق ${n ? `<b>${n}</b>` : ''}</h4>
+      ${n ? L.slice(0, 8).map(o => `<div class="mpi" data-id="${esc(o.id)}"><span>${esc(mkLine(o))}</span><small>${esc(dispDate(o.date || ''))}</small></div>`).join('') + (n > 8 ? `<div class="mpe">و${n - 8} كمان…</div>` : '') : '<div class="mpe">✔ مفيش حاجة مستنياك. كل اللي بعته شريكك اتنقل.</div>'}
+      <button class="btn gold" id="mpGo" type="button">افتح وارد السوق</button>`;
+    $$('#mkPop .mpi').forEach(x => x.onclick = () => { p.classList.remove('on'); go('mkt'); });
+  }
+  $('#mpGo').onclick = () => { p.classList.remove('on'); mkCreds() ? go('mkt') : mkGoSettings(); };
+  p.classList.add('on');
+}
+$('#bBell').onclick = e => { e.stopPropagation(); mkPop(); };
+document.addEventListener('click', e => { if (!e.target.closest('#mkPop') && !e.target.closest('#bBell')) $('#mkPop').classList.remove('on'); });
 /* يفتح الإعدادات على كارت حركة السوق */
 function mkGoSettings() {
   go('set');
@@ -4305,6 +4367,7 @@ function mkGoSettings() {
 }
 /* العداد على الشاشة الرئيسية من أول ما البرنامج يفتح */
 function renderMkHome() {
+  mkBell();
   const box = $('#mkRem'); if (!box) return;
   if (!db) { box.innerHTML = ''; return; }
   /* لسه متربطش: سطر واضح في الرئيسية بيوديه للإعدادات على طول */

@@ -423,6 +423,16 @@ const MO = !!process.env.MARKET_ONLY;
     eq('تنبيه فوري في الحسابات (شريط فوق)', await A.evaluate(() => $('#mkBar').classList.contains('on')), true);
     await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
     eq('عداد الوارد على الشاشة الرئيسية', (await A.textContent('#mkRem')).replace(/\s+/g, ' ').includes('3 عمليات متنقلتش'), true);
+    /* اللاب: العداد على زرار "حركة السوق" في القايمة الجانبية والجرس فوق، ودوسة الجرس بتعرض العمليات وبتفتح الوارد */
+    await A.setViewportSize({width: 1300, height: 800}); await A.waitForTimeout(200);
+    eq('اللاب: عداد حركة السوق على زرارها وعلى الجرس', await A.evaluate(() => [$('#nbMkt').textContent, $('#bellN').textContent, getComputedStyle($('nav button[data-go=mkt]')).display !== 'none']), ['3', '3', true]);
+    await A.click('#bBell'); await A.waitForTimeout(150);
+    eq('الجرس: بيعرض العمليات اللي مستنية', await A.evaluate(() => [$('#mkPop').classList.contains('on'), $$('#mkPop .mpi').length]), [true, 3]);
+    await A.click('#mpGo'); await A.waitForTimeout(250);
+    eq('الجرس ← افتح الوارد، والزرار الجانبي هو اللي متعلّم', await A.evaluate(() => [location.hash, $('#mkPop').classList.contains('on'), $('nav button.on').dataset.go]), ['#mkt', false, 'mkt']);
+    await A.setViewportSize({width: 400, height: 860}); await A.waitForTimeout(200);
+    eq('الموبايل: مفيش زرار حركة السوق تحت ولا جرس', await A.evaluate(() => [getComputedStyle($('nav button[data-go=mkt]')).display, getComputedStyle($('#bBell')).display]), ['none', 'none']);
+    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
     eq('مفيش حاجة دخلت الحسابات لوحدها', [await bal(A, C1), await vbal(A, 'v_mkt'), await A.evaluate(() => db.entries.filter(e => e.id.startsWith('e_mk_')).length)], [bal0, 0, 0]);
     await A.click('#mkGo'); await A.waitForTimeout(200);
     const card = `#p-mkt [data-mv="${pid1}"]`;

@@ -331,7 +331,7 @@ function settle({daysPay = 0, fridayPay = 0, bonus = 0, advances = 0, oldDeduct 
    المرحلة التانية: old سلفة قديمة (eff = أول خميس بتتخصم منه)، rule قاعدة خصم لعامل (ru_<عامل>: mode none|auto|fixed و amt و eff)،
    wded خصم الأسبوع ده بس (wd_<خميس>_<عامل>: mode skip|amt)، fdf فرق جمعة (fd_<خميس>_<عامل>: done 0|1 = جه ولا لأ في جمعة الأسبوع اللي فات). */
 function buildIdx(list) {
-  const I = {W: new Map(), day: new Map(), dayBy: new Map(), adv: [], bon: [], ws: new Map(), lk: new Map(), pd: new Map(), sup: [], log: [], old: [], rule: new Map(), wded: new Map(), fdf: new Map(), first: null, memo: new Map()};
+  const I = {W: new Map(), day: new Map(), dayBy: new Map(), adv: [], bon: [], ws: new Map(), lk: new Map(), pd: new Map(), sup: [], log: [], old: [], rule: new Map(), wded: new Map(), fdf: new Map(), lgclr: null, first: null, memo: new Map()};
   list.forEach(r => {
     if (!r || r.del) return;
     if (r.k === 'wk') I.W.set(r.id, r);
@@ -343,6 +343,7 @@ function buildIdx(list) {
     else if (r.k === 'pd') I.pd.set(r.thu + '|' + r.w, r);
     else if (r.k === 'sup') I.sup.push(r);
     else if (r.k === 'log') I.log.push(r);
+    else if (r.k === 'lgclr') I.lgclr = r;
     else if (r.k === 'old') I.old.push(r);
     else if (r.k === 'rule') I.rule.set(r.w, r);
     else if (r.k === 'wded') I.wded.set(r.thu + '|' + r.w, r);
@@ -1393,7 +1394,7 @@ function logBody(l, i) {
 }
 function drawLog() {
   const I = idx(), sups = I.sup.slice().sort((a, b) => a.at - b.at).map(x => x.name);
-  const all = I.log.slice().sort((a, b) => b.at - a.at);
+  const cut = (I.lgclr || {}).cut || 0, all = I.log.filter(l => l.at > cut).sort((a, b) => b.at - a.at);
   const ls = all.filter(l => (!logWho || l.by === logWho) && (!logChg || logKind(l.txt))), shown = ls.slice(0, logN);
   const whos = sups.concat(all.some(l => l.by === 'تلقائي') ? ['تلقائي'] : []);
   let last = '', html = '';
@@ -1404,7 +1405,14 @@ function drawLog() {
   });
   if (last) html += '</div>';
   $('#main').innerHTML = `<div class="fchips" id="lgF"><button type="button" data-w="" class="${!logWho && !logChg ? 'on' : ''}">الكل</button>${whos.map(w => `<button type="button" data-w="${esc(w)}" class="${logWho === w ? 'on' : ''}">${esc(w)}</button>`).join('')}<button type="button" data-c="1" class="${logChg ? 'on' : ''}">✏️ التعديلات والمسح بس</button></div>`
-    + (html || '<div class="list"><div class="empty">مفيش حاجة هنا</div></div>') + (ls.length > shown.length ? '<button class="lnk" id="lgMore" type="button">اعرض أقدم</button>' : '');
+    + (html || '<div class="list"><div class="empty">مفيش حاجة هنا</div></div>') + (ls.length > shown.length ? '<button class="lnk" id="lgMore" type="button">اعرض أقدم</button>' : '') + (all.length ? '<button class="big b-redo" id="lgClr" type="button">🗑 امسح السجل</button>' : '');
+  if ($('#lgClr')) $('#lgClr').onclick = async () => {
+    if (!(await ask('تمسح السجل كله؟ هيتمسح من عندك ومن عند شركائك، ومبيتراجعش.', '🗑 أيوه امسحه', 'لأ', true))) return;
+    const cut = Date.now();
+    put('lgclr', {id: 'lgclr', cut});
+    log(`${myName()} مسح السجل`).at = cut + 1;
+    commit(); logN = 150; logWho = ''; logChg = false; drawLog(); toast('السجل اتمسح ✔');
+  };
   $$('#lgF button').forEach(b => b.onclick = () => { if (b.dataset.c) logChg = !logChg; else { logWho = b.dataset.w; if (!logWho) logChg = false; } logN = 150; drawLog(); });
   $$('#main button[data-x]').forEach(b => b.onclick = () => { const e = $('#lx' + b.dataset.x); e.hidden = !e.hidden; });
   if ($('#lgMore')) $('#lgMore').onclick = () => { logN += 150; drawLog(); };
@@ -1473,7 +1481,7 @@ function drawSettings() {
       <button class="big b-home" id="sOut" type="button">🚪 خروج (حد تاني هيستخدم الموبايل)</button></div>
     <div class="card"><h2>المشرفين (${sups.length} من 3)</h2>
       ${sups.map(s => `<div class="kv"><span>${esc(s.name)}${s.id === S.me ? ' (أنا)' : ''}</span><b class="sm">من ${dm(dayOf(s.at))}</b></div>`).join('')}
-      ${S.u ? `<button class="big b-ok" id="sShare" type="button">📲 ابعت لينك التطبيق لشريكك</button><button class="lnk" id="sCopy" type="button">انسخ اللينك بس</button>`
+      ${S.u ? `<button class="big b-ok" id="sShare" type="button">📲 ابعت لينك التطبيق لشريكك</button><p class="sm" style="margin:6px 2px 0">اللينك فيه ربط الشيت جوّاه. شريكك يفتحه بس ويختار اسمه ورقمه السري، ومفيش أي حاجة تانية يعملها.</p><button class="lnk" id="sCopy" type="button">انسخ اللينك بس</button>`
         : '<p class="sm" style="margin-top:8px">علشان تبعت اللينك لشريكك، اربط الشيت الأول (تحت).</p>'}</div>
     ${S.u ? '' : `<div class="card" id="sheetCard"><h2>ربط شيت جوجل (مرة واحدة من الكمبيوتر)</h2>
       <p class="sm" style="font-size:13.5px;line-height:1.8">لحد ما الشيت يتربط، كل حاجة محفوظة على الموبايل ده بس. بعد الربط هتتبعت كلها لوحدها وتقدر تبعت اللينك لشركائك.</p>

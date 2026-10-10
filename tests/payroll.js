@@ -382,6 +382,19 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await settle_(A); await settle_(B);
     eq('المسح وصل للشريك والسجل فيه سطر المسح', await B.evaluate(() => [[...idx().day.values()].filter(d => d.date >= '2026-10-24').length, idx().log.some(l => l.txt.includes('مسح كل حركات أسبوع'))]), [0, true]);
 
+    console.log('\n١٣) مسح السجل');
+    await A.evaluate(() => nav('l', true));
+    const nLog = await A.$$eval('#main .lg', x => x.length);
+    await A.clock.setFixedTime(at('2026-10-24T11:30:00'));
+    await A.click('#lgClr'); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(200);
+    eq('بعد مسح السجل: مفيش غير سطر "مسح السجل"', [nLog > 3, await A.$$eval('#main .lg', x => x.map(e => e.textContent.includes('مسح السجل')))], [true, [true]]);
+    await settle_(A); await settle_(B);
+    await B.evaluate(() => nav('l', true));
+    eq('الشريك السجل عنده اتمسح كمان', await B.$$eval('#main .lg', x => x.length), 1);
+    const C2 = await device(browser, base, gas, 'payroll.html' + (await A.evaluate(() => joinLink())).replace(/^[^#]*/, ''), at('2026-10-24T12:00:00')); pages.push(C2);
+    await C2.waitForSelector('.gate .chip', {timeout: 15000});
+    eq('موبايل جديد بيتربط لوحده من اللينك والسجل القديم مش ظاهر', await C2.evaluate(async () => { await sync(); return [!!S.u, idx().log.filter(l => l.at > ((idx().lgclr || {}).cut || 0)).length]; }), [true, 1]);
+
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();

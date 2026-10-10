@@ -238,6 +238,38 @@ html[data-theme=dark] #toast.bt{color:#0b1a10}
 .gate img{width:90px;border-radius:18px;background:#fff;box-shadow:0 4px 18px #0002}
 .gate h2{font-size:22px;margin:14px 0 6px}
 .gate p{font-size:16.5px;font-weight:700;color:var(--sub);line-height:1.8}
+/* معنى الألوان (زي الحسابات): أخضر داخل، أحمر طالع، دهبي فاتورة، أزرق راح لمصطفى */
+.row.d-in .a .money{color:var(--green)}.row.d-out .a .money{color:var(--red)}.row.d-inv .a .money{color:var(--gold-d)}.row.d-to .a .money{color:#2F6690}
+html[data-theme=dark] .row.d-to .a .money{color:#7FB3DD}
+.pn .c-in b{color:var(--green)}.pn .c-out b{color:var(--red)}
+/* ترتيب العملاء وآخر دفعة */
+.seg.cs{margin:0 0 10px}.seg.cs button{font-size:13.5px;height:38px}
+.ctb td.nm small.lp{display:block;font-size:12px;font-weight:600;color:var(--sub);margin-top:1px}
+.lp.mid{color:#B7791F!important}.lp.old{color:var(--red)!important}
+.ctb .wn{display:inline-block;font-size:11px;font-weight:800;background:var(--gold-l);color:var(--gold-d);border:1px solid var(--gold);border-radius:6px;padding:0 5px;margin-inline-start:6px;vertical-align:middle}
+.cust{flex-wrap:wrap}.cust b small.lp{display:block;font-size:12px;font-weight:600;color:var(--sub)}
+.cust .cwant{flex-basis:100%;text-align:right;font-size:13.5px;font-weight:700;color:var(--gold-d);background:var(--gold-l);border-radius:8px;padding:5px 9px}
+.cust .cwant .money{font-size:14px}.cust .cwant.ok{color:var(--green);background:var(--green-l)}
+/* مطلوب تحصّل من دول (من مصطفى) */
+.want{background:var(--card);border:1.5px solid var(--gold);border-radius:12px;overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow)}
+.want .wh2{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;background:var(--gold-l);color:var(--gold-d);font-size:14.5px}
+.want .wh2 span{font-size:13px;font-weight:800}
+.want .wr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 12px;border-top:1px solid var(--row);cursor:pointer;color:var(--ink)}
+.want .wr:active{background:var(--gold-l)}
+.want .wr .m{min-width:0;flex:1}.want .wr .m b{display:block;font-size:16px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.want .wr .m small{display:block;font-size:12px;font-weight:600;color:var(--sub)}
+.want .wr .a{text-align:left;flex:none}.want .wr .a b{display:block;font-size:17px;color:var(--gold-d)}.want .wr .a small{font-size:11.5px;font-weight:700;color:var(--sub)}
+.want .wr.ok .m b{text-decoration:line-through;color:var(--sub)}.want .wr.ok .m small{color:var(--green)}.want .wr.ok .a b{color:var(--sub);text-decoration:line-through}
+/* تقفيل اليوم */
+.kline{display:block;width:100%;margin-top:10px;padding:8px 10px;border-radius:10px;border:1px dashed var(--line);background:none;color:var(--sub);font:inherit;font-size:14px;font-weight:800;text-align:right;cursor:pointer}
+.kline.ok{border:1px solid #A9DDB8;background:var(--green-l);color:var(--green)}
+.kline.bad{border:1px solid var(--red);background:var(--red-l);color:var(--red)}
+.kline em{font-style:normal;font-weight:700;font-size:12.5px;color:var(--sub)}
+.kexp{display:flex;justify-content:space-between;align-items:baseline;background:var(--row);border-radius:10px;padding:8px 12px;margin-bottom:6px}
+.kexp span{font-size:13.5px;color:var(--sub);font-weight:700}.kexp b{font-size:22px;color:var(--green)}.kexp b.neg{color:var(--red)}
+.kres{margin-top:8px;border-radius:10px;padding:8px 12px;font-weight:800;font-size:16px;text-align:center}
+.kres.ok{background:var(--green-l);color:var(--green)}.kres.bad{background:var(--red-l);color:var(--red)}
+.kres small{display:block;font-size:12.5px;font-weight:600;color:var(--sub);margin-top:3px}
 </style>
 </head>
 <body>
@@ -339,7 +371,9 @@ function aliases() {
   Object.values(S.st).forEach(s => { const o = S.ops[s.op]; if (s.pid && o && o.cid && o.cid !== s.pid) a[o.cid] = s.pid; });
   return a;
 }
-const liveOps = () => Object.values(S.ops).filter(o => !o.del);
+/* cnt = تقفيل اليوم (الشريك عدّ الفلوس اللي معاه). مش فلوس، فمش داخل في أي حسبة ولا قايمة حركات */
+const liveOps = () => Object.values(S.ops).filter(o => !o.del && o.t !== 'cnt');
+const cntOf = d => Object.values(S.ops).filter(o => o.t === 'cnt' && !o.del && o.day === d).sort((a, b) => b.upd - a.upd)[0] || null;
 const payOps = () => liveOps().filter(o => o.t === 'pay');
 /* حركات العميل: دفعات + فواتير (فاتورة = إجمالي بس، ومصطفى هو اللي بيكتب بنودها) */
 /* حركات العملاء: دفعة / فاتورة / مرتجع أو شغل (rt: مبلغ + ملاحظة بيتخصم من حساب العميل، ملوش دعوة بالكاش) */
@@ -347,12 +381,31 @@ const isCustOp = o => o.t === 'pay' || o.t === 'inv' || o.t === 'rt';
 const custAll = () => liveOps().filter(isCustOp);
 function customers() {
   const al = aliases(), m = new Map();
-  Object.values(S.cust).forEach(c => { if (!c.del) m.set(c.id, {id: c.id, name: c.name, bal: c.bal || 0, lim: c.lim || ''}); });
+  /* lp = تاريخ آخر دفعة في الحسابات، want = مصطفى عاوزه يحصّل منه {amt, at, note} (الاتنين بييجوا مع رصيد العميل) */
+  Object.values(S.cust).forEach(c => { if (!c.del) m.set(c.id, {id: c.id, name: c.name, bal: c.bal || 0, lim: c.lim || '', lp: c.lp || '', want: c.want && c.want.amt > 0 ? c.want : null}); });
   S.newc.forEach(c => { if (!al[c.id] && !m.has(c.id)) m.set(c.id, {id: c.id, name: c.name, bal: 0, nw: true}); });
   custAll().forEach(o => { const id = al[o.cid] || o.cid; if (!m.has(id)) m.set(id, {id, name: o.cname, bal: 0, nw: id.startsWith('n_')}); });
   /* الصافي = رصيده في الحسابات + الفواتير اللي اتسجلت هنا − الدفعات والمرتجع/الشغل اللي اتسجلوا هنا، لسه متنقلتش (واللي مصطفى شالها من الحسابات مبتتحسبش) */
   custAll().forEach(o => { if (!['done', 'rm'].includes(opState(o))) { const c = m.get(al[o.cid] || o.cid); if (c) c.bal += o.t === 'inv' ? o.amt : -o.amt; } });
+  /* آخر دفعة = الأحدث بين اللي في الحسابات واللي سجّلها الشريك هنا */
+  custAll().forEach(o => { if (o.t !== 'pay' || opState(o) === 'rm') return; const c = m.get(al[o.cid] || o.cid), d = dayOf(o.ts); if (c && d > (c.lp || '')) c.lp = d; });
   return m;
+}
+/* "آخر دفعة من كام يوم" تحت اسم العميل */
+const daysAgo = iso => { if (!isDay(iso)) return -1; const [y, m, d] = iso.split('-').map(Number), [Y, M, D] = today().split('-').map(Number); return Math.round((Date.UTC(Y, M - 1, D) - Date.UTC(y, m - 1, d)) / 86400000); };
+const lpTxt = c => { const n = daysAgo(c.lp); return n < 0 ? 'مدفعش قبل كده' : n === 0 ? 'دفع النهارده' : n === 1 ? 'آخر دفعة امبارح' : `آخر دفعة من ${n} يوم`; };
+const lpCls = c => { const n = daysAgo(c.lp); return c.bal > 0 && (n < 0 || n >= 30) ? 'old' : c.bal > 0 && n >= 14 ? 'mid' : ''; };
+/* قايمة "حصّل من دول" اللي مصطفى بيعلّمها من الحسابات: اتحصّل = دفعات سجلها الشريك للعميل ده بعد ما مصطفى طلب */
+function wantList() {
+  const al = aliases(), L = [];
+  customers().forEach(c => {
+    if (!c.want) return;
+    const got = custOps(c.id, al).filter(o => o.t === 'pay' && (o.cr || o.ts) >= c.want.at && opState(o) !== 'rm');
+    const paid = got.reduce((s, o) => s + o.amt, 0), last = got.reduce((s, o) => Math.max(s, o.cr || o.ts), 0);
+    if (paid && dayOf(last) < today()) return;   // اتحصّل من يوم فات: خلاص مش مطلوب
+    L.push({c, paid, want: c.want});
+  });
+  return L.sort((a, b) => (!!a.paid - !!b.paid) || b.want.amt - a.want.amt);
 }
 const custOps = (cid, al) => custAll().filter(o => (al[o.cid] || o.cid) === cid);
 /* اللي معايا كاش دلوقتي = كاش حصّلته − مصروفات − دفعات موردين − كاش سلمته لمصطفى (التحويلات مش على الشريك) */
@@ -392,8 +445,9 @@ function merge(r) {
 const TG_IC = {rt: '↩️', pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭'};
 const tgText = o => { const a = fmt(o.amt), w = {cash: 'كاش', tr: 'تحويل', insta: 'إنستا', voda: 'فودافون كاش'};
   return o.t === 'pay' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${a} ${w[o.m] || ''}` : o.t === 'inv' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${a}` : o.t === 'rt' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} مرتجع/شغل بـ ${a}${o.note ? ' — ' + o.note : ''}`
-    : o.t === 'exp' ? `مصروف ${o.cat || ''}: ${a}${o.note ? ' — ' + o.note : ''}` : o.t === 'spay' ? `دفع للمورد ${o.sname || ''} ${a}` : o.t === 'hand' ? `سلّمك ${a} كاش` : o.t === 'cs' ? `بيع كاش من المصنع ${a} — ${o.buyer || ''}` : 'حركة ' + a; };
-const view = o => [dayOf(o.ts) + ' ' + timeOf(o.ts), isCustOp(o) ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, o.t === 'pay' ? M_SAID[o.m] || o.m : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة', rt: 'مرتجع/شغل'}[o.t], o.t === 'rt' ? o.note || '' : ''];
+    : o.t === 'exp' ? `مصروف ${o.cat || ''}: ${a}${o.note ? ' — ' + o.note : ''}` : o.t === 'spay' ? `دفع للمورد ${o.sname || ''} ${a}` : o.t === 'hand' ? `سلّمك ${a} كاش` : o.t === 'cs' ? `بيع كاش من المصنع ${a} — ${o.buyer || ''}`
+    : o.t === 'cnt' ? `قفّل يومه: عدّ ${a} كاش${o.amt === o.sys ? ' — مظبوط ✓' : ` — المفروض ${fmtN(o.sys)}، ${o.amt < o.sys ? 'ناقص' : 'زيادة'} ${fmt(o.amt - o.sys)}`}` : 'حركة ' + a; };
+const view = o => o.t === 'cnt' ? [dayOf(o.ts) + ' ' + timeOf(o.ts), 'تقفيل اليوم', o.amt / 100, 'تقفيل يوم', o.amt === o.sys ? 'مظبوط' : 'المفروض ' + o.sys / 100] : [dayOf(o.ts) + ' ' + timeOf(o.ts), isCustOp(o) ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, o.t === 'pay' ? M_SAID[o.m] || o.m : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة', rt: 'مرتجع/شغل'}[o.t], o.t === 'rt' ? o.note || '' : ''];
 async function sync() {
   if (!S.u || S.bad) return;
   if (syncing) { again = true; return; }
@@ -534,7 +588,9 @@ function stHtml(o) {
   return s === 'exp' ? '' : s === 'done' ? (editPend(o) ? '<span class="st wt">⏳ التعديل عند مصطفى</span>' : '<span class="st ok">✓ اتنقلت</span>') : s === 'back' ? '<span class="st bk">🔴 راجعة</span>' : s === 'rm' ? '<span class="st bk">✖ مصطفى شالها</span>' : s === 'wait' ? '<span class="st wt">⏳ عند مصطفى</span>' : '<span class="st ns">⏳ لسه متبعتتش</span>';
 }
 /* سطر عملية: دوسة عليه بتفتح التعديل */
-const opRow = (o, withDay, noName) => `<div class="row t-${o.t}" data-o="${esc(o.id)}"><div class="m"><b>${esc(noName ? opHow(o) : opWhat(o))}</b><small>${withDay ? dispDate(dayOf(o.ts)) + ' · ' : ''}${timeOf(o.ts)}${noName ? '' : ' · ' + esc(opHow(o))}</small></div><div class="a"><b class="money">${fmt(o.amt)}</b>${stHtml(o)}</div></div>`;
+/* نفس معنى الألوان في التطبيقين: أخضر = فلوس دخلت معاك، أحمر = فلوس طلعت، دهبي = فاتورة/مستني مصطفى، أزرق = راحت لمصطفى */
+const dirOf = o => o.t === 'cs' || (o.t === 'pay' && o.m === 'cash') ? 'd-in' : o.t === 'exp' || o.t === 'spay' ? 'd-out' : o.t === 'inv' ? 'd-inv' : o.t === 'rt' ? '' : 'd-to';
+const opRow = (o, withDay, noName) => `<div class="row t-${o.t} ${dirOf(o)}" data-o="${esc(o.id)}"><div class="m"><b>${esc(noName ? opHow(o) : opWhat(o))}</b><small>${withDay ? dispDate(dayOf(o.ts)) + ' · ' : ''}${timeOf(o.ts)}${noName ? '' : ' · ' + esc(opHow(o))}</small></div><div class="a"><b class="money">${fmt(o.amt)}</b>${stHtml(o)}</div></div>`;
 /* حركات اليوم متجمعة بالنوع، كل نوع تحت بعضه وبإجماليه (المصروفات لوحدها والموردين لوحدهم) */
 const GROUPS = [['in', 'تحصيل وفواتير العملاء', o => o.t === 'pay' || o.t === 'inv'], ['rt', 'مرتجع / شغل (اتخصم من العملاء)', o => o.t === 'rt'], ['cs', 'بيع كاش من المصنع', o => o.t === 'cs'], ['exp', 'المصروفات', o => o.t === 'exp'], ['spay', 'دفعات الموردين', o => o.t === 'spay'], ['hand', 'سلّمت لمصطفى', o => o.t === 'hand']];
 const dayList = ops => GROUPS.map(([k, t, f]) => { const g = ops.filter(f); return g.length ? `<div class="gh g-${k}"><span>${t} (${g.length})</span><b class="money">${fmt(g.reduce((a, o) => a + o.amt, 0))}</b></div><div class="list">${g.map(o => opRow(o)).join('')}</div>` : ''; }).join('');
@@ -542,8 +598,8 @@ const bindOps = root => $$(root + ' .row[data-o]').forEach(r => r.onclick = () =
 /* الفواتير (إجمالي بس) مبتدخلش في اللي معاه، فبتتعرض في سطر لوحدها */
 const invLn = s => s.inv ? `<div class="invln"><span>🧾 فواتير (إجمالي بس)</span><b class="money">${fmt(s.inv)}</b></div>` : '';
 const pnHtml = (s, cols, first) => cols === 3
-  ? `<div class="pn ${first ? 'first' : ''}" style="--c:3"><div><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div><div><span>صرفت</span><b class="money">${fmt(s.sp)}</b></div><div><span>سلّمت لمصطفى</span><b class="money">${fmt(s.toM)}</b></div></div>${invLn(s)}`
-  : `<div class="pn ${first ? 'first' : ''}" style="--c:4"><div><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div><div><span>صرفت</span><b class="money">${fmt(s.sp)}</b></div><div><span>سلّمت لمصطفى</span><b class="money">${fmt(s.toM)}</b></div><div><span>معايا</span><b class="money ${s.left < 0 ? 'neg' : ''}">${fmtN(s.left)}</b></div></div>${invLn(s)}`;
+  ? `<div class="pn ${first ? 'first' : ''}" style="--c:3"><div class="c-in"><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div><div class="c-out"><span>صرفت</span><b class="money">${fmt(s.sp)}</b></div><div><span>سلّمت لمصطفى</span><b class="money">${fmt(s.toM)}</b></div></div>${invLn(s)}`
+  : `<div class="pn ${first ? 'first' : ''}" style="--c:4"><div class="c-in"><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div><div class="c-out"><span>صرفت</span><b class="money">${fmt(s.sp)}</b></div><div><span>سلّمت لمصطفى</span><b class="money">${fmt(s.toM)}</b></div><div><span>معايا</span><b class="money ${s.left < 0 ? 'neg' : ''}">${fmtN(s.left)}</b></div></div>${invLn(s)}`;
 
 /* ---------- الرئيسية: اللي معايا + حركات النهارده ---------- */
 let homeDays = 3;   // أيام فاتت بتفضل ظاهرة تحت النهارده، وبيزود بزرار
@@ -552,9 +608,14 @@ function drawHome() {
   const byDay = new Map();
   all.forEach(o => { const d = dayOf(o.ts); if (d !== t) { if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(o); } });
   const days = [...byDay.keys()].sort().reverse(), earlier = days.slice(0, homeDays);
+  const wl = wantList(), k = cntOf(t);
   $('#main').innerHTML = `${bk.length ? `<button class="alert" id="bk" type="button">🔴 مصطفى رجّعلك ${bk.length === 1 ? 'عملية' : bk.length + ' عمليات'} تصلحها — دوس هنا</button>` : ''}
+    ${wl.length ? `<section class="want" id="want"><div class="wh2"><b>📌 مطلوب تحصّل من دول</b><span>${wl.filter(x => x.paid).length} من ${wl.length}</span></div>
+      ${wl.map(x => `<div class="wr ${x.paid ? 'ok' : ''}" data-c="${esc(x.c.id)}"><div class="m"><b>${esc(x.c.name)}</b><small>${x.paid ? `✓ حصّلت <span class="money">${fmt(x.paid)}</span>` : (x.want.note ? esc(x.want.note) + ' · ' : '') + esc(lpTxt(x.c))}</small></div><div class="a"><b class="money">${fmt(x.want.amt)}</b><small>${x.paid ? 'اتشطب' : 'مطلوب'}</small></div></div>`).join('')}</section>` : ''}
     <section class="panel"><div class="p1"><span>معاك كاش دلوقتي</span><b class="money ${cn < 0 ? 'neg' : ''}" id="cashT">${fmtN(cn)}</b></div>
-      <div class="cap">النهارده</div>${pnHtml(s, 3, true)}</section>
+      <div class="cap">النهارده</div>${pnHtml(s, 3, true)}
+      ${k ? `<button class="kline ${k.amt === k.sys ? 'ok' : 'bad'}" id="kBtn" type="button">🔒 قفلت يومك ${timeOf(k.ts)}: ${k.amt === k.sys ? 'مظبوط ✓' : `${k.amt < k.sys ? 'ناقص' : 'زيادة'} <span class="money">${fmt(k.amt - k.sys)}</span>`}${k.sys !== cn ? ' <em>· فيه حركات بعد القفل، قفّل تاني</em>' : ''}</button>`
+        : `<button class="kline" id="kBtn" type="button">🔒 قفّل يومك (عِد الفلوس اللي معاك)</button>`}</section>
     <div class="qa2"><button class="qb g" id="qPay" type="button"><i>💵</i>دفعة أو فاتورة</button><button class="qb qs" id="qSale" type="button"><i>🏭</i>بيع كاش من المصنع</button><button class="qb" id="qSp" type="button"><i>⛽</i>صرفت</button><button class="qb" id="qHand" type="button"><i>🤝</i>سلمت لمصطفى</button></div>
     <div class="lbl"><span>حركات النهارده</span><span>دوس على أي حركة تعدّلها</span></div>
     ${ops.length ? dayList(ops) : '<div class="list"><div class="empty">لسه مسجلتش حاجة النهارده</div></div>'}
@@ -562,6 +623,8 @@ function drawHome() {
     ${days.length > earlier.length ? '<button class="more" id="hMore" type="button" style="margin-top:12px">اعرض أيام أقدم</button>' : ''}
     <button class="lnk" id="goArch" type="button">الأرشيف (أسابيع وشهور) ›</button>`;
   if ($('#bk')) $('#bk').onclick = () => editSheet(bk[0]);
+  $$('#want .wr[data-c]').forEach(r => r.onclick = () => { pyTab = 'pay'; nav('p/' + r.dataset.c); });
+  $('#kBtn').onclick = closeDay;
   $('#qPay').onclick = () => { nav('c', true); setTimeout(() => $('#q') && $('#q').focus(), 120); };
   $('#qSp').onclick = () => { spTab = 'exp'; nav('x'); };
   $('#qHand').onclick = handModal;
@@ -574,14 +637,24 @@ function drawHome() {
 /* ---------- العملاء (تبويب لوحده) ---------- */
 let custNo = new Map();
 const limOf = c => c.bal > 0 ? (c.lim || '') : '';
-const custTbl = list => `<table class="ctb"><thead><tr><th>#</th><th>العميل</th><th>الرصيد (عليه)</th></tr></thead><tbody>${list.map(c => `<tr class="${limOf(c) ? 'l-' + limOf(c) : ''}" data-c="${esc(c.id)}"><td class="no">${custNo.get(c.id) || ''}</td><td class="nm">${esc(c.name)}${c.nw ? '<span class="nw">جديد</span>' : ''}</td><td class="bl ${c.bal > 0 ? 'money' : 'z'}">${c.bal > 0 ? fmt(c.bal) : '—'}</td></tr>`).join('')}</tbody></table>`;
+const custTbl = list => `<table class="ctb"><thead><tr><th>#</th><th>العميل</th><th>الرصيد (عليه)</th></tr></thead><tbody>${list.map(c => `<tr class="${limOf(c) ? 'l-' + limOf(c) : ''}" data-c="${esc(c.id)}"><td class="no">${custNo.get(c.id) || ''}</td><td class="nm">${esc(c.name)}${c.nw ? '<span class="nw">جديد</span>' : ''}${c.want ? '<span class="wn">📌 مطلوب</span>' : ''}<small class="lp ${lpCls(c)}">${lpTxt(c)}</small></td><td class="bl ${c.bal > 0 ? 'money' : 'z'}">${c.bal > 0 ? fmt(c.bal) : '—'}</td></tr>`).join('')}</tbody></table>`;
+/* ترتيب العملاء (بيتحفظ على الموبايل): الأكتر عليه / مدفعش من زمان / بالحروف */
+const C_SORT = [['owe', 'الأكتر عليه'], ['old', 'مدفعش من زمان'], ['abc', 'بالحروف']];
+function sortCust(all, k) {
+  const abc = (a, b) => a.name.localeCompare(b.name, 'ar');
+  if (k === 'abc') return all.sort(abc);
+  if (k === 'old') return all.sort((a, b) => ((b.bal > 0) - (a.bal > 0)) || (a.lp || '').localeCompare(b.lp || '') || b.bal - a.bal || abc(a, b));
+  return all.sort((a, b) => b.bal - a.bal || abc(a, b));
+}
 function drawCustomers(q0) {
   const cs = customers();
   const owed = [...cs.values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0);
   $('#main').innerHTML = `<section class="panel" style="margin-bottom:10px"><div class="p1"><span>إجمالي اللي على العملاء</span><b class="money" style="color:var(--red)">${fmt(owed)}</b></div></section>
-    <div class="sr"><input class="search" id="q" type="search" placeholder="🔍 دوّر على عميل…" autocomplete="off" value="${esc(q0 || '')}"><button class="sbtn" id="bNew" type="button">＋ عميل جديد</button></div><div id="lists"></div>`;
+    <div class="sr"><input class="search" id="q" type="search" placeholder="🔍 دوّر على عميل…" autocomplete="off" value="${esc(q0 || '')}"><button class="sbtn" id="bNew" type="button">＋ عميل جديد</button></div>
+    <div class="seg cs" id="cSort" style="--n:3">${C_SORT.map(([k, t]) => `<button type="button" data-v="${k}" class="${(S.cSort || 'owe') === k ? 'on' : ''}">${t}</button>`).join('')}</div><div id="lists"></div>`;
+  $$('#cSort button').forEach(b => b.onclick = () => { S.cSort = b.dataset.v; save(); $$('#cSort button').forEach(x => x.classList.toggle('on', x === b)); draw(); });
   const draw = () => {
-    const q = norm($('#q').value), all = [...cs.values()].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+    const q = norm($('#q').value), all = sortCust([...cs.values()], S.cSort || 'owe');
     custNo = new Map(all.map((c, i) => [c.id, i + 1]));
     if (q) { const f = all.filter(c => norm(c.name).includes(q)); $('#lists').innerHTML = f.length ? `<div class="lbl"><span>نتيجة البحث</span></div>${custTbl(f)}` : '<div class="empty">مفيش عميل بالاسم ده.<br>لو جديد دوس "＋ عميل جديد".</div>'; }
     else {
@@ -655,7 +728,9 @@ let cShow = 15;
 function drawPayInfo() {
   const cs = customers(), c = cs.get(scr.cid);
   if (!c || !$('#cBox')) return;
-  $('#cBox').innerHTML = `<b>${esc(c.name)}${c.nw ? '<span class="nw">عميل جديد</span>' : ''}</b><div>${c.bal > 0 ? `<span>عليه</span><b class="money">${fmt(c.bal)}</b>` : '<span class="z">مفيش عليه</span>'}</div>`;
+  const w = wantList().find(x => x.c.id === c.id);
+  $('#cBox').innerHTML = `<b>${esc(c.name)}${c.nw ? '<span class="nw">عميل جديد</span>' : ''}<small class="lp ${lpCls(c)}">${lpTxt(c)}</small></b><div>${c.bal > 0 ? `<span>عليه</span><b class="money">${fmt(c.bal)}</b>` : '<span class="z">مفيش عليه</span>'}</div>
+    ${w ? `<div class="cwant ${w.paid ? 'ok' : ''}">📌 مصطفى عاوز منه <b class="money">${fmt(w.want.amt)}</b>${w.want.note ? ' — ' + esc(w.want.note) : ''}${w.paid ? ` · ✓ حصّلت ${fmt(w.paid)}` : ''}</div>` : ''}`;
   const ops = custOps(c.id, aliases()).sort((a, b) => b.ts - a.ts), shown = ops.slice(0, cShow);
   $('#tdy').innerHTML = ops.length ? `<div class="lbl" style="margin-top:16px"><span>كل اللي سجلته على العميل ده (${ops.length})</span><span>دوس تعدّل أو تمسح</span></div><div class="list">${shown.map(o => opRow(o, true, true)).join('')}</div>${ops.length > shown.length ? '<button class="more" id="cMore" type="button" style="margin-top:10px">اعرض أقدم</button>' : ''}` : '';
   if ($('#cMore')) $('#cMore').onclick = () => { cShow += 15; drawPayInfo(); };
@@ -904,6 +979,37 @@ function handModal() {
   };
 }
 
+/* ---------- تقفيل اليوم: الشريك بيعد الفلوس اللي في جيبه، والتطبيق بيقارنها باللي المفروض معاه ("معاك كاش").
+   بتتسجل عملية cnt (واحدة لكل يوم، القفل التاني بيكتب فوقها) وبتوصل مصطفى. مش فلوس، فمبتغيرش أي رقم ---------- */
+function closeDay() {
+  const cn = cashNow(), t = today(), old = cntOf(t);
+  modal(`<h3>🔒 قفّل يومك</h3>
+    <div class="kexp"><span>المفروض معاك كاش</span><b class="money ${cn < 0 ? 'neg' : ''}">${fmtN(cn)}</b></div>
+    <label class="wh" for="kAmt">عِد الفلوس اللي في جيبك واكتبها</label>
+    <label class="amt sm" for="kAmt" style="margin-top:6px"><input id="kAmt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>
+    <div id="kRes"></div>
+    <button class="big b-cash" id="kOk" type="button">قفّل</button><button class="big b-home" id="kX" type="button">رجوع</button>
+    ${old ? `<p class="hint">قفلته قبل كده النهارده (${timeOf(old.ts)}). القفل الجديد هيتكتب مكانه.</p>` : ''}`);
+  const inp = $('#kAmt'); bindAmt(inp);
+  setTimeout(() => inp && inp.focus(), 80);
+  let warned = false;
+  const res = () => {
+    const a = amtOf(inp), d = a - cn;   // فاضية = 0 (الخانة مبتقبلش صفر لوحده)
+    $('#kRes').innerHTML = !inp.value.trim() && !warned ? '' : !d ? '<div class="kres ok">✓ مظبوط</div>' : `<div class="kres bad">${d < 0 ? 'ناقص' : 'زيادة'} <b class="money">${fmt(d)}</b> جنيه<small>راجع حركات النهارده، يمكن نسيت تسجل دفعة أو مصروف. لو قفلت كده الفرق هيوصل لمصطفى.</small></div>`;
+    $('#kOk').textContent = d && warned ? 'قفّل برضه' : 'قفّل';
+  };
+  inp.addEventListener('input', () => { warned = false; res(); });
+  $('#kX').onclick = closeModal;
+  $('#kOk').onclick = () => {
+    const a = amtOf(inp);
+    if (a !== cn && !warned) { warned = true; res(); return; }
+    const now = Date.now(), id = 'k_' + t + '_' + S.dev, o = S.ops[id] || {id, t: 'cnt', day: t, del: false};
+    Object.assign(o, {amt: a, sys: cn, ts: now, del: false}); bump(o); S.ops[id] = o;
+    save(); sync(); closeModal(); refresh();
+    toast(a === cn ? '✔ قفلت يومك — مظبوط' : `✔ قفلت يومك — الفرق ${fmtN(a - cn)} وصل لمصطفى`, 3500, true);
+  };
+}
+
 /* ---------- الأرشيف: أسابيع أو شهور، وكل يوم فيه حصّلت وصرفت وسلمت لمصطفى كام ---------- */
 const weekStart = iso => addDays(iso, -((dowOf(iso) + 1) % 7));   // الأسبوع بيبدأ سبت
 const dayLabel = d => `${AR_DAYS[dowOf(d)]}<small>${shortD(d)}</small>`;
@@ -912,7 +1018,7 @@ const lftCell = x => `<td class="${x.left < 0 ? 'neg' : ''}">${x.left < 0 ? '-' 
 const sumRow = x => `<td>${nz(x.col)}</td><td>${nz(x.sp)}</td><td>${nz(x.toM)}</td>${lftCell(x)}`;
 const tblHtml = (th, rows, s, lbl) => `<table class="tbl"><thead><tr><th>${th}</th>${TH4}</tr></thead><tbody>${rows}</tbody><tfoot><tr><td>${lbl}</td>${sumRow(s)}</tr>${s.inv ? `<tr class="inr"><td colspan="5">🧾 فواتير (إجمالي بس)<b class="money">${fmt(s.inv)}</b></td></tr>` : ''}</tfoot></table>`;
 const TH4 = '<th>حصّلت</th><th>صرفت</th><th>سلّمت</th><th>معايا</th>';
-const sub4 = (first, s) => `<div class="pn ${first ? 'first' : ''}" style="--c:4"><div><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div><div><span>صرفت</span><b class="money">${fmt(s.sp)}</b></div><div><span>سلّمت لمصطفى</span><b class="money">${fmt(s.toM)}</b></div><div><span>معايا</span><b class="money ${s.left < 0 ? 'neg' : ''}">${fmtN(s.left)}</b></div></div>${invLn(s)}`;
+const sub4 = (first, s) => `<div class="pn ${first ? 'first' : ''}" style="--c:4"><div class="c-in"><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div><div class="c-out"><span>صرفت</span><b class="money">${fmt(s.sp)}</b></div><div><span>سلّمت لمصطفى</span><b class="money">${fmt(s.toM)}</b></div><div><span>معايا</span><b class="money ${s.left < 0 ? 'neg' : ''}">${fmtN(s.left)}</b></div></div>${invLn(s)}`;
 let archWeeks = 4, archMons = 6, archMode = 'w';
 const archHead = t => `<div class="seg" id="aM" style="margin-bottom:10px"><button type="button" data-v="w" class="${archMode === 'w' ? 'on' : ''}">أسابيع</button><button type="button" data-v="m" class="${archMode === 'm' ? 'on' : ''}">شهور</button></div>
   <label class="pick">📅 اختار يوم تفتحه<input type="date" id="aDay" value="${t}" max="${t}"></label>`;
@@ -968,7 +1074,7 @@ function drawDay() {
   const t = today(), d = scr.day, ops = liveOps().filter(o => dayOf(o.ts) === d).sort((a, b) => b.ts - a.ts), s = sums(ops);
   $('#main').innerHTML = `<div class="dnav"><button type="button" id="aPrev" title="اليوم اللي قبله">›</button><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}${d === t ? ' · النهارده' : ''}</span><button type="button" id="aNext" title="اليوم اللي بعده"${d >= t ? ' disabled' : ''}>‹</button></div>
     <label class="pick">📅 اختار يوم<input type="date" id="aDay" value="${d}" max="${t}"></label>
-    <section class="panel">${sub4(true, s)}</section>
+    <section class="panel">${sub4(true, s)}${(k => k ? `<div class="kline ${k.amt === k.sys ? 'ok' : 'bad'}">🔒 قفلت اليوم ده ${timeOf(k.ts)}: عدّيت <span class="money">${fmt(k.amt)}</span>${k.amt === k.sys ? ' — مظبوط ✓' : ` — المفروض ${fmtN(k.sys)} (${k.amt < k.sys ? 'ناقص' : 'زيادة'} ${fmt(k.amt - k.sys)})`}</div>` : '')(cntOf(d))}</section>
     <div class="lbl"><span>حركات اليوم (${ops.length})</span><span>دوس على أي حركة تعدّلها</span></div>
     ${ops.length ? dayList(ops) : '<div class="list"><div class="empty">مفيش حركات في اليوم ده</div></div>'}
     <button class="lnk" id="aBack" type="button">‹ رجوع للأرشيف</button>`;
@@ -992,6 +1098,7 @@ function drawSettings() {
       <div class="kv"><span>حركات مستنية تتبعت</span><b class="${n ? 'wt' : ''}">${n}</b></div>
       <button class="big b-home" id="sSync" type="button">🔄 حدّث دلوقتي</button>
       <p class="hint" style="text-align:right">الحركات بتتبعت وبتتحدث لوحدها كل كام ثانية. ولو مفيش نت بتتحفظ على الموبايل وتتبعت أول ما يرجع.</p></div>
+    <div class="card"><h2>معنى الألوان</h2><p class="hint" style="text-align:right;margin:0"><b class="ok">أخضر</b> = فلوس دخلت معاك · <b class="bk">أحمر</b> = فلوس طلعت منك · <b style="color:#2F6690">أزرق</b> = راحت لمصطفى · <b style="color:var(--gold-d)">دهبي</b> = فاتورة أو حاجة مستنية مصطفى</p></div>
     <div class="card"><h2>عن التطبيق</h2><div class="kv"><span>التطبيق</span><b>حركة السوق — فلاش أون</b></div><p class="hint" style="text-align:right;margin-top:6px">مفيش كلمة سر ولا حاجة تتظبط. أي غلطة تقدر تعدّلها أو تمسحها من الرئيسية أو الأرشيف، طول ما مصطفى لسه منقلهاش لحساباته.</p></div>`;
   $$('#uiTheme button').forEach(b => b.onclick = () => { uiSet({theme: b.dataset.v}); drawSettings(); });
   $$('#uiFs button').forEach(b => b.onclick = () => { uiSet({fs: b.dataset.v}); drawSettings(); });

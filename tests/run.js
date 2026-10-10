@@ -496,7 +496,7 @@ const MO = !!process.env.MARKET_ONLY;
     eq('الرصيد عند الشريك = رصيد الحسابات − اللي اتسجل ولسه متنقلش', await M.evaluate(id => customers().get(id).bal, pid1), bal0 - 800000);
     eq('اتسجل للعميل ده النهارده بحالته', await M.evaluate(() => { const t = $('#tdy').textContent.replace(/\s+/g, ' '); return ['تحويل لمصطفى', '3,000', '⏳ عند مصطفى', 'كاش معايا', '5,000'].every(x => t.includes(x)); }), true);
     await M.click('#bBack'); await M.waitForTimeout(150);
-    eq('مفيش آخر زيارات، العملاء في جدول واحد', await M.evaluate(() => [$$('#lists .ctb').length, $('#lists .lbl span').textContent, $('#lists .ctb .nm').textContent]), [1, 'كل العملاء', C1]);
+    eq('مفيش آخر زيارات، العملاء في جدول واحد', await M.evaluate(n => [$$('#lists .ctb').length, $('#lists .lbl span').textContent, $$('#lists .ctb .nm').some(x => x.firstChild.textContent === n)], C1), [1, 'كل العملاء', true]);
 
     DM.netDown = true;
     await M.click('#bNew'); await M.fill('#ncN', 'عميل سوق جديد'); await M.click('#ncOk'); await M.fill('#amt', '1500'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(1500);
@@ -846,6 +846,85 @@ const MO = !!process.env.MARKET_ONLY;
     await M.evaluate(() => handModal()); await M.waitForSelector('#hAmt'); await M.click('#hX'); await M.waitForTimeout(300);
     await M.goBack(); await M.waitForTimeout(150);
     eq('قفل النافذة بزرارها مبيسيبش خانة زيادة: الرجوع بيروح للصفحة اللي قبلها', await M.evaluate(() => scr.v), 'home');
+
+    console.log('\n٢٢) ترتيب العملاء وآخر دفعة، "حصّل من دول"، تقفيل اليوم، انقل كل الجاهز، التسجيل السريع، والمطلوب منك النهارده');
+    const sync2 = async () => { await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.waitForTimeout(300); await bg(M, 'sync()'); await M.waitForTimeout(200); };
+    await sync2();
+    /* آخر دفعة: بتيجي من الحسابات مع رصيد العميل */
+    eq('الحسابات بتبعت تاريخ آخر دفعة مع رصيد عميل السوق', JSON.parse(mkRows('cust').find(r => r[0] === pid1)[10]).lp, await A.evaluate(id => lastPays().get(id) || '', pid1));
+    await M.evaluate(() => nav('c', true)); await M.waitForTimeout(150);
+    eq('العملاء: 3 ترتيبات والافتراضي "الأكتر عليه"', await M.evaluate(() => [$$('#cSort button').map(b => b.textContent), $('#cSort button.on').dataset.v]), [['الأكتر عليه', 'مدفعش من زمان', 'بالحروف'], 'owe']);
+    eq('الأكتر عليه: مترتبين بالرصيد من الكبير للصغير', await M.evaluate(() => { const b = $$('#lists tr[data-c]').map(r => customers().get(r.dataset.c).bal); return b.every((x, i) => !i || b[i - 1] >= x); }), true);
+    eq('تحت كل عميل "آخر دفعة"', await M.evaluate(id => $(`#lists tr[data-c="${id}"] .lp`).textContent, pid1), 'دفع النهارده');
+    await M.click('#cSort button[data-v=abc]'); await M.waitForTimeout(100);
+    eq('بالحروف: بيترتبوا بالاسم والاختيار بيتحفظ', await M.evaluate(() => { const n = $$('#lists tr[data-c] .nm').map(x => x.firstChild.textContent); return [n.every((x, i) => !i || n[i - 1].localeCompare(x, 'ar') <= 0), S.cSort, JSON.parse(localStorage.getItem('fo_mkt_v1')).cSort]; }), [true, 'abc', 'abc']);
+    await M.click('#cSort button[data-v=owe]');
+
+    /* حصّل من دول: مصطفى بيعلّم من الحسابات، والشريك بيشوفها في الرئيسية وبتتشطب لما يسجل دفعة */
+    await openParty(A, C1); await A.click('#ppWant'); await A.fill('#wqA', '1,000'); await A.fill('#wqN', 'قبل الخميس'); await A.click('#wqOk'); await A.waitForTimeout(200);
+    eq('الحسابات: العميل اتعلّم "مطلوب" وظهر سطر في صفحته', [await A.evaluate(id => mkWants()[id] && mkWants()[id].amt, pid1), (await A.textContent('#ppWantL')).includes('لسه')], [100000, true]);
+    await sync2(); await M.evaluate(() => nav('', true)); await M.waitForTimeout(150);
+    eq('الشريك: "مطلوب تحصّل من دول" فوق في الرئيسية بالمبلغ والملاحظة', await M.evaluate(id => { const r = $(`#want .wr[data-c="${id}"]`); return r && [r.querySelector('.a .money').textContent, r.textContent.includes('قبل الخميس'), r.classList.contains('ok'), $('#want .wh2 span').textContent]; }, pid1), ['1,000', true, false, '0 من 1']);
+    await M.click(`#want .wr[data-c="${pid1}"]`); await M.waitForTimeout(150);
+    eq('دوسة على العميل بتفتح الدفعة وفيها سطر "مصطفى عاوز منه"', [await M.evaluate(() => scr.v), (await M.textContent('#cBox .cwant')).includes('1,000')], ['pay', true]);
+    await M.fill('#amt', '700'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(400);
+    await M.evaluate(() => nav('', true)); await M.waitForTimeout(150);
+    eq('سجّل دفعة: اتشطبت عنده "✓ حصّلت"', await M.evaluate(id => { const r = $(`#want .wr[data-c="${id}"]`); return [r.classList.contains('ok'), r.textContent.includes('حصّلت 700')]; }, pid1), [true, true]);
+    await sync2(); await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    eq('الحسابات: المطلوب منك النهارده فيه سطر التحصيل "1 من 1"', (await A.textContent('#tkRows')).replace(/\s+/g, ' ').includes('اتحصّل من 1 من 1'), true);
+    eq('بكرة اللي اتحصّل بيتشال من القايمة لوحده', await A.evaluate(() => { const n0 = Date.now, r0 = mkWantPrune(); Date.now = () => n0() + 86400000 * 1.1; let r; try { r = [r0, mkWantPrune(), Object.keys(mkWants()).length]; } finally { Date.now = n0; } return r; }), [false, true, 0]);
+
+    /* تقفيل اليوم */
+    await M.evaluate(() => nav('', true)); await M.waitForTimeout(150);
+    const cn0 = await M.evaluate(() => cashNow());
+    await M.click('#kBtn'); await M.waitForSelector('#kAmt');
+    eq('تقفيل اليوم: بيقول المفروض معاك كام', await M.evaluate(() => $('.kexp .money').textContent), await M.evaluate(() => fmtN(cashNow())));
+    await M.fill('#kAmt', String((cn0 - 20000) / 100)); await M.click('#kOk'); await M.waitForTimeout(100);
+    eq('فيه فرق: بينبّه الأول ومبيقفلش', [(await M.textContent('#kRes')).includes('ناقص 200'), await M.evaluate(() => !!cntOf(today()))], [true, false]);
+    await M.click('#kOk'); await M.waitForTimeout(300);
+    eq('"قفّل برضه": اتسجل التقفيل والفرق ظاهر، و"معاك كاش" متغيرش', await M.evaluate(() => { const k = cntOf(today()); return [k.amt - k.sys, $('#kBtn').classList.contains('bad'), cashNow(), liveOps().some(o => o.t === 'cnt')]; }), [-20000, true, cn0, false]);
+    await sync2();
+    eq('تليجرام: مصطفى عرف بالفرق', tgTexts().some(t => t.includes('قفّل يومه') && t.includes('ناقص 200')), true);
+    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    eq('الحسابات: سطر أحمر في المطلوب منك النهارده', await A.evaluate(() => { const r = [...document.querySelectorAll('#tkRows .sync')].find(x => x.textContent.includes('قفّل يومه')); return r && [r.classList.contains('warn'), r.textContent.includes('ناقص')]; }), [true, true]);
+    eq('الوارد: كارت التقفيل فوق ومش محسوب عملية', await A.evaluate(() => { go('mkt'); return new Promise(r => setTimeout(() => r([!!document.querySelector('#mkBody .mkcnt.bad'), mkLive().some(o => o.t === 'cnt')]), 300)); }), [true, false]);
+    await M.click('#kBtn'); await M.waitForSelector('#kAmt'); await M.fill('#kAmt', String(cn0 / 100)); await M.click('#kOk'); await M.waitForTimeout(300);
+    eq('قفّل تاني مظبوط: نفس التقفيل اتكتب فوق القديم', await M.evaluate(() => [Object.values(S.ops).filter(o => o.t === 'cnt').length, cntOf(today()).amt === cntOf(today()).sys, $('#kBtn').classList.contains('ok')]), [1, true, true]);
+
+    /* انقل كل الجاهز */
+    await M.evaluate(id => { pyTab = 'pay'; nav('p/' + id, true); }, pid1); await M.waitForTimeout(150);
+    await M.fill('#amt', '110'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(800);
+    await M.fill('#amt', '220'); await M.click('.big[data-m=tr]'); await M.waitForTimeout(400);
+    await M.evaluate(() => nav('b', true)); await M.waitForTimeout(100); await M.fill('#bn', 'مشتري جاهز'); await M.fill('#amt', '330'); await M.click('#bOk'); await M.waitForTimeout(300);
+    await sync2();
+    const bB = await bal(A, C1), vB = await vbal(A, 'v_mkt');
+    const rdy = await A.evaluate(() => mkReady().map(o => o.amt)), [eC, eV] = await A.evaluate(id => { const R = mkReady(); return [R.filter(o => o.t === 'pay' && mkPid(o) === id).reduce((s, o) => s + o.amt, 0), R.filter(o => o.t === 'cs' || (o.t === 'pay' && o.m === 'cash')).reduce((s, o) => s + o.amt, 0)]; }, pid1);
+    eq('الجاهز للنقل فيه الدفعتين والبيع الكاش', [rdy.includes(11000), rdy.includes(22000), rdy.includes(33000)], [true, true, true]);
+    await A.evaluate(() => { mkView = 'in'; go('mkt'); }); await A.waitForTimeout(300);
+    await A.click('#mkAll'); await A.waitForSelector('#mbOk'); await A.click('#mbOk'); await A.waitForTimeout(400);
+    eq('انقل كل الجاهز: اتنقلوا كلهم بشاشة واحدة', await A.evaluate(() => [mkReady().length, Object.values(db.mkt.ops).filter(o => [11000, 22000, 33000].includes(o.amt) && !o.del).map(o => mkState(o))]), [0, ['done', 'done', 'done']]);
+    eq('العميل نزل بكل دفعاته الجاهزة والكاش (دفعات + بيع) في خزنة السوق', [bB - await bal(A, C1), await vbal(A, 'v_mkt') - vB], [eC, eV]);
+    eq('دفعتين نفس العميل = "دفعة" واحدة في حسابه', await A.evaluate(() => { const L = db.entries.filter(e => e.id.startsWith('e_mk_') && !e.del && [11000, 22000].includes(e.amt)); return [L.length, new Set(L.map(e => e.mkg)).size, !!L[0].mkg]; }), [2, 1, true]);
+
+    /* التسجيل السريع (＋) */
+    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    eq('الموبايل: زرار ＋ ظاهر في الرئيسية ومخفي في صفحة الحساب', [await A.isVisible('#fabNew'), (await openParty(A, C1), await A.isVisible('#fabNew'))], [true, false]);
+    await A.click('nav button[data-go=home]'); await A.waitForTimeout(150);
+    await A.click('#fabNew'); await A.click('#qmPay'); await A.fill('#qpQ', C1); await A.waitForTimeout(100);
+    await A.press('#qpQ', 'Enter'); await A.waitForTimeout(200);
+    eq('＋ ← دفعة ← اكتب حرفين ← Enter: نافذة الدفعة للعميل', [!!(await A.$('#pyAmt')), (await A.textContent('#modal')).includes(C1)], [true, true]);
+    await A.evaluate(() => closeModal());
+    await A.click('#fabNew'); await A.click('#qmExp'); await A.waitForTimeout(150);
+    eq('＋ ← مصروف: نافذة مصروف الخزنة', (await A.textContent('#modal h3')).includes('مصروف'), true);
+    await A.evaluate(() => closeModal());
+    await A.setViewportSize({width: 1300, height: 800}); await A.waitForTimeout(200);
+    eq('اللاب: "تسجيل سريع" في القايمة الجانبية والزرار العايم مخفي، وF4 بيفتحه', [await A.isVisible('#nQuick'), await A.isVisible('#fabNew'), (await A.keyboard.press('F4'), await A.waitForTimeout(150), await A.isVisible('#qmDoc'))], [true, false, true]);
+    await A.evaluate(() => closeModal()); await A.setViewportSize({width: 400, height: 860}); await A.waitForTimeout(200);
+
+    /* المطلوب منك النهارده + الألوان */
+    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    eq('الرئيسية: كل التنبيهات في صندوق "المطلوب منك النهارده" والعداد = اللي لسه مستنيك', await A.evaluate(() => [!!$('#todo #mkRem') && !!$('#todo #nlRem'), $('#tdN').textContent === ($$('#todo .sync:not(.ok)').length ? $$('#todo .sync:not(.ok)').length + ' ' + ($$('#todo .sync:not(.ok)').length === 1 ? 'حاجة' : 'حاجات') : '✔ مفيش حاجة مستنياك')]), [true, true]);
+    eq('الألوان واحدة في التطبيقين: الكاش أخضر والتحويل أزرق والمصروف أحمر', await M.evaluate(() => { nav('', true); const c = k => { const r = document.querySelector('.row.' + k + ' .a .money'); return r ? getComputedStyle(r).color : null; }; return [c('d-in'), c('d-to')]; }), ['rgb(30, 138, 70)', 'rgb(47, 102, 144)']);
 
     console.log('\n١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);

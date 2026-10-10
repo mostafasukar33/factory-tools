@@ -1643,15 +1643,33 @@ function fwdMain(p) {
   return c[0] || null;
 }
 const fwSig = e => JSON.stringify([e.date, e.lines || [], e.disc || 0]);
-function fwState(e) { const c = E.get('e_fw_' + e.id); return !c || c.del ? 'no' : c.fwSig === fwSig(e) ? 'ok' : 'chg'; }
+/* النسخة في الأساسي: اللي اتعملت بالزرار (e_fw_) أو فاتورة كانت متسجلة بإيده قبل كده واتربطت بالبنود والتاريخ (fwFrom) */
+function fwCopyOf(e) { const c = E.get('e_fw_' + e.id); if (c && !c.del) return c; return db.entries.find(x => x.fwFrom === e.id && !x.del && x.kind === 'inv') || null; }
+function fwState(e) { const c = fwCopyOf(e); return !c ? (e.fwMan ? 'ok' : 'no') : c.fwSig === fwSig(e) ? 'ok' : 'chg'; }   // fwMan = هو علّم عليها "متنقلة بالفعل" بإيده
+/* فواتير اتنقلت بإيده قبل الزرار: نفس التاريخ ونفس البنود (الصنف والكمية والسعر) ونفس الإجمالي = اتنقلت، وبتتربط بالأصل
+   علشان أي تعديل بعد كده يبان "اتعدلت" و"انقل التعديل" يعدّلها هي (من غير ما يعمل نسخة تانية) */
+const fwKey = e => [e.date, docTotal(e), (e.lines || []).map(l => [norm(l.name), +l.qty || 0, +l.price || 0].join('~')).sort().join('|')].join('#');
+function fwAutoLink(p) {
+  const m = fwdMain(p); if (!m) return 0;
+  const free = partyEntries(m.id).filter(x => x.kind === 'inv' && !x.fwFrom);
+  let n = 0;
+  partyEntries(p.id).filter(e => e.kind === 'inv' && !fwCopyOf(e)).forEach(e => {
+    const k = fwKey(e), i = free.findIndex(x => fwKey(x) === k);
+    if (i < 0) return;
+    const c = free.splice(i, 1)[0]; c.fwFrom = e.id; c.fwSig = fwSig(e); touch(c); n++;
+  });
+  if (n) saveDB();
+  return n;
+}
 const FW_TAG = {ok: '✓ اتنقلت للحساب الأساسي', no: '⏳ لسه متنقلتش', chg: '⚠ اتعدلت بعد النقل — انقلها تاني'};
 const FW_SHORT = {ok: '✓ اتنقلت', no: '⏳ متنقلتش', chg: '⚠ اتعدلت'};   // في الجدول (علشان الموبايل)
 function fwMove(p, e) {
   const m = fwdMain(p);
   if (!m) { toast('مش لاقي الحساب الأساسي. اختاره من "تعديل البيانات".', 5000); return false; }
   if (isLocked(e.date)) { lockToast(); return false; }
-  const data = {party: m.id, kind: 'inv', date: e.date, lines: JSON.parse(JSON.stringify(e.lines || [])), disc: e.disc || 0, note: e.note || '', fwFrom: e.id, fwSig: fwSig(e)};
-  let c = E.get('e_fw_' + e.id);
+  const old = fwCopyOf(e);
+  const data = {party: old ? old.party : m.id, kind: 'inv', date: e.date, lines: JSON.parse(JSON.stringify(e.lines || [])), disc: e.disc || 0, note: old ? old.note || '' : e.note || '', fwFrom: e.id, fwSig: fwSig(e)};
+  let c = fwCopyOf(e) || E.get('e_fw_' + e.id);
   if (c) { if (!c.del) (c.hist = c.hist || []).push(snapshot(c)); Object.assign(c, data, {del: false}); delete c.delAt; }
   else c = addEntry(Object.assign({id: 'e_fw_' + e.id}, data));
   applyAmounts(c); touch(c);
@@ -1709,7 +1727,7 @@ function renderParty(id) {
       ${limitClass(p, b) ? `<div class="limw ${limitClass(p, b)}">${limitClass(p, b) === 'lim-r' ? '🔴 رصيده فوق الحد الأحمر' : '🟡 رصيده فوق الحد الأصفر'} (${fmtP(limitClass(p, b) === 'lim-r' ? limitsOf(p).r : limitsOf(p).y)})</div>` : ''}
       <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}" data-ck="pb:${esc(id)}" data-cnt="${Math.abs(b)}">${fmtP(Math.abs(b))} <small style="font-size:14px;color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
-    ${isFwdSrc(p) ? fwBar(p) : ''}
+    ${isFwdSrc(p) ? (fwAutoLink(p), fwBar(p)) : ''}
     <div class="acts">
       <button class="btn" id="ppDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button>
       <button class="btn green" id="ppPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button>
@@ -1812,7 +1830,7 @@ function docModal(p, kind, e, opts = {}) {
   const lastDoc = isNew ? db.entries.filter(x => x.party === p.id && x.kind === kind && !x.del && x.lines && x.lines.length).sort(entCmp).pop() : null;
   modal(`<h3>${isNew ? ttl : 'تعديل ' + esc(docTitle(e))} — ${esc(p.name)}</h3>
     ${opts.mk ? `<div class="sync" style="margin:0 0 10px;display:block">📥 فاتورة من شريكك في السوق — إجمالي: <b class="money">${fmtP(opts.mk.amt)}</b><br><small>اكتب البنود (كمية وسعر) والإجمالي لازم يطابق ده.</small><div id="dcMk" style="margin-top:4px;font-weight:800"></div></div>` : ''}
-    ${e && kind === 'inv' && isFwdSrc(p) ? `<div class="fwbox ${fwState(e)}"><span>${FW_TAG[fwState(e)]}${fwState(e) !== 'no' && fwdMain(p) ? ` <small>(في حساب ${esc(fwdMain(p).name)})</small>` : ''}</span>${fwState(e) !== 'ok' && fwdMain(p) ? `<button class="btn gold sm" id="fwOne" type="button">📤 ${fwState(e) === 'chg' ? 'انقل التعديل' : 'انقلها للحساب الأساسي'}</button>` : ''}</div>` : ''}
+    ${e && kind === 'inv' && isFwdSrc(p) ? `<div class="fwbox ${fwState(e)}"><span>${FW_TAG[fwState(e)]}${fwState(e) !== 'no' && fwdMain(p) ? ` <small>(في حساب ${esc(fwdMain(p).name)})</small>` : ''}</span>${fwState(e) !== 'ok' && fwdMain(p) ? `<button class="btn gold sm" id="fwOne" type="button">📤 ${fwState(e) === 'chg' ? 'انقل التعديل' : 'انقلها للحساب الأساسي'}</button>` : ''}${fwState(e) === 'no' ? '<button class="btn line sm" id="fwMk" type="button">✓ دي متنقلة بالفعل</button>' : ''}${e.fwMan && !fwCopyOf(e) ? '<button class="btn line sm" id="fwUn" type="button">↩ رجّعها متنقلتش</button>' : ''}</div>` : ''}
     ${e && e.fwFrom ? `<div class="fwbox from"><span>↩ الفاتورة دي منقولة من حساب ${esc((P.get((E.get(e.fwFrom) || {}).party) || {}).name || 'فرعي')}. التعديل يكون هناك وبعدين "انقل التعديل".</span></div>` : ''}
     ${ret ? `<p class="hint" style="margin:-6px 0 10px">البضاعة اللي ${kind === 'rinv' ? 'رجعت من العميل' : 'رجعتها للمورد'}. قيمتها ${kind === 'rinv' ? 'بتنزل من اللي عليه' : 'بتنزل من اللي ليه'}.</p>` : ''}
     <div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${e ? e.date : opts.mk ? isoOf(opts.mk.ts) : todayISO()}"></div>
@@ -1833,6 +1851,8 @@ function docModal(p, kind, e, opts = {}) {
       <div class="dtot"><span>${ret ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}</span><b id="dcTot">0</b></div>
       ${!isNew ? `<div class="msec">${kind === 'inv' ? '<button class="btn line sm" id="dcDlv" type="button">🚚 إذن تسليم</button>' : ''}<button class="btn red sm" id="dcDel" type="button">${ret ? 'إلغاء المرتجع' : 'إلغاء الفاتورة'}</button></div>` : ''}
       <div class="mrow"><button class="btn gold" id="dcOk" type="button">${isNew ? 'حفظ الفاتورة' : 'حفظ التعديل'}</button><button class="btn line" id="dcX" type="button">رجوع</button></div></div>`, true);
+  if ($('#fwMk')) $('#fwMk').onclick = () => { e.fwMan = true; touch(e); saveDB(); closeModal(); route(); toast('✔ اتعلّمت إنها متنقلة (من غير ما تتنقل تاني)'); };
+  if ($('#fwUn')) $('#fwUn').onclick = () => { delete e.fwMan; touch(e); saveDB(); closeModal(); route(); toast('رجعت "متنقلتش"'); };
   if ($('#fwOne')) $('#fwOne').onclick = () => { if (fwMove(p, e)) { saveDB(); closeModal(); route(); toast(`✔ اتنقلت لحساب ${fwdMain(p).name}`); } };
   const readLines = () => $$('#dcLines .li').map(el => ({name: el.querySelector('[data-f=name]').value.trim().replace(/\s+/g, ' '), unit: el.querySelector('[data-f=unit]').value, qty: el.querySelector('[data-f=qty]').value, price: el.querySelector('[data-f=price]').value}));
   const calc = () => {

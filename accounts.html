@@ -887,6 +887,64 @@ nav .ngrp,nav button.lap,.top .bell,#mkPop{display:none}
   #mkPop .mpe{color:var(--mut);font-size:13.5px;font-weight:700;padding:8px 4px}
   #mkPop .btn{margin-top:10px;min-height:38px;font-size:14px}
 }
+/* ============ اللاب: القايمة الجانبية فاتحة ومرتبة + الشاشة بتتظبط على قد حجم الشباك (مش زوم) ============ */
+:root{--sbw:184px;--lw:340px;--sb-bg:#FFFFFF;--sb-tx:#2f2b22;--sb-mut:#9a917b;--sb-hov:#F7F2E6;--sb-on:#FBF3DF;--sb-line:#ECE5D3;--sb-ic:#B08A33}
+html[data-theme=dark]{--sb-bg:#191813;--sb-tx:#E6E1D3;--sb-mut:#7f7a6a;--sb-hov:#24221b;--sb-on:#2e2716;--sb-line:#2e2c25;--sb-ic:#DDB765}
+@media (min-width:1000px){
+  html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+  body{padding-inline-start:var(--sbw)}
+  nav,html[data-theme=dark] nav{width:var(--sbw);background:var(--sb-bg);border-inline-end:1px solid var(--sb-line);padding:72px 10px 70px;overflow-y:auto;scrollbar-width:thin}
+  .top{width:var(--sbw);border-bottom:1px solid var(--sb-line);background:var(--sb-bg);padding:13px 14px}
+  .top h1{color:var(--sb-tx)}.top small{color:var(--sb-ic)}
+  .top img{box-shadow:0 0 0 1px var(--sb-line)}
+  nav .ngrp{color:var(--sb-mut);font-size:11px;padding:12px 12px 4px}
+  nav button,html[data-theme=dark] nav button{color:var(--sb-tx);min-height:40px;font-size:14.5px;font-weight:700;border-radius:9px;background:transparent}
+  nav button svg,nav button.on svg,html[data-theme=dark] nav button.on svg{color:var(--sb-ic)}
+  nav button:hover,html[data-theme=dark] nav button:hover{background:var(--sb-hov);color:var(--sb-tx)}
+  nav button.on,html[data-theme=dark] nav button.on{background:var(--sb-on);color:var(--sb-tx);font-weight:800;box-shadow:inset -3px 0 0 var(--gold)}
+  nav .qk{border-inline-start:1.5px solid var(--sb-line);margin:0 21px 4px 0;padding:1px 0}
+  nav .qk button.lap{display:flex}
+  nav .qk button,html[data-theme=dark] nav .qk button{min-height:28px;font-size:13px;font-weight:700;color:var(--sb-mut);padding:2px 12px;border-radius:7px;box-shadow:none}
+  nav .qk button:hover,html[data-theme=dark] nav .qk button:hover{color:var(--sb-tx);background:var(--sb-hov)}
+  nav .qk button.on,html[data-theme=dark] nav .qk button.on{color:var(--gold-d);background:transparent;font-weight:800}
+  nav button.tool{min-height:36px;font-size:13.5px;font-weight:700;white-space:nowrap}
+  main.split{max-width:none}
+  nav button.tool svg{width:18px;height:18px}
+  nav #bBk{display:flex}
+  .top .homebtn{bottom:14px;background:var(--sb-bg);color:var(--sb-tx);border:1px solid var(--sb-line);border-radius:9px;min-height:36px}
+  .top .homebtn:hover{border-color:var(--gold);color:var(--gold-d)}
+  .top #bTheme{inset-inline-start:12px;width:52px}
+  .top #bLock{inset-inline-start:70px;width:calc(var(--sbw) - 82px)}
+  .top .bell{inset-inline-start:calc(var(--sbw) - 44px);color:var(--sb-mut)}
+  .top .bell:hover{background:var(--sb-hov);color:var(--sb-tx)}
+  .top .bell.has{color:var(--gold-d)}
+  main.split{grid-template-columns:var(--lw) minmax(0,1fr)}
+  main:not(.split){max-width:1240px;margin:0 auto;padding:22px 28px 36px}
+  #mkPop{inset-inline-start:calc(var(--sbw) - 40px)}
+}
+/* شاشة أكبر (الشباك مكبّر): الأعمدة بتوسع والخط بيكبر شوية، مش تكبير للصورة */
+@media (min-width:1440px){
+  :root{--sbw:212px;--lw:390px}
+  nav button{font-size:15.5px;min-height:44px}nav .qk button{font-size:14px;min-height:30px}
+  main.split .pt{padding:7px 16px}main.split .pt .m b,main.split .pt .a b{font-size:15.5px}
+  main.split #hTots div b,main.split #hTots .k b{font-size:17px}
+  #p-party .phd h2{font-size:23px}#p-party .phd .bal b{font-size:30px}
+  #p-party table.ldg{font-size:15.5px}#p-party .ldg td{padding:7px 10px}#p-party .ldg th{font-size:13.5px}
+  #p-party .acts .btn{font-size:14.5px;min-height:38px;padding:4px 18px}
+  main.split #p-party{padding:0 28px 0 20px}
+  main:not(.split){max-width:1400px}
+}
+@media (min-width:1800px){
+  :root{--sbw:236px;--lw:440px}
+  body{font-size:18px}
+  nav button{font-size:16.5px;min-height:48px}
+  main.split .pt{padding:9px 18px}main.split .pt .m b,main.split .pt .a b{font-size:17px}
+  #p-party .phd h2{font-size:26px}#p-party .phd .bal b{font-size:34px}
+  #p-party table.ldg{font-size:17px}#p-party .ldg td{padding:9px 12px}#p-party .ldg th{font-size:14.5px}
+  #p-party .acts .btn{font-size:15.5px;min-height:42px}
+  main.split #p-party{padding:0 40px 0 28px}
+  main:not(.split){max-width:1600px}
+}
 </style>
 </head>
 <body>
@@ -902,7 +960,6 @@ nav .ngrp,nav button.lap,.top .bell,#mkPop{display:none}
   <img src="icons/logo.jpg" alt="فلاش أون">
   <div><h1>فلاش أون</h1><small>الحسابات</small></div>
   <button class="bell" id="bBell" type="button" title="إشعارات حركة السوق"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><i id="bellN"></i></button>
-  <button class="homebtn lockbtn" id="bBk" type="button" title="احفظ نسخة من كل البيانات في مكان تختاره">💾 احفظ نسخة</button>
   <button class="homebtn lockbtn" id="bTheme" type="button" title="ليلي / فاتح" style="min-width:40px;justify-content:center;padding:8px 10px"></button>
   <button class="homebtn lockbtn" id="bLock" type="button" title="قفل"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>قفل</button>
 </header>
@@ -1004,7 +1061,7 @@ nav .ngrp,nav button.lap,.top .bell,#mkPop{display:none}
 <nav>
   <div class="ngrp">الشغل اليومي</div>
   <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>الحسابات</button>
-  <div class="qk"><button type="button" data-q="mkt">عملاء</button><button type="button" data-q="sup">موردين</button></div>
+  <div class="qk"><button type="button" data-q="mkt">عملاء السوق</button><button type="button" data-q="site" class="lap">عملاء المواقع</button><button type="button" data-q="sup">الموردين</button></div>
   <button data-go="mkt" class="lap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg>حركة السوق<i class="nb" id="nbMkt"></i></button>
   <div class="ngrp">الفلوس</div>
   <button data-go="cash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 10v5M18 10v5"/></svg>الخزنة</button>
@@ -1013,6 +1070,10 @@ nav .ngrp,nav button.lap,.top .bell,#mkPop{display:none}
   <div class="ngrp">المتابعة</div>
   <button data-go="rep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>التقارير</button>
   <button data-go="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>الإعدادات</button>
+  <div class="ngrp">أدوات</div>
+  <button type="button" class="lap tool" id="nSearch" title="دوّر في كل الحركات (مبلغ، صنف، ملاحظة…)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>بحث في كل الحركات</button>
+  <button type="button" class="lap tool" id="nNew"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 9.5-4.9M19 14v6M16 17h6"/></svg>حساب جديد</button>
+  <button type="button" class="lap tool" id="bBk" title="احفظ نسخة من كل البيانات في مكان تختاره"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>احفظ نسخة</button>
 </nav>
 <div id="toast"></div>
 <div id="mkBar"></div>
@@ -2680,6 +2741,8 @@ async function backupNow() {
 }
 $('#bBackup').onclick = backupNow;
 $('#bBk').onclick = backupNow;
+$('#nSearch').onclick = searchModal;
+$('#nNew').onclick = () => partyModal();
 $('#bRestore').onclick = () => $('#fRestore').click();
 $('#fRestore').addEventListener('change', async ev => {
   const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;

@@ -149,7 +149,7 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     eq('أول مرة: شاشة الاسم', (await A.textContent('.gate')).includes('اكتب اسمك'), true);
     await A.click('#lgNew'); await A.fill('#lgN', 'مشرف تجربة 1'); await A.fill('#lgP', '1234'); await A.click('#lgGo');
     await A.waitForSelector('#tabs button');
-    eq('دخل والتبويبات ظهرت', await A.$$eval('#tabs button', b => b.map(x => x.textContent.trim())), ['النهارده', 'الأسبوع', 'العمال', 'الأرشيف', 'السجل']);
+    eq('دخل والتبويبات ظهرت', await A.$$eval('#tabs button', b => b.map(x => x.textContent.trim())), ['النهارده', 'الأسبوع', 'العمال', 'الأرشيف', 'مصاريف', 'السجل']);
     eq('الرقم السري متخزن hash مش نص', await A.evaluate(() => { const s = me(); return [s.ph.length, s.ph.includes('1234')]; }), [64, false]);
     /* العمال */
     const addW = async (name, rate, fri, from) => {
@@ -394,6 +394,30 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     const C2 = await device(browser, base, gas, 'payroll.html' + (await A.evaluate(() => joinLink())).replace(/^[^#]*/, ''), at('2026-10-24T12:00:00')); pages.push(C2);
     await C2.waitForSelector('.gate .chip', {timeout: 15000});
     eq('موبايل جديد بيتربط لوحده من اللينك والسجل القديم مش ظاهر', await C2.evaluate(async () => { await sync(); return [!!S.u, idx().log.filter(l => l.at > ((idx().lgclr || {}).cut || 0)).length]; }), [true, 1]);
+
+    console.log('\n١٤) تبويب مصاريف: عهدة ومصروفات والصافي');
+    await A.evaluate(() => nav('e', true));
+    await A.click('#eCus'); await A.fill('#exA', '5000'); await A.fill('#exD', '2026-10-20'); await A.fill('#exN', 'عهدة تجربة'); await A.click('#exOk'); await A.waitForTimeout(150);
+    await A.click('#eCus'); await A.fill('#exA', '3000'); await A.fill('#exD', '2026-11-02'); await A.click('#exOk'); await A.waitForTimeout(150);
+    await A.click('#eExp'); await A.fill('#exA', '1250'); await A.fill('#exD', '2026-10-21'); await A.fill('#exN', 'مصروف تجربة'); await A.click('#exOk'); await A.waitForTimeout(150);
+    eq('الصافي = العهدة − المصروفات (8,000 − 1,250)', await A.textContent('.panel .p1 b'), '6,750');
+    eq('الحركات بالترتيب الأحدث فوق، وجنب كل حركة الصافي بعدها', await A.$$eval('#main .row .a', x => x.map(e => e.textContent.replace(/\s+/g, ' ').trim())), ['+3,0006,750', '-1,2503,750', '+5,0005,000']);
+    await A.click('#eM .chip[data-m="2026-10"]');
+    eq('فلتر شهر أكتوبر', await A.$$eval('#main .row', x => x.length), 2);
+    await A.click('#eF button[data-v=exp]');
+    eq('فلتر المصروفات بس', await A.$$eval('#main .row', x => x.length), 1);
+    await A.click('#main .row'); await A.fill('#exA', '2000'); await A.click('#exOk'); await A.waitForTimeout(150);
+    await A.click('#eF button[data-v=all]'); await A.click('#eM .chip[data-m=""]');
+    eq('تعديل المصروف بيغيّر الصافي (8,000 − 2,000)', await A.textContent('.panel .p1 b'), '6,000');
+    await A.click('#eWk'); await A.waitForSelector('#pwOk');
+    const wkTot = await A.evaluate(() => idx().lk.get('2026-10-22').snap.total);
+    await A.click('#pwC .chip[data-t="2026-10-22"]'); await A.click('#pwOk'); await A.waitForTimeout(150);
+    eq('تنزيل قبض أسبوع من المصروفات بيزوّد المصروفات', await A.evaluate(() => idx().exp.filter(x => x.wk).map(x => [x.wk, x.amt])), [['2026-10-22', wkTot]]);
+    eq('والصافي نزل بنفس المبلغ', await A.textContent('.panel .p1 b'), (6000 - wkTot / 100).toLocaleString('en-US', {maximumFractionDigits: 2}).replace(/^-/, '-'));
+    await settle_(A); await settle_(B);
+    eq('الشريك شايف العهدة والمصروفات', await B.evaluate(() => [idx().cus.length, idx().exp.length]), [2, 2]);
+    await A.click('#main .row[data-e="x_wk_2026-10-22"]'); await A.click('#exDel'); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(150);
+    eq('مسح مصروف بيرجّع الصافي', await A.textContent('.panel .p1 b'), '6,000');
 
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }

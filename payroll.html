@@ -61,7 +61,7 @@ bdi,.iso{unicode-bidi:isolate}
 main{padding:12px 12px 28px;max-width:560px;margin:0 auto}
 main.tabbed{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
 /* التبويبات اللي تحت */
-#tabs{position:fixed;bottom:0;inset-inline:0;z-index:30;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:4px 6px env(safe-area-inset-bottom);box-shadow:0 -2px 12px #1018280d}
+#tabs{position:fixed;bottom:0;inset-inline:0;z-index:30;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(6,1fr);padding:4px 6px env(safe-area-inset-bottom);box-shadow:0 -2px 12px #1018280d}
 #tabs button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0 5px;font-size:12px;font-weight:700;color:var(--sub);min-height:56px;border-radius:12px}
 #tabs button svg{width:23px;height:23px}
 #tabs button.on{color:var(--ink);background:var(--row)}
@@ -331,7 +331,7 @@ function settle({daysPay = 0, fridayPay = 0, bonus = 0, advances = 0, oldDeduct 
    المرحلة التانية: old سلفة قديمة (eff = أول خميس بتتخصم منه)، rule قاعدة خصم لعامل (ru_<عامل>: mode none|auto|fixed و amt و eff)،
    wded خصم الأسبوع ده بس (wd_<خميس>_<عامل>: mode skip|amt)، fdf فرق جمعة (fd_<خميس>_<عامل>: done 0|1 = جه ولا لأ في جمعة الأسبوع اللي فات). */
 function buildIdx(list) {
-  const I = {W: new Map(), day: new Map(), dayBy: new Map(), adv: [], bon: [], ws: new Map(), lk: new Map(), pd: new Map(), sup: [], log: [], old: [], rule: new Map(), wded: new Map(), fdf: new Map(), lgclr: null, first: null, memo: new Map()};
+  const I = {W: new Map(), day: new Map(), dayBy: new Map(), adv: [], bon: [], ws: new Map(), lk: new Map(), pd: new Map(), sup: [], log: [], old: [], rule: new Map(), wded: new Map(), fdf: new Map(), cus: [], exp: [], lgclr: null, first: null, memo: new Map()};
   list.forEach(r => {
     if (!r || r.del) return;
     if (r.k === 'wk') I.W.set(r.id, r);
@@ -344,6 +344,8 @@ function buildIdx(list) {
     else if (r.k === 'sup') I.sup.push(r);
     else if (r.k === 'log') I.log.push(r);
     else if (r.k === 'lgclr') I.lgclr = r;
+    else if (r.k === 'cus') I.cus.push(r);
+    else if (r.k === 'exp') I.exp.push(r);
     else if (r.k === 'old') I.old.push(r);
     else if (r.k === 'rule') I.rule.set(r.w, r);
     else if (r.k === 'wded') I.wded.set(r.thu + '|' + r.w, r);
@@ -601,12 +603,13 @@ function merge(r) {
   return true;
 }
 const cell = s => { s = String(s ?? ''); return /^[=+\-@]/.test(s) ? "'" + s : s; };   // علشان الشيت ميفهمش الكلام كمعادلة
-const KIND_AR = {sup: 'مشرف', wk: 'عامل', day: 'يوم', adv: 'سلفة', bon: 'حافز', wst: 'الجمعة', lk: 'قفل أسبوع', pd: 'قبض', old: 'سلفة قديمة', rule: 'قاعدة خصم', wded: 'خصم أسبوع', fdf: 'فرق جمعة', log: 'سجل'};
+const KIND_AR = {sup: 'مشرف', wk: 'عامل', day: 'يوم', adv: 'سلفة', bon: 'حافز', wst: 'الجمعة', lk: 'قفل أسبوع', pd: 'قبض', old: 'سلفة قديمة', rule: 'قاعدة خصم', wded: 'خصم أسبوع', fdf: 'فرق جمعة', cus: 'عهدة', exp: 'مصروف', log: 'سجل'};
 /* اللي بيتكتب في أعمدة الشيت علشان يتقري بالعين: النوع، العامل، التاريخ، المبلغ، مين، إمتى */
 function view(r) {
   const when = r.at ? dayOf(r.at) + ' ' + timeOf(r.at) : '';
   const t = KIND_AR[r.k] || r.k;
   if (r.k === 'log') return [t, cell(r.txt), r.thu || '', '', cell(r.by), when];
+  if (r.k === 'cus' || r.k === 'exp') return [t, cell(r.note || ''), r.date, r.amt / 100, cell(r.by), when];
   if (r.k === 'sup') return [t, cell(r.name), '', '', cell(r.by), when];
   if (r.k === 'wk') return [t, cell(r.name), r.from || '', (r.rate || 0) / 100, cell(r.by), when];
   if (r.k === 'day') return [t + ': ' + unitsText(r.u), cell(wName(r.w)), r.date, Math.round(r.u * r.rate) / 100, cell(r.by), when];
@@ -733,11 +736,12 @@ const IC = {
   w: SVG('<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>'),
   k: SVG('<circle cx="9" cy="8" r="3.2"/><path d="M3 20v-1.5a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5V20"/><path d="M16 4.6a3.2 3.2 0 0 1 0 6.2M21 20v-1.5a5 5 0 0 0-3.5-4.8"/>'),
   a: SVG('<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10h14V9M10 13h4"/>'),
+  e: SVG('<path d="M4 7h16v12H4z"/><path d="M4 7l2-3h12l2 3"/><path d="M9 13h6M12 10v6"/>'),
   l: SVG('<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>'),
   s: SVG('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/>')
 };
-const TABS = [['t', 'النهارده'], ['w', 'الأسبوع'], ['k', 'العمال'], ['a', 'الأرشيف'], ['l', 'السجل']];
-const TITLE = {t: 'المرتبات', w: 'الأسبوع', k: 'العمال', a: 'الأرشيف', l: 'السجل', s: 'الإعدادات'};
+const TABS = [['t', 'النهارده'], ['w', 'الأسبوع'], ['k', 'العمال'], ['a', 'الأرشيف'], ['e', 'مصاريف'], ['l', 'السجل']];
+const TITLE = {t: 'المرتبات', w: 'الأسبوع', k: 'العمال', a: 'الأرشيف', e: 'المصاريف', l: 'السجل', s: 'الإعدادات'};
 let scr = {v: 't'};
 function dotHtml() {
   if (!S.u) return '<span class="dot off"><i></i>مش متربط</span>';
@@ -769,13 +773,13 @@ const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 function route() {
   closeModal();
   const h = decodeURIComponent(location.hash.slice(1)), [a, b] = h.split('/');
-  scr = a === 'w' ? {v: 'w', thu: isDay(b) ? ownerThursday(b) : null} : a === 'k' ? {v: 'k'} : a === 'a' ? {v: 'a'} : a === 'l' ? {v: 'l'} : a === 's' ? {v: 's'} : {v: 't', day: isDay(b) ? b : null};
+  scr = a === 'w' ? {v: 'w', thu: isDay(b) ? ownerThursday(b) : null} : a === 'k' ? {v: 'k'} : a === 'a' ? {v: 'a'} : a === 'e' ? {v: 'e'} : a === 'l' ? {v: 'l'} : a === 's' ? {v: 's'} : {v: 't', day: isDay(b) ? b : null};
   render(); window.scrollTo(0, 0);
 }
 function render() {
   drawTop(); drawTabs();
   if (!me()) return drawLogin();
-  ({w: drawWeek, k: drawWorkers, a: drawArchive, l: drawLog, s: drawSettings}[scr.v] || drawToday)();
+  ({w: drawWeek, k: drawWorkers, a: drawArchive, e: drawExp, l: drawLog, s: drawSettings}[scr.v] || drawToday)();
 }
 function refresh() {
   if ($('#mask').classList.contains('on')) return;
@@ -1376,6 +1380,88 @@ function drawArchive() {
   $$('#main .mh').forEach(h => h.onclick = () => { const s = h.parentNode, shut = !s.classList.contains('shut'); s.classList.toggle('shut', shut); archOpen[s.dataset.ym] = !shut; });
   $$('#main .row[data-thu]').forEach(r => r.onclick = () => nav(r.dataset.thu >= nowThu ? 'w' : 'w/' + r.dataset.thu));
   $$('#main .row[data-ms]').forEach(r => r.onclick = () => monthSheet(r.dataset.ms));
+}
+
+/* ---------- مصاريف: عهدة (فلوس بتتسلّم) ومصروفات بتتصرف منها، والصافي بينهم. منفصلة عن حساب المرتبات ---------- */
+let expF = 'all', expM = '';
+const ym = d => d.slice(0, 7);
+const MON = ['', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+const monTxt = m => MON[+m.slice(5)] + ' ' + m.slice(0, 4);
+function drawExp() {
+  const I = idx(), all = I.cus.map(r => ({r, sg: 1})).concat(I.exp.map(r => ({r, sg: -1}))).sort((a, b) => a.r.date.localeCompare(b.r.date) || a.r.at - b.r.at);
+  let run = 0; all.forEach(x => { run += x.sg * x.r.amt; x.run = run; });
+  const tc = I.cus.reduce((s, r) => s + r.amt, 0), te = I.exp.reduce((s, r) => s + r.amt, 0);
+  const months = [...new Set(all.map(x => ym(x.r.date)))].sort().reverse();
+  if (expM && !months.includes(expM)) expM = '';
+  const shown = all.filter(x => (expF === 'all' || (expF === 'cus') === (x.sg > 0)) && (!expM || ym(x.r.date) === expM)).reverse();
+  const sc = shown.filter(x => x.sg > 0).reduce((s, x) => s + x.r.amt, 0), se = shown.filter(x => x.sg < 0).reduce((s, x) => s + x.r.amt, 0);
+  $('#main').innerHTML = `<section class="panel"><div class="p1"><span>الصافي (العهدة − المصروفات)</span><b class="money ${tc - te < 0 ? 'bk' : ''}">${fmtN(tc - te)}</b></div>
+      <div class="cap"><span>العهدة <b class="money ok">${fmt(tc)}</b></span><span>المصروفات <b class="money bk">${fmt(te)}</b></span></div></section>
+    <div class="qa" style="grid-template-columns:1fr 1fr;margin-top:10px"><button class="qb g" id="eCus" type="button">＋ عهدة</button><button class="qb" id="eExp" type="button">＋ مصروف</button></div>
+    <button class="qb" id="eWk" type="button" style="width:100%;margin-bottom:6px">💵 نزّل قبض أسبوع من المصروفات</button>
+    <div class="seg" id="eF" style="--n:3;margin-top:8px">${[['all', 'الكل'], ['cus', 'العهدة'], ['exp', 'المصروفات']].map(([k, t]) => `<button type="button" data-v="${k}" class="${expF === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+    ${months.length > 1 ? `<div class="chips" id="eM" style="margin-top:8px"><button type="button" class="chip ${expM ? '' : 'on'}" data-m="">كل الشهور</button>${months.map(m => `<button type="button" class="chip ${expM === m ? 'on' : ''}" data-m="${m}">${monTxt(m)}</button>`).join('')}</div>` : ''}
+    <div class="lbl"><span>${shown.length} حركة${expM || expF !== 'all' ? ` · عهدة ${fmt(sc)} · مصروفات ${fmt(se)}` : ''}</span><span>الرقم الصغير = الصافي بعد الحركة</span></div>
+    ${shown.length ? `<div class="list">${shown.map(x => `<div class="row" data-e="${esc(x.r.id)}"><div class="m"><b>${x.sg > 0 ? '＋ عهدة' : '－ مصروف'}${x.r.note ? ' · ' + esc(x.r.note) : ''}</b><small>${dayFull(x.r.date)} · ${esc(x.r.by)}</small></div><div class="a"><b class="money ${x.sg > 0 ? 'ok' : 'bk'}">${x.sg > 0 ? '+' : '-'}${fmt(x.r.amt)}</b><small class="sm money">${fmtN(x.run)}</small></div></div>`).join('')}</div>` : '<div class="list"><div class="empty">لسه مفيش حركات هنا.<br>ابدأ بـ "＋ عهدة" لما تستلم فلوس.</div></div>'}`;
+  $('#eCus').onclick = () => expModal('cus', null);
+  $('#eExp').onclick = () => expModal('exp', null);
+  $('#eWk').onclick = payWkModal;
+  $$('#eF button').forEach(b => b.onclick = () => { expF = b.dataset.v; drawExp(); });
+  $$('#eM .chip').forEach(b => b.onclick = () => { expM = b.dataset.m; drawExp(); });
+  $$('#main .row[data-e]').forEach(r => r.onclick = () => expModal(S.recs[r.dataset.e].k, S.recs[r.dataset.e]));
+}
+function expModal(k, o) {
+  const t = today(), cus = k === 'cus', nm = cus ? 'عهدة' : 'مصروف';
+  modal(`<h3>${o ? 'تعديل ' : ''}${nm}${o ? `<small>${byTxt(o)}</small>` : ''}</h3>
+    ${amtBox('exA', o && o.amt, true)}
+    <span class="fl">التاريخ</span><input class="inp" id="exD" type="date" value="${o ? o.date : t}">
+    <input class="inp" id="exN" autocomplete="off" placeholder="${cus ? 'ملاحظة (مثلاً: استلمتها من فلان)' : 'ملاحظة (صرفتها في إيه)'}" value="${esc(o ? o.note || '' : '')}">
+    ${o ? '<div class="row2"><button class="big b-ok" id="exOk" type="button">حفظ</button><button class="big b-redo" id="exDel" type="button">🗑 مسح</button></div>' : `<button class="big b-ok" id="exOk" type="button">سجّل ${nm}</button>`}
+    <button class="lnk" id="exX" type="button">إغلاق</button>`);
+  bindAmt($('#exA')); setTimeout(() => $('#exA') && $('#exA').focus(), 60);
+  $('#exX').onclick = closeModal;
+  $('#exOk').onclick = () => {
+    const amt = amtOf($('#exA')), note = $('#exN').value.trim(), date = isDay($('#exD').value) ? $('#exD').value : t;
+    if (!(amt > 0)) return toast('اكتب المبلغ');
+    if (o) {
+      if (o.amt === amt && (o.note || '') === note && o.date === date) return closeModal();
+      put(k, {id: o.id, amt, note, date});
+      log(`${myName()} عدّل ${nm} من ${fmt(o.amt)} لـ ${fmt(amt)}${note ? ' (' + note + ')' : ''} — ${dayFull(date)}`);
+    } else {
+      put(k, {id: newId(cus ? 'c' : 'x'), amt, note, date});
+      log(`${myName()} سجّل ${nm} ${fmt(amt)}${note ? ' (' + note + ')' : ''} — ${dayFull(date)}`);
+    }
+    commit(); closeModal(); toast('اتسجل ✔'); drawExp();
+  };
+  if ($('#exDel')) $('#exDel').onclick = async () => {
+    if (!(await ask(`تمسح ${nm} ${fmt(o.amt)}${o.note ? ' (' + o.note + ')' : ''}؟`, 'أيوه امسحه', 'لأ', true))) return;
+    put(k, {id: o.id, del: true});
+    log(`${myName()} مسح ${nm} ${fmt(o.amt)}${o.note ? ' (' + o.note + ')' : ''}`);
+    commit(); toast('اتمسح ✔'); drawExp();
+  };
+}
+/* تنزيل قبض أسبوع مقفول من المصروفات لما تحب: بيتسجل مصروف بمبلغ الأسبوع (تقدر تعدّله) ومربوط بالأسبوع علشان مايتنزلش مرتين */
+function payWkModal() {
+  const I = idx(), done = new Set(I.exp.filter(x => x.wk).map(x => x.wk));
+  const ls = [...I.lk.values()].filter(l => l.snap && l.snap.total > 0 && !done.has(l.thu)).sort((a, b) => b.thu.localeCompare(a.thu));
+  if (!ls.length) return toast('مفيش أسابيع مقفولة لسه متنزلتش');
+  let sel = ls[0].thu;
+  const amtOfWk = th => I.lk.get(th).snap.total;
+  modal(`<h3>نزّل قبض أسبوع من المصروفات</h3><span class="fl">أنهي أسبوع؟</span>
+    <div class="chips" id="pwC">${ls.map(l => `<button type="button" class="chip ${l.thu === sel ? 'on' : ''}" data-t="${l.thu}">الخميس ${dm(l.thu)} · ${fmt(l.snap.total)}</button>`).join('')}</div>
+    ${amtBox('pwA', amtOfWk(sel), true)}
+    <p class="hint">المبلغ ده إجمالي مرتبات الأسبوع. تقدر تعدّله لو اللي اتصرف غير كده.</p>
+    <button class="big b-ok" id="pwOk" type="button">نزّله من المصروفات</button><button class="lnk" id="pwX" type="button">إغلاق</button>`);
+  bindAmt($('#pwA'));
+  $('#pwX').onclick = closeModal;
+  $$('#pwC .chip').forEach(b => b.onclick = () => { sel = b.dataset.t; $$('#pwC .chip').forEach(x => x.classList.toggle('on', x === b)); $('#pwA').value = fmt(amtOfWk(sel)); });
+  $('#pwOk').onclick = () => {
+    const amt = amtOf($('#pwA')); if (!(amt > 0)) return toast('اكتب المبلغ');
+    if (idx().exp.some(x => x.wk === sel)) return toast('الأسبوع ده اتنزل قبل كده');
+    put('exp', {id: 'x_wk_' + sel, amt, note: `قبض أسبوع الخميس ${dm(sel)}`, date: today(), wk: sel});
+    log(`${myName()} نزّل قبض أسبوع الخميس ${dm(sel)} (${fmt(amt)}) من المصروفات`, {thu: sel});
+    commit(); closeModal(); toast('اتنزل ✔'); drawExp();
+  };
 }
 
 /* ---------- السجل: كل تغيير بالترتيب، ومفيش حاجة بتتمسح منه ---------- */

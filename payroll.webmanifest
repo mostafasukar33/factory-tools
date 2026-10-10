@@ -1,0 +1,19 @@
+{
+  "id": "./payroll.html",
+  "name": "المرتبات - فلاش أون",
+  "short_name": "المرتبات",
+  "description": "يومية العمال والسلف والقبض كل خميس",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./payroll.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F3EF",
+  "theme_color": "#17150f",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

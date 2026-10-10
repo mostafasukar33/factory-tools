@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#17150f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="المرتبات">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>المرتبات - فلاش أون</title>
+<link rel="manifest" href="payroll.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="fonts/fonts.css">
+<script>
+/* المظهر (تلقائي / فاتح / داكن) وحجم الخط: نفس مفتاح باقي البرنامج fo_ui، بيتطبق قبل ما الصفحة تترسم */
+function uiGet() { try { return Object.assign({theme: 'auto', fs: '1'}, JSON.parse(localStorage.getItem('fo_ui') || '{}')); } catch (e) { return {theme: 'auto', fs: '1'}; } }
+function uiSet(o) { try { localStorage.setItem('fo_ui', JSON.stringify(Object.assign(uiGet(), o))); } catch (e) {} uiApply(); }
+function uiApply() {
+  const u = uiGet(), r = document.documentElement;
+  const dark = u.theme === 'dark' || (u.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  r.dataset.theme = dark ? 'dark' : 'light';
+  r.style.setProperty('--z', u.fs); r.dataset.fs = u.fs === '1' ? '' : 'z';
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = dark ? '#0d0c0a' : '#17150f';
+}
+uiApply();
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', uiApply); } catch (e) {}
+</script>
+<style>
+:root{--gold:#D9AE57;--gold-d:#8F6B1B;--gold-l:#FAF4E4;--ink:#24211b;--bg:#F4F3EF;--line:#E7E3D8;--red:#BF3B30;--red-l:#FBEDEB;--green:#1E8A46;--green-l:#E8F5EC;--card:#fff;--sub:#7d7765;--row:#EFEBDF;--wait:#A9731A;--wait-l:#FFF6DD;--shadow:0 1px 2px #1b150a0d,0 1px 6px #1b150a08;--field:#D9D2BD}
+html[data-theme=dark]{color-scheme:dark;--bg:#12110e;--line:#34312a;--gold-l:#2a2312;--gold-d:#DDB765;--ink:#ECE8DC;--red:#FF8279;--red-l:#3a1d1a;--green:#52C97A;--green-l:#15291b;--card:#1c1b16;--sub:#9a937f;--row:#2a2822;--wait:#E9C46A;--wait-l:#33290f;--shadow:0 1px 2px #0009;--field:#4a463a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{font-family:'Cairo',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.5;touch-action:manipulation;min-height:100vh}
+html[data-fs=z] main{zoom:var(--z)}
+button,input,textarea{font-family:inherit;color:inherit}
+button{cursor:pointer}
+.money{direction:ltr;unicode-bidi:isolate;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums lining-nums}
+.top{background:#17150f;color:#fff;padding:calc(7px + env(safe-area-inset-top)) 14px 7px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20;border-bottom:2px solid var(--gold);min-height:50px}
+html[data-theme=dark] .top{background:#0d0c0a}
+.top img{width:30px;height:30px;border-radius:7px;background:#fff}
+.top h1{font-size:17px;margin:0;font-weight:800;line-height:1.2}
+.top h1 small{color:var(--gold);font-size:12px;font-weight:600;margin-inline-start:8px}
+.top .gear{background:none;border:0;color:#fff;padding:4px;display:flex}
+.top .gear svg{width:23px;height:23px}
+.dot{margin-inline-start:auto;font-size:12px;font-weight:700;color:#8fd19e;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.dot i{width:8px;height:8px;border-radius:50%;background:#3ccf6a;display:inline-block}
+.dot.w{color:#F2D27A}.dot.w i{background:#E9B930}
+.dot.off{color:#bbb}.dot.off i{background:#888}
+main{padding:12px 12px 28px;max-width:560px;margin:0 auto}
+main.tabbed{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+#tabs{position:fixed;bottom:0;inset-inline:0;z-index:30;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
+#tabs button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 0 6px;font-size:12px;font-weight:700;color:var(--sub);min-height:54px;position:relative}
+#tabs button svg{width:23px;height:23px}
+#tabs button.on{color:var(--gold-d)}
+#tabs button.on::before{content:'';position:absolute;top:-1px;left:26%;right:26%;height:3px;border-radius:0 0 3px 3px;background:var(--gold)}
+.lbl{font-size:12.5px;font-weight:700;color:var(--sub);margin:14px 4px 5px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px;box-shadow:var(--shadow)}
+.p1{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.p1 span{font-size:13.5px;color:var(--sub);font-weight:700}
+.p1 b{font-size:27px;color:var(--green)}
+.cap{margin-top:6px;font-size:12.5px;color:var(--sub);font-weight:700;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.list{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 12px;min-height:48px;border-bottom:1px solid var(--row);cursor:pointer}
+.row:last-child{border-bottom:0}
+.row:active{background:var(--gold-l)}
+.row .m{min-width:0;flex:1}
+.row .m b{display:block;font-size:15.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .m small,.sm{display:block;color:var(--sub);font-size:12px;font-weight:600}
+.row .a{text-align:left;flex:none}
+.row .a .money{display:block;font-size:16px}
+.empty{text-align:center;color:var(--sub);padding:22px 10px;font-weight:600;font-size:14.5px}
+.note{background:var(--red-l);color:var(--red);border-radius:10px;padding:7px 12px;font-weight:700;margin:10px 0 0;font-size:14px;line-height:1.7}
+.info{background:var(--gold-l);color:var(--gold-d);border-radius:10px;padding:7px 12px;font-weight:700;margin:10px 0 0;font-size:13.5px;line-height:1.7}
+.lnk{display:block;width:100%;margin-top:10px;background:none;border:0;color:var(--gold-d);font-weight:800;font-size:14.5px;padding:8px}
+.hint{text-align:center;font-size:12.5px;color:var(--sub);margin:8px 0 0;font-weight:600}
+.ok{color:var(--green)}.wt{color:var(--wait)}.bk{color:var(--red)}
+/* النهارده: سطر لكل عامل وجنبه 4 أزرار */
+.dnav{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 10px}
+.dnav button{width:42px;height:42px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:22px;font-weight:800;line-height:1;color:var(--ink);padding:0}
+.dnav button:disabled{opacity:.3}
+.dnav span{flex:1;text-align:center;border:1px solid var(--gold);background:var(--gold-l);border-radius:10px;padding:6px 10px;font-weight:800;font-size:15px;color:var(--gold-d)}
+.qa{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-bottom:10px}
+.qb{height:44px;border:1px solid var(--line);background:var(--card);border-radius:11px;font-weight:700;font-size:14.5px;padding:0 4px;white-space:nowrap;box-shadow:var(--shadow)}
+.qb.g{background:var(--green);border-color:var(--green);color:#fff}
+html[data-theme=dark] .qb.g{color:#0b1a10}
+.qb:disabled{opacity:.45}
+.qb:active{transform:scale(.98)}
+.wr{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--row);min-height:52px}
+.wr:last-child{border-bottom:0}
+.wr .nm{flex:1;min-width:0}
+.wr .nm b{display:block;font-size:15.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ub{display:grid;grid-template-columns:repeat(4,auto);gap:4px;flex:none}
+.ub button{min-width:45px;height:38px;border:1px solid var(--field);background:var(--card);border-radius:9px;font-weight:700;font-size:13px;padding:0 5px;white-space:nowrap;color:var(--sub)}
+.ub button:disabled{opacity:.55}
+.ub button.on{color:#fff;border-color:transparent}
+.ub button.on[data-u="0"]{background:var(--red)}
+.ub button.on[data-u="0.5"]{background:#C98A1B}
+.ub button.on[data-u="1"]{background:var(--green)}
+.ub button.on[data-u="1.5"]{background:#1F5FA8}
+html[data-theme=dark] .ub button.on{color:#111}
+html[data-theme=dark] .ub button.on[data-u="1.5"]{background:#7DB0F0}
+/* الأسبوع */
+.seg{display:grid;grid-template-columns:repeat(var(--n,2),1fr);gap:4px;background:var(--row);border-radius:11px;padding:3px}
+.seg button{border:0;background:none;border-radius:8px;min-height:40px;font-weight:700;font-size:14.5px;color:var(--sub)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.seg button:disabled{opacity:.6}
+html[data-theme=dark] .seg button.on{background:#3a352a;color:#ECE8DC}
+.fri{display:flex;align-items:center;gap:10px;margin-top:10px}
+.fri>span{font-weight:800;font-size:14px;white-space:nowrap}
+.fri .seg{flex:1}
+.fri .seg button.on[data-v=work]{background:var(--green);color:#fff}
+html[data-theme=dark] .fri .seg button.on[data-v=work]{color:#0b1a10}
+.tbl{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.tbl th{background:var(--row);color:var(--sub);font-size:12px;font-weight:800;padding:6px 6px;text-align:center}
+.tbl th:first-child{text-align:right;padding-inline-start:12px}
+.tbl td{padding:7px 4px;border-top:1px solid var(--row);text-align:center;font-weight:700;font-size:14.5px;cursor:pointer;direction:ltr;font-variant-numeric:tabular-nums}
+.tbl td:first-child{direction:rtl;text-align:right;padding-inline-start:12px}
+.tbl td small{display:block;color:var(--sub);font-size:11px;font-weight:600}
+.tbl td.net{font-size:18px;font-weight:800;color:var(--green)}
+.tbl td.net.z{color:var(--sub);font-size:14px}
+.tbl tr:active td{background:var(--gold-l)}
+.tbl .z{color:var(--sub);font-weight:500}
+.pay{border:1px solid var(--green);background:var(--green);color:#fff;border-radius:8px;height:32px;padding:0 9px;font-weight:800;font-size:13px}
+html[data-theme=dark] .pay{color:#0b1a10}
+.paid{color:var(--green);font-size:11.5px;font-weight:800;line-height:1.3;direction:rtl;display:block}
+.big{width:100%;height:52px;border:0;border-radius:12px;font-size:17px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px}
+.big:active{transform:scale(.98)}
+.b-ok{background:var(--green);color:#fff}
+html[data-theme=dark] .b-ok{color:#0b1a10}
+.b-dark{background:#24211b;color:#fff}
+html[data-theme=dark] .b-dark{background:#34312a}
+.b-home{background:var(--card);color:var(--ink);border:1px solid var(--field)}
+.b-red{background:var(--red);color:#fff}
+.b-redo{background:var(--card);color:var(--red);border:1px solid var(--red)}
+/* تفاصيل عامل */
+.days{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:4px 0 8px}
+.days button{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:4px 0;font-size:11.5px;font-weight:700;color:var(--sub);line-height:1.35}
+.days button b{display:block;font-size:14px;color:var(--ink)}
+.days button.miss{border-color:var(--red);background:var(--red-l)}.days button.miss b{color:var(--red)}
+.kv{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px solid var(--row);font-size:14.5px;font-weight:600}
+.kv:last-child{border-bottom:0}
+.kv b{font-weight:800}
+.kv.tot{font-size:16px}.kv.tot b{font-size:24px;color:var(--green)}
+.kv.sub{padding:3px 0 3px 0;padding-inline-start:12px;font-size:13px;color:var(--sub);cursor:pointer}
+.kv .neg{color:var(--red)}
+.mini{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+/* العمال */
+.tag{font-size:11px;font-weight:800;border-radius:6px;padding:0 6px;margin-inline-start:6px;vertical-align:middle}
+.tag.stop{background:var(--wait-l);color:var(--wait)}.tag.gone{background:var(--row);color:var(--sub)}
+details.more{margin-top:12px}
+details.more summary{font-weight:800;color:var(--gold-d);font-size:14px;padding:6px 4px;cursor:pointer}
+/* السجل */
+.log{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.lg{padding:7px 12px;border-bottom:1px solid var(--row);font-size:14.5px;font-weight:600;line-height:1.6}
+.lg:last-child{border-bottom:0}
+.lg small{color:var(--sub);font-size:12px;font-weight:700;margin-inline-start:6px;white-space:nowrap}
+.lg b{font-weight:800}
+/* إعدادات */
+.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.card h2{font-size:14px;margin:0 0 9px;font-weight:800;color:var(--gold-d)}
+.card label{display:block;font-size:12.5px;font-weight:700;color:var(--sub);margin:10px 0 5px}.card h2+label{margin-top:0}
+.card .big{height:46px;font-size:15.5px}
+.steps{margin:0;padding-inline-start:20px;font-size:14.5px;line-height:1.85;font-weight:600}
+.steps b{font-weight:800}
+pre.code{direction:ltr;text-align:left;background:var(--row);border-radius:10px;padding:10px;font-size:11px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:10px 0 0}
+/* نوافذ من تحت */
+.mask{position:fixed;inset:0;background:#000a;z-index:50;display:none;align-items:flex-end;justify-content:center}
+.mask.on{display:flex}
+.modal{background:var(--card);border-radius:18px 18px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));width:100%;max-width:560px;max-height:92vh;overflow:auto}
+.modal::before{content:'';display:block;width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
+.modal h3{margin:0 0 8px;font-size:17px;font-weight:800;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.modal h3 small{font-size:12px;color:var(--sub);font-weight:600}
+.modal p{margin:0 0 10px;font-size:16px;font-weight:700;line-height:1.7}
+.inp{width:100%;height:50px;border:1px solid var(--field);border-radius:11px;background:var(--card);padding:0 14px;font-size:18px;outline:none;margin-bottom:6px}
+.inp:focus{border-color:var(--gold);box-shadow:0 0 0 3px #D9AE5740}
+.fl{display:block;font-size:12.5px;font-weight:700;color:var(--sub);margin:8px 2px 4px}
+.amt{background:var(--card);border:1.5px solid var(--gold);border-radius:13px;height:58px;display:flex;align-items:center;justify-content:center;gap:10px;cursor:text}
+.amt input{width:62%;border:0;background:none;outline:none;text-align:center;font-size:28px;font-weight:800;direction:ltr;font-variant-numeric:tabular-nums;padding:0;caret-color:var(--gold)}
+.amt input::placeholder{color:#c9c2ad}
+.amt em{font-style:normal;font-size:15px;color:var(--sub);font-weight:700}
+.amt.s{height:50px}.amt.s input{font-size:22px}
+.row2{display:grid;grid-template-columns:1.6fr 1fr;gap:8px}
+.row2 .big{margin-top:12px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 8px}
+.chip{border:1px solid var(--gold);background:var(--gold-l);border-radius:20px;padding:4px 13px;font-weight:700;font-size:14.5px}
+.chip.on{background:var(--gold);color:#241b00}
+#toast{position:fixed;top:calc(62px + env(safe-area-inset-top));inset-inline:16px;margin:auto;max-width:420px;background:#17150f;color:#fff;border:1px solid var(--gold);padding:10px 14px;border-radius:12px;text-align:center;font-weight:700;font-size:14.5px;z-index:60;display:none;pointer-events:none}
+/* الدخول */
+.gate{text-align:center;padding:34px 8px}
+.gate>img{width:84px;border-radius:18px;background:#fff;box-shadow:0 4px 18px #0002}
+.gate h2{font-size:22px;margin:12px 0 4px}
+.gate p{font-size:15px;font-weight:700;color:var(--sub);line-height:1.8;margin:0 0 14px}
+.gate .chips{justify-content:center}
+.gate .chip{font-size:17px;padding:8px 20px}
+.pin{width:190px;height:60px;margin:6px auto 0;display:block;text-align:center;font-size:32px;letter-spacing:14px;font-weight:800;border:1.5px solid var(--gold);border-radius:13px;background:var(--card);outline:none;direction:ltr;padding:0 0 0 14px}
+.gate .inp{text-align:center;max-width:320px;margin:0 auto 6px;display:block}
+.gate .big{max-width:320px;margin-inline:auto}
+</style>
+</head>
+<body>
+<header class="top" id="top"></header>
+<main id="main"></main>
+<nav id="tabs"></nav>
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
+
+<script id="engine">
+'use strict';
+/* ====================== قواعد الحساب (دوال صافية من غير شاشة — الاختبارات بتشغلها لوحدها) ======================
+   كل الفلوس بالقرش أرقام صحيحة. التواريخ نص YYYY-MM-DD بتوقيت القاهرة. */
+const pad2 = n => String(n).padStart(2, '0');
+const ymd = iso => iso.split('-').map(Number);
+const addDays = (iso, n) => { const [y, m, d] = ymd(iso); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+const weekday = iso => { const [y, m, d] = ymd(iso); return new Date(Date.UTC(y, m - 1, d)).getUTCDay(); };   // 0=الأحد … 5=الجمعة 6=السبت
+/* خميس القبض اللي اليوم ده تبعه: الجمعة تبع الخميس اللي قبلها */
+function ownerThursday(iso) { const wd = weekday(iso); return wd === 5 ? addDays(iso, -1) : addDays(iso, (4 - wd + 7) % 7); }
+/* أيام الأسبوع: السبت..الخميس شغل، وبعدهم الجمعة */
+const weekDates = thu => [5, 4, 3, 2, 1, 0].map(b => addDays(thu, -b)).concat([addDays(thu, 1)]);
+const UNITS = [0, 0.5, 1, 1.5];
+const U_BTN = {0: 'غاب', 0.5: 'نص', 1: 'يوم', 1.5: 'يوم ونص'};
+function unitsText(n) {
+  n = Math.round(n * 2) / 2;
+  if (n === 0) return 'من غير أيام';
+  if (n === 0.5) return 'نص يوم';
+  if (n === 1) return 'يوم';
+  if (n === 1.5) return 'يوم ونص';
+  if (n === 2) return 'يومين';
+  if (n === 2.5) return 'يومين ونص';
+  return n % 1 ? `${Math.floor(n)} أيام ونص` : `${n} أيام`;
+}
+/* المرتب والصافي لعامل في أسبوع (بالقرش) */
+function settle({daysPay = 0, fridayPay = 0, bonus = 0, advances = 0, oldDeduct = 0, prevFridayDelta = 0, carryIn = 0}) {
+  const wages = daysPay + fridayPay + bonus;
+  const after = wages - advances - prevFridayDelta - carryIn;
+  if (after <= 0) return {wages, oldApplied: 0, net: 0, carryOut: -after};
+  const oldApplied = Math.min(Math.max(oldDeduct, 0), after);
+  return {wages, oldApplied, net: after - oldApplied, carryOut: 0};
+}
+/* فهرس الحركات (الحية بس). أنواع السجلات (k):
+   sup مشرف، wk عامل، day يوم (d_<عامل>_<تاريخ>)، adv سلفة، bon حافز، wst حالة أسبوع (ws_<خميس>: الجمعة شغل/إجازة)،
+   lk قفل أسبوع (lk_<خميس> فيه اللقطة snap)، pd قبض (pd_<خميس>_<عامل>)، log سطر سجل.
+   المرحلة التانية: old سلفة قديمة، rule قاعدة خصم، wded خصم أسبوع، fdf فرق جمعة. */
+function buildIdx(list) {
+  const I = {W: new Map(), day: new Map(), dayBy: new Map(), adv: [], bon: [], ws: new Map(), lk: new Map(), pd: new Map(), sup: [], log: [], first: null, memo: new Map()};
+  list.forEach(r => {
+    if (!r || r.del) return;
+    if (r.k === 'wk') I.W.set(r.id, r);
+    else if (r.k === 'day') { I.day.set(r.w + '|' + r.date, r); if (!I.dayBy.has(r.date)) I.dayBy.set(r.date, []); I.dayBy.get(r.date).push(r); }
+    else if (r.k === 'adv') I.adv.push(r);
+    else if (r.k === 'bon') I.bon.push(r);
+    else if (r.k === 'wst') I.ws.set(r.thu, r);
+    else if (r.k === 'lk') I.lk.set(r.thu, r);
+    else if (r.k === 'pd') I.pd.set(r.thu + '|' + r.w, r);
+    else if (r.k === 'sup') I.sup.push(r);
+    else if (r.k === 'log') I.log.push(r);
+  });
+  const ths = [];
+  I.W.forEach(w => { if (w.from) ths.push(ownerThursday(w.from)); });
+  I.day.forEach(d => ths.push(ownerThursday(d.date)));
+  I.adv.forEach(a => ths.push(ownerThursday(a.date)));
+  I.bon.forEach(b => ths.push(b.thu));
+  I.first = ths.sort()[0] || null;
+  return I;
+}
+/* حساب أسبوع: لو مقفول بنرجّع اللقطة المثبتة، وإلا بنحسب من الحركات (fresh = احسب حتى لو مقفول، وقت القفل) */
+function calcWeek(I, thu, fresh) {
+  const lk = I.lk.get(thu);
+  if (!fresh && lk && lk.snap) return {thu, closed: true, lk, fri: lk.snap.fri, rows: lk.snap.rows, total: lk.snap.total};
+  const key = thu + (fresh ? '!' : '');
+  if (I.memo.has(key)) return I.memo.get(key);
+  const ds = weekDates(thu), work = ds.slice(0, 6);
+  const ws = I.ws.get(thu), fri = ws && ws.fri === 'work' ? 'work' : 'off';
+  const prev = addDays(thu, -7), pw = I.first && prev >= I.first ? calcWeek(I, prev) : null;
+  const ids = new Set();
+  I.W.forEach(w => { if (w.st === 'on' && (!w.from || w.from <= thu)) ids.add(w.id); });
+  work.forEach(d => (I.dayBy.get(d) || []).forEach(r => ids.add(r.w)));
+  const advs = I.adv.filter(a => ownerThursday(a.date) === thu), bons = I.bon.filter(b => b.thu === thu);
+  advs.forEach(a => ids.add(a.w)); bons.forEach(b => ids.add(b.w));
+  if (pw) Object.keys(pw.rows).forEach(id => { if (pw.rows[id].carryOut) ids.add(id); });
+  const rows = {};
+  let total = 0;
+  ids.forEach(id => {
+    const w = I.W.get(id); if (!w) return;
+    const days = {};
+    let daysPay = 0, units = 0;
+    work.forEach(d => { const r = I.day.get(id + '|' + d); if (r) { days[d] = r.u; units += r.u; daysPay += Math.round(r.u * r.rate); } });
+    const fridayPay = fri === 'work' && w.st === 'on' ? (w.fri || 0) : 0;
+    const bonus = bons.filter(b => b.w === id).reduce((s, b) => s + b.amt, 0);
+    const advances = advs.filter(a => a.w === id).reduce((s, a) => s + a.amt, 0);
+    const carryIn = pw && pw.rows[id] ? pw.rows[id].carryOut || 0 : 0;
+    const s = settle({daysPay, fridayPay, bonus, advances, oldDeduct: 0, prevFridayDelta: 0, carryIn});
+    rows[id] = Object.assign({w: id, name: w.name, days, units, daysPay, fridayPay, bonus, advances, carryIn, prevFridayDelta: 0}, s);
+    total += s.net;
+  });
+  const res = {thu, closed: false, fri, rows, total};
+  I.memo.set(key, res);
+  return res;
+}
+/* الأيام الناقصة للعمال الشغالين (ممنوع القفل اليدوي لو فيه حاجة ناقصة) */
+function missingDays(I, thu) {
+  const out = [];
+  [...I.W.values()].filter(w => w.st === 'on').sort((a, b) => (a.ord || 0) - (b.ord || 0)).forEach(w => {
+    weekDates(thu).slice(0, 6).forEach(d => { if ((!w.from || d >= w.from) && !I.day.has(w.id + '|' + d)) out.push({w: w.id, name: w.name, date: d}); });
+  });
+  return out;
+}
+</script>
+
+<script>
+'use strict';
+/*
+  المرتبات (قبض العمال) — فلاش أون
+  ---------------------------------
+  - تطبيق منفصل تماماً عن الحسابات والخزنة. شيت جوجل لوحده (كوده payScript تحت)، وتخزين على الموبايل في fo_pay_v1 بس.
+  - 3 مشرفين بالكتير. كل واحد بيدخل باسمه ورقم سري 4 أرقام (بيتحفظ في الشيت hash مش نص). على نفس الموبايل مبيتطلبش تاني.
+  - كل حركة سجل بـ id ثابت و upd و by (اسم المشرف) و at (الوقت). الأحدث upd يكسب. سطر السجل (log) مبيتعدلش أبداً.
+  - الصافي والمرحّل بيتحسبوا على الموبايل من الحركات (calcWeek)، ومش بيتخزنوا. بعد القفل اللقطة بتتحفظ في lk_<خميس>.
+  - المزامنة زي "حركة السوق": push/pull بـ seq، كل 5 ثواني، ومن غير navigator.onLine.
+  - رابط الربط للشريك: payroll.html#payjoin=<{u,k}>.
+*/
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const normDigits = s => String(s ?? '').replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632).replace(/[۰-۹]/g, d => d.charCodeAt(0) - 1776);
+const norm = s => normDigits(s).toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
+const fmt = p => { const a = Math.round(Math.abs(+p || 0)); return (a / 100).toLocaleString('en-US', {maximumFractionDigits: 2}); };
+const fmtN = p => (p < 0 ? '-' : '') + fmt(p);
+const AR_DAYS = ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت'];
+const RLM = '‏';
+const TZ = 'Africa/Cairo';
+const DF = new Intl.DateTimeFormat('en-CA', {timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'});
+const TF = new Intl.DateTimeFormat('en-GB', {timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23'});
+const dayOf = ms => DF.format(new Date(ms));
+const today = () => dayOf(Date.now());
+const timeOf = ms => { const [h, m] = TF.format(new Date(ms)).split(':').map(Number); return `${h % 12 || 12}:${pad2(m)} ${h < 12 ? 'ص' : 'م'}`; };
+const dm = iso => `${+iso.slice(8)}${RLM}/${RLM}${+iso.slice(5, 7)}`;
+const dayName = iso => AR_DAYS[weekday(iso)];
+const dayFull = iso => `${dayName(iso)} ${dm(iso)}`;
+const whenTxt = ms => (dayOf(ms) === today() ? '' : dm(dayOf(ms)) + ' ') + timeOf(ms);
+
+/* ====================== التخزين على الموبايل ====================== */
+const LS = 'fo_pay_v1';
+let S;
+function load() {
+  let d = null; try { d = JSON.parse(localStorage.getItem(LS)); } catch (e) {}
+  S = Object.assign({u: '', k: '', dev: '', cursor: 0, me: '', recs: {}, lastOk: 0, lastPull: 0, bad: false}, d || {});
+  if (!S.dev) S.dev = Array.from(crypto.getRandomValues(new Uint8Array(3)), x => x.toString(36).padStart(2, '0')).join('');
+}
+function save() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { toast('الموبايل مش قادر يحفظ.', 6000); } }
+load();
+const newId = p => p + '_' + Date.now().toString(36) + S.dev + Math.random().toString(36).slice(2, 6);
+let IDX = null;
+const idx = () => IDX || (IDX = buildIdx(Object.values(S.recs)));
+const dirty = () => { IDX = null; };
+const me = () => { const r = S.recs[S.me]; return r && !r.del && r.k === 'sup' ? r : null; };
+const myName = () => (me() || {}).name || '؟';
+const wName = id => (S.recs[id] || {}).name || '؟';
+
+/* حفظ حركة: نفس الـ id = نفس الحركة (الأحدث يكسب). by و at = مين عمل آخر تغيير وإمتى */
+function put(k, data) {
+  const now = Date.now(), cur = S.recs[data.id];
+  const r = Object.assign({}, cur || {}, data, {k, by: myName(), at: now, upd: Math.max(now, (cur ? cur.upd : 0) + 1), del: !!data.del});
+  delete r.sy;
+  S.recs[r.id] = r; dirty();
+  return r;
+}
+function log(txt, extra) { return put('log', Object.assign({id: newId('l'), txt}, extra || {})); }
+function commit() { save(); dirty(); sync(); }
+
+/* رابط الربط (فيه لينك الشيت ومفتاحه بعد # — مبيتبعتش لأي سيرفر) */
+const b64u = str => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64u = str => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
+(function join() {
+  const m = location.hash.match(/payjoin=([\w-]+)/);
+  if (!m) return;
+  let o = null; try { o = JSON.parse(unb64u(m[1])); } catch (e) {}
+  history.replaceState(null, '', location.pathname);
+  if (!o || !o.u || !o.k) { setTimeout(() => toast('الرابط ناقص. اطلب من شريكك يبعته تاني.', 8000), 300); return; }
+  if (S.u !== o.u) { S.cursor = 0; S.lastPull = 0; Object.values(S.recs).forEach(r => { delete r.sy; }); }
+  S.u = o.u; S.k = o.k; S.bad = false; save();
+  setTimeout(() => toast('✔ التطبيق اتربط. ممكن تحطه على الشاشة الرئيسية.', 5000), 300);
+})();
+const joinLink = () => S.u ? location.origin + location.pathname.replace(/[^/]*$/, '') + 'payroll.html#payjoin=' + b64u(JSON.stringify({u: S.u, k: S.k})) : '';
+
+/* الرقم السري: hash (SHA-256) مع id المشرف، فمحدش يقدر يقراه من الشيت */
+async function pinHash(sid, pin) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('fo-pay|' + sid + '|' + pin));
+  return Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, '0')).join('');
+}
+
+/* ====================== كود شيت جوجل (Apps Script) — كامل لكل أنواع الحركات في المرحلتين ====================== */
+const payScript = () => `// المرتبات (قبض العمال) — فلاش أون. شيت منفصل لوحده، مقفول بمفتاح سري بيتحفظ أول مرة.
+// أنواع الحركات: sup مشرف، wk عامل، day يوم، adv سلفة، bon حافز، wst حالة أسبوع (الجمعة)، lk قفل أسبوع (فيه الأرقام المثبتة)،
+// pd قبض، old سلفة قديمة، rule قاعدة خصم، wded خصم أسبوع، fdf فرق جمعة، log سطر في السجل (مبيتعدلش أبداً).
+const SHEET = 'الحركات';
+const HEAD = ['id','الكود','آخر تعديل','رقم المزامنة','ملغي','النوع','العامل','التاريخ','المبلغ','مين','إمتى','البيانات (لا تعدّلها)'];
+const W = HEAD.length;
+function sh_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let s = ss.getSheetByName(SHEET);
+  if (!s) { s = ss.insertSheet(SHEET); s.appendRow(HEAD); s.setFrozenRows(1); }
+  return s;
+}
+function doGet() { return out_({ok: false, error: 'locked'}); }
+function key_(k) {
+  if (typeof k !== 'string' || k.length < 8) return false;
+  const p = PropertiesService.getScriptProperties();
+  let s = p.getProperty('KEY');
+  if (!s) {
+    const l = LockService.getScriptLock(); l.waitLock(10000);
+    try { s = p.getProperty('KEY'); if (!s) { p.setProperty('KEY', k); s = k; } } finally { l.releaseLock(); }
+  }
+  return s === k;
+}
+function resetKey() { PropertiesService.getScriptProperties().deleteProperty('KEY'); }
+function doPost(e) {
+  let req;
+  try { req = JSON.parse(e.postData.contents); } catch (x) { return out_({ok: false, error: 'bad'}); }
+  if (!req || !key_(req.key)) return out_({ok: false, error: 'key'});
+  const p = PropertiesService.getScriptProperties();
+  if (req.action === 'ping') return out_({ok: true, app: 'fo-pay', v: 1, n: Math.max(sh_().getLastRow() - 1, 0), seq: Number(p.getProperty('SEQ')) || 0});
+  if (req.action === 'push') return out_(push_(req.rows || []));
+  if (req.action === 'pull') return out_(pull_(Number(req.since) || 0));
+  return out_({ok: false, error: 'action'});
+}
+function push_(rows) {
+  const lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    const s = sh_(), last = s.getLastRow();
+    const cur = last > 1 ? s.getRange(2, 1, last - 1, 3).getValues() : [];
+    const pos = {}; cur.forEach((r, i) => pos[String(r[0])] = i);
+    const props = PropertiesService.getScriptProperties();
+    let seq = Number(props.getProperty('SEQ')) || 0;
+    const add = [], addAt = {}, ack = [];
+    rows.forEach(r => {
+      if (!r || !r.id) return;
+      const i = pos[r.id];
+      ack.push(r.id);
+      if (r.kind === 'log' && (i !== undefined || addAt[r.id] !== undefined)) return;   // السجل مبيتعدلش
+      if (i !== undefined && Number(cur[i][2]) >= Number(r.upd)) return;
+      if (addAt[r.id] !== undefined && Number(add[addAt[r.id]][2]) >= Number(r.upd)) return;
+      seq++;
+      const v = (r.view || []).concat(['', '', '', '', '', '']).slice(0, 6);
+      const line = [r.id, r.kind, r.upd, seq, r.del ? 'نعم' : ''].concat(v, [JSON.stringify(r.data)]);
+      if (i !== undefined) { s.getRange(i + 2, 1, 1, W).setValues([line]); cur[i][2] = r.upd; }
+      else if (addAt[r.id] !== undefined) add[addAt[r.id]] = line;
+      else { addAt[r.id] = add.length; add.push(line); }
+    });
+    if (add.length) s.getRange(last + 1, 1, add.length, W).setValues(add);
+    props.setProperty('SEQ', String(seq));
+    return {ok: true, ack: ack, seq: seq};
+  } catch (err) { return {ok: false, error: String(err)}; }
+  finally { lock.releaseLock(); }
+}
+function pull_(since) {
+  const seq = Number(PropertiesService.getScriptProperties().getProperty('SEQ')) || 0;
+  if (since >= seq) return {ok: true, rows: [], next: since, more: false};
+  const s = sh_(), last = s.getLastRow();
+  if (last < 2) return {ok: true, rows: [], next: since, more: false};
+  const v = s.getRange(2, 1, last - 1, W).getValues().filter(r => Number(r[3]) > since);
+  v.sort((a, b) => Number(a[3]) - Number(b[3]));
+  const page = v.slice(0, 1500);
+  const rows = page.map(r => { try { return {id: String(r[0]), kind: String(r[1]), upd: Number(r[2]), del: r[4] === 'نعم', data: JSON.parse(r[W - 1])}; } catch (e) { return null; } }).filter(Boolean);
+  return {ok: true, rows: rows, next: page.length ? Number(page[page.length - 1][3]) : since, more: v.length > page.length};
+}
+function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }`;
+
+/* ====================== الاتصال بالشيت ====================== */
+let online = null, syncing = false, again = false;
+async function callSheet(body, url = S.u, key = S.k, ms = 25000) {
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
+  try {
+    const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify(Object.assign({key}, body)), signal: ctl.signal});
+    const t = await r.text();
+    try { return JSON.parse(t); } catch (e) { const x = new Error('page'); x.code = 'page'; throw x; }
+  } finally { clearTimeout(tm); }
+}
+function merge(r) {
+  if (!r || !r.id || !r.data) return false;
+  const cur = S.recs[r.id];
+  if (cur && cur.upd > r.upd) return false;
+  if (cur && cur.upd === r.upd) { cur.sy = cur.upd; return false; }
+  S.recs[r.id] = Object.assign({}, r.data, {id: r.id, k: r.kind, upd: r.upd, del: !!r.del, sy: r.upd});
+  return true;
+}
+const cell = s => { s = String(s ?? ''); return /^[=+\-@]/.test(s) ? "'" + s : s; };   // علشان الشيت ميفهمش الكلام كمعادلة
+const KIND_AR = {sup: 'مشرف', wk: 'عامل', day: 'يوم', adv: 'سلفة', bon: 'حافز', wst: 'الجمعة', lk: 'قفل أسبوع', pd: 'قبض', old: 'سلفة قديمة', rule: 'قاعدة خصم', wded: 'خصم أسبوع', fdf: 'فرق جمعة', log: 'سجل'};
+/* اللي بيتكتب في أعمدة الشيت علشان يتقري بالعين: النوع، العامل، التاريخ، المبلغ، مين، إمتى */
+function view(r) {
+  const when = r.at ? dayOf(r.at) + ' ' + timeOf(r.at) : '';
+  const t = KIND_AR[r.k] || r.k;
+  if (r.k === 'log') return [t, cell(r.txt), r.thu || '', '', cell(r.by), when];
+  if (r.k === 'sup') return [t, cell(r.name), '', '', cell(r.by), when];
+  if (r.k === 'wk') return [t, cell(r.name), r.from || '', (r.rate || 0) / 100, cell(r.by), when];
+  if (r.k === 'day') return [t + ': ' + unitsText(r.u), cell(wName(r.w)), r.date, Math.round(r.u * r.rate) / 100, cell(r.by), when];
+  if (r.k === 'adv') return [t, cell(wName(r.w)), r.date, r.amt / 100, cell(r.by), when];
+  if (r.k === 'bon' || r.k === 'pd') return [t, cell(wName(r.w)), r.thu, r.amt / 100, cell(r.by), when];
+  if (r.k === 'wst') return [r.fri === 'work' ? 'الجمعة شغل' : 'الجمعة إجازة', '', r.thu, '', cell(r.by), when];
+  if (r.k === 'lk') return [t + (r.auto ? ' (تلقائي)' : ''), '', r.thu, r.snap ? r.snap.total / 100 : '', cell(r.by), when];
+  return [t, cell(wName(r.w)), r.thu || r.date || '', r.amt ? r.amt / 100 : '', cell(r.by), when];
+}
+const pending = () => Object.values(S.recs).filter(r => r.sy !== r.upd);
+async function sync() {
+  if (!S.u || S.bad) return;
+  if (syncing) { again = true; return; }
+  syncing = true; let changed = false;
+  try {
+    let p = pending();
+    while (p.length) {
+      const batch = p.slice(0, 50);
+      const rows = batch.map(r => { const d = Object.assign({}, r); delete d.sy; return {id: r.id, kind: r.k, upd: r.upd, del: !!r.del, view: view(r), data: d}; });
+      const j = await callSheet({action: 'push', rows});
+      if (j && j.error === 'key') { S.bad = true; throw new Error('key'); }
+      if (!j || j.ok !== true) throw new Error('push');
+      const ack = new Set(j.ack || []);
+      batch.forEach((r, i) => { if (ack.has(r.id) && r.upd === rows[i].upd) r.sy = r.upd; });
+      if (batch.some(r => !ack.has(r.id))) throw new Error('ack');
+      save(); p = pending();
+    }
+    let more = true;
+    while (more) {
+      const j = await callSheet({action: 'pull', since: S.cursor});
+      if (j && j.error === 'key') { S.bad = true; throw new Error('key'); }
+      if (!j || j.ok !== true || !Array.isArray(j.rows)) throw new Error('pull');
+      j.rows.forEach(r => { if (merge(r)) changed = true; });
+      S.cursor = j.next || S.cursor; more = !!j.more;
+    }
+    online = true; S.lastOk = S.lastPull = Date.now();
+  } catch (e) { online = false; }
+  finally {
+    syncing = false; if (changed) dirty(); save();
+    if (online && autoClose()) { changed = true; save(); again = true; }
+    drawTop();
+    if (changed || (!me() && $('.gate'))) refresh();
+    if (again) { again = false; setTimeout(sync, 300); }
+  }
+}
+setInterval(() => { if (!document.hidden) { if (S.u) sync(); else if (autoClose()) { save(); refresh(); } } }, 5000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
+addEventListener('pageshow', () => sync());
+
+/* ====================== قفل الأسبوع ====================== */
+/* القفل: الأرقام بتتثبت في lk_<خميس>. التلقائي: الأيام اللي متسجلتش = غياب باسم "تلقائي" (upd صغير، فأي تسجيل حقيقي بيكسبه) */
+function lockWeek(thu, auto) {
+  let I = idx();
+  if (auto) missingDays(I, thu).forEach(m => {
+    const id = 'd_' + m.w + '_' + m.date;
+    if (!S.recs[id]) S.recs[id] = {id, k: 'day', w: m.w, date: m.date, u: 0, rate: (I.W.get(m.w) || {}).rate || 0, by: 'تلقائي', at: Date.now(), upd: 1, del: false};
+  });
+  dirty(); I = idx();
+  const c = calcWeek(I, thu, true);
+  const snap = {fri: c.fri, rows: c.rows, total: c.total};
+  if (auto) {
+    S.recs['lk_' + thu] = {id: 'lk_' + thu, k: 'lk', thu, snap, auto: true, by: 'تلقائي', at: Date.now(), upd: 2, del: false};
+    if (!S.recs['l_auto_' + thu]) S.recs['l_auto_' + thu] = {id: 'l_auto_' + thu, k: 'log', thu, txt: `أسبوع الخميس ${dm(thu)} اتقفل تلقائي بعد الجمعة (الأيام اللي متسجلتش اتحسبت غياب) — هيخرج ${fmt(c.total)}`, by: 'تلقائي', at: Date.now(), upd: 2, del: false};
+  } else {
+    put('lk', {id: 'lk_' + thu, thu, snap, auto: false});
+    log(`${myName()} قفّل أسبوع الخميس ${dm(thu)} — هيخرج ${fmt(c.total)}`, {thu});
+  }
+  dirty();
+}
+/* بعد ما الجمعة تعدي: أي أسبوع لسه مفتوح بيتقفل لوحده (بالترتيب). لو فيه شيت، لازم نكون سحبنا الجديد من شوية */
+function autoClose() {
+  if (!me()) return false;
+  if (S.u && !(S.lastPull && Date.now() - S.lastPull < 60000)) return false;
+  const I = idx(); if (!I.first) return false;
+  const t = today(); let n = 0;
+  for (let thu = I.first; addDays(thu, 1) < t; thu = addDays(thu, 7)) {
+    if (idx().lk.has(thu)) continue;
+    lockWeek(thu, true); n++;
+  }
+  return n > 0;
+}
+
+/* ====================== الشاشات ====================== */
+let toastT;
+function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms); }
+function modal(html) { $('#modal').innerHTML = html; $('#mask').classList.add('on'); }
+function closeModal() { $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; }
+$('#mask').addEventListener('click', e => { if (e.target.id === 'mask') closeModal(); });
+function ask(msg, yes, no = 'لأ', danger = false) {
+  return new Promise(res => {
+    modal(`<p>${esc(msg)}</p><button class="big ${danger ? 'b-red' : 'b-ok'}" id="aY" type="button">${esc(yes)}</button><button class="big b-home" id="aN" type="button">${esc(no)}</button>`);
+    $('#aY').onclick = () => { closeModal(); res(true); };
+    $('#aN').onclick = () => { closeModal(); res(false); };
+  });
+}
+function bindAmt(inp) {
+  inp.addEventListener('input', () => {
+    const s = normDigits(inp.value).replace(/\D/g, '').replace(/^0+/, '').slice(0, 8);
+    inp.value = s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  });
+}
+const amtOf = el => Math.round(+normDigits(el.value).replace(/\D/g, '') * 100);
+const amtBox = (id, val, s) => `<label class="amt ${s ? 's' : ''}" for="${id}"><input id="${id}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0" value="${val ? fmt(val) : ''}"><em>جنيه</em></label>`;
+
+const LOGO = '<img src="icons/logo.jpg" alt="">';
+const SVG = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const IC = {
+  t: SVG('<rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 3v3M16 3v3"/><path d="M8.5 15l2.3 2.2 4.7-4.7"/>'),
+  w: SVG('<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>'),
+  k: SVG('<circle cx="9" cy="8" r="3.2"/><path d="M3 20v-1.5a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5V20"/><path d="M16 4.6a3.2 3.2 0 0 1 0 6.2M21 20v-1.5a5 5 0 0 0-3.5-4.8"/>'),
+  a: SVG('<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10h14V9M10 13h4"/>'),
+  l: SVG('<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>'),
+  s: SVG('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/>')
+};
+const TABS = [['t', 'النهارده'], ['w', 'الأسبوع'], ['k', 'العمال'], ['a', 'الأرشيف'], ['l', 'السجل']];
+const TITLE = {t: 'المرتبات', w: 'الأسبوع', k: 'العمال', a: 'الأرشيف', l: 'السجل', s: 'الإعدادات'};
+let scr = {v: 't'};
+function dotHtml() {
+  if (!S.u) return '<span class="dot off"><i></i>على الموبايل بس</span>';
+  const n = pending().length;
+  if (S.bad) return '<span class="dot off"><i></i>الربط اتغير</span>';
+  if (n) return `<span class="dot w"><i></i>${n} مستني يتبعت</span>`;
+  if (online === false) return '<span class="dot w"><i></i>مفيش نت</span>';
+  return '<span class="dot"><i></i>متصل</span>';
+}
+function drawTop() {
+  $('#top').innerHTML = `${LOGO}<h1>${TITLE[scr.v] || 'المرتبات'}${scr.v === 't' ? '<small>فلاش أون</small>' : ''}</h1>${dotHtml()}${me() ? `<button class="gear" id="bSet" type="button" title="الإعدادات">${IC.s}</button>` : ''}`;
+  if ($('#bSet')) $('#bSet').onclick = () => nav('s');
+}
+function drawTabs() {
+  const el = $('#tabs'), on = !!me();
+  $('#main').classList.toggle('tabbed', on);
+  if (!on) { el.innerHTML = ''; el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = TABS.map(([t, n]) => `<button type="button" data-t="${t}" class="${t === scr.v ? 'on' : ''}">${IC[t]}<span>${n}</span></button>`).join('');
+  $$('#tabs button').forEach(b => b.onclick = () => nav(b.dataset.t === 't' ? '' : b.dataset.t, true));
+}
+function nav(h, replace) {
+  const u = location.pathname + (h ? '#' + h : '');
+  if (replace) history.replaceState(null, '', u); else history.pushState(null, '', u);
+  route();
+}
+addEventListener('popstate', route);
+const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+function route() {
+  closeModal();
+  const h = decodeURIComponent(location.hash.slice(1)), [a, b] = h.split('/');
+  scr = a === 'w' ? {v: 'w', thu: isDay(b) ? ownerThursday(b) : null} : a === 'k' ? {v: 'k'} : a === 'a' ? {v: 'a'} : a === 'l' ? {v: 'l'} : a === 's' ? {v: 's'} : {v: 't', day: isDay(b) ? b : null};
+  render(); window.scrollTo(0, 0);
+}
+function render() {
+  drawTop(); drawTabs();
+  if (!me()) return drawLogin();
+  ({w: drawWeek, k: drawWorkers, a: drawArchive, l: drawLog, s: drawSettings}[scr.v] || drawToday)();
+}
+function refresh() {
+  if ($('#mask').classList.contains('on')) return;
+  if (!me()) { if (!loginBusy && !(document.activeElement && document.activeElement.matches('input'))) drawLogin(); return; }
+  if (scr.v === 's') return;   // متبوظش اللي بيكتبه
+  render();
+}
+
+/* ---------- الدخول: الاسم + رقم سري 4 أرقام ---------- */
+let loginPick = null, loginBusy = false;
+function drawLogin() {
+  const I = idx(), sups = I.sup.slice().sort((a, b) => a.at - b.at), waiting = S.u && !S.lastPull && online !== false;
+  const sel = loginPick && loginPick !== 'new' ? sups.find(s => s.id === loginPick) : null;
+  if (loginPick && loginPick !== 'new' && !sel) loginPick = null;
+  $('#main').innerHTML = `<div class="gate">${LOGO}<h2>المرتبات</h2>
+    ${waiting ? '<p>⏳ لحظة، بنجيب الأسامي…</p>' : !loginPick ? `
+      <p>${sups.length ? 'اختار اسمك' : 'أهلاً! اكتب اسمك واختار رقم سري من 4 أرقام.'}</p>
+      ${sups.length ? `<div class="chips">${sups.map(s => `<button class="chip" type="button" data-s="${esc(s.id)}">${esc(s.name)}</button>`).join('')}</div>` : ''}
+      ${sups.length < 3 ? `<button class="big ${sups.length ? 'b-home' : 'b-ok'}" id="lgNew" type="button">${sups.length ? '＋ اسم جديد' : 'ابدأ'}</button>` : ''}
+      ${!S.u ? '<p style="font-size:13px;margin-top:16px">لو شريكك بعتلك لينك على الواتساب، افتح اللينك ده هو.</p>' : ''}`
+    : loginPick === 'new' ? `
+      <p>اكتب اسمك (اللي هيظهر جنب كل حاجة تسجلها)</p>
+      <input class="inp" id="lgN" autocomplete="off" placeholder="اسمك">
+      <p style="margin:10px 0 0">واختار رقم سري من 4 أرقام</p>
+      <input class="pin" id="lgP" type="tel" inputmode="numeric" maxlength="4" autocomplete="off">
+      <button class="big b-ok" id="lgGo" type="button">دخول</button>
+      <button class="lnk" id="lgBack" type="button">رجوع</button>`
+    : `<p>أهلاً يا ${esc(sel.name)}<br>اكتب رقمك السري</p>
+      <input class="pin" id="lgP" type="tel" inputmode="numeric" maxlength="4" autocomplete="off">
+      <p class="bk" id="lgErr" style="margin-top:8px;min-height:26px"></p>
+      <button class="lnk" id="lgBack" type="button">مش أنا</button>`}
+  </div>`;
+  $$('.gate .chip[data-s]').forEach(b => b.onclick = () => { loginPick = b.dataset.s; drawLogin(); setTimeout(() => $('#lgP') && $('#lgP').focus(), 60); });
+  if ($('#lgNew')) $('#lgNew').onclick = () => { loginPick = 'new'; drawLogin(); setTimeout(() => $('#lgN') && $('#lgN').focus(), 60); };
+  if ($('#lgBack')) $('#lgBack').onclick = () => { loginPick = null; drawLogin(); };
+  const pinIn = $('#lgP');
+  if (pinIn) pinIn.addEventListener('input', () => { pinIn.value = normDigits(pinIn.value).replace(/\D/g, '').slice(0, 4); if (sel && pinIn.value.length === 4) tryPin(sel, pinIn.value); });
+  if ($('#lgGo')) $('#lgGo').onclick = newSup;
+}
+async function tryPin(sup, pin) {
+  loginBusy = true;
+  const ok = (await pinHash(sup.id, pin)) === sup.ph;
+  loginBusy = false;
+  if (!ok) { $('#lgErr').textContent = 'الرقم ده غلط'; $('#lgP').value = ''; return; }
+  S.me = sup.id; loginPick = null; save(); toast('أهلاً يا ' + sup.name); route();
+}
+async function newSup() {
+  const name = $('#lgN').value.trim().replace(/\s+/g, ' '), pin = $('#lgP').value;
+  if (!name) return toast('اكتب اسمك');
+  if (!/^\d{4}$/.test(pin)) return toast('الرقم السري 4 أرقام');
+  const I = idx();
+  if (I.sup.some(s => norm(s.name) === norm(name))) return toast('الاسم ده موجود، اختاره من القايمة');
+  if (I.sup.length >= 3) return toast('أقصى عدد 3 مشرفين');
+  loginBusy = true;
+  const id = newId('s'), ph = await pinHash(id, pin);
+  loginBusy = false;
+  S.me = id;
+  S.recs[id] = {id, k: 'sup', name, ph, by: name, at: Date.now(), upd: Date.now(), del: false};
+  dirty();
+  log(`${name} دخل التطبيق كمشرف`);
+  loginPick = null; commit(); route();
+}
+
+/* ---------- حاجات مشتركة ---------- */
+/* العمال اللي بيظهروا في يوم: الشغالين اللي بدأوا قبله + أي حد متسجله اليوم ده */
+function workersOn(I, d) {
+  const ids = new Set();
+  I.W.forEach(w => { if (w.st === 'on' && (!w.from || w.from <= d)) ids.add(w.id); });
+  (I.dayBy.get(d) || []).forEach(r => ids.add(r.w));
+  return [...ids].map(id => I.W.get(id)).filter(Boolean).sort((a, b) => (a.ord || 0) - (b.ord || 0));
+}
+const byTxt = r => r ? `${esc(r.by)} ${whenTxt(r.at)}` : '';
+function setDay(w, d, u) {
+  const I = idx(), id = 'd_' + w.id + '_' + d, cur = I.day.get(w.id + '|' + d);
+  if (cur && cur.u === u) return false;
+  /* الأجر بيتثبت على اليوم وقت أول تسجيل */
+  put('day', {id, w: w.id, date: d, u, rate: cur ? cur.rate : (w.rate || 0)});
+  log(cur ? `${myName()} غيّر ${dayFull(d)} لـ ${w.name} من "${U_BTN[cur.u]}" لـ "${U_BTN[u]}"` : `${myName()} سجّل ${w.name} "${U_BTN[u]}" — ${dayFull(d)}`, {w: w.id, thu: ownerThursday(d)});
+  return true;
+}
+
+/* ---------- النهارده: سطر لكل عامل وجنبه غاب/نص/يوم/يوم ونص ---------- */
+function defDay() { const t = today(); return weekday(t) === 5 ? addDays(t, -1) : t; }
+function drawToday() {
+  const t = today(), d = scr.day && scr.day <= t && weekday(scr.day) !== 5 ? scr.day : defDay(), thu = ownerThursday(d);
+  const I = idx(), ws = workersOn(I, d), closed = I.lk.has(thu), wd = weekday(d);
+  const done = ws.filter(w => I.day.has(w.id + '|' + d)).length;
+  $('#main').innerHTML = `<div class="dnav"><button type="button" id="dPrev" title="اليوم اللي قبله"${wd === 6 ? ' disabled' : ''}>›</button><span>${dayFull(d)}${d === t ? ' · النهارده' : ''}</span><button type="button" id="dNext" title="اليوم اللي بعده"${wd === 4 || addDays(d, 1) > t ? ' disabled' : ''}>‹</button></div>
+    ${closed ? `<div class="info" style="margin:0 0 10px">🔒 الأسبوع ده اتقفل. الأرقام بتاعته في الأرشيف.</div>` : `<div class="qa"><button class="qb g" id="allDay" type="button"${done === ws.length ? ' disabled' : ''}>✓ الكل يوم</button><button class="qb" id="qAdv" type="button">＋ سلفة</button></div>`}
+    <div class="lbl"><span>العمال (${ws.length})</span><span>${ws.length ? `اتسجل ${done} من ${ws.length}` : ''}</span></div>
+    ${ws.length ? `<div class="list">${ws.map(w => { const r = I.day.get(w.id + '|' + d); return `<div class="wr" data-w="${esc(w.id)}"><div class="nm"><b>${esc(w.name)}</b><small class="sm">${r ? `${U_BTN[r.u]} · ${byTxt(r)}` : '<span class="wt">لسه</span>'}</small></div>
+      <div class="ub">${UNITS.map(u => `<button type="button" data-u="${u}" class="${r && r.u === u ? 'on' : ''}"${closed ? ' disabled' : ''}>${U_BTN[u]}</button>`).join('')}</div></div>`; }).join('')}</div>`
+      : `<div class="list"><div class="empty">لسه مفيش عمال.<br><button class="lnk" id="goK" type="button">＋ ضيف عامل</button></div></div>`}`;
+  $('#dPrev').onclick = () => nav('t/' + addDays(d, -1), true);
+  $('#dNext').onclick = () => nav('t/' + addDays(d, 1), true);
+  if ($('#goK')) $('#goK').onclick = () => nav('k', true);
+  if ($('#qAdv')) $('#qAdv').onclick = () => advModal(null, d);
+  if ($('#allDay')) $('#allDay').onclick = () => {
+    const I2 = idx(), left = workersOn(I2, d).filter(w => !I2.day.has(w.id + '|' + d));
+    if (!left.length) return toast('كله متسجل');
+    left.forEach(w => put('day', {id: 'd_' + w.id + '_' + d, w: w.id, date: d, u: 1, rate: w.rate || 0}));
+    log(`${myName()} علّم الكل "يوم" (${left.map(w => w.name).join('، ')}) — ${dayFull(d)}`, {thu});
+    commit(); drawToday(); toast(`اتسجل ${left.length === 1 ? 'عامل' : left.length + ' عمال'} يوم ✔`);
+  };
+  $$('#main .wr .ub button').forEach(b => b.onclick = () => {
+    if (idx().lk.has(thu)) return toast('الأسبوع ده اتقفل');
+    const w = idx().W.get(b.closest('.wr').dataset.w);
+    if (w && setDay(w, d, +b.dataset.u)) { commit(); drawToday(); }
+  });
+}
+
+/* ---------- السلفة والحافز ---------- */
+function pickWorkers(sel) {
+  const ws = [...idx().W.values()].filter(w => w.st === 'on' || w.id === sel).sort((a, b) => (a.ord || 0) - (b.ord || 0));
+  return `<div class="chips" id="pkW">${ws.map(w => `<button type="button" class="chip ${w.id === sel ? 'on' : ''}" data-w="${esc(w.id)}">${esc(w.name)}</button>`).join('')}</div>`;
+}
+function advModal(a, d, wid) {
+  let w = a ? a.w : wid || null;
+  const date = a ? a.date : d || today(), thu = ownerThursday(date);
+  if (idx().lk.has(thu)) return toast('الأسبوع ده اتقفل');
+  modal(`<h3>${a ? 'تعديل سلفة' : 'سلفة'}<small>${dayFull(date)}${a ? ' · ' + byTxt(a) : ''}</small></h3>
+    ${a ? `<p style="margin:0 0 6px">${esc(wName(a.w))}</p>` : `<span class="fl">لمين؟</span>${pickWorkers(w)}`}
+    ${amtBox('avA', a && a.amt, true)}
+    <input class="inp" id="avN" autocomplete="off" placeholder="ملاحظة (اختياري)" style="margin-top:8px" value="${esc(a ? a.note || '' : '')}">
+    ${a ? `<div class="row2"><button class="big b-ok" id="avOk" type="button">حفظ</button><button class="big b-redo" id="avDel" type="button">🗑 مسح</button></div>` : `<button class="big b-ok" id="avOk" type="button">سجّل السلفة</button>`}
+    <button class="lnk" id="avX" type="button">إغلاق</button>`);
+  bindAmt($('#avA'));
+  $$('#pkW .chip').forEach(b => b.onclick = () => { w = b.dataset.w; $$('#pkW .chip').forEach(x => x.classList.toggle('on', x === b)); $('#avA').focus(); });
+  if (w || a) setTimeout(() => $('#avA') && $('#avA').focus(), 60);
+  $('#avX').onclick = closeModal;
+  $('#avOk').onclick = () => {
+    const amt = amtOf($('#avA')), note = $('#avN').value.trim();
+    if (!w) return toast('اختار العامل');
+    if (!(amt > 0)) return toast('اكتب المبلغ');
+    if (a) {
+      if (a.amt === amt && (a.note || '') === note) return closeModal();
+      const old = a.amt;
+      put('adv', {id: a.id, amt, note});
+      log(`${myName()} غيّر سلفة ${wName(a.w)} (${dayFull(a.date)}) من ${fmt(old)} لـ ${fmt(amt)}`, {w: a.w, thu});
+    } else {
+      put('adv', {id: newId('a'), w, date, amt, note});
+      log(`${myName()} سجّل سلفة لـ ${wName(w)} ${fmt(amt)}${note ? ' (' + note + ')' : ''} — ${dayFull(date)}`, {w, thu});
+    }
+    commit(); closeModal(); toast('اتسجلت ✔'); afterChange(w);
+  };
+  if ($('#avDel')) $('#avDel').onclick = async () => {
+    if (!(await ask(`تمسح سلفة ${wName(a.w)} ${fmt(a.amt)}؟`, 'أيوه امسحها', 'لأ', true))) return;
+    put('adv', {id: a.id, del: true});
+    log(`${myName()} مسح سلفة ${wName(a.w)} ${fmt(a.amt)} (${dayFull(a.date)})`, {w: a.w, thu});
+    commit(); toast('اتمسحت ✔'); afterChange(a.w);
+  };
+}
+function bonModal(b, thu, wid) {
+  if (idx().lk.has(thu)) return toast('الأسبوع ده اتقفل');
+  const w = b ? b.w : wid;
+  modal(`<h3>${b ? 'تعديل حافز' : 'حافز'} — ${esc(wName(w))}<small>أسبوع الخميس ${dm(thu)}${b ? ' · ' + byTxt(b) : ''}</small></h3>
+    ${amtBox('bnA', b && b.amt, true)}
+    <input class="inp" id="bnN" autocomplete="off" placeholder="ملاحظة (اختياري)" style="margin-top:8px" value="${esc(b ? b.note || '' : '')}">
+    ${b ? `<div class="row2"><button class="big b-ok" id="bnOk" type="button">حفظ</button><button class="big b-redo" id="bnDel" type="button">🗑 مسح</button></div>` : `<button class="big b-ok" id="bnOk" type="button">سجّل الحافز</button>`}
+    <button class="lnk" id="bnX" type="button">إغلاق</button>`);
+  bindAmt($('#bnA')); setTimeout(() => $('#bnA') && $('#bnA').focus(), 60);
+  $('#bnX').onclick = closeModal;
+  $('#bnOk').onclick = () => {
+    const amt = amtOf($('#bnA')), note = $('#bnN').value.trim();
+    if (!(amt > 0)) return toast('اكتب المبلغ');
+    if (b) {
+      if (b.amt === amt && (b.note || '') === note) return closeModal();
+      put('bon', {id: b.id, amt, note});
+      log(`${myName()} غيّر حافز ${wName(w)} من ${fmt(b.amt)} لـ ${fmt(amt)}`, {w, thu});
+    } else {
+      put('bon', {id: newId('b'), w, thu, amt, note});
+      log(`${myName()} سجّل حافز لـ ${wName(w)} ${fmt(amt)}${note ? ' (' + note + ')' : ''}`, {w, thu});
+    }
+    commit(); closeModal(); toast('اتسجل ✔'); afterChange(w);
+  };
+  if ($('#bnDel')) $('#bnDel').onclick = async () => {
+    if (!(await ask(`تمسح حافز ${wName(w)} ${fmt(b.amt)}؟`, 'أيوه امسحه', 'لأ', true))) return;
+    put('bon', {id: b.id, del: true});
+    log(`${myName()} مسح حافز ${wName(w)} ${fmt(b.amt)}`, {w, thu});
+    commit(); toast('اتمسح ✔'); afterChange(w);
+  };
+}
+/* بعد أي تعديل من نافذة: نرسم الشاشة، ولو كنا في تفاصيل عامل في الأسبوع نرجع لها */
+function afterChange(wid) { render(); if (scr.v === 'w' && wid) workerSheet(wid, curThu()); }
+
+/* ---------- الأسبوع / الخميس ---------- */
+const curThu = () => scr.thu || ownerThursday(today());
+const nz = n => n ? fmt(n) : '<span class="z">—</span>';
+function drawWeek() {
+  const I = idx(), t = today(), thu = curThu(), nowThu = ownerThursday(t), ds = weekDates(thu);
+  const c = calcWeek(I, thu), ids = Object.keys(c.rows).sort((a, b) => ((I.W.get(a) || {}).ord || 0) - ((I.W.get(b) || {}).ord || 0));
+  const paidN = ids.filter(id => c.rows[id].net > 0 && I.pd.has(thu + '|' + id)).length, toPay = ids.filter(id => c.rows[id].net > 0).length;
+  const firstThu = I.first && I.first < nowThu ? I.first : nowThu;
+  /* لسه حد مقبضش من أسابيع قبل كده؟ */
+  const owe = [...I.lk.values()].filter(l => l.thu < thu && l.snap).flatMap(l => Object.values(l.snap.rows).filter(r => r.net > 0 && !I.pd.has(l.thu + '|' + r.w)).map(r => l.thu));
+  $('#main').innerHTML = `<div class="dnav"><button type="button" id="wPrev" title="الأسبوع اللي قبله"${thu <= firstThu ? ' disabled' : ''}>›</button><span>أسبوع الخميس ${dm(thu)}${thu === nowThu ? ' · الحالي' : ''}</span><button type="button" id="wNext" title="الأسبوع اللي بعده"${thu >= nowThu ? ' disabled' : ''}>‹</button></div>
+    ${owe.length && !c.closed ? `<button class="note" id="owe" type="button" style="width:100%;text-align:right;border:0">💵 فيه ${owe.length === 1 ? 'عامل' : owe.length + ' عمال'} لسه مقبضوش من أسبوع قبل كده — دوس هنا</button>` : ''}
+    <section class="panel"><div class="p1"><span>${c.closed ? 'المرتبات (اتقفل)' : 'هيخرج من المصنع'}</span><b class="money">${fmt(c.total)}</b></div>
+      <div class="cap"><span>من ${dayFull(ds[0])} لـ ${dayFull(ds[5])}</span>${c.closed ? `<span class="ok">🔒 ${c.lk.auto ? 'اتقفل تلقائي' : 'قفّله ' + esc(c.lk.by)} · اتقبض ${paidN} من ${toPay}</span>` : ''}</div>
+      <div class="fri"><span>الجمعة ${dm(ds[6])}:</span><div class="seg" id="fri"><button type="button" data-v="work" class="${c.fri === 'work' ? 'on' : ''}"${c.closed ? ' disabled' : ''}>شغل ✓</button><button type="button" data-v="off" class="${c.fri !== 'work' ? 'on' : ''}"${c.closed ? ' disabled' : ''}>إجازة</button></div></div>
+      ${c.fri === 'work' ? '<div class="sm" style="margin-top:4px">أجر الجمعة بيتدفع مع الخميس ده.</div>' : ''}
+    </section>
+    <div class="lbl"><span>العمال (${ids.length})</span><span>دوس على أي عامل تشوف تفاصيله</span></div>
+    ${ids.length ? `<table class="tbl"><thead><tr><th>الاسم</th><th>المرتب</th><th>السلف</th><th>الصافي</th>${c.closed ? '<th></th>' : ''}</tr></thead><tbody>
+      ${ids.map(id => { const r = c.rows[id], p = I.pd.get(thu + '|' + id); return `<tr data-w="${esc(id)}"><td><b>${esc(r.name)}</b><small>${unitsText(r.units)}${r.fridayPay ? ' + جمعة' : ''}</small></td><td>${nz(r.wages)}</td><td class="${r.advances + r.carryIn ? 'bk' : ''}">${nz(r.advances + r.carryIn)}</td><td class="net ${r.net ? '' : 'z'}">${r.net ? fmt(r.net) : (r.carryOut ? '<small class="bk">عليه ' + fmt(r.carryOut) + '</small>' : '—')}</td>${c.closed ? `<td>${r.net > 0 ? (p ? `<span class="paid">✓ قبض<br>${esc(p.by)}</span>` : `<button class="pay" type="button" data-pay="${esc(id)}">قبض</button>`) : ''}</td>` : ''}</tr>`; }).join('')}</tbody></table>`
+      : '<div class="list"><div class="empty">مفيش عمال في الأسبوع ده</div></div>'}
+    ${c.closed ? '' : `<button class="big b-dark" id="lockW" type="button">🔒 قفّل الأسبوع</button><div id="lockErr"></div><p class="hint">بعد القفل الأرقام بتتثبت ويظهر زرار "قبض" لكل عامل. ولو محدش قفله، بيتقفل لوحده بعد الجمعة.</p>`}`;
+  $('#wPrev').onclick = () => nav('w/' + addDays(thu, -7), true);
+  $('#wNext').onclick = () => nav(addDays(thu, 7) >= nowThu ? 'w' : 'w/' + addDays(thu, 7), true);
+  if ($('#owe')) $('#owe').onclick = () => nav('w/' + owe.sort().pop(), true);
+  $$('#fri button').forEach(b => b.onclick = () => {
+    if (idx().lk.has(thu)) return;
+    const v = b.dataset.v, cur = idx().ws.get(thu);
+    if ((cur && cur.fri === 'work' ? 'work' : 'off') === v) return;
+    put('wst', {id: 'ws_' + thu, thu, fri: v});
+    log(`${myName()} علّم الجمعة ${dm(ds[6])}: ${v === 'work' ? 'شغل' : 'إجازة'}`, {thu});
+    commit(); drawWeek();
+  });
+  $$('#main tr[data-w]').forEach(tr => tr.onclick = e => { if (e.target.closest('[data-pay]')) return; workerSheet(tr.dataset.w, thu); });
+  $$('#main [data-pay]').forEach(b => b.onclick = () => payOut(b.dataset.pay, thu));
+  if ($('#lockW')) $('#lockW').onclick = async () => {
+    const miss = missingDays(idx(), thu);
+    if (miss.length) {
+      $('#lockErr').innerHTML = `<div class="note">${miss.slice(0, 4).map(m => `يوم ناقص عند ${esc(m.name)}: ${dayName(m.date)}`).join('<br>')}${miss.length > 4 ? `<br>و${miss.length - 4} تاني` : ''}</div>`;
+      return;
+    }
+    if (!(await ask(`تقفل أسبوع الخميس ${dm(thu)}؟ هيخرج ${fmt(calcWeek(idx(), thu).total)} جنيه، والأرقام هتتثبت.`, '🔒 أيوه قفّله'))) return;
+    if (idx().lk.has(thu)) return drawWeek();
+    lockWeek(thu, false); commit(); drawWeek(); toast('اتقفل ✔ دلوقتي علّم مين قبض');
+  };
+}
+async function payOut(wid, thu) {
+  const I = idx(), c = calcWeek(I, thu), r = c.rows[wid];
+  if (!c.closed || !r) return;
+  const p = I.pd.get(thu + '|' + wid);
+  if (p) {
+    if (!(await ask(`${r.name} اتعلّم إنه قبض ${fmt(p.amt)} (${p.by} ${whenTxt(p.at)}). تلغي ده؟`, 'أيوه، لسه مقبضش', 'لأ', true))) return;
+    put('pd', {id: p.id, del: true});
+    log(`${myName()} لغى قبض ${r.name} (أسبوع الخميس ${dm(thu)})`, {w: wid, thu});
+  } else {
+    put('pd', {id: 'pd_' + thu + '_' + wid, w: wid, thu, amt: r.net});
+    log(`${myName()} سلّم ${r.name} مرتبه ${fmt(r.net)} (أسبوع الخميس ${dm(thu)})`, {w: wid, thu});
+  }
+  commit(); closeModal(); render();
+}
+/* تفاصيل عامل في أسبوع (نافذة من تحت): الأيام، الجمعة، الحافز، السلف، المرحّل، الصافي */
+function workerSheet(wid, thu) {
+  const I = idx(), c = calcWeek(I, thu), r = c.rows[wid], w = I.W.get(wid);
+  if (!r || !w) return closeModal();
+  const ds = weekDates(thu), open = !c.closed;
+  const advs = I.adv.filter(a => a.w === wid && ownerThursday(a.date) === thu).sort((a, b) => a.date.localeCompare(b.date) || a.at - b.at);
+  const bons = I.bon.filter(b => b.w === wid && b.thu === thu);
+  const p = I.pd.get(thu + '|' + wid);
+  modal(`<h3>${esc(r.name)}<small>أسبوع الخميس ${dm(thu)}${c.closed ? ' · 🔒' : ''}</small></h3>
+    <div class="days">${ds.slice(0, 6).map(d => { const u = r.days[d]; const miss = u === undefined && open && w.st === 'on' && (!w.from || d >= w.from) && d <= today(); return `<button type="button" data-d="${d}" class="${miss ? 'miss' : ''}">${dayName(d)}<b>${u === undefined ? (miss ? '؟' : '—') : U_BTN[u]}</b></button>`; }).join('')}</div>
+    <div class="kv"><span>${unitsText(r.units)}</span><b class="money">${fmt(r.daysPay)}</b></div>
+    ${r.fridayPay ? `<div class="kv"><span>الجمعة ${dm(ds[6])}</span><b class="money">${fmt(r.fridayPay)}</b></div>` : ''}
+    <div class="kv"><span>حافز</span><b class="money">${nz(r.bonus)}</b></div>
+    ${bons.map(b => `<div class="kv sub" data-bon="${esc(b.id)}"><span>${b.note ? esc(b.note) + ' · ' : ''}${byTxt(b)}</span><span class="money">${fmt(b.amt)}</span></div>`).join('')}
+    <div class="kv"><span><b>المرتب</b></span><b class="money">${fmt(r.wages)}</b></div>
+    <div class="kv"><span>سلف الأسبوع</span><b class="money ${r.advances ? 'neg' : ''}">${r.advances ? '- ' + fmt(r.advances) : '—'}</b></div>
+    ${advs.map(a => `<div class="kv sub" data-adv="${esc(a.id)}"><span>${dayName(a.date)} · ${a.note ? esc(a.note) + ' · ' : ''}${byTxt(a)}</span><span class="money">${fmt(a.amt)}</span></div>`).join('')}
+    ${r.carryIn ? `<div class="kv"><span>عليه من الأسبوع اللي فات</span><b class="money neg">- ${fmt(r.carryIn)}</b></div>` : ''}
+    <div class="kv tot"><span>الصافي</span><b class="money">${fmt(r.net)}</b></div>
+    ${r.carryOut ? `<div class="note">السلف أكتر من المرتب: عليه ${fmt(r.carryOut)} بتتخصم الخميس الجاي.</div>` : ''}
+    ${open ? `<div class="mini"><button class="big b-home" id="wsAdv" type="button">＋ سلفة</button><button class="big b-home" id="wsBon" type="button">＋ حافز</button></div>`
+      : r.net > 0 ? (p ? `<div class="info">✓ قبض ${fmt(p.amt)} · ${byTxt(p)}</div><button class="lnk" id="wsPay" type="button">لسه مقبضش؟</button>` : `<button class="big b-ok" id="wsPay" type="button">💵 قبض ${fmt(r.net)}</button>`) : ''}
+    <button class="lnk" id="wsX" type="button">إغلاق</button>`);
+  $('#wsX').onclick = closeModal;
+  $$('#modal .days button').forEach(b => b.onclick = () => { if (open) nav('t/' + b.dataset.d); });
+  if ($('#wsAdv')) $('#wsAdv').onclick = () => advModal(null, defDayIn(thu), wid);
+  if ($('#wsBon')) $('#wsBon').onclick = () => bonModal(null, thu, wid);
+  if ($('#wsPay')) $('#wsPay').onclick = () => payOut(wid, thu);
+  if (open) {
+    $$('#modal [data-adv]').forEach(x => x.onclick = () => advModal(S.recs[x.dataset.adv]));
+    $$('#modal [data-bon]').forEach(x => x.onclick = () => bonModal(S.recs[x.dataset.bon], thu));
+  }
+}
+/* تاريخ السلفة الجديدة من شاشة الأسبوع: النهارده لو جوه الأسبوع، وإلا الخميس بتاعه */
+const defDayIn = thu => { const t = today(); return ownerThursday(t) === thu ? t : thu; };
+
+/* ---------- العمال ---------- */
+function drawWorkers() {
+  const all = [...idx().W.values()].sort((a, b) => (a.ord || 0) - (b.ord || 0));
+  const on = all.filter(w => w.st === 'on'), stop = all.filter(w => w.st === 'stop'), gone = all.filter(w => w.st === 'gone');
+  const row = w => `<div class="row" data-w="${esc(w.id)}"><div class="m"><b>${esc(w.name)}${w.st === 'stop' ? '<span class="tag stop">واقف</span>' : w.st === 'gone' ? '<span class="tag gone">مشى</span>' : ''}</b><small>يومية ${fmt(w.rate)} · جمعة ${fmt(w.fri)}</small></div><div class="a"><b class="money">${fmt(w.rate)}</b></div></div>`;
+  $('#main').innerHTML = `<button class="big b-ok" id="kNew" type="button" style="margin-top:0">＋ عامل جديد</button>
+    <div class="lbl"><span>الشغالين (${on.length})</span><span>اليومية</span></div>
+    <div class="list">${on.length ? on.map(row).join('') : '<div class="empty">لسه مفيش عمال</div>'}</div>
+    ${stop.length ? `<div class="lbl"><span>واقفين (${stop.length})</span></div><div class="list">${stop.map(row).join('')}</div>` : ''}
+    ${gone.length ? `<details class="more"><summary>اللي مشيوا (${gone.length})</summary><div class="list">${gone.map(row).join('')}</div></details>` : ''}`;
+  $('#kNew').onclick = () => workerModal(null);
+  $$('#main .row[data-w]').forEach(r => r.onclick = () => workerModal(idx().W.get(r.dataset.w)));
+}
+function workerModal(w) {
+  const t = today();
+  modal(`<h3>${w ? esc(w.name) : 'عامل جديد'}${w ? `<small>${byTxt(w)}</small>` : ''}</h3>
+    <span class="fl">الاسم</span><input class="inp" id="wkN" autocomplete="off" value="${esc(w ? w.name : '')}" placeholder="اسم العامل">
+    <div class="mini"><div><span class="fl">اليومية (السبت للخميس)</span>${amtBox('wkR', w && w.rate, true)}</div><div><span class="fl">أجر الجمعة</span>${amtBox('wkF', w && w.fri, true)}</div></div>
+    ${w ? '<p class="sm" style="margin:6px 2px 0">لو غيّرت اليومية: الأيام اللي اتسجلت قبل كده بتفضل بأجرها القديم.</p>' : `<span class="fl">بدأ شغل من</span><input class="inp" id="wkD" type="date" value="${t}" max="${t}">`}
+    <button class="big b-ok" id="wkOk" type="button">${w ? 'حفظ' : 'ضيف العامل'}</button>
+    ${w ? `<div class="mini">${w.st === 'on' ? '<button class="big b-home" id="wkStop" type="button">⏸ وقّفه</button>' : '<button class="big b-home" id="wkOn" type="button">▶ رجّعه للشغل</button>'}${w.st !== 'gone' ? '<button class="big b-redo" id="wkGone" type="button">مشى</button>' : '<span></span>'}</div>` : ''}
+    <button class="lnk" id="wkX" type="button">إغلاق</button>`);
+  bindAmt($('#wkR')); bindAmt($('#wkF'));
+  if (!w) setTimeout(() => $('#wkN') && $('#wkN').focus(), 60);
+  $('#wkX').onclick = closeModal;
+  $('#wkOk').onclick = () => {
+    const name = $('#wkN').value.trim().replace(/\s+/g, ' '), rate = amtOf($('#wkR')), fri = amtOf($('#wkF'));
+    if (!name) return toast('اكتب اسم العامل');
+    if (!(rate > 0)) return toast('اكتب اليومية');
+    if ([...idx().W.values()].some(x => x !== w && x.st !== 'gone' && norm(x.name) === norm(name))) return toast('فيه عامل بنفس الاسم');
+    if (!w) {
+      const from = isDay($('#wkD').value) ? $('#wkD').value : t;
+      const r = put('wk', {id: newId('w'), name, rate, fri, st: 'on', from, ord: Date.now()});
+      log(`${myName()} ضاف عامل جديد: ${name} (يومية ${fmt(rate)}، جمعة ${fmt(fri)})`, {w: r.id});
+    } else {
+      const ch = [];
+      if (w.name !== name) ch.push(`الاسم من "${w.name}" لـ "${name}"`);
+      if (w.rate !== rate) ch.push(`اليومية من ${fmt(w.rate)} لـ ${fmt(rate)}`);
+      if ((w.fri || 0) !== fri) ch.push(`أجر الجمعة من ${fmt(w.fri)} لـ ${fmt(fri)}`);
+      if (!ch.length) return closeModal();
+      put('wk', {id: w.id, name, rate, fri});
+      log(`${myName()} غيّر ${w.name}: ${ch.join('، ')}`, {w: w.id});
+    }
+    commit(); closeModal(); toast('اتحفظ ✔'); drawWorkers();
+  };
+  const setSt = (st, txt) => { put('wk', {id: w.id, st}); log(txt, {w: w.id}); commit(); closeModal(); drawWorkers(); };
+  if ($('#wkStop')) $('#wkStop').onclick = () => setSt('stop', `${myName()} وقّف ${w.name}`);
+  if ($('#wkOn')) $('#wkOn').onclick = () => setSt('on', `${myName()} رجّع ${w.name} للشغل`);
+  if ($('#wkGone')) $('#wkGone').onclick = async () => { if (await ask(`${w.name} مشى؟ هيختفي من الأسبوع، واسمه هيفضل في الأرشيف.`, 'أيوه مشى', 'لأ', true)) setSt('gone', `${myName()} علّم إن ${w.name} مشى`); };
+}
+
+/* ---------- الأرشيف: الأسابيع المقفولة ---------- */
+function drawArchive() {
+  const I = idx(), ls = [...I.lk.values()].filter(l => l.snap).sort((a, b) => b.thu.localeCompare(a.thu));
+  $('#main').innerHTML = ls.length ? `<div class="list">${ls.map(l => {
+      const rs = Object.values(l.snap.rows).filter(r => r.net > 0), paid = rs.filter(r => I.pd.has(l.thu + '|' + r.w)).length, ds = weekDates(l.thu);
+      return `<div class="row" data-thu="${l.thu}"><div class="m"><b>أسبوع الخميس ${dm(l.thu)}</b><small>${dm(ds[0])} → ${dm(ds[5])} · ${l.auto ? 'تلقائي' : esc(l.by)}${l.snap.fri === 'work' ? ' · الجمعة شغل' : ''}</small></div><div class="a"><b class="money">${fmt(l.snap.total)}</b><small class="sm ${paid < rs.length ? 'wt' : 'ok'}">قبض ${paid} من ${rs.length}</small></div></div>`; }).join('')}</div>
+    <p class="hint">دوس على أي أسبوع تفتحه وتعلّم مين قبض.</p>`
+    : '<div class="list"><div class="empty">لسه مفيش أسابيع مقفولة.<br>الأسبوع بيتقفل يوم الخميس (أو لوحده بعد الجمعة).</div></div>';
+  $$('#main .row[data-thu]').forEach(r => r.onclick = () => nav('w/' + r.dataset.thu));
+}
+
+/* ---------- السجل: كل تغيير بالترتيب، ومفيش حاجة بتتمسح منه ---------- */
+let logN = 150;
+function drawLog() {
+  const ls = idx().log.slice().sort((a, b) => b.at - a.at), shown = ls.slice(0, logN);
+  let last = '', html = '';
+  shown.forEach(l => {
+    const d = dayOf(l.at);
+    if (d !== last) { if (last) html += '</div>'; html += `<div class="lbl"><span>${dayFull(d)}${d === today() ? ' · النهارده' : ''}</span></div><div class="log">`; last = d; }
+    html += `<div class="lg">${esc(l.txt)}<small>${timeOf(l.at)}</small></div>`;
+  });
+  if (last) html += '</div>';
+  $('#main').innerHTML = (html || '<div class="list"><div class="empty">لسه مفيش حاجة في السجل</div></div>') + (ls.length > shown.length ? '<button class="lnk" id="lgMore" type="button">اعرض أقدم</button>' : '');
+  if ($('#lgMore')) $('#lgMore').onclick = () => { logN += 150; drawLog(); };
+}
+
+/* ---------- الإعدادات ---------- */
+function normSheetUrl(t) {
+  t = String(t || '').replace(/\s+/g, '');
+  const m = t.match(/https:\/\/script\.google(?:usercontent)?\.com\/(?:a\/[^/]+\/)?macros\/s\/[\w-]+\/exec/);
+  if (m) return m[0];
+  const id = t.match(/AKfy[\w-]{20,}/);
+  return id ? `https://script.google.com/macros/s/${id[0]}/exec` : t;
+}
+function makeKey() {
+  const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', r = crypto.getRandomValues(new Uint8Array(12));
+  return [...r].map(x => A[x % A.length]).join('').replace(/(.{4})(?!$)/g, '$1-');
+}
+async function connectSheet(u) {
+  u = normSheetUrl(u);
+  if (!/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec$/.test(u)) return 'اللينك لازم يبدأ بـ https://script.google.com ويخلص بـ /exec';
+  const k = S.k || makeKey();
+  let j; try { j = await callSheet({action: 'ping'}, u, k, 30000); } catch (e) { return e.code === 'page' ? 'الشيت رد بصفحة مش مفهومة. غالباً الوصول مش "أي شخص (Anyone)".' : 'معرفتش أوصل للشيت. اتأكد من النت ومن اللينك.'; }
+  if (j && j.error === 'key') return 'الشيت ده مقفول على مفتاح تاني. في Apps Script اختار الدالة resetKey واضغط تشغيل (Run) مرة، وجرّب تاني.';
+  if (j && j.ok && j.app !== 'fo-pay') return 'الشيت ده عليه كود تاني (مش المرتبات). اعمل الخطوات وانسخ كود المرتبات من هنا في جدول جديد.';
+  if (!j || !j.ok) return 'الشيت رد بخطأ: ' + (j && j.error || 'غير معروف');
+  S.u = u; S.k = k; S.bad = false; S.cursor = 0; S.lastPull = 0; save();
+  await sync();
+  return '';
+}
+function sheetHelp() {
+  const code = payScript(), lines = code.split('\n').length;
+  modal(`<h3>شيت "المرتبات" (مرة واحدة بس، من الكمبيوتر)</h3>
+  <ol class="steps">
+    <li>افتح <b>sheets.google.com</b> بحساب جوجل بتاعك، واضغط <b>+ (فاضي)</b>. سمّي الجدول: <b>المرتبات</b>. (جدول جديد لوحده، <b>مش</b> جدول الحسابات ولا السوق.)</li>
+    <li>من القايمة اللي فوق: <b>الإضافات (Extensions)</b> ← <b>Apps Script</b>.</li>
+    <li>اضغط جوه خانة الكود، واختار <b>تحديد الكل</b> وامسح كل حاجة. ارجع هنا واضغط <b>"انسخ الكود"</b>، والصقه <b>مرة واحدة بس</b>. الكود الصح بيخلص عند السطر رقم ${lines}.</li>
+    <li>اضغط أيقونة الحفظ 💾.</li>
+    <li>فوق على اليمين: <b>نشر (Deploy)</b> ← <b>نشر جديد (New deployment)</b> ← العجلة ⚙ ← <b>Web app</b>.</li>
+    <li><b>Execute as</b> = <b>Me (أنا)</b>، و<b>Who has access</b> = <b>Anyone (أي شخص)</b>. ده عادي لأن المفتاح السري هو اللي بيحمي البيانات.</li>
+    <li>اضغط <b>نشر (Deploy)</b> ← <b>Authorize access</b> ← اختار حسابك ← <b>Advanced</b> ← <b>Go to ... (unsafe)</b> ← <b>Allow</b>. (التحذير عادي لأن الكود بتاعك إنت.)</li>
+    <li>انسخ <b>Web app URL</b> (بيخلص بـ /exec)، والصقه هنا في خانة لينك الشيت، واضغط <b>اربط</b>.</li>
+  </ol>
+  <button class="big b-ok" id="hpCopy" type="button">انسخ الكود</button><button class="big b-home" id="hpShow" type="button">اعرض الكود</button><button class="lnk" id="hpX" type="button">إغلاق</button>`);
+  $('#hpX').onclick = closeModal;
+  $('#hpShow').onclick = () => { if (!$('#hpCode')) $('#hpShow').insertAdjacentHTML('afterend', `<pre class="code" id="hpCode">${esc(code)}</pre>`); };
+  $('#hpCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(code); toast('اتنسخ الكود ✔ دلوقتي الصقه في Apps Script', 5000); }
+    catch (e) { $('#hpShow').click(); const r = document.createRange(); r.selectNodeContents($('#hpCode')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('اضغط مطوّل على الكود واختار نسخ (Copy)', 6000); }
+  };
+}
+async function shareLink() {
+  const url = joinLink(), text = 'ده تطبيق المرتبات. افتح الرابط ده، واختار اسمك ورقم سري. وبعدين من قايمة كروم (⋮) اختار "إضافة إلى الشاشة الرئيسية":';
+  try { if (navigator.share) { await navigator.share({title: 'المرتبات', text, url}); return; } } catch (e) { if (e.name === 'AbortError') return; }
+  open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url), '_blank');
+}
+function drawSettings() {
+  const u = uiGet(), n = pending().length, sups = idx().sup.slice().sort((a, b) => a.at - b.at);
+  $('#main').innerHTML = `<div class="card"><h2>أنا</h2>
+      <div class="kv"><span>اسمي</span><b>${esc(myName())}</b></div>
+      <button class="big b-home" id="sOut" type="button">🚪 خروج (حد تاني هيستخدم الموبايل)</button></div>
+    <div class="card"><h2>المشرفين (${sups.length} من 3)</h2>
+      ${sups.map(s => `<div class="kv"><span>${esc(s.name)}${s.id === S.me ? ' (أنا)' : ''}</span><b class="sm">من ${dm(dayOf(s.at))}</b></div>`).join('')}
+      ${S.u ? `<button class="big b-ok" id="sShare" type="button">📲 ابعت لينك التطبيق لشريكك</button><button class="lnk" id="sCopy" type="button">انسخ اللينك بس</button>`
+        : '<p class="sm" style="margin-top:8px">علشان تبعت اللينك لشريكك، اربط الشيت الأول (تحت).</p>'}</div>
+    ${S.u ? '' : `<div class="card" id="sheetCard"><h2>ربط شيت جوجل (مرة واحدة من الكمبيوتر)</h2>
+      <p class="sm" style="font-size:13.5px;line-height:1.8">لحد ما الشيت يتربط، كل حاجة محفوظة على الموبايل ده بس. بعد الربط هتتبعت كلها لوحدها وتقدر تبعت اللينك لشركائك.</p>
+      <button class="big b-dark" id="sHelp" type="button">📋 الخطوات + انسخ الكود</button>
+      <label for="sUrl">لينك الشيت (Web app URL)</label><input class="inp" id="sUrl" autocomplete="off" dir="ltr" placeholder="https://script.google.com/.../exec" style="font-size:14px">
+      <button class="big b-ok" id="sLink" type="button">اربط</button><div id="sErr"></div></div>`}
+    <div class="card"><h2>الاتصال</h2>
+      <div class="kv"><span>الحالة</span><b class="${!S.u ? 'wt' : S.bad ? 'bk' : online === false ? 'wt' : 'ok'}">${!S.u ? 'الشيت لسه متربطش' : S.bad ? 'الربط اتغير — اطلب لينك جديد' : online === false ? 'مفيش نت دلوقتي' : 'متصل'}</b></div>
+      <div class="kv"><span>آخر تحديث</span><b>${S.lastOk ? dm(dayOf(S.lastOk)) + ' ' + timeOf(S.lastOk) : '—'}</b></div>
+      <div class="kv"><span>حاجات مستنية تتبعت</span><b class="${n && S.u ? 'wt' : ''}">${n}</b></div>
+      ${S.u ? '<button class="big b-home" id="sSync" type="button">🔄 حدّث دلوقتي</button>' : ''}</div>
+    <div class="card"><h2>المظهر</h2>
+      <label>اللون</label><div class="seg" id="uiTheme" style="--n:3">${[['auto', 'تلقائي'], ['light', 'فاتح'], ['dark', 'داكن']].map(([k, t]) => `<button type="button" data-v="${k}" class="${u.theme === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <label>حجم الخط</label><div class="seg" id="uiFs">${[['1', 'عادي'], ['1.12', 'كبير']].map(([k, t]) => `<button type="button" data-v="${k}" class="${u.fs === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>`;
+  $('#sOut').onclick = async () => { if (await ask('تخرج؟ هتحتاج اسمك ورقمك السري علشان تدخل تاني.', 'أيوه اخرج')) { S.me = ''; save(); nav('', true); } };
+  if ($('#sShare')) $('#sShare').onclick = shareLink;
+  if ($('#sCopy')) $('#sCopy').onclick = async () => { try { await navigator.clipboard.writeText(joinLink()); toast('اتنسخ اللينك ✔ ابعته لشريكك على واتساب', 5000); } catch (e) { modal(`<h3>لينك التطبيق</h3><pre class="code">${esc(joinLink())}</pre><button class="big b-home" id="jlX" type="button">تمام</button>`); $('#jlX').onclick = closeModal; } };
+  if ($('#sHelp')) $('#sHelp').onclick = sheetHelp;
+  if ($('#sLink')) $('#sLink').onclick = async () => {
+    const b = $('#sLink'); b.disabled = true; b.textContent = '⏳ بيربط…'; $('#sErr').innerHTML = '';
+    const err = await connectSheet($('#sUrl').value);
+    if (err) { b.disabled = false; b.textContent = 'اربط'; $('#sErr').innerHTML = `<div class="note">${esc(err)}</div>`; return; }
+    toast('✔ الشيت اتربط', 5000); drawSettings();
+  };
+  if ($('#sSync')) $('#sSync').onclick = async () => {
+    $('#sSync').disabled = true; $('#sSync').textContent = '⏳ بحدّث…';
+    await sync(); await new Promise(r => setTimeout(r, 300));
+    toast(online === false ? 'مفيش نت دلوقتي. هيتبعت لوحده.' : '✔ اتحدّث');
+    if (scr.v === 's') drawSettings();
+  };
+  $$('#uiTheme button').forEach(b => b.onclick = () => { uiSet({theme: b.dataset.v}); drawSettings(); });
+  $$('#uiFs button').forEach(b => b.onclick = () => { uiSet({fs: b.dataset.v}); drawSettings(); });
+}
+
+route();
+if (!S.u && autoClose()) { save(); refresh(); }
+setTimeout(sync, 200);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
+</script>
+</body>
+</html>

@@ -309,6 +309,8 @@ const unb64u = str => decodeURIComponent(escape(atob(str.replace(/-/g, '+').repl
 const stOf = o => S.st['st_' + o.id];
 function opState(o) {               // done | back | wait (عند مصطفى) | unsent (لسه على الموبايل)
   const s = stOf(o);
+  if (s && s.ign) return 'ign';
+  if (s && s.done && s.auto && o.t === 'exp') return 'auto';   // المصروف بيتسجل في حسابات مصطفى لوحده وبيفضل ينفع يتعدّل
   if (s && s.done) return 'done';
   if (s && s.back && s.bv === o.upd) return 'back';
   return o.sy === o.upd ? 'wait' : 'unsent';
@@ -493,7 +495,7 @@ function refresh() {
 /* ---------- حاجات مشتركة ---------- */
 function stHtml(o) {
   const s = opState(o);
-  return s === 'done' ? '<span class="st ok">✓ اتنقلت</span>' : s === 'back' ? '<span class="st bk">🔴 راجعة</span>' : s === 'wait' ? '<span class="st wt">⏳ عند مصطفى</span>' : '<span class="st ns">⏳ لسه متبعتتش</span>';
+  return s === 'ign' ? '<span class="st ns">↩ تجاهلها مصطفى</span>' : s === 'auto' ? '<span class="st ok">✓ اتسجلت</span>' : s === 'done' ? '<span class="st ok">✓ اتنقلت</span>' : s === 'back' ? '<span class="st bk">🔴 راجعة</span>' : s === 'wait' ? '<span class="st wt">⏳ عند مصطفى</span>' : '<span class="st ns">⏳ لسه متبعتتش</span>';
 }
 /* سطر عملية: دوسة عليه بتفتح التعديل */
 const opRow = (o, withDay, noName) => `<div class="row t-${o.t}" data-o="${esc(o.id)}"><div class="m"><b>${esc(noName ? opHow(o) : opWhat(o))}</b><small>${withDay ? dispDate(dayOf(o.ts)) + ' · ' : ''}${timeOf(o.ts)}${noName ? '' : ' · ' + esc(opHow(o))}</small></div><div class="a"><b class="money">${fmt(o.amt)}</b>${stHtml(o)}</div></div>`;
@@ -655,9 +657,9 @@ const EDIT_TITLE = {pay: 'دفعة عميل', inv: 'فاتورة (إجمالي)'
 function editSheet(o) {
   if (!o || o.del) return;
   const s = opState(o);
-  if (s === 'done') {
+  if (s === 'done' || s === 'ign') {
     modal(`<h3>${EDIT_TITLE[o.t]}<small>${timeOf(o.ts)}</small></h3><p>${esc(opWhat(o))} — <span class="money">${fmt(o.amt)}</span> ${esc(opHow(o))}</p>
-      <p style="font-size:14px;color:var(--sub);font-weight:600">${o.t === 'hand' ? 'مصطفى استلمها' : 'اتنقلت لحسابات مصطفى'}، فمقفولة. أي تصحيح من عنده.</p>
+      <p style="font-size:14px;color:var(--sub);font-weight:600">${s === 'ign' ? 'مصطفى تجاهلها' : o.t === 'hand' ? 'مصطفى استلمها' : 'اتنقلت لحسابات مصطفى'}، فمقفولة. أي تصحيح من عنده.</p>
       <button class="big b-home" id="eX" type="button">تمام</button>`);
     $('#eX').onclick = closeModal; return;
   }
@@ -685,14 +687,14 @@ function editSheet(o) {
     if (o.t === 'exp') { const w = $('#eNt').value.trim().replace(/\s+/g, ' '); if (!w) return toast('اكتب المصروف ده إيه'); Object.assign(ch, {cat: w, note: ''}); }
     if (o.t === 'cs') { ch.buyer = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.buyer) return toast('اكتب اسم المشتري'); }
     if (o.t === 'spay') { ch.sname = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.sname) return toast('اكتب اسم المورد'); }
-    if (opState(o) === 'done') { closeModal(); return toast('دي اتنقلت خلاص'); }
+    if (opState(o) === 'done' || opState(o) === 'ign') { closeModal(); return toast('دي اتنقلت خلاص'); }
     if (Object.keys(ch).every(k => (o[k] ?? '') === ch[k])) return closeModal();
     Object.assign(o, ch); bump(o); save(); sync(); closeModal(); toast('اتعدّلت ✔'); refresh();
   };
   $('#eDel').onclick = async () => { if (await delOp(o)) refresh(); };
 }
 async function delOp(o) {
-  if (opState(o) === 'done') { toast('دي اتنقلت للحسابات. أي تصحيح من عند مصطفى.', 4000); return false; }
+  if (opState(o) === 'done' || opState(o) === 'ign') { toast('دي اتنقلت للحسابات. أي تصحيح من عند مصطفى.', 4000); return false; }
   if (!(await ask(`تمسح ${o.t === 'pay' ? 'دفعة' : o.t === 'inv' ? 'فاتورة' : o.t === 'hand' ? 'تسليم' : o.t === 'cs' ? 'بيع كاش' : 'مصروف'} ${fmt(o.amt)} (${opWhat(o)}${o.t === 'pay' ? ' — ' + M_SAID[o.m] : ''})؟`, 'أيوه امسحها', 'لأ', true))) return false;
   o.del = true; bump(o); save(); sync();
   toast('اتمسحت ✔');

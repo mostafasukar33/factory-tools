@@ -969,19 +969,19 @@ html[data-theme=dark]{--sb-bg:#231e13;--sb-bg2:#1b170f;--sb-tx:#EDE4CC;--sb-mut:
   main.split #p-party{padding:0 40px 0 28px}
   main:not(.split){max-width:1600px}
 }
-/* ============ اللاب: ألوان هادية مريحة للعين (بطلب صاحب المشروع، اللاب ≥1000 بس والموبايل زي ما هو) ============
-   رمادي فاتح بارد بدل البيج الدهبي، والدهبي بقى لمسة بس (التاب الشغال والخطوط الرفيعة) */
+/* ============ اللاب: نفس ألوان الموبايل بالظبط (بطلب صاحب المشروع): خلفية بيج، شريط أسود بدهبي، جدول راسه أسود ============ */
 @media (min-width:1000px){
-  :root{--bg:#F0F2F5;--line:#DCE1E8;--pane:#fff;--pane2:#F6F8FA;--rowl:#E9EDF1;--mut:#667180;--gold-l:#FBF4DF;
-    --sb-bg:#E9EDF2;--sb-bg2:#E2E7EE;--sb-tx:#1E2833;--sb-mut:#667180;--sb-hov:#DCE3EB;--sb-on:#FFFFFF;--sb-line:#CED5DE;--sb-ic:#8A6A1C;--shadow:0 1px 2px #1a24330f,0 1px 6px #1a243308}
-  html[data-theme=dark]{--bg:#14171B;--line:#2B3037;--pane:#1B1F24;--pane2:#171A1E;--rowl:#262B31;--mut:#A2ABB6;--gold-l:#2A281C;
-    --sb-bg:#1A1E23;--sb-bg2:#14171B;--sb-tx:#E5E8EC;--sb-mut:#9AA3AE;--sb-hov:#252A31;--sb-on:#2E343C;--sb-line:#2B3037;--sb-ic:#DDB765}
-  nav,html[data-theme=dark] nav{box-shadow:none}
-  nav button.on,html[data-theme=dark] nav button.on{box-shadow:inset -4px 0 0 var(--gold),0 1px 4px #1a243318}
-  #p-party .ldg th{background:#E9EDF2;color:#4A5565}
-  html[data-theme=dark] #p-party .ldg th{background:#101316;color:#C9D0D8}
-  main.split .pt.zero .a b{color:#9aa3ae}
-  .card,.ldgw{background:var(--pane)}
+  :root{--sb-bg:#111;--sb-bg2:#111;--sb-tx:#e8e2d0;--sb-mut:#a39d8c;--sb-hov:#26241f;--sb-on:#26241f;--sb-line:#111;--sb-ic:#DAAE57}
+  html[data-theme=dark]{--sb-bg:#111;--sb-bg2:#111;--sb-tx:#e8e2d0;--sb-mut:#a39d8c;--sb-hov:#26241f;--sb-on:#26241f;--sb-line:#111;--sb-ic:#DAAE57}
+  nav,html[data-theme=dark] nav{box-shadow:none;border-inline-end:0}
+  .top{border-bottom:2px solid var(--gold)}
+  .top h1{color:#fff}.top small{color:var(--gold)}
+  nav button.on,html[data-theme=dark] nav button.on{color:var(--gold);box-shadow:inset -4px 0 0 var(--gold)}
+  nav .qk button.on,html[data-theme=dark] nav .qk button.on{color:var(--gold)}
+  nav .qk{border-inline-start-color:#34312a}
+  .top .homebtn{color:#e8e2d0;border-color:#3a372f}
+  #p-party .ldg th{background:#111;color:#DAAE57}
+  html[data-theme=dark] #p-party .ldg th{background:#2a2820;color:#E8CE93}
 }
 /* نقل فواتير الحساب الفرعي للأساسي (الهاشمية قنا) */
 .fwbar{border:1.5px solid var(--line);border-inline-start:5px solid var(--gold);background:var(--gold-l);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-weight:700;font-size:14.5px}

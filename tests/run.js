@@ -472,7 +472,7 @@ const MO = !!process.env.MARKET_ONLY;
     await M.evaluate(() => nav('')); await M.waitForTimeout(200);
     const cash0 = await M.evaluate(() => cashNow());
     eq('اللي معاك كاش = الكاش اللي حصّلته (من غير التحويلات)', [cash0, await M.evaluate(() => liveOps().filter(o => o.t === 'pay' && o.m === 'cash').reduce((a, o) => a + o.amt, 0))], [cash0, 600000]);
-    eq('الرئيسية فيها دفعة عميل وصرفت وسلمت لمصطفى', await M.evaluate(() => [...document.querySelectorAll('.qa button')].map(b => b.textContent)), ['＋ دفعة أو فاتورة', 'صرفت', 'سلمت لمصطفى']);
+    eq('الرئيسية فيها دفعة عميل وصرفت وسلمت لمصطفى', await M.evaluate(() => [...document.querySelectorAll('.qa2 button')].map(b => b.textContent)), ['💵دفعة أو فاتورة', '🏭بيع كاش من المصنع', '⛽صرفت', '🤝سلمت لمصطفى']);
     await M.click('#qSp'); await M.waitForTimeout(200);
     eq('صرفت: خانة المبلغ مفتوحة وفيه 4 أنواع جاهزة', await M.evaluate(() => [document.activeElement.id, [...document.querySelectorAll('.cat[data-c]')].map(b => b.dataset.c)]), ['amt', ['بنزين', 'مواصلات', 'أكل', 'حاجة تانية']]);
     await M.fill('#amt', '200'); await M.click('.cat[data-c="بنزين"]'); await M.waitForTimeout(1200);

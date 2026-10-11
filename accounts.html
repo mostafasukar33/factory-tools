@@ -159,6 +159,7 @@ table.lt.rep tr.bad td{background:var(--red-l);color:var(--red)}
 .bl{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-weight:700}
 .bl span{flex:1}.bl b{direction:ltr;unicode-bidi:isolate}
 .seg.s5{grid-template-columns:repeat(5,1fr)}@media (max-width:600px){.seg.s5{grid-template-columns:repeat(3,1fr)}}
+.seg.s6{grid-template-columns:repeat(6,1fr)}@media (max-width:600px){.seg.s6{grid-template-columns:repeat(3,1fr)}}
 .dash{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
 .dash>*{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:8px 10px;text-align:center;text-decoration:none;color:inherit}
 .dash span{display:block;font-size:var(--f1);font-weight:700;color:var(--sub)}.dash b{display:block;font-size:var(--f4);font-weight:800;direction:ltr}
@@ -4387,6 +4388,7 @@ function searchModal() {
   $('#saX2').onclick = closeModal;
   setTimeout(() => $('#saQ') && $('#saQ').focus(), 50);
 }
+let repColMode = 'week';   // تقرير التحصيل: أسبوعي (أسابيع الشهر، السبت للجمعة) أو شهري (شهور السنة)
 let repKind = 'profit', repSide = 'mkt', repMode = 'year', repDay = '', repMonth = '', repYear = '', repFrom = '', repTo = '', repVault = '', repItemKind = 'inv';
 function repRange() {
   const t = todayISO();
@@ -4396,9 +4398,37 @@ function repRange() {
   return [repFrom || t.slice(0, 8) + '01', repTo || t];
 }
 const rangeText = (f, t) => f === t ? dispDate(f) : `من ${dispDate(f)} إلى ${dispDate(t)}`;
+/* إجمالي التحصيل (دفعات العملا) من عملاء السوق وعملاء المواقع، أسبوع بأسبوع أو شهر بشهر. الحساب الفرعي (خارج الإجمالي) مش محسوب */
+function colReport() {
+  const t = todayISO(), wk = repColMode === 'week', bins = [];
+  let f, to;
+  const sd = iso => { const [y, m, d] = iso.split('-'); return `${d}${RLM}/${RLM}${m}`; };
+  if (wk) {
+    const m = repMonth || t.slice(0, 7), [y, mo] = m.split('-').map(Number);
+    f = m + '-01'; to = m + '-' + pad2(new Date(y, mo, 0).getDate());
+    for (let a = f; a <= to;) { let e = addDays(a, 6 - (dowOf(a) + 1) % 7); if (e > to) e = to; if (a <= t) bins.push({f: a, t: e, n: a === e ? `${AR_DAYS[dowOf(a)]} ${sd(a)}` : `من ${sd(a)} لـ ${sd(e)}`}); a = addDays(e, 1); }
+  } else {
+    const y = repYear || t.slice(0, 4);
+    f = y + '-01-01'; to = y + '-12-31';
+    for (let i = 1; i <= 12; i++) { const m = y + '-' + pad2(i); if (m + '-01' <= t) bins.push({f: m + '-01', t: m + '-' + pad2(new Date(+y, i, 0).getDate()), n: AR_MONTHS[i - 1] + ' ' + y}); }
+  }
+  bins.forEach(b => Object.assign(b, {mkt: 0, site: 0, c: 0}));
+  db.entries.forEach(e => {
+    if (e.del || e.kind !== 'pay' || e.date < f || e.date > to) return;
+    const p = P.get(e.party); if (!p || p.noTot || (p.sec !== 'mkt' && p.sec !== 'site')) return;
+    const b = bins.find(x => e.date >= x.f && e.date <= x.t); if (b) { b[p.sec] += e.amt; b.c++; }
+  });
+  const sm = bins.reduce((a, b) => a + b.mkt, 0), ss = bins.reduce((a, b) => a + b.site, 0), n = bins.reduce((a, b) => a + b.c, 0);
+  const [y0, m0] = (repMonth || t.slice(0, 7)).split('-');
+  return {title: wk ? 'التحصيل الأسبوعي' : 'التحصيل الشهري', period: wk ? `${AR_MONTHS[+m0 - 1]} ${y0} — الأسبوع من السبت للجمعة` : 'سنة ' + (repYear || t.slice(0, 4)),
+    cols: [{h: wk ? 'الأسبوع' : 'الشهر', w: 31, c: 'l'}, {h: 'عملاء السوق', w: 23, c: 'n'}, {h: 'عملاء المواقع', w: 23, c: 'n'}, {h: 'الإجمالي', w: 23, c: 'b'}],
+    rows: bins.slice().reverse().map(b => ({cells: [b.n, fmtP(b.mkt), fmtP(b.site), fmtP(b.mkt + b.site)]})),
+    sum: [['عملاء السوق', fmtP(sm)], ['عملاء المواقع', fmtP(ss)], ['عدد الدفعات', String(n)]], fin: ['إجمالي التحصيل', fmtP(sm + ss)]};
+}
 function buildReport() {
   const ps = liveParties();
   if (repKind === 'profit') { const [f, t] = repRange(); return profitReport(f, t); }
+  if (repKind === 'col') return colReport();
   if (repKind === 'debt') {
     /* لكل حساب: إجمالي اللي اتسحب (فواتير ورصيد أول المدة) وإجمالي اللي اتدفع (دفعات ومرتجعات وخصومات) والرصيد، زي أعمدة الكشف بالظبط */
     const sup = repSide === 'sup';
@@ -4464,9 +4494,11 @@ function renderReports() {
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
   const needRange = repKind === 'cash' || repKind === 'item' || repKind === 'profit';
   $('#p-rep').innerHTML = `
-    <div class="seg s5" id="rpK">${[['profit', 'الأرباح'], ['debt', 'المسحوبات والمدفوعات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات والمدفوعات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="card">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
+      ${repKind === 'col' ? `<div class="seg s2" id="rpCM">${[['week', 'أسبوعي'], ['month', 'شهري']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repColMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+        ${repColMode === 'week' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">` : `<input class="inp num" id="rpYear" inputmode="numeric" value="${repYear || t.slice(0, 4)}">`}` : ''}
       ${repKind === 'item' ? `<div class="seg" id="rpIK">${[['inv', 'المبيعات'], ['pur', 'المشتريات']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repItemKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${needRange ? `<div class="seg s4" id="rpM">${[['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${repMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${repMode === 'day' ? `<input class="inp" type="date" id="rpDay" value="${repDay || t}">` : repMode === 'month' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">`
@@ -4483,6 +4515,7 @@ function renderReports() {
   $$('#rpK button').forEach(b => b.onclick = () => { repKind = b.dataset.v; if (repKind === 'profit' && repMode === 'day') repMode = 'year'; renderReports(); });
   $$('#rpSide button').forEach(b => b.onclick = () => { repSide = b.dataset.v; renderReports(); });
   $$('#rpIK button').forEach(b => b.onclick = () => { repItemKind = b.dataset.v; renderReports(); });
+  $$('#rpCM button').forEach(b => b.onclick = () => { repColMode = b.dataset.v; renderReports(); });
   $$('#rpM button').forEach(b => b.onclick = () => { repMode = b.dataset.m; renderReports(); });
   const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); renderReports(); }; };
   bindI('#rpDay', v => repDay = v); bindI('#rpMonth', v => repMonth = v); bindI('#rpYear', v => repYear = normDigits(v).replace(/\D/g, '').slice(0, 4));

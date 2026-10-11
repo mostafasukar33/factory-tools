@@ -673,6 +673,19 @@ const T0 = Date.now();
     eq('الأرباح: المبيعات والمشتريات والشركاء لوحدهم والربح قبل وبعد', PR, [968500, 5050000, 13000, true, true, true]);
     await A.evaluate(() => go('rep')); await A.click('#rpK button[data-v=profit]'); await A.settle(200);
     eq('تقرير الأرباح هو أول تقرير', [await A.getAttribute('#rpK .on', 'data-v'), (await A.textContent('#p-rep .ldgf')).includes('بعد الشركاء')], ['profit', true]);
+    /* تقرير التحصيل: دفعات عملاء السوق والمواقع (من غير الموردين والحساب الفرعي)، أسبوعي وشهري */
+    await A.evaluate(() => { const p = liveParties().find(x => x.sec === 'site'), now = Date.now();
+      if (p) { const e = addEntry({id: 'e_colsite', party: p.id, kind: 'pay', amt: 33300, date: todayISO(), method: 'نقدي', vault: 'v_main', note: ''}); applyAmounts(e); saveDB(); } });
+    await A.click('#rpK button[data-v=col]'); await A.settle(200);
+    const CR = await A.evaluate(() => {
+      const t = todayISO(), m = t.slice(0, 7), want = {mkt: 0, site: 0};
+      db.entries.forEach(e => { const p = P.get(e.party); if (!e.del && e.kind === 'pay' && e.date.startsWith(m) && p && !p.noTot && want[p.sec] !== undefined) want[p.sec] += e.amt; });
+      const W = buildReport(), wk = W.rows.map(r => r.cells[0]);
+      repColMode = 'month'; renderReports(); const M = buildReport(), row = M.rows.find(r => r.cells[0].startsWith(AR_MONTHS[+m.slice(5) - 1]));
+      repColMode = 'week'; renderReports();
+      return [W.title, W.fin[1] === fmtP(want.mkt + want.site), W.sum[0][1] === fmtP(want.mkt), W.sum[1][1] === fmtP(want.site), want.site >= 33300, row && row.cells[3] === W.fin[1], M.title, wk.every(n => /^من |^[^\d]/.test(n)), $('#p-rep .ldg th').textContent];
+    });
+    eq('تقرير التحصيل: أسبوعي = دفعات السوق والمواقع بالظبط، والشهري نفس الرقم للشهر ده', CR, ['التحصيل الأسبوعي', true, true, true, true, true, 'التحصيل الشهري', true, 'الأسبوع']);
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('لوحة النهارده اتشالت من الرئيسية', await A.$('#hDash'), null);
     const SR = await A.evaluate(() => [searchAll('لفة تجربة').length, searchAll('1350').map(r => r.title)[0] || '', searchAll('سلفة').length, searchAll('x').length]);

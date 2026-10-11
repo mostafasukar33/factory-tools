@@ -40,13 +40,20 @@ function importFile() {
       {party: 's1', kind: 'ppay', date: '2026-01-03', amt: 3000000, method: 'نقدي'}]};
 }
 
+/* للاختبار sw.js: down = النت مقطوع، slow[ملف] = الملف بيتأخر (ملّي)، body[ملف] = نسخة جديدة اترفعت من الملف */
+const SRV = {down: false, slow: {}, body: {}};
 function serve() {
   const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json'};
   return new Promise(res => {
     const srv = http.createServer((q, r) => {
       const f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0]).replace(/^\/+/, '') || 'index.html');
       if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); }
-      r.writeHead(200, {'Content-Type': types[path.extname(f)] || 'application/octet-stream'}); fs.createReadStream(f).pipe(r);
+      if (SRV.down) return q.socket.destroy();
+      const rel = path.relative(ROOT, f).split(path.sep).join('/'), send = () => {
+        r.writeHead(200, {'Content-Type': types[path.extname(f)] || 'application/octet-stream'});
+        if (rel in SRV.body) r.end(SRV.body[rel]); else fs.createReadStream(f).pipe(r);
+      };
+      if (SRV.slow[rel]) setTimeout(send, SRV.slow[rel]); else send();
     }).listen(0, () => res(srv));
   });
 }
@@ -1361,6 +1368,84 @@ const T0 = Date.now();
       await A.setViewportSize({width: 400, height: 860});
       for (const f of ['index.html', 'cash.html', 'market.html', 'quote.html', 'delivery.html', 'cost.html', 'calculator/index.html', 'payroll.html']) { const X = await D1.page(f); await X.settle(800); await X.close(); }
     }
+    sec('٢٣) sw.js: الحسابات والسوق بيفتحوا بسرعة والنت مقطوع أو بطيء، والنسخة الجديدة بتوصل لوحدها');
+    {
+      const SWD = await newDevice(browser, base, sheets), now = () => Date.now();
+      /* بنستنى الحاجة نفسها (الصفحة بتتعمل لها reload في النص، فـ waitForFunction بيقع) */
+      const until = async (X, fn, arg, ms = 20000) => { const end = now() + ms; while (now() < end) { try { if (await X.evaluate(fn, arg)) return true; } catch (e) {} await new Promise(r => setTimeout(r, 100)); } return false; };
+      const ctl = X => until(X, () => !!navigator.serviceWorker.controller);
+      const hide = X => X.evaluate(() => { Object.defineProperty(document, 'hidden', {configurable: true, get: () => true}); Object.defineProperty(document, 'visibilityState', {configurable: true, get: () => 'hidden'}); document.dispatchEvent(new Event('visibilitychange')); });
+      const inCache = (X, f, mark) => until(X, ([f, m]) => caches.match(f).then(r => r ? r.text() : '').then(t => t.includes(m)), [f, mark]);
+      const orig = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
+      const v = (f, n) => orig(f).replace('</body>', `<script>window.__v=${n}</script></body>`);
+      const open = async f => { const t = now(); const X = await SWD.page(f); return [X, now() - t]; };
+
+      const [S1] = await open('market.html'); await ctl(S1);
+      const fonts = [400, 600, 700, 800].flatMap(w => ['arabic', 'latin'].map(l => `fonts/cairo-${l}-${w}-normal.woff2`));
+      const need = ['accounts.html', 'accounts.webmanifest', 'market.html', 'market.webmanifest', 'lib/ui.css', 'lib/datepick.js', 'lib/swup.js', 'fonts/fonts.css', ...fonts, 'icons/logo.jpg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'];
+      const keys = await S1.evaluate(() => caches.open('flashon-tools-v3').then(c => c.keys()).then(ks => ks.map(k => new URL(k.url).pathname.slice(1))));
+      eq('من أول فتحة للسوق: كل ملفات الحسابات والسوق اتخزنت (الصفحتين والخطوط وui.css وdatepick.js والأيقونات والـ manifest)', need.filter(f => !keys.includes(f)), []);
+      const [Q0] = await open('quote.html'); await Q0.close();
+      await S1.close();
+
+      SRV.down = true;
+      let [X, ms] = await open('market.html');
+      eq('النت مقطوع: السوق بيفتح من المحفوظ في أقل من 2 ثانية', [ms < 2000, await X.evaluate(() => $('#main').children.length > 0)], [true, true]);
+      await X.close();
+      [X, ms] = await open('accounts.html');
+      eq('النت مقطوع: الحسابات بتفتح من المحفوظ في أقل من 2 ثانية (شاشة إنشاء كلمة السر)', [ms < 2000, await X.evaluate(() => !!$('#suP'))], [true, true]);
+      [X, ms] = await open('quote.html');
+      eq('النت مقطوع: باقي الأدوات (عرض السعر) بتفتح من المحفوظ زي الأول', await X.evaluate(() => document.body.children.length > 0), true);
+      await X.close();
+      SRV.down = false;
+
+      /* نت بطيء: الملف بياخد 6 ثواني ونسخة جديدة اترفعت. بيفتح المحفوظ بعد 3 ثواني، والجديد بيوصل لوحده لما مفيش شغل مفتوح */
+      SRV.slow = {'market.html': 6000}; SRV.body = {'market.html': v('market.html', 2)};
+      [X, ms] = await open('market.html');
+      eq('نت بطيء: السوق بيفتح بالمحفوظ في أقل من 4.5 ثانية (مش مستني النت)', [ms < 4500, await X.evaluate(() => $('#main').children.length > 0 && !window.__v)], [true, true]);
+      const ls0 = await X.evaluate(() => Object.keys(localStorage).sort());
+      await X.evaluate(() => modal('<p>نافذة تجربة</p>'));
+      await inCache(X, 'market.html', '__v=2'); await hide(X); await X.settle(800);
+      eq('السوق: النسخة الجديدة وصلت بس مستنية (نافذة مفتوحة = شغل)', await X.evaluate(() => [!window.__v, $('#mask').classList.contains('on')]), [true, true]);
+      await X.evaluate(() => { closeModal(); $('#main').insertAdjacentHTML('beforeend', '<input id="swT" type="text" value="12">'); }); await hide(X); await X.settle(800);
+      eq('السوق: مستنية برضه وفيه خانة مكتوب فيها رقم', await X.evaluate(() => !window.__v), true);
+      await X.evaluate(() => $('#swT').remove()); await hide(X);
+      eq('السوق: النسخة الجديدة اتفتحت لوحدها أول ما مفيش شغل والتطبيق في الخلفية', await until(X, () => window.__v === 2), true);
+      eq('السوق: البيانات المحفوظة زي ما هي', await X.evaluate(() => Object.keys(localStorage).sort()), ls0);
+      await X.close();
+
+      /* التطبيق مفتوح على طول (نت كويس) ونسخة جديدة اترفعت: بيلاقيها لما يرجع قدامك وبتتفتح لوحدها */
+      SRV.slow = {}; SRV.body = {'market.html': v('market.html', 2)};
+      [X] = await open('market.html'); await ctl(X);
+      eq('نت كويس: السوق بيفتح الجديد على طول', await X.evaluate(() => window.__v), 2);
+      SRV.body = {'market.html': v('market.html', 3)};
+      await X.evaluate(() => swCheck()); await inCache(X, 'market.html', '__v=3'); await hide(X);
+      eq('السوق مفتوح ونسخة جديدة اترفعت: بتوصل لوحدها', await until(X, () => window.__v === 3), true);
+      await X.close();
+
+      /* الحسابات: نت بطيء ونسخة جديدة. بتتفتح لوحدها بس على شاشة القفل وخانة كلمة السر فاضية */
+      SRV.body = {};
+      [X] = await open('accounts.html'); await ctl(X); await unlock(X, true); await X.click('#bLock'); await X.waitForSelector('#lkP'); await X.close();
+      SRV.slow = {'accounts.html': 6000}; SRV.body = {'accounts.html': v('accounts.html', 2)};
+      [X, ms] = await open('accounts.html'); await X.waitForSelector('#lkP');
+      eq('نت بطيء: الحسابات بتفتح بالمحفوظ في أقل من 4.5 ثانية', [ms < 4500, await X.evaluate(() => !window.__v)], [true, true]);
+      await X.fill('#lkP', '24'); await inCache(X, 'accounts.html', '__v=2'); await X.settle(800);
+      eq('الحسابات: النسخة الجديدة مستنية وانت بتكتب كلمة السر', await X.evaluate(() => [!window.__v, $('#lkP').value]), [true, '24']);
+      await X.fill('#lkP', '');
+      eq('الحسابات: اتفتحت لوحدها أول ما الخانة فضيت', await until(X, () => window.__v === 2), true);
+      await X.waitForSelector('#lkP'); await unlock(X);
+      eq('الحسابات: البيانات زي ما هي (كلمة السر بتفتح نفس القاعدة)', await X.evaluate(() => [!!db, $('#lock').classList.contains('on')]), [true, false]);
+      await X.close();
+      SRV.slow = {}; SRV.body = {};
+
+      /* باقي الأدوات: الشبكة أولاً زي الأول (نسخة جديدة بتظهر على طول) */
+      SRV.body = {'quote.html': v('quote.html', 5)};
+      [X] = await open('quote.html');
+      eq('باقي الأدوات (عرض السعر): النسخة الجديدة بتظهر على طول زي الأول', await X.evaluate(() => window.__v), 5);
+      SRV.body = {};
+      await SWD.close();
+    }
+
     sec('الشكل الموحد (lib/ui.css): 5 أحجام خط بس');
     /* كل كلام وأرقام الشاشة بأحجام النظام الخمسة بس (--f1..--f5)، ماعدا الأيقونات والأسهم وورقة الـ PDF */
     const fs5 = X => X.evaluate(() => {

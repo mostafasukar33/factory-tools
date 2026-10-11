@@ -1211,6 +1211,12 @@ function drawSettings() {
 route();
 setTimeout(sync, 200);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
+/* النسخة الجديدة (lib/swup.js) بتتفتح لوحدها بس لو مفيش نافذة مفتوحة ولا خانة فيها كلام ولا حد بيكتب،
+   والتطبيق في الخلفية أو محدش لمسه 20 ثانية */
+window.swSafe = idle => !$('#mask').classList.contains('on') && !/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName)
+  && ![...document.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=date]),textarea')].some(i => i.value.trim())
+  && (document.hidden || idle > 20000);
 </script>
+<script src="lib/swup.js"></script>
 </body>
 </html>

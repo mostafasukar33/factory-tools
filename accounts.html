@@ -4738,6 +4738,8 @@ $('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#m
 
 showLock();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
+/* النسخة الجديدة (lib/swup.js) بتتفتح لوحدها بس وشاشة القفل ظاهرة وخانة كلمة السر فاضية: مفيش شغل مفتوح يضيع */
+window.swSafe = () => !db && $('#lock').classList.contains('on') && !!$('#lkP') && !$('#lkP').value;
 </script>
 <script>
 'use strict';
@@ -5910,5 +5912,6 @@ function renderMktSettings() {
   };
 }
 </script>
+<script src="lib/swup.js"></script>
 </body>
 </html>

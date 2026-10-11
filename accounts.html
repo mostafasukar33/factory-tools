@@ -3393,7 +3393,7 @@ function mkCashBlock(from, to) {
   const days = [...new Set(mv.map(m => m.date))].sort().reverse();
   const stat = (n, v, c) => `<div class="mks ${c}"><span>${n}</span><b>${fmtP(v)}</b></div>`;
   const row = m => { const [tg, tn] = MK_CK[m.k]; return `<tr class="nohov"><td class="w"><span class="mtag ${tg}">${tn}</span> <b>${esc(m.who)}</b>${m.what ? `<small>${esc(m.what)}</small>` : ''}</td><td class="am ${m.k === 'hand' ? 'h' : m.sign > 0 ? 'i' : 'o'}">${m.sign > 0 ? '+' : '−'}${fmtP(m.amt)}</td></tr>`; };
-  return `<div class="csec mkc"><b>🏪 حركة السوق (مع شريكك)</b><small>لوحدها ومش داخلة في أرقام خزنتي فوق</small></div>
+  return `<div class="csec mkc"><b>🏪 حركة السوق (مع شريكك)</b></div>
     <div class="mkst">${stat('وارد السوق (كاش اتحصّل)', inn, 'i')}${stat('مصروفات السوق', sum.exp, 'o')}${stat('دفعات موردين', sum.spay, 'o')}${stat('سلّمه لك', sum.hand, 'h')}${stat('معاه دلوقتي (الفترة)', inn - out, 'k')}</div>
     <section class="ctab mkdet"><div class="cth"><span>تفصيل حركة السوق يوم بيوم (${mv.length})</span></div>
       <table class="cmt"><tbody>${days.length ? days.map(d => { const L = mv.filter(m => m.date === d), di = L.filter(m => m.sign > 0).reduce((a, m) => a + m.amt, 0), dout = L.filter(m => m.sign < 0).reduce((a, m) => a + m.amt, 0);
@@ -3444,7 +3444,7 @@ function renderCash() {
       <select class="inp" id="cVault" style="margin-top:8px"><option value="">كل الخزن</option>${vs.map(v => `<option value="${esc(v.id)}" ${cashVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
     </div>
     <div class="cnet"><span>${cashMode === 'day' ? 'صافي اليوم' : 'صافي الفترة'}</span><b class="${tin - tout < 0 ? 'neg' : ''}" data-ck="c:net" data-cnt="${tin - tout}">${fmtP(tin - tout)} ${CUR}</b></div>
-    ${cashVault ? '' : '<div class="csec"><b>🏭 خزنتي (المصنع)</b><small>وارد ومصروفات خزنتي انا بس</small></div>'}
+    ${cashVault ? '' : '<div class="csec"><b>🏭 خزنتي (المصنع)</b></div>'}
     <div class="cwrap">${cashTable('الإيرادات', mv.filter(m => m.sign > 0), mv, 'inc')}${cashTable('المصروفات', mv.filter(m => m.sign < 0), mv, 'exp')}</div>
     ${mv.some(m => !m.sign) ? cashTable('تحويلات', mv.filter(m => !m.sign), mv, '') : ''}
     ${cashVault ? '' : mkCashBlock(from, to)}
@@ -4966,7 +4966,7 @@ function mkWantCard() {
   const R = mkWantRows(), n = R.filter(x => x.paid).length;
   return `<div class="card mkw"><div class="mkwh"><b>📌 حصّل من دول (عند شريكك)</b>${R.length ? `<span>${n} من ${R.length}</span>` : ''}</div>
     ${R.length ? R.map(x => `<div class="mkwr ${x.paid ? 'ok' : ''}" data-wp="${esc(x.p.id)}"><span class="m"><b>${esc(x.p.name)}</b><small>${x.paid ? `✓ حصّل ${fmtP(x.paid)}` : x.w.note ? esc(x.w.note) : 'لسه'}</small></span><b class="money">${fmtP(x.w.amt)}</b></div>`).join('')
-      : '<p class="hint" style="margin:4px 0 6px">علّم على العملاء اللي عاوز شريكك يحصّل منهم، وهيظهروله في أول التطبيق.</p>'}
+      : ''}
     <button class="btn line sm" id="mkwAdd" type="button">＋ زوّد عميل</button></div>`;
 }
 /* أرصدة عملاء السوق بس (اسم + رصيد) بتتبعت للشيت علشان الشريك يشوفها. اللي اتبعت قبل كده بيتحفظ علشان مبعتش نفس الحاجة تاني.
@@ -5162,7 +5162,7 @@ function renderMkt() {
   if (!mkCreds()) { box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a></div><div class="card empty">حركة السوق لسه متربطتش.<br><a class="lnk" id="mkSet">اربطها من الإعدادات</a></div>`; $('#mkBack').onclick = () => go('home'); $('#mkSet').onclick = mkGoSettings; return; }
   const n = mkPending().length;
   box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a><b style="font-size:var(--f3);color:var(--ink)">📥 وارد السوق</b><span class="mkdot ${mkErr ? 'w' : ''}"><i></i>${mkErr === 'key' ? 'الشيت رفض المفتاح' : mkErr ? 'مش قادر يوصل للشيت' : mkLastOk ? 'متصل' : '…'}</span></div>
-    <div class="mkvb"><span>🗄️ رصيد خزنة السوق</span><b>${fmtP(mkLive().reduce((s, o) => s + mkSign(o) * o.amt, 0))} <small>${CUR}</small></b><i>من تطبيق حركة السوق — للعرض بس ومبيتعدلش من هنا</i></div>
+    <div class="mkvb"><span>🗄️ رصيد خزنة السوق</span><b>${fmtP(mkLive().reduce((s, o) => s + mkSign(o) * o.amt, 0))} <small>${CUR}</small></b></div>
     <div class="seg s2" id="mkTabs"><button type="button" data-v="in" class="${mkView === 'in' ? 'on' : ''}">📥 الوارد — لسه${n ? ` <b class="mkn">${n}</b>` : ' ✔'}</button><button type="button" data-v="arch" class="${mkView === 'arch' ? 'on' : ''}">🗂️ الأرشيف — اتنقل</button></div>
     <div id="mkBody"></div>`;
   $('#mkBack').onclick = () => go('home');
@@ -5170,22 +5170,17 @@ function renderMkt() {
   if (mkView === 'arch') mkArch(); else mkInbox();
 }
 function mkInbox() {
-  const gs = mkGroups(), n = mkPending().length, ops = mkLive();
-  const withP = ops.reduce((s, o) => s + mkSign(o) * o.amt, 0);
+  const gs = mkGroups(), n = mkPending().length;
   const rd = mkReady(), k = mkCnt(todayISO());
   /* الوارد متقسم: "مستنياك تنقلها" فوق، وتحتها "رجعتها لشريكك" (لسه مخلصتش برضه). اللي اتنقل مبيظهرش هنا خالص، بس سطر بعدده بيودّي الأرشيف */
   const act = gs.filter(g => g.pend.length), wait = gs.filter(g => !g.pend.length), nb = wait.reduce((s, g) => s + g.ops.length, 0);
   const pAmt = mkPending().reduce((s, o) => s + o.amt, 0), mv = mkMovedOn(todayISO());
   $('#mkBody').innerHTML = `${nlAlert()}${k ? mkCntLine(k, true) : ''}<div class="mkh"><b>⏳ مستنياك تنقلها${n ? ` <small class="mkha">${fmtP(pAmt)} ${CUR}</small>` : ''}</b><span class="n">${n}</span></div>
-    ${rd.length > 1 ? `<button class="btn green mkall" id="mkAll" type="button">⚡ انقل كل الجاهز (${rd.length}) — ${fmtP(rd.reduce((s, o) => s + o.amt, 0))}</button><p class="hint mkallh">دفعات وبيع كاش لعملا متربطين. اللي محتاج قرار منك (عميل جديد، فاتورة، مرتجع، مصروف، تسليم) بيفضل لوحده.</p>` : ''}
+    ${rd.length > 1 ? `<button class="btn green mkall" id="mkAll" type="button">⚡ انقل كل الجاهز (${rd.length}) — ${fmtP(rd.reduce((s, o) => s + o.amt, 0))}</button>` : ''}
     ${act.length ? act.map(mkCard).join('') : `<div class="card empty mkclr">✔ مفيش حاجة مستنياك.<br><small>${mkLive().length ? 'كل اللي بعته شريكك اتنقل، وتلاقيه في الأرشيف.' : 'لسه شريكك مسجلش حاجة.'}</small></div>`}
     ${wait.length ? `<div class="mksub"><b>🔴 رجعتها لشريكك</b><span>مستنيه يصلحها (${nb})</span></div>${wait.map(mkCard).join('')}` : ''}
     ${mv.length ? `<a class="mkgo" id="mkToArch">✓ اتنقل النهارده <b>${mv.length}</b> ${mv.length === 1 ? 'عملية' : 'عمليات'} (${fmtP(mv.reduce((s, o) => s + o.amt, 0))}) — شوفها في الأرشيف ←</a>` : ''}
-    ${mkWantCard()}
-    <div class="card mkbal">
-      <div class="bl"><span>🗄️ رصيد خزنة السوق (مع شريكك بعد المصروف والتسليم)</span><b>${fmtP(withP)}</b></div>
-      <p class="hint" style="margin:6px 0 0">الرقم ده من تطبيق حركة السوق بس، ومش بيتعدل ولا بيتخصم من الحسابات. التحويلات مش عليه لأنها وصلتلك على طول.</p>
-    </div>`;
+    ${mkWantCard()}`;
   $$('#mkBody [data-op]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkOpMenu(mkDb().ops[el.dataset.op]); });
   $$('#mkBody [data-ok]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkArrive(mkDb().ops[el.dataset.ok]); });
   $$('#mkBody [data-ig]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkIgnore(mkDb().ops[el.dataset.ig]); });
@@ -5257,7 +5252,7 @@ function mkCard(g) {
     : `<div class="ifoot">${pendPays.length ? `<button class="btn ${blocked ? 'off' : ''}" data-mv="${esc(g.k)}" type="button" ${blocked ? 'disabled' : ''}>${MK_FOOT[g.kind](g)}</button>` : ''}${g.kind === 'exp' ? '' : `<button class="btn red" data-bk="${esc(g.k)}" type="button"${pendPays.length && !(g.kind === 'pay' && !g.nw) ? ' style="flex:.55"' : ''}>رجّعها</button>`}</div>`;
   const tagTxt = g.kind === 'pay' && g.nw ? 'عميل جديد' : g.kind === 'spay' ? (g.nw ? 'مورد — مش مربوط' : 'مورد') : '';
   return `<div class="ic ${g.pend.length ? '' : 'bk'}"><div class="ich"><b>${MK_ICON[g.kind]}${esc(g.name)}${tagTxt ? ` <span class="nwt">${tagTxt}</span>` : ''}</b><b class="money">${fmtP(tot)}</b></div>
-    ${g.ops.map(line).join('')}${sum}${blocked ? '<p class="hint" style="margin:4px 14px 0">اتأكد إن التحويل وصلك (من رسالة التحويل) ودوس "وصل؟" الأول.</p>' : ''}${foot}</div>`;
+    ${g.ops.map(line).join('')}${sum}${foot}</div>`;
 }
 function mkArrive(o) {
   if (!o) return;

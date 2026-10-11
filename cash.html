@@ -97,6 +97,8 @@ textarea.inp{min-height:84px;resize:vertical;line-height:1.7}
 /* تقارير */
 .seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--row);border-radius:12px;padding:4px;margin-bottom:12px}
 .seg button{border:0;background:none;border-radius:9px;min-height:48px;font-weight:800;font-size:var(--f2);cursor:pointer;color:var(--sub)}
+/* قاعدة التبويبات: كل زرار سطر واحد، وكل الزراير نفس الارتفاع (مفيش تبويب عالي وتبويب واطي ولا كلام راكب على بعض) */
+.seg button{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px;min-width:0}
 .seg button.on{background:var(--bar);color:var(--gold)}
 .sum3{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
 .sum3 div{border-radius:12px;padding:10px;text-align:center;background:var(--card);border:1.5px solid var(--line)}

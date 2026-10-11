@@ -229,6 +229,8 @@ table.ldg.rp.wide{min-width:520px}.ldg.rp td{white-space:nowrap}.ldg.rp td.l{whi
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--row);border-radius:12px;padding:4px;margin-bottom:10px}
 .seg.s2{grid-template-columns:1fr 1fr}.seg.s3{grid-template-columns:1fr 1fr 1fr}.seg.s4{grid-template-columns:repeat(4,1fr)}
 .seg button{border:0;background:none;border-radius:9px;min-height:48px;font-weight:800;font-size:var(--f2);cursor:pointer;color:var(--sub);line-height:1.3}
+/* قاعدة التبويبات: كل زرار سطر واحد، وكل الزراير نفس الارتفاع (مفيش تبويب عالي وتبويب واطي ولا كلام راكب على بعض) */
+.seg button{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px;min-width:0}
 .seg button.on{background:var(--bar);color:var(--gold)}
 .seg.dir button.on[data-v=dr]{background:var(--bar);color:#fff}.seg.dir button.on[data-v=cr]{background:var(--red);color:#fff}
 .stm{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
@@ -4499,7 +4501,7 @@ function renderReports() {
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
   const needRange = repKind === 'cash' || repKind === 'item' || repKind === 'profit';
   $('#p-rep').innerHTML = `
-    <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات والمدفوعات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="card">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'col' ? `<div class="seg s2" id="rpCM">${[['week', 'أسبوعي'], ['month', 'شهري']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repColMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>

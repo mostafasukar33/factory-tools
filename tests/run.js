@@ -1383,6 +1383,21 @@ const T0 = Date.now();
     eq('الحسابات (صفحة الحساب): الخط بالخمس أحجام بس', await fs5(A), [true, []]);
     for (const f of ['cash.html', 'market.html']) { const X = await D1.page(f); await X.settle(800); eq(`${f}: الخط بالخمس أحجام بس`, await fs5(X), [true, []]); await X.close(); }
 
+    sec('قاعدة التبويبات: سطر واحد ونفس الارتفاع ومفيش كلام مقطوع');
+    /* أي مجموعة تبويبات (.seg) ظاهرة: كل زرار نفس الارتفاع، الكلام مش ملفوف على سطرين ولا متقطع */
+    const segOk = (X, name) => X.evaluate(() => [...document.querySelectorAll('.seg')].filter(g => g.getClientRects().length).flatMap(g => {
+      const bs = [...g.querySelectorAll('button')].filter(b => b.getClientRects().length), hs = bs.map(b => Math.round(b.getBoundingClientRect().height));
+      const bad = [];
+      if (Math.max(...hs) - Math.min(...hs) > 1) bad.push((g.id || 'seg') + ': ارتفاعات ' + [...new Set(hs)].join('/'));
+      bs.forEach(b => { const r = document.createRange(); r.selectNodeContents(b); const tops = new Set([...r.getClientRects()].map(x => Math.round(x.top))); if (tops.size > 1 || b.scrollWidth > b.clientWidth + 1) bad.push((g.id || 'seg') + ': ' + b.textContent.trim()); });
+      return bad;
+    })).then(b => eq(name + ': التبويبات منظمة', b, []));
+    for (const k of ['profit', 'col', 'debt', 'tot', 'cash', 'item']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
+    await A.evaluate(() => go('cash')); await A.settle(200); await segOk(A, 'الحسابات — الخزنة');
+    await A.evaluate(() => go('set')); await A.settle(200); await segOk(A, 'الحسابات — الإعدادات');
+    { const X = await D1.page('cash.html'); await X.settle(600); await segOk(X, 'دفتر الخزنة — الرئيسية'); await X.evaluate(() => go('rep')); await X.settle(300); await segOk(X, 'دفتر الخزنة — التقارير'); await X.close(); }
+    if (DM) { const MX = DM.pages().find(p => p.url().includes('market.html')); if (MX) for (const h of ['', 'a', 's']) { await MX.evaluate(h => nav(h), h); await MX.settle(300); await segOk(MX, 'حركة السوق (' + (h || 'الرئيسية') + ')'); } }
+
     sec('قاعدة الأرقام: تحت بعض في عمود واحد (الحسابات والخزنة والسوق)');
     /* كل رقم في القايمة (وإجمالي القسم بتاعها) بيبدأ من نفس الخط على الشمال بالظبط: مفيش رقم داخل ورقم خارج */
     const numCol = (X, root, sel) => X.evaluate(([root, sel]) => {

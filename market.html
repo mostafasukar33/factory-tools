@@ -173,6 +173,8 @@ html[data-theme=dark] .b-exp,html[data-theme=dark] .b-sup{color:#111}
 .chip.on{background:var(--gold);color:#241b00}
 .seg{display:grid;grid-template-columns:repeat(var(--n,2),1fr);gap:4px;background:var(--row);border-radius:11px;padding:3px}
 .seg button{border:0;background:none;border-radius:8px;min-height:40px;font-weight:700;font-size:var(--f2);cursor:pointer;color:var(--sub)}
+/* قاعدة التبويبات: كل زرار سطر واحد ونفس الارتفاع */
+.seg button{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px;min-width:0}
 .seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
 /* شاشة اتسجلت */
 .done{padding:26px 10px 0;text-align:center}

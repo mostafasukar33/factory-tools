@@ -15,13 +15,14 @@
   --bg:#F4F3EF;--card:#FFFFFF;--line:#E5E1D6;--row:#F2EFE7;--field:#D6CFBD;
   --bar:#15130F;      /* الشريط الغامق فوق وتحت */
   --shadow:0 1px 2px #1b150a0d;
+  --shadow2:0 1px 2px #1b150a0a,0 6px 18px #1b150a0f;   /* الكروت الكبيرة */
   --f1:13px;--f2:15px;--f3:17px;--f4:22px;--f5:32px;
 }
 html[data-theme=dark]{
   --ink:#EEEADF;--sub:#A8A290;--gold:#DDB765;--gold-d:#E2C27A;--green:#4FC777;--red:#FF7F75;--tr:#7FB5E3;
   --gold-l:#2A2313;--green-l:#15291B;--red-l:#3A1D1A;--tr-l:#1A2836;
   --bg:#12110E;--card:#1D1C17;--line:#36332B;--row:#25231D;--field:#4A463A;
-  --bar:#0D0C0A;--shadow:0 1px 2px #0009;
+  --bar:#0D0C0A;--shadow:0 1px 2px #0009;--shadow2:0 1px 2px #0009;
 }
 /* اللاب: نفس الخمس أحجام بقيم أصغر، وبتكبر مع الشباك (مش زوم) */
 @media (min-width:1000px){:root{--f1:12.5px;--f2:14px;--f3:15.5px;--f4:22px;--f5:28px}}
@@ -29,3 +30,6 @@ html[data-theme=dark]{
 @media (min-width:1800px){:root{--f1:14px;--f2:16px;--f3:18px;--f4:24px;--f5:36px}}
 /* الأرقام: تقيلة وثابتة العرض علشان تتراص تحت بعض */
 .money,.num{font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+/* الكروت: ظل خفيف بدل الخط اللي حواليها في الفاتح (الليلي بيفضل بالخط). ورقة الـ PDF مبتتلمسش */
+:is(.card,.panel,.list,.ldgw):not(#render *){box-shadow:var(--shadow2)}
+html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-color:transparent}

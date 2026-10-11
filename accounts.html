@@ -14,6 +14,7 @@
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="lib/ui.css">
+<script src="lib/icons.js"></script>
 <script>
 /* المظهر (ليلي/فاتح) وحجم الخط: إعداد على الجهاز بس، بيتطبق قبل ما الصفحة تترسم */
 function uiGet() { try { return Object.assign({theme: 'auto', fs: '1'}, JSON.parse(localStorage.getItem('fo_ui') || '{}')); } catch (e) { return {theme: 'auto', fs: '1'}; } }
@@ -1159,6 +1160,19 @@ body{font-size:var(--f3);line-height:1.6}
   #p-party .acts .btn{padding:4px 10px}
   #p-party .phd .limw{white-space:nowrap;padding:1px 8px}
 }
+/* سطر آخر دفعة في صفحة العميل + رسمة الأرباح في التقارير */
+.prh{display:flex;width:fit-content;align-items:center;gap:6px;margin:8px 0 2px;padding:3px 12px;border-radius:999px;font-size:var(--f2);font-weight:700;background:var(--green-l);color:var(--green)}
+.prh i{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.prh.late{background:var(--red-l);color:var(--red)}
+.rch{padding:12px 12px 8px}
+.rchk{display:flex;gap:14px;font-size:var(--f2);color:var(--sub);font-weight:700;margin-bottom:8px}
+.rchk i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:5px}
+.rch i.s{background:var(--gold)}.rch i.p{background:var(--green)}
+.rchb{display:flex;align-items:stretch;gap:3px;height:150px}
+.rchb .c{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center}
+.rchb .bb{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px;border-bottom:1px solid var(--line)}
+.rchb .bb i{width:34%;max-width:18px;border-radius:3px 3px 0 0}
+.rchb small{font-size:var(--f1);color:var(--sub);margin-top:3px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -1907,6 +1921,17 @@ function addEntry(o) {
   const e = Object.assign({id: newId('e_'), kind: 'man', at: now, upd: now, del: false, hist: []}, o);
   db.entries.push(e); E.set(e.id, e); return e;
 }
+/* سطر "آخر دفعة من كام يوم" في صفحة العميل، و"بيدفع كل كام يوم" من آخر 6 دفعات. بيحمر لو اتأخر عن عادته وعليه فلوس */
+function payRhythm(p, all, b) {
+  if (p.sec === 'sup') return '';
+  const ds = [...new Set(all.filter(e => !e.del && e.kind === 'pay').map(e => e.date))].sort().slice(-6);
+  if (!ds.length) return '';
+  const day = d => Math.round(Date.parse(d + 'T00:00:00Z') / 864e5), last = day(ds[ds.length - 1]);
+  const ago = Math.max(0, day(todayISO()) - last), avg = ds.length >= 3 ? Math.round((last - day(ds[0])) / (ds.length - 1)) : 0;
+  const late = b > 0 && (avg ? ago > Math.max(avg * 1.5, 7) : ago > 30);
+  const agoT = ago === 0 ? 'النهارده' : ago === 1 ? 'امبارح' : ago === 2 ? 'من يومين' : `من ${ago} ${ago <= 10 ? 'أيام' : 'يوم'}`;
+  return `<div class="prh${late ? ' late' : ''}"><i></i>آخر دفعة ${agoT}${avg ? ` · بيدفع كل ${avg} يوم تقريباً` : ''}</div>`;
+}
 function renderParty(id) {
   try { sessionStorage.setItem('fo_lastp', id); } catch (e) {}
   const p = P.get(id);
@@ -1923,6 +1948,7 @@ function renderParty(id) {
   $('#p-party').innerHTML = `
     <div class="sech ppbar" style="margin-top:0"><a id="ppBack">→ كل الحسابات</a><span class="jb"><button id="jUp" type="button">↑ فوق</button><button id="jDn" type="button">↓ آخر حركة</button></span><a id="ppEdit">تعديل البيانات</a></div>
     <div class="phd"><h2>${esc(p.name)}</h2><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}${p.noTot ? ' — <b style="color:var(--gold)">حساب فرعي خارج الإجماليات</b>' : ''}</small>
+      ${payRhythm(p, all, b)}
       ${limitClass(p, b) ? `<div class="limw ${limitClass(p, b)}">${limitClass(p, b) === 'lim-r' ? '🔴 رصيده فوق الحد الأحمر' : '🟡 رصيده فوق الحد الأصفر'} (${fmtP(limitClass(p, b) === 'lim-r' ? limitsOf(p).r : limitsOf(p).y)})</div>` : ''}
       <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}" data-ck="pb:${esc(id)}" data-cnt="${Math.abs(b)}">${fmtP(Math.abs(b))} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
@@ -4324,7 +4350,7 @@ function profitReport(f, t) {
     const [y, mo] = m.split('-').map(Number), ms = m + '-01' < f ? f : m + '-01', me0 = m + '-' + pad2(new Date(y, mo, 0).getDate()), me = me0 > t ? t : me0;
     const x = profitOf(ms, me);
     Object.keys(tot).forEach(k => tot[k] += x[k]); x.byCat.forEach((v, k) => cats.set(k, (cats.get(k) || 0) + v));
-    rows.push({cells: [`${MONTHS[mo - 1]} ${y}`, fmtP(x.sales), fmtP(x.purch), fmtP(x.exp - x.inc), fmtP(x.before), fmtP(x.part), fmtP(x.after)], cls: x.after < 0 ? 'ret' : ''});
+    rows.push({raw: {m: MONTHS[mo - 1], s: x.sales, p: x.after}, cells: [`${MONTHS[mo - 1]} ${y}`, fmtP(x.sales), fmtP(x.purch), fmtP(x.exp - x.inc), fmtP(x.before), fmtP(x.part), fmtP(x.after)], cls: x.after < 0 ? 'ret' : ''});
     m = mo === 12 ? `${y + 1}-01` : `${y}-${pad2(mo + 1)}`;
   }
   const sum = [['صافي المبيعات', fmtP(tot.sales)], ['صافي المشتريات', fmtP(tot.purch)], ['المصروفات', fmtP(tot.exp)],
@@ -4496,6 +4522,13 @@ function buildReport() {
     rows: list.map(x => ({cells: [x.name, x.unit ? `${fmtQ(x.q)} ${x.unit}` : '', x.q ? fmtP(Math.round(x.v / x.q)) : '', x.unit ? String(x.docs.size) : '', x.unit ? String(x.who.size) : '', fmtP(x.v)], cls: x.v < 0 ? 'ret' : ''})),
     sum: [['عدد الأصناف', String(list.filter(x => x.unit).length)]], fin: [sale ? 'إجمالي المبيعات' : 'إجمالي المشتريات', fmtP(tot)]};
 }
+/* رسمة أعمدة للأرباح بالشهر (في الشاشة بس، مش في الـ PDF): الدهبي المبيعات والأخضر الربح */
+function profitChart(rows) {
+  rows = rows.filter(r => r.raw); if (rows.length < 2 || !rows.some(r => r.raw.s || r.raw.p)) return '';
+  const mx = Math.max(1, ...rows.map(r => Math.max(r.raw.s, r.raw.p))), h = v => Math.max(0, Math.round(v / mx * 1000) / 10);
+  return `<div class="card rch"><div class="rchk"><span><i class="s"></i>المبيعات</span><span><i class="p"></i>الربح</span></div>
+    <div class="rchb">${rows.map(r => `<div class="c"><div class="bb"><i class="s" style="height:${h(r.raw.s)}%"></i><i class="p" style="height:${h(r.raw.p)}%"></i></div><small>${esc(r.raw.m.slice(0, 3))}</small></div>`).join('')}</div></div>`;
+}
 function renderReports() {
   loadPdfLibs().catch(() => {});   // نجهّز أداة الـ PDF من دلوقتي علشان تبقى جاهزة لما يدوس
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
@@ -4514,6 +4547,7 @@ function renderReports() {
       ${repKind === 'cash' ? `<select class="inp" id="rpV" style="margin-top:8px"><option value="">كل الخزن</option>${vaultsL().map(v => `<option value="${esc(v.id)}" ${repVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>` : ''}
     </div>
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
+    ${repKind === 'profit' ? profitChart(R.rows) : ''}
     ${R.rows.length ? `<div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
       ${R.rows.map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
     <div class="card" style="margin-top:10px">${R.sum.map(([a, b]) => `<div class="bl"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>

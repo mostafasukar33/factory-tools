@@ -156,6 +156,7 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-part-' + sfx, go: accGo('part'), full: true},
   {name: 'acc-mkt-' + sfx, go: accGo('mkt'), full: true},
   {name: 'acc-rep-' + sfx, go: accGo('rep'), full: true},
+  {name: 'acc-col-' + sfx, go: async A => { await accGo('rep')(A); await A.evaluate(() => { repKind = 'col'; repColMode = 'month'; renderReports(); }); }, full: true},
   {name: 'acc-set-' + sfx, go: accGo('set'), full: true},
 ].map(x => Object.assign({app: 'acc', vp}, x, extra, vp.width > 999 ? {full: false} : {}));
 const SCREENS = [

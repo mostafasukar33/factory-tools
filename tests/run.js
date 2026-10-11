@@ -683,7 +683,7 @@ const T0 = Date.now();
       const W = buildReport(), wk = W.rows.map(r => r.cells[0]);
       repColMode = 'month'; renderReports(); const M = buildReport(), row = M.rows.find(r => r.cells[0].startsWith(AR_MONTHS[+m.slice(5) - 1]));
       repColMode = 'week'; renderReports();
-      return [W.title, W.fin[1] === fmtP(want.mkt + want.site), W.sum[0][1] === fmtP(want.mkt), W.sum[1][1] === fmtP(want.site), want.site >= 33300, row && row.cells[3] === W.fin[1], M.title, wk.every(n => /^من |^[^\d]/.test(n)), $('#p-rep .ldg th').textContent];
+      return [W.title, W.fin[1] === fmtP(want.mkt + want.site), W.sum[0][1].startsWith(fmtP(want.mkt) + ' ('), W.sum[1][1].startsWith(fmtP(want.site) + ' ('), want.site >= 33300, row && row.cells[4] === W.fin[1] && row.cells[3] === (want.mkt > want.site ? 'السوق' : want.site > want.mkt ? 'المواقع' : '—'), M.title, wk.every(n => /^من |^[^\d]/.test(n)), $('#p-rep .ldg th').textContent];
     });
     eq('تقرير التحصيل: أسبوعي = دفعات السوق والمواقع بالظبط، والشهري نفس الرقم للشهر ده', CR, ['التحصيل الأسبوعي', true, true, true, true, true, 'التحصيل الشهري', true, 'الأسبوع']);
     await A.click('nav button[data-go=home]'); await A.settle(200);

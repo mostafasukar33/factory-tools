@@ -4410,7 +4410,7 @@ function colReport() {
   } else {
     const y = repYear || t.slice(0, 4);
     f = y + '-01-01'; to = y + '-12-31';
-    for (let i = 1; i <= 12; i++) { const m = y + '-' + pad2(i); if (m + '-01' <= t) bins.push({f: m + '-01', t: m + '-' + pad2(new Date(+y, i, 0).getDate()), n: AR_MONTHS[i - 1] + ' ' + y}); }
+    for (let i = 1; i <= 12; i++) { const m = y + '-' + pad2(i); if (m + '-01' <= t) bins.push({f: m + '-01', t: m + '-' + pad2(new Date(+y, i, 0).getDate()), n: AR_MONTHS[i - 1]}); }
   }
   bins.forEach(b => Object.assign(b, {mkt: 0, site: 0, c: 0}));
   db.entries.forEach(e => {
@@ -4420,10 +4420,15 @@ function colReport() {
   });
   const sm = bins.reduce((a, b) => a + b.mkt, 0), ss = bins.reduce((a, b) => a + b.site, 0), n = bins.reduce((a, b) => a + b.c, 0);
   const [y0, m0] = (repMonth || t.slice(0, 7)).split('-');
-  return {title: wk ? 'التحصيل الأسبوعي' : 'التحصيل الشهري', period: wk ? `${AR_MONTHS[+m0 - 1]} ${y0} — الأسبوع من السبت للجمعة` : 'سنة ' + (repYear || t.slice(0, 4)),
-    cols: [{h: wk ? 'الأسبوع' : 'الشهر', w: 31, c: 'l'}, {h: 'عملاء السوق', w: 23, c: 'n'}, {h: 'عملاء المواقع', w: 23, c: 'n'}, {h: 'الإجمالي', w: 23, c: 'b'}],
-    rows: bins.slice().reverse().map(b => ({cells: [b.n, fmtP(b.mkt), fmtP(b.site), fmtP(b.mkt + b.site)]})),
-    sum: [['عملاء السوق', fmtP(sm)], ['عملاء المواقع', fmtP(ss)], ['عدد الدفعات', String(n)]], fin: ['إجمالي التحصيل', fmtP(sm + ss)]};
+  while (bins.length > 1 && !bins[0].mkt && !bins[0].site) bins.shift();   // الفترات القديمة اللي قبل أول تحصيل متتعرضش
+  const more = (a, b) => a > b ? 'السوق' : b > a ? 'المواقع' : '—', pc = x => sm + ss ? Math.round(x * 100 / (sm + ss)) + '%' : '0%';
+  return {title: wk ? 'التحصيل الأسبوعي' : 'التحصيل الشهري', period: (wk ? `${AR_MONTHS[+m0 - 1]} ${y0} — الأسبوع من السبت للجمعة` : 'سنة ' + (repYear || t.slice(0, 4))) + ' — دفعات العملا بس (من غير مصروفات)',
+    cols: [{h: wk ? 'الأسبوع' : 'الشهر', w: 26, c: 'l'}, {h: 'السوق', w: 20, c: 'n'}, {h: 'المواقع', w: 20, c: 'n'}, {h: 'الأكتر', w: 14, c: ''}, {h: 'الإجمالي', w: 20, c: 'b'}],
+    rows: bins.slice().reverse().map(b => ({cells: [b.n, fmtP(b.mkt), fmtP(b.site), more(b.mkt, b.site), fmtP(b.mkt + b.site)]})),
+    sum: [['تحصيل عملاء السوق', `${fmtP(sm)} (${pc(sm)})`], ['تحصيل عملاء المواقع', `${fmtP(ss)} (${pc(ss)})`],
+      ['الأكتر تحصيل', sm === ss ? 'زي بعض' : `${sm > ss ? 'عملاء السوق' : 'عملاء المواقع'} بفرق ${fmtP(Math.abs(sm - ss))}`],
+      [wk ? 'أسابيع السوق أكتر' : 'شهور السوق أكتر', String(bins.filter(b => b.mkt > b.site).length)], [wk ? 'أسابيع المواقع أكتر' : 'شهور المواقع أكتر', String(bins.filter(b => b.site > b.mkt).length)]],
+    fin: ['إجمالي التحصيل', fmtP(sm + ss)]};
 }
 function buildReport() {
   const ps = liveParties();

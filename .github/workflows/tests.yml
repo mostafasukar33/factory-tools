@@ -1,0 +1,28 @@
+# جرس إنذار: بعد كل رفع على main بيشغّل كل الاختبارات لوحده. لو حاجة فشلت GitHub بيبعت إيميل وبيبان ✖ أحمر جنب التعديل.
+# مبيوقفش النشر ومبيغيرش أي حاجة في البرنامج، هو بس بيبلّغ.
+name: الاختبارات
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: tests
+  cancel-in-progress: true
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Playwright
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: الحسابات والدفتر والتسليم والسوق
+        run: node tests/run.js
+      - name: المرتبات
+        if: always()
+        run: node tests/payroll.js

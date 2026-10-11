@@ -286,8 +286,6 @@ nav svg{width:26px;height:26px}
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
 <div id="render"></div>
 
-<script src="lib/html2canvas.min.js"></script>
-<script src="lib/jspdf.umd.min.js"></script>
 <script>
 'use strict';
 /* ====================== أدوات ====================== */
@@ -718,7 +716,17 @@ function buildPagesD(p, dens) {
   return pages;
 }
 
+/* مكتبات الـ PDF تقيلة (~600 كيلو): مش في أول الصفحة، بتتحمّل وقت الحاجة بس (زي الحسابات) */
+var pdfLibsP = null;
+function loadPdfLibs() {
+  if (window.jspdf && window.html2canvas) return Promise.resolve();
+  const one = src => new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = src; sc.onload = ok; sc.onerror = () => no(new Error('pdf-libs')); document.head.appendChild(sc); });
+  return pdfLibsP = pdfLibsP || Promise.all([one('lib/html2canvas.min.js'), one('lib/jspdf.umd.min.js')]).catch(e => { pdfLibsP = null; throw e; });
+}
+// أول لمسة في الصفحة بتبدأ تجهّز أداة الـ PDF في الخلفية (الصفحة نفسها بتفتح من غيرها)
+addEventListener('pointerdown', () => loadPdfLibs().catch(() => {}), {once: true});
 async function makePdf(p) {
+  await loadPdfLibs();
   await Promise.all(['400', '600', '700', '800'].map(w => document.fonts.load(w + ' 16px Cairo', 'نص عربي 123abc')));
   const pages = buildPages(p);
   await Promise.all([...$('#render').querySelectorAll('img')].map(i => i.decode ? i.decode().catch(() => {}) : 0));

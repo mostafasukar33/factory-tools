@@ -35,11 +35,11 @@ function makeGas(opts = {}) {
     Session: {getScriptTimeZone: () => 'Africa/Cairo'},
     }),
     ContentService: {MimeType: {JSON: 'json'}, createTextOutput: t => ({t, setMimeType() { return this; }})},
-    Utilities: {sleep() {}, formatDate: d => d.toISOString().slice(0, 10)},
+    Utilities: {sleep() {}, formatDate: d => d.toISOString().slice(0, 10), newBlob: (data, type, name) => ({data: String(data), type, name})},
     MailApp: {sendEmail() {}},
     /* تليجرام: بنسجل كل طلب، وبنرد زي تليجرام (tg.updates = الرسايل اللي اتبعتت للبوت) */
     UrlFetchApp: {fetch: (url, o) => {
-      tg.calls.push({url, body: o && o.payload ? JSON.parse(o.payload) : null});
+      tg.calls.push({url, body: o && o.payload ? (typeof o.payload === 'string' ? JSON.parse(o.payload) : o.payload) : null});   // sendDocument بيبعت object (ملف)
       const m = String(url).split('/').pop();
       const tok = (String(url).match(/bot([^/]+)\//) || [])[1] || '';
       const body = !/^\d{5,}:[\w-]{20,}$/.test(tok) || (tg.valid && !tg.valid.includes(tok)) ? {ok: false, error_code: 401, description: 'Unauthorized'} : m === 'getMe' ? {ok: true, result: {username: 'test_souq_bot'}} : m === 'getUpdates' ? {ok: true, result: tg.updates} : {ok: true, result: {}};

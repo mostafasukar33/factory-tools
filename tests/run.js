@@ -641,6 +641,7 @@ const T0 = Date.now();
     await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll());
     await A.click('#smHelp'); await A.click('#mhCopy'); const mkCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.mkt.load(mkCode); await A.click('#mhX');
     await A.fill('#smUrl', MKT_URL); await A.click('#smGo'); await A.settle(2500);
+    await A.evaluate(() => putSet('tgOpts', {bk: false, sum: false, al: false}));   // رسايل الحسابات على تليجرام بتتجرب لوحدها تحت، علشان متدخلش وسط رسايل الشريك
     const mkc = await A.evaluate(() => getSet('mktSheet', null));
     eq('شيت السوق اتربط ومقفول على مفتاح اتعمل لوحده ومش في الكود', [!!(mkc && mkc.k), mkCode.includes(mkc.k) || /TEST-|script\.google\.com\/macros/.test(mkCode), JSON.parse(sheets.mkt.post(JSON.stringify({key: 'Other-Key-123', action: 'ping'}))).error, JSON.parse(sheets.mkt.get()).ok], [true, false, 'key', false]);
     eq('كود شيت الحسابات الأساسي متلمسش (مفيش تليجرام ولا إذن زيادة)', await A.evaluate(() => /UrlFetchApp|telegram|DriveApp|ScriptApp/.test(scriptFor())), false);
@@ -661,6 +662,35 @@ const T0 = Date.now();
     await A.click('#tgTest'); await A.settle(800);
     eq('تليجرام: التوكن في الشيت بس، والـ chat id اتجاب لوحده من "ابدأ"', [sheets.mkt.props.TG_TOKEN, sheets.mkt.props.TG_CHAT, await A.evaluate(() => JSON.stringify(db).includes('ABCDEFGHIJ')), (await A.textContent('#tgSt')).includes('شغالة')], [TOK, '777', false, true]);
     const tgTexts = () => sheets.mkt.tg.calls.filter(c => c.url.endsWith('/sendMessage')).map(c => c.body.text);
+
+    /* تليجرام من الحسابات لمصطفى: نسخة يومية وملخص وتنبيه. على نفس البوت، ومن غير ما يتكتب أي حاجة في شيت الحركات (الشريك مبيشوفهاش) */
+    const tgDocs = () => sheets.mkt.tg.calls.filter(c => c.url.endsWith('/sendDocument'));
+    const mkRows0 = sheets.mkt.sheets['الحركات'].rows.length;
+    eq('كود شيت السوق نسخة 3، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [3, null]);
+    const TD = await A.evaluate(() => db.entries.filter(e => !e.del && e.kind === 'pay').map(e => e.date).sort().pop());
+    await A.evaluate(() => { putSet('tgOpts', {bk: true, sum: true, al: true}); db.cfg.tg = {}; });
+    const d0 = tgDocs().length, m0 = tgTexts().length;
+    await bg(A, `tgAfterSync(new Date('${TD}T21:00:00'))`);
+    const doc = tgDocs()[d0], bk = doc ? JSON.parse(doc.body.document.data) : {};
+    eq('تليجرام: النسخة اليومية اتبعتت ملف متقفل بكلمة السر (مفيهوش أسامي مكشوفة)', [tgDocs().length - d0, doc && doc.body.document.name, bk.app, !!bk.ct, doc && doc.body.document.data.includes('عميل تجربة واحد'), doc && doc.body.caption.includes('استرجاع نسخة احتياطية')],
+      [1, `flash-on-accounts-${TD}.json`, 'flash-on-accounts-backup', true, false, true]);
+    eq('تليجرام: ملخص اليوم بعد 8 بالليل بأرقام البرنامج', [tgTexts().length - m0, tgTexts().pop() === await A.evaluate(d => daySum(d).text, TD), (await A.evaluate(d => daySum(d).text, TD)).includes('رصيد الخزن آخر اليوم')], [1, true, true]);
+    await bg(A, `tgAfterSync(new Date('${TD}T22:00:00'))`);
+    await A.evaluate(() => { db.cfg.tg = {}; });   // كأنه جهاز تاني لسه مبعتش
+    await bg(A, `tgAfterSync(new Date('${TD}T22:30:00'))`);
+    eq('تليجرام: النسخة والملخص مرة واحدة في اليوم حتى من جهاز تاني', [tgDocs().length - d0, tgTexts().length - m0, await A.evaluate(() => [db.cfg.tg.bk, db.cfg.tg.sum])], [1, 1, [TD, TD]]);
+    eq('تليجرام: يوم مفيهوش أي حركة مبيتبعتلوش ملخص', await A.evaluate(() => daySum('2001-01-01').empty), true);
+    await A.evaluate(() => { db.cfg.tg.fail0 = Date.now() - 31 * 60000; syncErr = 'تجربة'; syncWhy = 'الشيت رد بخطأ تجربة'; tgSyncFail(); });
+    await A.settle(600);
+    const al1 = tgTexts().length; await A.evaluate(() => tgSyncFail()); await A.settle(300);
+    eq('تليجرام: تنبيه لو المزامنة واقفة أكتر من نص ساعة، ومرة واحدة بس', [tgTexts()[al1 - 1].includes('المزامنة مع شيت الحسابات واقفة'), tgTexts().length - al1], [true, 0]);
+    await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: true, al: true}); db.cfg.tg = {}; });
+    const d1 = tgDocs().length;
+    await bg(A, `tgAfterSync(new Date('2001-01-02T21:00:00'))`);
+    eq('تليجرام: لو النسخة اليومية مقفولة من الإعدادات مبتتبعتش', tgDocs().length - d1, 0);
+    eq('تليجرام: مفيش أي سطر اتكتب في شيت الحركات بتاع الشريك', sheets.mkt.sheets['الحركات'].rows.length, mkRows0);
+    eq('آخر تحديث للبرنامج: بيظهر بوقت النشر، ومبيظهرش لو المتصفح معرفوش', await A.evaluate(() => { const lm = new Date('2026-10-11T15:40:00').getTime(); return [verText(lm, lm + 60000).includes(dispDate('2026-10-11')), verText(lm, lm + 500)]; }), [true, '']);
+    await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: false}); db.cfg.tg = {}; });
 
     const mlink = await A.evaluate(() => mktLink());
     DM = await newDevice(browser, base, sheets);
@@ -1017,7 +1047,7 @@ const T0 = Date.now();
     eq('صفحة العملاء: إجمالي اللي على العملاء ظاهر', await M.evaluate(() => { const t = [...customers().values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0); return $('#main .panel .money').textContent === fmt(t); }), true);
     await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(500);
     eq('وصل لمصطفى في الوارد', await A.evaluate(() => mkPending().filter(o => o.t === 'cs').map(o => [o.buyer, o.amt])), [['مشتري تجربة', 450000]]);
-    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 2', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 2]);
+    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 3', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 3]);
     const csV0 = await A.evaluate(() => vaultBal('v_mkt'));
     await A.evaluate(() => { const o = mkPending().find(x => x.t === 'cs'); mkMove(o, {amt: o.amt, date: todayISO(), vault: 'v_mkt', to: ''}); saveDB(); });
     eq('اتنقل إيراد في خزنة السوق (مبيعات نقدي) من غير ما يتعمل عميل', await A.evaluate(([v0, p0]) => [vaultBal('v_mkt') - v0, db.txs.filter(t => t.id.startsWith('t_mk_') && t.type === 'inc' && t.cat === 'c_inc1' && !t.del).length > 0, db.parties.length], [csV0, csP0]), [450000, true, csP0]);

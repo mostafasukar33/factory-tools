@@ -4697,7 +4697,7 @@ const SHEET = 'الحركات';
 const HEAD = ['id','النوع','آخر تعديل','رقم المزامنة','ملغي','الوقت','الاسم','المبلغ','الطريقة','الحالة','البيانات (لا تعدّلها)'];
 const W = HEAD.length;
 const TG = 'https://api.telegram.org/bot';
-const VER = 3;   /* 2 = نص تليجرام بييجي جاهز من تطبيق الشريك (data.tg). 3 = رسايل من الحسابات لمصطفى (نسخة احتياطية وملخص وتنبيه: tgmsg/tgdoc) */
+const VER = 4;   /* 2 = نص تليجرام بييجي جاهز من تطبيق الشريك (data.tg). 3 = رسايل من الحسابات لمصطفى (نسخة احتياطية وملخص وتنبيه: tgmsg/tgdoc). 4 = السحب بيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس، والإرسال بيقرا عمود الـ id بس */
 const MW = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون كاش'};
 function sh_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -4738,15 +4738,23 @@ function push_(rows, who) {
   let res;
   try {
     const s = sh_(), last = s.getLastRow();
-    const cur = last > 1 ? s.getRange(2, 1, last - 1, 3).getValues() : [];
-    const pos = {}; cur.forEach((r, i) => pos[String(r[0])] = i);
+    /* عمود الـ id بس. "آخر تعديل" بيتقرا للسطور اللي موجودة فعلاً بس (التعديلات)، مش للشيت كله */
+    const ids = last > 1 ? s.getRange(2, 1, last - 1, 1).getValues() : [];
+    const pos = {}; ids.forEach((r, i) => pos[String(r[0])] = i);
+    const hit = [], upd = {};
+    rows.forEach(r => { if (pos[r.id] !== undefined) hit.push(pos[r.id]); });
+    if (hit.length) {
+      const lo = Math.min.apply(null, hit), hi = Math.max.apply(null, hit);
+      if (hit.length * 20 < hi - lo) hit.forEach(i => upd[i] = s.getRange(i + 2, 3, 1, 1).getValues()[0][0]);
+      else s.getRange(lo + 2, 3, hi - lo + 1, 1).getValues().forEach((r, k) => upd[lo + k] = r[0]);
+    }
     const props = PropertiesService.getScriptProperties();
     let seq = Number(props.getProperty('SEQ')) || 0;
     const add = [], addAt = {}, ack = [];
     rows.forEach(r => {
       const i = pos[r.id];
       ack.push(r.id);
-      if (i !== undefined && Number(cur[i][2]) >= Number(r.upd)) return;
+      if (i !== undefined && Number(upd[i]) >= Number(r.upd)) return;
       if (addAt[r.id] !== undefined && Number(add[addAt[r.id]][2]) >= Number(r.upd)) return;
       /* تنبيه تليجرام لكل حركة جديدة أو تعديل أو مسح من الشريك */
       if (r.kind === 'op' && who === 'm') {
@@ -4757,7 +4765,7 @@ function push_(rows, who) {
       seq++;
       const v = (r.view || []).concat(['', '', '', '', '']).slice(0, 5);
       const line = [r.id, r.kind, r.upd, seq, r.del ? 'نعم' : ''].concat(v, [JSON.stringify(r.data)]);
-      if (i !== undefined) { s.getRange(i + 2, 1, 1, W).setValues([line]); cur[i][2] = r.upd; }
+      if (i !== undefined) { s.getRange(i + 2, 1, 1, W).setValues([line]); upd[i] = r.upd; }
       else if (addAt[r.id] !== undefined) add[addAt[r.id]] = line;
       else { addAt[r.id] = add.length; add.push(line); }
     });
@@ -4775,11 +4783,16 @@ function pull_(since) {
   if (since >= seq) return {ok: true, rows: [], next: since, more: false};
   const s = sh_(), last = s.getLastRow();
   if (last < 2) return {ok: true, rows: [], next: since, more: false};
-  const v = s.getRange(2, 1, last - 1, W).getValues().filter(r => Number(r[3]) > since);
-  v.sort((a, b) => Number(a[3]) - Number(b[3]));
-  const page = v.slice(0, 1500);
-  const rows = page.map(r => { try { return {id: String(r[0]), kind: String(r[1]), upd: Number(r[2]), del: r[4] === 'نعم', data: JSON.parse(r[W - 1])}; } catch (e) { return null; } }).filter(Boolean);
-  return {ok: true, rows: rows, next: page.length ? Number(page[page.length - 1][3]) : since, more: v.length > page.length};
+  /* عمود رقم المزامنة بس، وبعدين السطور الجديدة بس (حتت ورا بعض، أو من أول جديد لآخر جديد لو متفرقة قوي) */
+  const v = [];
+  s.getRange(2, 4, last - 1, 1).getValues().forEach((r, i) => { const n = Number(r[0]); if (n > since) v.push([n, i]); });
+  v.sort((a, b) => a[0] - b[0]);
+  const page = v.slice(0, 1500), at = page.map(x => x[1]).sort((a, b) => a - b), got = {}, runs = [];
+  at.forEach(i => { const r = runs[runs.length - 1]; if (r && i - r[1] <= 30) r[1] = i; else runs.push([i, i]); });
+  const read = (a, b) => s.getRange(a + 2, 1, b - a + 1, W).getValues().forEach((r, k) => got[a + k] = r);
+  if (runs.length > 40) read(at[0], at[at.length - 1]); else runs.forEach(r => read(r[0], r[1]));
+  const rows = page.map(x => { const r = got[x[1]]; try { return {id: String(r[0]), kind: String(r[1]), upd: Number(r[2]), del: r[4] === 'نعم', data: JSON.parse(r[W - 1])}; } catch (e) { return null; } }).filter(Boolean);
+  return {ok: true, rows: rows, next: page.length ? page[page.length - 1][0] : since, more: v.length > page.length};
 }
 function money_(q) {
   const n = Math.round(Number(q) || 0) / 100, t = String(Math.floor(n)).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ','), f = Math.round((n % 1) * 100);
@@ -5618,7 +5631,7 @@ function mktHelp() {
     catch (e) { $('#mhShow').click(); const r = document.createRange(); r.selectNodeContents($('#mhCode')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('اضغط مطوّل على الكود واختار نسخ (Copy)', 6000); }
   };
 }
-const MK_VER = 3;
+const MK_VER = 4;
 /* تحديث كود شيت السوق (من الموبايل أو اللاب). بيتطلب بس لما VER يزيد: نص تنبيهات الشريك بييجي من التطبيق فمش محتاج تحديث */
 function mktUpdateHelp() {
   const code = marketScript(), wide = isWide(), su = db && db.cfg.mkSheetUrl;
@@ -5794,7 +5807,7 @@ function renderMktSettings() {
     if (!j) { el.innerHTML = '⚠️ معرفتش أوصل لشيت السوق دلوقتي.'; return; }
     tgInfo = j;
     if (j.url && db && db.cfg.mkSheetUrl !== j.url) { db.cfg.mkSheetUrl = j.url; flushSave(); }   // لينك جدول "حركة السوق" نفسه (من نسخة 3): زرار يفتحه على طول
-    el.innerHTML = (!j.v || j.v < MK_VER ? `<div class="sync warn" id="mkOld" style="margin-bottom:8px">⚠️ كود شيت السوق قديم: بعض تنبيهات شريكك بتوصل ناقصة، والنسخة اليومية والملخص مش هيوصلوك. <a>حدّثه (مرة واحدة)</a></div>` : '')
+    el.innerHTML = (!j.v || j.v < MK_VER ? `<div class="sync warn" id="mkOld" style="margin-bottom:8px">⚠️ كود شيت السوق قديم: ${j.v >= 3 ? 'شغال عادي، بس هيبطأ مع كتر الحركات على مدار السنين' : 'بعض تنبيهات شريكك بتوصل ناقصة، والنسخة اليومية والملخص مش هيوصلوك'}. <a>حدّثه (مرة واحدة)</a></div>` : '')
       + (!j.token ? 'لسه مفيش بوت. اعمله من الخطوات تحت (مرة واحدة).'
       : !j.chat ? `<b style="color:var(--gold-d)">⏳ البوت @${esc(j.bot)} محفوظ. افتحه في تليجرام وابعتله "ابدأ"، وبعدين دوس "جرّب التنبيه".</b>`
       : `<b style="color:var(--green)">✔ التنبيهات شغالة على البوت @${esc(j.bot)}.</b>`);

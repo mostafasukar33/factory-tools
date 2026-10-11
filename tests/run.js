@@ -721,7 +721,37 @@ const T0 = Date.now();
     /* تليجرام من الحسابات لمصطفى: نسخة يومية وملخص وتنبيه. على نفس البوت، ومن غير ما يتكتب أي حاجة في شيت الحركات (الشريك مبيشوفهاش) */
     const tgDocs = () => sheets.mkt.tg.calls.filter(c => c.url.endsWith('/sendDocument'));
     const mkRows0 = sheets.mkt.sheets['الحركات'].rows.length;
-    eq('كود شيت السوق نسخة 3، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [3, null]);
+    eq('كود شيت السوق نسخة 4، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [4, null]);
+    {
+      /* كود شيت السوق نسخة 4 قدام نسخة 3 القديمة بآلاف السطور: نفس الردود ونفس الشيت بالظبط، والقراية أقل بكتير */
+      const oldMk = fs.readFileSync(path.join(__dirname, 'fixtures/mkt-sheet-v3.gs'), 'utf8'), newMk = await A.evaluate(() => marketScript());
+      const GN = makeGas(), GO = makeGas(); GN.load(newMk); GO.load(oldMk);
+      const cost = {old: {}, neu: {}}, diff = [];
+      const both = (tag, o) => {
+        const b = JSON.stringify(Object.assign({key: 'Bench-Key-1234'}, o)), c0 = GO.reads.cells, c1 = GN.reads.cells;
+        const a = GO.post(b), n = GN.post(b);
+        cost.old[tag] = (cost.old[tag] || 0) + GO.reads.cells - c0; cost.neu[tag] = (cost.neu[tag] || 0) + GN.reads.cells - c1;
+        if (a !== n) diff.push(tag);
+        return JSON.parse(n);
+      };
+      const mr = (i, upd, del) => ({id: (i % 3 ? 'op_b' : 'cust_b') + i, kind: i % 3 ? 'op' : 'cust', upd, del: !!del, view: ['2026-01-01', 'عميل تجربة ' + (i % 40), 'دفعة', String(i * 50), ''], data: {cid: 'p_b' + (i % 40), amt: i * 5000, m: 'cash', note: 'تجربة '.repeat(1 + i % 5)}});
+      const N = 5000;
+      for (let i = 0; i < N; i += 500) both('push', {action: 'push', rows: Array.from({length: 500}, (_, k) => mr(i + k, 1000 + i + k))});
+      const pullAll = (tag, since) => { const out = []; let more = true, nx = since, n = 0; while (more && n++ < 50) { const j = both(tag, {action: 'pull', since: nx}); out.push(...j.rows); nx = j.next; more = j.more; } return out; };
+      const full = pullAll('pull0', 0), seq0 = Number(GN.props.SEQ);
+      both('idle', {action: 'pull', since: seq0});
+      const ed = [];
+      for (let k = 0; k < 20; k++) ed.push(mr(k * 241, k % 4 ? 900000 + k : 3, k % 6 === 0));
+      for (let k = 0; k < 15; k++) ed.push(mr(N + k, 950000 + k));
+      ed.push(mr(N + 2, 960000));
+      both('push2', {action: 'push', rows: ed});
+      const inc = pullAll('pull1', seq0);
+      eq('كود شيت السوق الجديد: بآلاف السطور نفس الردود ونفس الشيت خانة بخانة زي القديم', [diff, JSON.stringify(GN.sheets['الحركات'].rows) === JSON.stringify(GO.sheets['الحركات'].rows), full.length, inc.length], [[], true, N, 15 + 15]);
+      console.log('     شيت السوق — خانات اتقرت (القديم ← الجديد):', Object.keys(cost.old).map(k => `${k}: ${cost.old[k]} ← ${cost.neu[k]}`).join(' | '));
+      eq('شيت السوق: السحب والإرسال أخف بكتير', [cost.neu.idle, cost.neu.pull1 * 8 < cost.old.pull1, cost.neu.pull0 * 2 < cost.old.pull0, cost.neu.push * 2 < cost.old.push], [0, true, true, true]);
+      eq('شيت السوق نسخة 3: تحذير أصفر إنه هيبطأ بس (مش إن التنبيهات ناقصة)', await A.evaluate(() => { tgInfo = {ok: true, v: 3, token: false}; renderMktSettings(); const t = $('#mkOld') ? $('#mkOld').textContent : ''; return [t.includes('هيبطأ'), t.includes('ناقصة')]; }), [true, false]);
+      await A.evaluate(() => { tgInfo = null; });
+    }
     await A.evaluate(() => renderMktSettings()); await A.settle(600);
     await A.click('#smUpd'); await A.settle(150);
     eq('تحديث كود الشيت: زرار ثابت في الإعدادات بيفتح الخطوات (من جوه الجدول، ولو مش لاقيه) وفيه لينك جدول حركة السوق نفسه', await A.evaluate(() => [$('#modal').textContent.includes('الإضافات (Extensions)'), $('#modal').textContent.includes('بحساب جوجل تاني'), !!$('#modal a[href*="docs.google.com/spreadsheets/d/ss1"]'), db.cfg.mkSheetUrl]), [true, true, true, 'https://docs.google.com/spreadsheets/d/ss1/edit']);
@@ -1106,7 +1136,7 @@ const T0 = Date.now();
     eq('صفحة العملاء: إجمالي اللي على العملاء ظاهر', await M.evaluate(() => { const t = [...customers().values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0); return $('#main .panel .money').textContent === fmt(t); }), true);
     await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(500);
     eq('وصل لمصطفى في الوارد', await A.evaluate(() => mkPending().filter(o => o.t === 'cs').map(o => [o.buyer, o.amt])), [['مشتري تجربة', 450000]]);
-    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 3', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 3]);
+    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 4', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 4]);
     const csV0 = await A.evaluate(() => vaultBal('v_mkt'));
     await A.evaluate(() => { const o = mkPending().find(x => x.t === 'cs'); mkMove(o, {amt: o.amt, date: todayISO(), vault: 'v_mkt', to: ''}); saveDB(); });
     eq('اتنقل إيراد في خزنة السوق (مبيعات نقدي) من غير ما يتعمل عميل', await A.evaluate(([v0, p0]) => [vaultBal('v_mkt') - v0, db.txs.filter(t => t.id.startsWith('t_mk_') && t.type === 'inc' && t.cat === 'c_inc1' && !t.del).length > 0, db.parties.length], [csV0, csP0]), [450000, true, csP0]);

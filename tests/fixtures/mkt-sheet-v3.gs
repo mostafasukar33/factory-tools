@@ -1,0 +1,176 @@
+// نسخة 3 القديمة من كود شيت السوق (marketScript) زي ما هي، علشان الاختبار يقارن بيها
+// حركة السوق — فلاش أون (مقفول بمفتاح سري بيتحفظ أول مرة). شيت منفصل عن الحسابات.
+const SHEET = 'الحركات';
+const HEAD = ['id','النوع','آخر تعديل','رقم المزامنة','ملغي','الوقت','الاسم','المبلغ','الطريقة','الحالة','البيانات (لا تعدّلها)'];
+const W = HEAD.length;
+const TG = 'https://api.telegram.org/bot';
+const VER = 3;   /* 2 = نص تليجرام بييجي جاهز من تطبيق الشريك (data.tg). 3 = رسايل من الحسابات لمصطفى (نسخة احتياطية وملخص وتنبيه: tgmsg/tgdoc) */
+const MW = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون كاش'};
+function sh_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let s = ss.getSheetByName(SHEET);
+  if (!s) { s = ss.insertSheet(SHEET); s.appendRow(HEAD); s.setFrozenRows(1); }
+  return s;
+}
+function doGet() { return out_({ok: false, error: 'locked'}); }
+function key_(k) {
+  if (typeof k !== 'string' || k.length < 8) return false;
+  const p = PropertiesService.getScriptProperties();
+  let s = p.getProperty('KEY');
+  if (!s) {
+    const l = LockService.getScriptLock(); l.waitLock(10000);
+    try { s = p.getProperty('KEY'); if (!s) { p.setProperty('KEY', k); s = k; } } finally { l.releaseLock(); }
+  }
+  return s === k;
+}
+function resetKey() { PropertiesService.getScriptProperties().deleteProperty('KEY'); }
+function doPost(e) {
+  let req;
+  try { req = JSON.parse(e.postData.contents); } catch (x) { return out_({ok: false, error: 'bad'}); }
+  if (!req || !key_(req.key)) return out_({ok: false, error: 'key'});
+  const p = PropertiesService.getScriptProperties();
+  if (req.action === 'ping') return out_({ok: true, app: 'fo-mkt', v: VER, n: Math.max(sh_().getLastRow() - 1, 0), seq: Number(p.getProperty('SEQ')) || 0});
+  if (req.action === 'push') return out_(push_(req.rows || [], req.who));
+  if (req.action === 'pull') return out_(pull_(Number(req.since) || 0));
+  if (req.action === 'tg') return out_(tgSet_(req.token));
+  if (req.action === 'tgtest') return out_(tgTest_());
+  if (req.action === 'tgstate') return out_(tgState_());
+  if (req.action === 'tgmsg') return out_(tgOnce_(req, () => tgSend_(String(req.text || '').slice(0, 4000))));
+  if (req.action === 'tgdoc') return out_(tgOnce_(req, () => tgDoc_(String(req.name || 'backup.json'), String(req.text || ''), String(req.caption || '').slice(0, 1000))));
+  return out_({ok: false, error: 'action'});
+}
+function push_(rows, who) {
+  const lock = LockService.getScriptLock(); lock.waitLock(30000);
+  const msgs = [];
+  let res;
+  try {
+    const s = sh_(), last = s.getLastRow();
+    const cur = last > 1 ? s.getRange(2, 1, last - 1, 3).getValues() : [];
+    const pos = {}; cur.forEach((r, i) => pos[String(r[0])] = i);
+    const props = PropertiesService.getScriptProperties();
+    let seq = Number(props.getProperty('SEQ')) || 0;
+    const add = [], addAt = {}, ack = [];
+    rows.forEach(r => {
+      const i = pos[r.id];
+      ack.push(r.id);
+      if (i !== undefined && Number(cur[i][2]) >= Number(r.upd)) return;
+      if (addAt[r.id] !== undefined && Number(add[addAt[r.id]][2]) >= Number(r.upd)) return;
+      /* تنبيه تليجرام لكل حركة جديدة أو تعديل أو مسح من الشريك */
+      if (r.kind === 'op' && who === 'm') {
+        let old = null;
+        if (i !== undefined) { try { old = JSON.parse(s.getRange(i + 2, W, 1, 1).getValues()[0][0]); old.del = s.getRange(i + 2, 5, 1, 1).getValues()[0][0] === 'نعم'; } catch (x) { old = null; } }
+        const m = opMsg_(old, r.data || {}, !!r.del); if (m) msgs.push(m);
+      }
+      seq++;
+      const v = (r.view || []).concat(['', '', '', '', '']).slice(0, 5);
+      const line = [r.id, r.kind, r.upd, seq, r.del ? 'نعم' : ''].concat(v, [JSON.stringify(r.data)]);
+      if (i !== undefined) { s.getRange(i + 2, 1, 1, W).setValues([line]); cur[i][2] = r.upd; }
+      else if (addAt[r.id] !== undefined) add[addAt[r.id]] = line;
+      else { addAt[r.id] = add.length; add.push(line); }
+    });
+    if (add.length) s.getRange(last + 1, 1, add.length, W).setValues(add);
+    props.setProperty('SEQ', String(seq));
+    res = {ok: true, ack: ack, seq: seq};
+  } catch (err) { res = {ok: false, error: String(err)}; }
+  finally { lock.releaseLock(); }
+  if (res.ok && msgs.length) tgSend_(msgs.length > 4 ? msgs.join('\n') : msgs);
+  return res;
+}
+function pull_(since) {
+  /* أسرع رد: لو مفيش جديد من آخر مرة مبنقراش الشيت خالص */
+  const seq = Number(PropertiesService.getScriptProperties().getProperty('SEQ')) || 0;
+  if (since >= seq) return {ok: true, rows: [], next: since, more: false};
+  const s = sh_(), last = s.getLastRow();
+  if (last < 2) return {ok: true, rows: [], next: since, more: false};
+  const v = s.getRange(2, 1, last - 1, W).getValues().filter(r => Number(r[3]) > since);
+  v.sort((a, b) => Number(a[3]) - Number(b[3]));
+  const page = v.slice(0, 1500);
+  const rows = page.map(r => { try { return {id: String(r[0]), kind: String(r[1]), upd: Number(r[2]), del: r[4] === 'نعم', data: JSON.parse(r[W - 1])}; } catch (e) { return null; } }).filter(Boolean);
+  return {ok: true, rows: rows, next: page.length ? Number(page[page.length - 1][3]) : since, more: v.length > page.length};
+}
+function money_(q) {
+  const n = Math.round(Number(q) || 0) / 100, t = String(Math.floor(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','), f = Math.round((n % 1) * 100);
+  return t + (f ? '.' + (f < 10 ? '0' : '') + f : '');
+}
+/* نص الحركة بالعربي (كل الأنواع: دفعة عميل، مصروف، دفعة مورد، تسليم لمصطفى) */
+function opText_(d) {
+  const a = money_(d.amt);
+  if (d.t === 'pay') return (d.cname || 'عميل') + (d.newc ? ' (عميل جديد)' : '') + ' دفع ' + a + ' ' + (MW[d.m] || '');
+  if (d.t === 'inv') return (d.cname || 'عميل') + (d.newc ? ' (عميل جديد)' : '') + ' فاتورة بـ ' + a;
+  if (d.t === 'exp') return 'مصروف' + (d.cat ? ' ' + d.cat : '') + ': ' + a + (d.note ? ' — ' + d.note : '');
+  if (d.t === 'spay') return 'دفع للمورد ' + (d.sname || '') + ' ' + a;
+  if (d.t === 'hand') return 'سلّمك ' + a + ' كاش';
+  if (d.t === 'cs') return 'بيع كاش من المصنع ' + a + (d.buyer ? ' — ' + d.buyer : '');
+  return 'حركة ' + a;
+}
+const ICON = {pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭', rt: '↩️'};
+function txt_(d) { return d.tg || opText_(d); }
+function opMsg_(old, d, del) {
+  const ic = ICON[d.t] || '•';
+  if (del) return old && !old.del ? '🗑 اتمسحت: ' + txt_(old) : '';
+  if (!old || old.del) return ic + ' ' + txt_(d);
+  const a = txt_(old), b = txt_(d);
+  return a === b ? '' : '✏️ اتعدلت: ' + a + '\nبقت: ' + b;
+}
+function tgGet_(t, method, payload) {
+  const o = {muteHttpExceptions: true};
+  if (payload) { o.method = 'post'; o.contentType = 'application/json'; o.payload = JSON.stringify(payload); }
+  return JSON.parse(UrlFetchApp.fetch(TG + t + '/' + method, o).getContentText());
+}
+/* الـ chat id بيتجاب لوحده من آخر رسالة اتبعتت للبوت (زي "ابدأ") */
+function tgChat_(t) {
+  const p = PropertiesService.getScriptProperties();
+  let c = p.getProperty('TG_CHAT');
+  if (c) return c;
+  try {
+    const u = (tgGet_(t, 'getUpdates').result || []).filter(x => x.message && x.message.chat).pop();
+    if (u) { c = String(u.message.chat.id); p.setProperty('TG_CHAT', c); return c; }
+  } catch (x) {}
+  return '';
+}
+function tgSend_(texts) {
+  const t = PropertiesService.getScriptProperties().getProperty('TG_TOKEN');
+  if (!t) return false;
+  const c = tgChat_(t); if (!c) return false;
+  let ok = true;
+  [].concat(texts).forEach(x => { try { const r = tgGet_(t, 'sendMessage', {chat_id: c, text: x}); ok = ok && !!(r && r.ok); } catch (e) { ok = false; } });
+  return ok;
+}
+function tgSet_(token) {
+  token = String(token || '').trim();
+  if (!/^\d{5,}:[\w-]{20,}$/.test(token)) return {ok: false, error: 'token'};
+  let me; try { me = tgGet_(token, 'getMe'); } catch (e) { return {ok: false, error: 'net'}; }
+  if (!me || !me.ok) return {ok: false, error: 'token'};
+  const p = PropertiesService.getScriptProperties();
+  p.setProperty('TG_TOKEN', token); p.setProperty('TG_BOT', me.result.username || ''); p.deleteProperty('TG_CHAT');
+  return {ok: true, bot: me.result.username || '', chat: !!tgChat_(token)};
+}
+/* رسايل من برنامج الحسابات لمصطفى بس (نسخة احتياطية، ملخص اليوم، تنبيه). مبيتكتبش منها أي حاجة في شيت الحركات، فتطبيق الشريك مبيشوفهاش.
+   once = {k, v}: لو نفس القيمة اتبعتت قبل كده (من أي جهاز) مبتتبعتش تاني */
+function tgOnce_(req, send) {
+  const p = PropertiesService.getScriptProperties(), o = req.once && req.once.k ? 'ONCE_' + String(req.once.k).replace(/[^a-z0-9]/gi, '').slice(0, 20) : '';
+  if (o && p.getProperty(o) === String(req.once.v)) return {ok: true, v: VER, sent: false, dup: true};
+  const sent = send();
+  if (sent && o) p.setProperty(o, String(req.once.v));
+  return {ok: true, v: VER, sent: !!sent};
+}
+function tgDoc_(name, text, caption) {
+  const t = PropertiesService.getScriptProperties().getProperty('TG_TOKEN');
+  if (!t || !text) return false;
+  const c = tgChat_(t); if (!c) return false;
+  try {
+    const r = UrlFetchApp.fetch(TG + t + '/sendDocument', {method: 'post', muteHttpExceptions: true, payload: {chat_id: c, caption: caption, document: Utilities.newBlob(text, 'application/json', name)}});
+    const j = JSON.parse(r.getContentText()); return !!(j && j.ok);
+  } catch (e) { return false; }
+}
+function tgState_() {
+  const p = PropertiesService.getScriptProperties(), t = p.getProperty('TG_TOKEN');
+  let url = ''; try { url = SpreadsheetApp.getActiveSpreadsheet().getUrl(); } catch (e) {}
+  return {ok: true, v: VER, token: !!t, bot: p.getProperty('TG_BOT') || '', chat: !!(t && tgChat_(t)), url: url};
+}
+function tgTest_() {
+  const st = tgState_();
+  if (!st.token || !st.chat) return Object.assign(st, {sent: false});
+  return Object.assign(st, {sent: tgSend_('✅ تنبيهات حركة السوق شغالة. أي حاجة شريكك يسجلها هتوصلك هنا.')});
+}
+function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }

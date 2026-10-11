@@ -828,7 +828,7 @@ const T0 = Date.now();
     eq('كشف المساهم المربوط بعميل: أعمدة الـ PDF (الصنف والعدد والوزن وربح الواحدة والإجمالي)', await A.evaluate(() => {
       const v = ivList().find(x => x.name === 'مساهم تجربة عميل'), R = ivReport(v); go('jrd/iv/' + v.id); renderJrd();
       const pg = buildReportPages(R), th = [...pg[0].querySelectorAll('thead th')].map(x => x.textContent); $('#render').innerHTML = '';
-      return [th.join('|'), !!$('#p-jrd tr[data-pe]'), R.fin[0]]; }), ['الصنف|العدد|الوزن|ربح الواحدة|الإجمالي', true, 'إجمالي اللي ليه']);
+      return [th.join('|'), !!$('#p-jrd tr[data-pe]'), R.fin[0]]; }), ['الصنف|العدد|الوزن|ربح الوحدة|الإجمالي', true, 'إجمالي المستحق للمساهم']);
 
     /* نقل كشف قديم من ملف (نفس شكل الملف اللي بيتعمل من الإكسيل)، ونقله مرتين مبيكررش */
     const IMP = {app: 'flash-on-investors', v: 1, list: [{id: 'ip_imp_t', name: 'مساهم تجربة قديم', mode: 'c', hint: 'تجربة واحد', from: '2026-09-11', at: 1, upd: 1760000000000, rows: [
@@ -843,17 +843,17 @@ const T0 = Date.now();
     eq('النقل: رأس المال والعمولة (العدد × ربح الواحدة) والنقل والمصاريف والسحب والباقي', IR, [29000000, 300 * 2250 + 160 * 3625 + 52 * 10000, 400000, 300000, 1000000, 29000000 + 300 * 2250 + 160 * 3625 + 52 * 10000 - 400000 - 300000 - 1000000, 5, '2026-09-11', 'عميل تجربة واحد']);
     await IM();
     eq('النقل مرتين مبيكررش حاجة', await A.evaluate(() => [db.ivps.filter(v => v.id === 'ip_imp_t').length, db.ivrs.filter(r => r.iv === 'ip_imp_t').length]), [1, 5]);
-    eq('الجرد بالترتيب: اللي ليك ← الموردين ← قيمة الشغل ← المساهمين ← صافي حقك، وكل مجموع = اللي فوقه', await A.evaluate(() => {
+    eq('الجرد بالترتيب: الأصول ← مستحقات الموردين ← صافي الأصول ← أرصدة المساهمين ← صافي الجرد، وكل مجموع = اللي فوقه', await A.evaluate(() => {
       const n = jrdCalc(todayISO()), L = jrdLines(n, 12300), T = jrdTot(n, 12300), sub = L.filter(x => x.t === 's').map(x => x.n);
       const own = L.slice(0, 4).reduce((a, x) => a + x.a, 0), iv = L.filter(x => x.iv).reduce((a, x) => a + x.a, 0);
       const R = jrdReport(todayISO(), n, 12300, null);
-      return [L.slice(0, 4).map(x => x.n), sub, own === T.own, L.find(x => x.n === '= إجمالي اللي ليك').a === T.own, L.find(x => x.n === '= قيمة الشغل').a === T.own - n.sup, L[L.length - 1].a === T.net && T.net === T.own - n.sup - iv, R.rows.length === L.length - 1, R.rows.filter(r => r.cls === 'sub').length]; }),
-      [['عملاء السوق', 'عملاء المواقع', 'رصيد الخزن', 'المخزون'], ['= إجمالي اللي ليك', '= قيمة الشغل'], true, true, true, true, true, 2]);
+      return [L.slice(0, 4).map(x => x.n), sub, own === T.own, L.find(x => x.n === '= إجمالي الأصول').a === T.own, L.find(x => x.n === '= صافي الأصول قبل المساهمين').a === T.own - n.sup, L[L.length - 1].a === T.net && T.net === T.own - n.sup - iv, R.rows.length === L.length - 1, R.rows.filter(r => r.cls === 'sub').length]; }),
+      [['أرصدة عملاء السوق', 'أرصدة عملاء المواقع', 'النقدية بالخزن', 'قيمة المخزون'], ['= إجمالي الأصول', '= صافي الأصول قبل المساهمين'], true, true, true, true, true, 2]);
     eq('كشف أحمد: رأس المال ثم كل شحنة (أصنافها والنقل وصافيها) ثم المصاريف ثم المسحوبات، والأرقام بتجمع صح', await A.evaluate(() => {
       const v = ivGet('ip_imp_t'), R = ivReport(v), g = R.rows.filter(r => r.grp !== undefined).map(r => r.grp), nt = R.rows.filter(r => r.cls === 'nt'), ships = ivMoves(v.id).filter(m => m.k === 'ship');
       const items = R.rows.filter(r => r.cells).reduce((a, r) => a + Math.round(parseFloat(r.cells[4].replace(/,/g, '')) * 100), 0);
       return [g[0], g[1], g.length, g[g.length - 2], g[g.length - 1], nt.map(r => r.foot[1]), items === ships.reduce((a, m) => a + ivGross(m.r), 0), R.sum.filter(x => x[2] === 'sub').length]; }),
-      ['رأس المال', 'الشحنات (2)', 6, 'المصاريف', 'المسحوبات', ['9,550', '4,200'], true, 2]);
+      ['رأس المال', 'الشحنات (2)', 6, 'المصروفات', 'المسحوبات', ['9,550', '4,200'], true, 2]);
     eq('شاشة كشف المساهم: كارت لكل شحنة (التاريخ والصافي فوق، الأصناف تحتها، النقل في آخرها)', await A.evaluate(() => { go('jrd/iv/ip_imp_t'); renderJrd();
       const cs = [...document.querySelectorAll('#p-jrd .cwrap .ctab.inc')].filter(c => c.querySelector('td.w small bdi')), c = cs[0];
       return [cs.length, c.querySelectorAll('tbody tr').length, !!c.querySelector('td.am.neg'), c.querySelector('.cth b').textContent, !document.querySelector('#p-jrd table.ldg')]; }), [2, 3, true, '9,550', true]);

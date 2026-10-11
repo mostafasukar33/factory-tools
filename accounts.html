@@ -771,6 +771,22 @@ html[data-theme=dark] .mtag.insta{background:#2a2240;color:#B9A6F0}html[data-the
 .mtag.inv{background:var(--tr-l);color:var(--tr)}
 .seg.s2{grid-template-columns:1fr 1fr}
 #mkBody .dnav{margin-bottom:0}
+/* الخزنة: عنوان لكل قسم، وحركة السوق بملخص وجدول يوم بيوم */
+.csec{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:18px 2px 8px;padding-top:12px;border-top:2px dashed var(--line)}
+.csec b{font-size:var(--f3);color:var(--ink)}.csec small{font-size:var(--f1);font-weight:700;color:var(--sub)}
+.mkst{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+.mkst .mks{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;gap:2px}
+.mkst .mks span{font-size:var(--f1);font-weight:700;color:var(--sub)}
+.mkst .mks b{font-size:var(--f4);direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
+.mkst .i b{color:var(--green)}.mkst .o b{color:var(--red)}.mkst .h b{color:var(--tr)}
+.mkst .k{grid-column:1/-1;background:var(--gold-l);border-color:var(--gold)}.mkst .k b{color:var(--ink)}
+@media (min-width:1000px){.mkst{grid-template-columns:repeat(5,1fr)}.mkst .k{grid-column:auto}}
+.mkdet .cth{color:var(--gold-d);border-top:3px solid var(--gold)}
+.cmt tr.mkdh td{background:var(--row);border-top:1px solid var(--line);padding:9px 12px}
+.cmt tr.mkdh td b{display:block;font-size:var(--f3);color:var(--ink)}.cmt tr.mkdh td small{display:block;font-size:var(--f1);color:var(--sub);font-weight:600;margin-top:1px}
+.mkdet .cmt td.am{font-size:var(--f3)}
+.mkdet .am.i{color:var(--green)}.mkdet .am.o{color:var(--red)}.mkdet .am.h{color:var(--tr)}
+.mkdet .cmt td.w b{display:inline}.mkdet .cmt td.w small{margin-top:3px}
 /* سطر العملية في كارت الوارد: فوق الاسم والمبلغ، وتحت الوقت وزرار الإجراء (من غير ما حاجة تتكسر فوق التانية) */
 .il.cl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:8px 14px;min-height:0}
 .il.cl .m{flex-wrap:wrap;min-width:0;gap:4px 8px}
@@ -896,9 +912,9 @@ nav .nb:empty{display:none}
 @media (max-width:999.98px){
   nav button[data-go=mkt]{display:flex;order:1}
   nav button[data-go=part]{display:none}
-  nav button[data-go=rep],nav button[data-go=set]{order:2}
-  /* بطلب صاحب المشروع: تحت من اليمين العملاء | الموردين | حركة السوق | التقارير | الإعدادات، والخزنة زرار في صفحة العملاء (#hCash) */
-  nav button[data-go=cash]{display:none}
+  nav button[data-go=cash],nav button[data-go=set]{order:2}
+  /* بطلب صاحب المشروع: تحت من اليمين العملاء | الموردين | حركة السوق | الخزنة | الإعدادات، والتقارير زرار في صفحة العملاء (#hRep) */
+  nav button[data-go=rep]{display:none}
   nav .lbl-l{display:none}
 }
 nav button.mob{display:none}
@@ -1664,10 +1680,10 @@ function renderHome() {
   /* الموبايل: "العملاء" فيها السوق والمواقع بس + زرار الخزنة، و"الموردين" تبويب لوحده تحت (#sup) */
   const wide = isWide(), tabs = wide ? [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']] : tab === 'sup' ? [] : [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع']];
   $('#hTabs').innerHTML = (!wide && tab === 'sup' ? `<div class="supt">🏭 الموردين <small>${cnt('sup')}</small></div>` : tabs.map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small></button>`).join(''))
-    + (!wide && tab !== 'sup' ? '<button class="hcash" id="hCash" type="button">🗄️ الخزنة<small>والمصروفات</small></button>' : '');
+    + (!wide && tab !== 'sup' ? '<button class="hcash" id="hRep" type="button">📊 التقارير<small>والأرباح وكشف الحساب</small></button>' : '');
   $('#hTabs').classList.toggle('t3', !wide && tab !== 'sup');
   $$('#hTabs button[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
-  if ($('#hCash')) $('#hCash').onclick = () => go('cash');
+  if ($('#hRep')) $('#hRep').onclick = () => go('rep');
   renderMkHome(); renderList(bal); qkMark(); runCounters($('#hTots'));
 }
 function qkMark() { const sp = $('main').classList.contains('split'); $$('nav .qk button').forEach(x => x.classList.toggle('on', sp && x.dataset.q === tab)); }
@@ -3366,6 +3382,23 @@ function cashNoteOnce() {
   try { if (localStorage.getItem('fo_hint_cash')) return ''; localStorage.setItem('fo_hint_cash', '1'); } catch (e) { return ''; }
   return '<div class="sync ok">🔗 الخزنة دي هي نفسها "دفتر الخزنة" اللي في الصفحة الرئيسية. اللي بتسجله هنا أو هناك بيظهر في المكانين. (الرسالة دي بتظهر مرة واحدة)</div>';
 }
+/* حركة السوق جوه الخزنة: اللي جه من الشريك (وارد كاش) واللي اتصرف من فلوسه، يوم بيوم ومفصول تماماً عن خزنتي. للعرض بس: التعديل من وارد السوق */
+const MK_CK = {pay: ['cash', 'تحصيل', 1], cs: ['cash', 'بيع كاش', 1], exp: ['exp', 'مصروف', -1], spay: ['voda', 'مورد', -1], hand: ['tr', 'سلّم لك', -1]};
+function mkCashKind(m) { return m.src === 'pay' ? (m.r.kind === 'pay' ? 'pay' : 'spay') : m.r.type === 'inc' ? 'cs' : m.r.type === 'exp' ? 'exp' : 'hand'; }
+function mkCashBlock(from, to) {
+  if (!db.vaults.some(v => v.id === MKV)) return '';
+  const mv = vaultMoves(MKV, from, to).map(m => Object.assign({k: mkCashKind(m)}, m)), sum = {pay: 0, cs: 0, exp: 0, spay: 0, hand: 0};
+  mv.forEach(m => sum[m.k] += m.amt);
+  const inn = sum.pay + sum.cs, out = sum.exp + sum.spay + sum.hand;
+  const days = [...new Set(mv.map(m => m.date))].sort().reverse();
+  const stat = (n, v, c) => `<div class="mks ${c}"><span>${n}</span><b>${fmtP(v)}</b></div>`;
+  const row = m => { const [tg, tn] = MK_CK[m.k]; return `<tr class="nohov"><td class="w"><span class="mtag ${tg}">${tn}</span> <b>${esc(m.who)}</b>${m.what ? `<small>${esc(m.what)}</small>` : ''}</td><td class="am ${m.k === 'hand' ? 'h' : m.sign > 0 ? 'i' : 'o'}">${m.sign > 0 ? '+' : '−'}${fmtP(m.amt)}</td></tr>`; };
+  return `<div class="csec mkc"><b>🏪 حركة السوق (مع شريكك)</b><small>لوحدها ومش داخلة في أرقام خزنتي فوق</small></div>
+    <div class="mkst">${stat('وارد السوق (كاش اتحصّل)', inn, 'i')}${stat('مصروفات السوق', sum.exp, 'o')}${stat('دفعات موردين', sum.spay, 'o')}${stat('سلّمه لك', sum.hand, 'h')}${stat('معاه دلوقتي (الفترة)', inn - out, 'k')}</div>
+    <section class="ctab mkdet"><div class="cth"><span>تفصيل حركة السوق يوم بيوم (${mv.length})</span></div>
+      <table class="cmt"><tbody>${days.length ? days.map(d => { const L = mv.filter(m => m.date === d), di = L.filter(m => m.sign > 0).reduce((a, m) => a + m.amt, 0), dout = L.filter(m => m.sign < 0).reduce((a, m) => a + m.amt, 0);
+        return `<tr class="mkdh nohov"><td><b>${AR_DAYS[dowOf(d)]} ${dispDate(d)}</b><small>وارد ${fmtP(di)} · مصروف وتسليم ${fmtP(dout)}</small></td><td class="am ${di - dout < 0 ? 'o' : 'i'}">${fmtP(di - dout)}</td></tr>${L.filter(m => m.sign > 0).concat(L.filter(m => m.sign < 0)).map(row).join('')}`; }).join('') : '<tr><td class="e" colspan="2">مفيش حركات سوق في الفترة دي</td></tr>'}</tbody></table></section>`;
+}
 function renderCash() {
   const pg = $('#p-cash');
   bridgeIn();
@@ -3411,8 +3444,10 @@ function renderCash() {
       <select class="inp" id="cVault" style="margin-top:8px"><option value="">كل الخزن</option>${vs.map(v => `<option value="${esc(v.id)}" ${cashVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
     </div>
     <div class="cnet"><span>${cashMode === 'day' ? 'صافي اليوم' : 'صافي الفترة'}</span><b class="${tin - tout < 0 ? 'neg' : ''}" data-ck="c:net" data-cnt="${tin - tout}">${fmtP(tin - tout)} ${CUR}</b></div>
+    ${cashVault ? '' : '<div class="csec"><b>🏭 خزنتي (المصنع)</b><small>وارد ومصروفات خزنتي انا بس</small></div>'}
     <div class="cwrap">${cashTable('الإيرادات', mv.filter(m => m.sign > 0), mv, 'inc')}${cashTable('المصروفات', mv.filter(m => m.sign < 0), mv, 'exp')}</div>
     ${mv.some(m => !m.sign) ? cashTable('تحويلات', mv.filter(m => !m.sign), mv, '') : ''}
+    ${cashVault ? '' : mkCashBlock(from, to)}
     `;
   $$('#p-cash .vt').forEach(el => el.onclick = () => { cashVault = cashVault === el.dataset.v ? '' : el.dataset.v; renderCash(); });
   $('#cRecv').onclick = () => pickParty('pay');

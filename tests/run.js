@@ -389,7 +389,7 @@ const T0 = Date.now();
     await A.evaluate(([m, s, id]) => { const e = E.get(id); e.del = true; e.delAt = Date.now(); touch(e); [m, s].forEach(x => { P.get(x).del = true; touch(P.get(x)); }); saveDB(); }, [fwM, fwS, fwInv]);
 
     sec('٨) التقارير');
-    await A.click('nav button[data-go=rep]'); await A.settle(200);
+    await A.evaluate(() => go('rep')); await A.settle(200);
     const R = await A.evaluate(() => { repKind = 'debt'; repSide = 'mkt'; return buildReport(); });
     eq('رصيد السوق في التقرير = رصيد العميل', R.fin[1], await A.evaluate(n => fmtP(balance(liveParties().find(x => x.name === n).id)), 'عميل تجربة واحد'));
     eq('المسحوبات − المدفوعات = الرصيد', await A.evaluate(() => { const s = stmtData(liveParties().find(x => x.name === 'عميل تجربة واحد').id, '', ''); return s.tg - s.tp === s.close; }), true);
@@ -555,7 +555,7 @@ const T0 = Date.now();
     sec('١٢) الشركاء: مرتب كل خميس ومسحوبات');
     await bg(A, 'cashSync(true)');   // ياخد اللي اتسجل في الدفتر من الجهاز التاني الأول
     const vb0 = await A.evaluate(() => vaultBal(''));
-    eq('الموبايل: حركة السوق في الشريط اللي تحت مكان الشركاء، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ['home', 'sup', 'mkt', 'rep', 'set']);
+    eq('الموبايل: حركة السوق في الشريط اللي تحت مكان الشركاء، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ["home", "sup", "mkt", "cash", "set"]);
     await A.evaluate(() => go('cash')); await A.click('#cPart'); await A.waitForSelector('#ptBack', {timeout: 3000}).catch(() => {});   // الصفحة بتفتح بعد تغيير العنوان
     eq('الشركاء من الخزنة: الخزنة متعلّمة تحت وفيه رجوع', [await A.evaluate(() => $('nav button.on').dataset.go), !!await A.$('#ptBack')], ['cash', true]);
     await A.click('#psGo'); await A.fill('#psA', '10');
@@ -575,7 +575,7 @@ const T0 = Date.now();
     sec('١٣) الأرباح ولوحة النهارده والبحث');
     const PR = await A.evaluate(() => { const y = todayISO().slice(0, 4) + '-01-01', x = profitOf(y, todayISO()), ex = db.txs.filter(t => !t.del && t.type === 'exp' && !t.pt && !NOT_PL.has(t.cat) && t.date >= y).reduce((s, t) => s + t.amt, 0); return [x.sales, x.purch, x.part, x.exp === ex, x.before === x.sales - x.purch - x.exp + x.inc, x.after === x.before - x.part]; });
     eq('الأرباح: المبيعات والمشتريات والشركاء لوحدهم والربح قبل وبعد', PR, [968500, 5050000, 13000, true, true, true]);
-    await A.click('nav button[data-go=rep]'); await A.click('#rpK button[data-v=profit]'); await A.settle(200);
+    await A.evaluate(() => go('rep')); await A.click('#rpK button[data-v=profit]'); await A.settle(200);
     eq('تقرير الأرباح هو أول تقرير', [await A.getAttribute('#rpK .on', 'data-v'), (await A.textContent('#p-rep .ldgf')).includes('بعد الشركاء')], ['profit', true]);
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('لوحة النهارده اتشالت من الرئيسية', await A.$('#hDash'), null);
@@ -864,6 +864,7 @@ const T0 = Date.now();
       go('cash'); renderCash(); const r = [vaultsL().some(v => v.id === 'v_mkt'), vaultOpts('').includes('v_mkt'), vaultBal('') === all, $('#p-cash').textContent.includes('خزنة السوق'),
         vaultMoves('', todayISO(), todayISO()).some(m => m.who === 'كاش من شريك السوق' && m.sign === 1), vaultMoves('', todayISO(), todayISO()).some(m => m.r.vault === 'v_mkt' && m.r.type !== 'tr')];
       go('mkt'); return r; }), [false, false, true, false, true, false]);
+    eq('الخزنة: حركة السوق في جدول لوحده يوم بيوم ومش مخلوطة بمصروفاتي', await A.evaluate(() => { go('cash'); renderCash(); const b = $('#p-cash .mkdet'); const r = [!!b, b.querySelectorAll('tr.mkdh').length >= 1, b.querySelectorAll('.mtag.exp').length > 0, !$('#p-cash .cwrap').textContent.includes('مصاريف السوق'), $$('#p-cash .mkst .mks').length === 5]; go('mkt'); return r; }), [true, true, true, true, true]);
     await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(900);
     eq('الشريك شاف ✓ على كل حاجة (من غير مسح)', await M.evaluate(() => [liveOps().filter(o => !['done', 'exp'].includes(opState(o))).length, liveOps().length]), [0, 6]);
     await A.evaluate(() => { const t = IDX.tx.get('t_mk_' + Object.values(db.mkt.ops).find(o => o.t === 'hand').id); t.del = true; touch(t); saveDB(); });
@@ -1144,15 +1145,17 @@ const T0 = Date.now();
     await A.evaluate(() => closeModal()); await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
 
     /* الشريط اللي تحت على الموبايل: العملاء | الموردين | حركة السوق | التقارير | الإعدادات */
-    eq('الموبايل: ترتيب الشريط اللي تحت', await A.evaluate(() => $$('nav button[data-go]').filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => (+getComputedStyle(a).order) - (+getComputedStyle(b).order)).map(b => b.innerText.trim())), ['العملاء', 'الموردين', 'حركة السوق', 'التقارير', 'الإعدادات']);
+    eq('الموبايل: ترتيب الشريط اللي تحت', await A.evaluate(() => $$('nav button[data-go]').filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => (+getComputedStyle(a).order) - (+getComputedStyle(b).order)).map(b => b.innerText.trim())), ['العملاء', 'الموردين', 'حركة السوق', 'الخزنة', 'الإعدادات']);
     await A.click('nav button[data-go=home]'); await A.settle(150);
-    eq('العملاء: عملاء السوق والمواقع بس + زرار الخزنة، والبحث مبيجيبش موردين', await A.evaluate(() => { const t = $$('#hTabs button[data-t]').map(b => b.dataset.t); $('#hSearch').value = 'مورد'; renderList(); const n = $$('#hList .pt.sup').length; $('#hSearch').value = ''; renderList(); return [t, !!$('#hCash'), n]; }), [['mkt', 'site'], true, 0]);
+    eq('العملاء: عملاء السوق والمواقع بس + زرار الخزنة، والبحث مبيجيبش موردين', await A.evaluate(() => { const t = $$('#hTabs button[data-t]').map(b => b.dataset.t); $('#hSearch').value = 'مورد'; renderList(); const n = $$('#hList .pt.sup').length; $('#hSearch').value = ''; renderList(); return [t, !!$('#hRep'), n]; }), [['mkt', 'site'], true, 0]);
     await A.click('nav button[data-go=sup]'); await A.settle(150);
     eq('الموردين تبويب لوحده تحت وفيه موردين بس', await A.evaluate(() => [$('nav button.on').dataset.go, $$('#hList .pt').length > 0 && $$('#hList .pt').every(x => x.classList.contains('sup')), $$('#hTabs button[data-t]').length]), ['sup', true, 0]);
     await A.click('#hList .pt'); await A.settle(150);
     eq('صفحة المورد: الموردين هو المتعلّم والرجوع بيرجع للموردين', [await A.evaluate(() => $('nav button.on').dataset.go), (await A.click('#ppBack'), await A.settle(150), await A.evaluate(() => location.hash))], ['sup', '#sup']);
-    await A.click('nav button[data-go=home]'); await A.click('#hCash'); await A.settle(150);
-    eq('زرار الخزنة في العملاء بيفتح الخزنة', await A.evaluate(() => location.hash), '#cash');
+    await A.click('nav button[data-go=home]'); await A.click('#hRep'); await A.settle(150);
+    eq('زرار التقارير في العملاء بيفتح التقارير', await A.evaluate(() => location.hash), '#rep');
+    await A.click('nav button[data-go=cash]'); await A.settle(150);
+    eq('الخزنة في التابات تحت، والتقارير مش فيها', [await A.evaluate(() => location.hash), await A.isVisible('nav button[data-go=cash]'), await A.isVisible('nav button[data-go=rep]')], ['#cash', true, false]);
     /* المطلوب منك النهارده + الألوان */
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('الرئيسية: فاضل تنبيه الفواتير اللي بنودها لسه بس (مفيش وارد السوق ولا الحد الأحمر ولا النسخة)', await A.evaluate(() => [!!$('#nlRem'), $('#mkRem').textContent.trim(), !!$('#bkRem'), !!$('#tkRows')]), [true, '', false, false]);

@@ -1065,13 +1065,8 @@ html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
 /* ============ نظام الشكل الموحد (lib/ui.css): 5 أحجام خط، ألوان النظام، وأرقام أكبر وأتقل ومتحاذية ============ */
 body{font-size:var(--f3);line-height:1.6}
 .money,.num,.pt .a b,.phd .bal b,.tots b,.dash b,.stm b,.ldg td.n,.ldg td.b,.ldgf b,.cm .a,.en .money,.en .dl b,.bl b,.dtot b,.mini2 b,.cnet b,.mkvb b,.cmt td.am,.pst td.n,.ich .money,.il .money,.sg .sr b,table.lt td.n{font-weight:800;font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1;letter-spacing:.01em}
-/* قايمة الحسابات: سطور في صندوق واحد (مش كروت)، والرقم في عمود ثابت متحاذي على آخر رقم، و"عليه" مرة واحدة فوق العمود */
-/* عمود الأرقام على قد أكبر رقم في القايمة بالظبط (subgrid)، فالأرقام كلها متحاذية والاسم ياخد الباقي */
-#hList{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;align-content:start}
-#hList>.pt,#hList>.pth{grid-column:1/-1;display:grid;grid-template-columns:subgrid;align-items:center}
-#hList>.empty{grid-column:1/-1}
-#hList .pt .a{text-align:right}
-#hList .pt .a b{text-align:right;font-size:var(--f4);line-height:1.25}
+/* قايمة الحسابات: سطور في صندوق واحد (مش كروت)، و"عليه" مرة واحدة فوق عمود الأرقام، والأرقام لازقة في الشمال تحت بعض (زي الأول) بس أكبر وأتقل */
+#hList .pt .a b{font-size:var(--f4);line-height:1.25}
 #hList .pt .a small.same{display:none}
 #hList .pt .m b{font-weight:700}
 #hList .pt.zero .a b{color:var(--sub);font-weight:600}
@@ -1090,9 +1085,7 @@ body{font-size:var(--f3);line-height:1.6}
 }
 @media (min-width:1000px){
   main.split #hList .pt .a b{font-size:var(--f3)}
-  main.split #hList .pt .a{display:block}
-  main.split #hList .pt .a b{display:inline-block}
-  main.split #hList .pt .a small:not(.same){display:inline;margin-inline-start:6px}
+  main.split #hList .pt .a{flex-direction:row-reverse}   /* "ليه" يمين الرقم، فالرقم يفضل لازق في الشمال تحت اللي فوقه */
   main.split #hList .pt .m b{font-size:var(--f3)}
   main.split #hTots div b,main.split #hTots .k b{font-size:var(--f3)}
   /* صفحة الحساب: الاسم والرصيد أوضح، والجدول بخط الكلام العادي وأرقامه تقيلة */

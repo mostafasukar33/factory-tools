@@ -173,6 +173,7 @@ async function mktPage(browser, base, vp, dark) {
       await X.evaluate(() => document.fonts.ready);
       await X.addStyleTag({content: '#toast{display:none!important}'});
       await X.waitForTimeout(1300);   // حركة الأرقام (العدّاد) بتخلص
+      if (process.env.SHOT_EVAL) console.log(s.name, await X.evaluate(process.env.SHOT_EVAL));   // للفحص: كود بيتشغل في الصفحة وبيطبع النتيجة
       const f = path.join(OUT, s.name + '.png');
       /* الصفحة كلها: الشاشة بتطول على قد الصفحة (علشان الشريط اللي تحت يفضل تحت) وبترجع زي ما كانت */
       if (s.full) { const h = await X.evaluate(() => Math.max(document.documentElement.scrollHeight, innerHeight)); await X.setViewportSize({width: s.vp.width, height: Math.min(h, 6000)}); await X.waitForTimeout(300); }

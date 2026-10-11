@@ -255,7 +255,7 @@ ol.steps li{margin-bottom:6px}
 .chkrow label{margin:0;font-size:var(--f3);color:#111}
 .hist{border-top:1px dashed var(--line);padding:6px 0;font-size:var(--f2)}
 /* التنقل */
-nav{position:fixed;bottom:0;inset-inline:0;background:var(--bar);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:30;border-top:3px solid var(--gold)}
+nav{position:fixed;bottom:0;inset-inline:0;background:var(--bar);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:30;border-top:3px solid var(--gold)}
 nav button{background:none;border:0;color:#bbb;padding:9px 2px 8px;font-weight:700;font-size:var(--f1);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-height:64px}
 nav button.on{color:var(--gold)}
 nav svg{width:26px;height:26px}
@@ -932,20 +932,23 @@ html[data-theme=dark] .ifoot .btn.off,html[data-theme=dark] .ifoot .btn:disabled
   html[data-theme=dark] #p-party .ldgf{background:var(--pane)}
 }
 /* القايمة الجانبية: مجموعات واضحة + زرار حركة السوق + جرس الإشعارات (اللاب بس) */
-nav .ngrp,nav button.lap,.top .bell,#mkPop{display:none}
+nav .ngrp,nav button.lap,#mkPop{display:none}
+.top #bSet{display:inline-flex;margin-inline-start:auto}
+.top #bTheme{margin-inline-start:0}
 /* الموبايل (بطلب صاحب المشروع): "حركة السوق" تحت مكان "الشركاء"، والشركاء بقت زرار جوه الخزنة (#cPart) */
 nav .nb:empty{display:none}
 @media (max-width:999.98px){
   nav button[data-go=mkt]{display:flex;order:1}
   nav button[data-go=part]{display:none}
-  nav button[data-go=cash],nav button[data-go=set]{order:2}
-  /* بطلب صاحب المشروع: تحت من اليمين العملاء | الموردين | حركة السوق | الخزنة | الإعدادات، والتقارير زرار في صفحة العملاء (#hRep) */
+  nav button[data-go=cash]{order:2}
+  /* بطلب صاحب المشروع: تحت أربعة بس من اليمين العملاء | الموردين | الوارد | الخزنة. الإعدادات ترس فوق (#bSet)، والتقارير والجرد زراير في صفحة العملاء (#hRep, #hJrd) */
+  nav button[data-go=set]{display:none}
   nav button[data-go=rep]{display:none}
   nav .lbl-l{display:none}
 }
 nav button.mob{display:none}
 @media (max-width:999.98px){nav button.mob{display:flex}}
-@media (min-width:1000px){nav .lbl-m{display:none}#hTabs .hcash{display:none}}
+@media (min-width:1000px){nav .lbl-m{display:none}#hTabs .hcash,.top #bSet{display:none}}
 .ctools .btn.mob{display:none}
 @media (max-width:999.98px){.ctools .btn.mob{display:inline-flex}}
 @media (min-width:1000px){
@@ -961,12 +964,9 @@ nav button.mob{display:none}
   nav .nb:empty{display:none}
   nav .qk{border-inline-start:1px solid #34312a;margin:2px 22px 6px 0;padding:2px 0}
   nav .qk button{min-height:28px;padding:2px 14px;font-size:var(--f2)}
-  .top .bell{display:inline-flex;align-items:center;justify-content:center;position:fixed;top:16px;inset-inline-start:136px;width:30px;height:30px;border-radius:8px;border:0;background:transparent;color:#a39d8c;cursor:pointer;padding:0}
-  .top .bell:hover{background:#26241f;color:#fff}
-  .top .bell.has{color:var(--gold)}
-  .top .bell i{position:absolute;top:-4px;inset-inline-end:-6px;background:var(--red);color:#fff;font-style:normal;font-size:var(--f1);font-weight:800;min-width:17px;height:17px;line-height:17px;border-radius:9px;padding:0 3px;text-align:center}
-  .top .bell i:empty{display:none}
-  .top .bell.has svg{animation:bellw 2.4s ease-in-out infinite}
+  nav .bell i{margin-inline-start:auto}
+  nav .bell.has{color:var(--gold-d)}
+  nav .bell.has svg{animation:bellw 2.4s ease-in-out infinite}
   @keyframes bellw{0%,88%,100%{transform:rotate(0)}91%{transform:rotate(14deg)}94%{transform:rotate(-12deg)}97%{transform:rotate(6deg)}}
   #mkPop{position:fixed;top:54px;inset-inline-start:12px;width:360px;max-height:70vh;overflow:auto;z-index:140;background:var(--pane);color:inherit;border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:12px;box-shadow:0 12px 34px #0004;padding:12px}
   #mkPop.on{display:block}
@@ -1006,9 +1006,6 @@ html[data-theme=dark]{--sb-bg:#231e13;--sb-bg2:#1b170f;--sb-tx:#EDE4CC;--sb-mut:
   .top .homebtn:hover{border-color:var(--gold);color:var(--gold-d)}
   .top #bTheme{inset-inline-start:12px;width:52px}
   .top #bLock{inset-inline-start:70px;width:calc(var(--sbw) - 82px)}
-  .top .bell{inset-inline-start:calc(var(--sbw) - 44px);color:var(--sb-mut)}
-  .top .bell:hover{background:var(--sb-hov);color:var(--sb-tx)}
-  .top .bell.has{color:var(--gold-d)}
   main.split{grid-template-columns:var(--lw) minmax(0,1fr)}
   main:not(.split){max-width:1240px;margin:0 auto;padding:22px 28px 36px}
   #mkPop{inset-inline-start:calc(var(--sbw) - 40px)}
@@ -1121,6 +1118,9 @@ html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
 /* الموبايل: تبويب الموردين لوحده + زرار الخزنة جنب عملاء السوق والمواقع */
 #hTabs .supt{grid-column:1/-1;font-weight:800;font-size:var(--f3);color:var(--blue);padding:2px 4px}
 #hTabs .supt small{font-size:var(--f1);color:var(--sub);margin-inline-start:4px}
+#hTabs.t3{grid-template-columns:repeat(2,1fr)}
+.mkstat{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:8px 12px;margin-bottom:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:var(--f2);font-weight:700;color:var(--ink)}
+.mkstat a{cursor:pointer;white-space:nowrap}.mkstat a b{color:var(--red)}.mkstat i{color:var(--sub);font-style:normal}.mkstat span{color:var(--green)}
 #hTabs .hcash{border-style:dashed;border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
 #hTabs .hcash small{font-size:var(--f1)!important;color:var(--gold-d)!important}
 /* ============ نظام الشكل الموحد (lib/ui.css): 5 أحجام خط، ألوان النظام، وأرقام أكبر وأتقل ومتحاذية ============ */
@@ -1208,7 +1208,7 @@ body{font-size:var(--f3);line-height:1.6}
 <header class="top">
   <img src="icons/logo.jpg" alt="فلاش أون">
   <div><h1>فلاش أون</h1><small>الحسابات</small></div>
-  <button class="bell" id="bBell" type="button" title="إشعارات حركة السوق"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><i id="bellN"></i></button>
+  <button class="homebtn lockbtn" id="bSet" type="button" title="الإعدادات" aria-label="الإعدادات" style="min-width:40px;justify-content:center;padding:8px 10px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   <button class="homebtn lockbtn" id="bTheme" type="button" title="ليلي / فاتح" style="min-width:40px;justify-content:center;padding:8px 10px"></button>
   <button class="homebtn lockbtn" id="bLock" type="button" title="قفل"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>قفل</button>
 </header>
@@ -1312,11 +1312,12 @@ body{font-size:var(--f3);line-height:1.6}
 </main>
 
 <nav>
+  <button data-go="mkt" class="lap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg>الوارد<i class="nb" id="nbMkt"></i></button>
+  <button class="lap bell" id="bBell" type="button" title="إشعارات الوارد"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>الجرس<i id="bellN" class="nb"></i></button>
   <div class="ngrp">الشغل اليومي</div>
   <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="lbl-l">الحسابات</span><span class="lbl-m">العملاء</span></button>
   <button data-go="sup" class="mob"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l6 4V9l6 4V5h6v16z"/><path d="M7 17h2M12 17h2M17 17h2"/></svg>الموردين</button>
   <div class="qk"><button type="button" data-q="mkt">عملاء السوق</button><button type="button" data-q="site" class="lap">عملاء المواقع</button><button type="button" data-q="sup">الموردين</button></div>
-  <button data-go="mkt" class="lap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg>حركة السوق<i class="nb" id="nbMkt"></i></button>
   <div class="ngrp">الفلوس</div>
   <button data-go="cash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 10v5M18 10v5"/></svg>الخزنة</button>
   <button data-go="part"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3.2"/><circle cx="4.5" cy="9" r="2.4"/><circle cx="19.5" cy="9" r="2.4"/><path d="M6.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M1 19v-1a3.5 3.5 0 0 1 4.6-3.3M23 19v-1a3.5 3.5 0 0 0-4.6-3.3"/></svg>الشركاء</button>
@@ -1681,10 +1682,16 @@ function lockNow(msg) {
   if (!db) return;
   flushSave().then(() => { db = null; cryptoKey = null; P = new Map(); E = new Map(); $('#p-party').innerHTML = ''; $('#hList').innerHTML = ''; showLock(msg); });
 }
+function landingHash() {
+  if (mkCreds() && (mkPending().length || (db.cfg.clash || []).some(c => !c.seen))) return '#mkt';
+  const lp = localStorage.getItem('fo_lastpg');
+  return lp && /^(cash|part|rep|set)$/.test(lp) ? '#' + lp : '';
+}
 function unlocked() {
   $('#lock').classList.remove('on'); $('#lockBox').innerHTML = '';
   lastAct = Date.now(); bridgeIn();
-  try { const lp = localStorage.getItem('fo_lastpg'); if (lp && !location.hash && /^(cash|part|rep|set)$/.test(lp)) location.hash = '#' + lp; } catch (e) {}
+  /* أول شاشة بعد القفل: الوارد لو فيه حاجة مستنية أو تعارض، وإلا العملاء (أو آخر صفحة كان فيها) */
+  try { if (!location.hash) { const h = landingHash(); if (h) location.hash = h; } } catch (e) {}
   route(); flushSave();
   if (pendingJoin) applyJoin(); else setTimeout(() => syncNow(), 600);
   if (pendingCashJoin) setTimeout(applyCashJoin, 1500); else setTimeout(() => cashSync(true), 2500);
@@ -1724,10 +1731,11 @@ function renderHome() {
   /* الموبايل: "العملاء" فيها السوق والمواقع بس + زرار الخزنة، و"الموردين" تبويب لوحده تحت (#sup) */
   const wide = isWide(), tabs = wide ? [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']] : tab === 'sup' ? [] : [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع']];
   $('#hTabs').innerHTML = (!wide && tab === 'sup' ? `<div class="supt">🏭 الموردين <small>${cnt('sup')}</small></div>` : tabs.map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small></button>`).join(''))
-    + (!wide && tab !== 'sup' ? '<button class="hcash" id="hRep" type="button">📊 التقارير<small>والأرباح وكشف الحساب</small></button>' : '');
+    + (!wide && tab !== 'sup' ? '<button class="hcash" id="hRep" type="button">📊 التقارير<small>والأرباح وكشف الحساب</small></button>' + (() => { const w = ivWaiting(); return `<button class="hcash" id="hJrd" type="button">📦 الجرد<small>${w ? w + ' مستني · ' : ''}والمساهمين</small></button>`; })() : '');
   $('#hTabs').classList.toggle('t3', !wide && tab !== 'sup');
   $$('#hTabs button[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
   if ($('#hRep')) $('#hRep').onclick = () => go('rep');
+  if ($('#hJrd')) $('#hJrd').onclick = () => go('jrd');
   renderMkHome(); renderList(bal); qkMark(); runCounters($('#hTots'));
 }
 function qkMark() { const sp = $('main').classList.contains('split'); $$('nav .qk button').forEach(x => x.classList.toggle('on', sp && x.dataset.q === tab)); }
@@ -1947,13 +1955,22 @@ function addEntry(o) {
   db.entries.push(e); E.set(e.id, e); return e;
 }
 /* سطر "آخر دفعة من كام يوم" في صفحة العميل، و"بيدفع كل كام يوم" من آخر 6 دفعات. بيحمر لو اتأخر عن عادته وعليه فلوس */
-function payRhythm(p, all, b) {
-  if (p.sec === 'sup') return '';
+function payInfo(p, all, b) {
+  if (p.sec === 'sup') return null;
   const ds = [...new Set(all.filter(e => !e.del && e.kind === 'pay').map(e => e.date))].sort().slice(-6);
-  if (!ds.length) return '';
+  if (!ds.length) return null;
   const day = d => Math.round(Date.parse(d + 'T00:00:00Z') / 864e5), last = day(ds[ds.length - 1]);
   const ago = Math.max(0, day(todayISO()) - last), avg = ds.length >= 3 ? Math.round((last - day(ds[0])) / (ds.length - 1)) : 0;
-  const late = b > 0 && (avg ? ago > Math.max(avg * 1.5, 7) : ago > 30);
+  return {ago, avg, late: b > 0 && (avg ? ago > Math.max(avg * 1.5, 7) : ago > 30)};
+}
+/* العملاء اللي عليهم فلوس واتأخروا عن عادة دفعهم (الحساب الفرعي برّه الإجماليات فمش بيتعدّ) */
+function lateParties() {
+  const bal = allBalances();
+  return liveParties().filter(p => !p.noTot && p.sec !== 'sup' && ((i) => i && i.late)(payInfo(p, partyEntries(p.id, true), bal.get(p.id) || 0)));
+}
+function payRhythm(p, all, b) {
+  const pi = payInfo(p, all, b); if (!pi) return '';
+  const {ago, avg, late} = pi;
   const agoT = ago === 0 ? 'النهارده' : ago === 1 ? 'امبارح' : ago === 2 ? 'من يومين' : `من ${ago} ${ago <= 10 ? 'أيام' : 'يوم'}`;
   return `<div class="prh${late ? ' late' : ''}"><i></i>آخر دفعة ${agoT}${avg ? ` · بيدفع كل ${avg} يوم تقريباً` : ''}</div>`;
 }
@@ -5287,8 +5304,9 @@ function setOpenAll() { $$('#p-set > .card').forEach(c => c.classList.remove('sh
 initSetCards();
 let lastHash = '', wasWide = isWide();
 addEventListener('resize', () => { if (isWide() !== wasWide) { wasWide = isWide(); route(); } });
-if (!CHECKS_ON) { $('#sChkDays').closest('.card').style.display = 'none'; $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(5,1fr)'; }
+if (!CHECKS_ON) { $('#sChkDays').closest('.card').style.display = 'none'; $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(4,1fr)'; }
 $$('nav button[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
+$('#bSet').onclick = () => go('set');
 $('#bTheme').onclick = () => { uiSet({theme: document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'}); if ($('#uiTheme')) bindUI(); };
 uiApply();
 $$('nav .qk button').forEach(b => b.onclick = () => {
@@ -5962,12 +5980,40 @@ function renderMkt() {
   if (!mkCreds()) { box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a></div><div class="card empty">حركة السوق لسه متربطتش.<br><a class="lnk" id="mkSet">اربطها من الإعدادات</a></div>`; $('#mkBack').onclick = () => go('home'); $('#mkSet').onclick = mkGoSettings; return; }
   const n = mkPending().length;
   box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a><b style="font-size:var(--f3);color:var(--ink)">📥 وارد السوق</b><span class="mkdot ${mkErr ? 'w' : ''}"><i></i>${mkErr === 'key' ? 'الشيت رفض المفتاح' : mkErr ? 'مش قادر يوصل للشيت' : mkLastOk ? 'متصل' : '…'}</span></div>
+    ${mkStat()}
     <div class="mkvb"><span>🗄️ رصيد خزنة السوق</span><b>${fmtP(mkLive().reduce((s, o) => s + mkSign(o) * o.amt, 0))} <small>${CUR}</small></b></div>
     <div class="seg s2" id="mkTabs"><button type="button" data-v="in" class="${mkView === 'in' ? 'on' : ''}">الوارد${n ? ` <b class="mkn">${n}</b>` : ''}</button><button type="button" data-v="arch" class="${mkView === 'arch' ? 'on' : ''}">الأرشيف</button></div>
     <div id="mkBody"></div>`;
   $('#mkBack').onclick = () => go('home');
   $$('#mkTabs button').forEach(b => b.onclick = () => { mkView = b.dataset.v; renderMkt(); });
+  mkStatBind();
   if (mkView === 'arch') mkArch(); else mkInbox();
+}
+/* سطر واحد فوق الوارد: المستني نقل، التعارض، اللي اتأخر عن عادته، وكاش الشريك اللي لسه ما اتسلّمش. بيظهر اللي فيه رقم بس */
+function mkStatParts() {
+  const cash = db.vaults.some(v => v.id === MKV && !v.del) ? Math.max(0, vaultBal(MKV)) : 0;
+  return {wait: mkPending().length, clash: (db.cfg.clash || []).filter(c => !c.seen).length, late: lateParties().length, cash};
+}
+function mkStat() {
+  const s = mkStatParts(), a = [];
+  if (s.wait) a.push(`<a data-st="wait">⏳ <b>${s.wait}</b> مستني نقل</a>`);
+  if (s.clash) a.push(`<a data-st="clash">⚠️ <b>${s.clash}</b> تعارض</a>`);
+  if (s.late) a.push(`<a data-st="late">🕒 <b>${s.late}</b> اتأخر عن عادته</a>`);
+  if (s.cash) a.push(`<a data-st="cash">💵 <b>${fmtP(s.cash)}</b> كاش مع الشريك</a>`);
+  return `<div class="mkstat" id="mkStat">${a.length ? a.join('<i>·</i>') : '<span>✔ مفيش حاجة مستنياك</span>'}</div>`;
+}
+function mkStatBind() {
+  $$('#mkStat [data-st]').forEach(el => el.onclick = () => {
+    const k = el.dataset.st;
+    if (k === 'clash') clashModal();
+    else if (k === 'cash') go('cash');
+    else if (k === 'late') {
+      const l = lateParties();
+      modal(`<h3>🕒 اتأخروا عن عادة الدفع</h3>${l.map(p => `<div class="pt" data-p="${esc(p.id)}"><div class="m"><b>${esc(p.name)}</b><small>${esc(lpAgo(p.id))}</small></div><div class="a"><b>${fmtP(balance(p.id))}</b></div></div>`).join('')}<button class="btn line" id="ltX" type="button" style="margin-top:10px">رجوع</button>`, true);
+      $('#ltX').onclick = closeModal;
+      $$('#modal .pt[data-p]').forEach(x => x.onclick = () => { closeModal(); go('p/' + x.dataset.p); });
+    }
+  });
 }
 function mkInbox() {
   const gs = mkGroups(), n = mkPending().length;

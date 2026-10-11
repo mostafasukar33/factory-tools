@@ -432,15 +432,15 @@ const T0 = Date.now();
       const a = buildStmtPages(sup, stmtData(sup.id, '', ''))[0].querySelector('.sbox'), b = buildStmtPages(cu, stmtData(cu.id, '', ''))[0].querySelector('.sbox'); $('#render').innerHTML = ''; return [!!a, !!b]; }), [true, false]);
 
     sec('٩) قفل الفترة');
-    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.fill('#sLockD', today); await A.click('#sLockGo'); await A.click('#cOk'); await A.settle(200);
+    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.fill('#sLockD', today); await A.click('#sLockGo'); await A.click('#cOk'); await A.settle(200);
     await openParty(A, 'عميل تجربة واحد'); await A.click('#fbPay'); await A.fill('#pyAmt', '1'); await A.click('#pyOk'); await A.settle(150);
     eq('مينفعش تسجل في فترة مقفولة', (await A.textContent('#toast')).includes('مقفولة'), true); await A.click('#pyX');
-    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.click('#sUnlock'); await A.fill('#apP', PASS); await A.click('#apOk'); await A.settle(600);
+    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.click('#sUnlock'); await A.fill('#apP', PASS); await A.click('#apOk'); await A.settle(600);
 
     }
     if (RUN.sync) {   // ← وضع الشكل (smoke) بيتخطى ١٠ لحد ٢٢
     sec('١٠) المزامنة مع الشيت وجهاز تاني');
-    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.settle(300);
+    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.settle(300);
     await A.click('#shHelp'); await A.click('#hpCopy'); const accCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.acc.load(accCode); await A.click('#hpX');
     eq('كود الشيت مفيهوش المفتاح', accCode.includes(KEY), false);
     eq('رقم تعريف النشر بيتحول للينك', await A.evaluate(() => normSheetUrl(' AKfycbxTEST1234567890abcdefghij ')), 'https://script.google.com/macros/s/AKfycbxTEST1234567890abcdefghij/exec');
@@ -450,7 +450,7 @@ const T0 = Date.now();
     eq('الشيت بيرفض مفتاح غلط', JSON.parse(sheets.acc.post(JSON.stringify({key: 'x', action: 'pull'}))).error, 'key');
     D2 = await newDevice(browser, base, sheets); B = await D2.page('accounts.html');
     await unlock(B, true);
-    await B.click('nav button[data-go=set]'); await B.evaluate(() => setOpenAll()); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.settle(4000);
+    await B.click('#bSet:visible, nav button[data-go=set]:visible'); await B.evaluate(() => setOpenAll()); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.settle(4000);
     if (MO) await A.evaluate(() => { const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name: 'عميل ترتيب تجربة', phone: '', note: '', noTot: false, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p); saveDB(); });
     if (RUN.base) {   // ← وضع السوق بيتخطى باقي ١٠ لحد ١٤
     const snap = X => X.evaluate(() => [liveParties().map(p => balance(p.id)).sort(), vaultBal(''), selfCheck().length]);
@@ -465,7 +465,7 @@ const T0 = Date.now();
     eq('جهاز جديد برابط الربط بس نزلت عليه كل الحسابات', await snap(J), await snap(A));
     eq('الجهاز الجديد فضل مربوط', await J.evaluate(() => db.cfg.sheetOk), true);
     eq('الرابط اتشال من شريط العنوان', J.url().includes('join'), false);
-    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.click('#shAudit'); await A.settle(3000);
+    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.click('#shAudit'); await A.settle(3000);
     eq('مراجعة الجهاز مع الشيت متطابقة', (await A.textContent('#modal .sync')).includes('متطابقين ('), true); await A.click('#saX');
 
     sec('١٠ج) كود الشيت الأساسي والنسخة الاحتياطية المنفصلة، والمزامنة بدفعات');
@@ -526,7 +526,7 @@ const T0 = Date.now();
     await bg(A, 'syncNow()'); await A.settle(500);
     eq('شيت بالكود القديم: المزامنة شغالة عادي والتحذير الأصفر ظاهر', await A.evaluate(() => [syncErr, pendingRecs().length, db.cfg.accV, $('#syncBox').classList.contains('warn'), !!$('#syUpd')]), ['', 0, 1, true, true]);
     eq('الحركة وصلت الشيت القديم', GOLD.sheets['السجلات'].rows.some(r => r[0] === 't_oldsheet'), true);
-    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.settle(800);
+    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.settle(800);
     eq('الإعدادات: تحذير "الكود قديم" وزرار ثابت "تحديث كود شيت الحسابات"', [!!(await A.$('#accOld')), (await A.textContent('#shUpd')).includes('تحديث كود شيت الحسابات')], [true, true]);
     await A.click('#shUpd'); await A.settle(150);
     eq('خطوات التحديث من جوه الجدول: إزاي تعرفه (بدون عنوان، ورقة السجلات جنب الورقة1، العناوين) ولينك الجدول نفسه', await A.evaluate(() => { const t = $('#modal').textContent; return [t.includes('الإضافات (Extensions)'), t.includes('جدول بيانات بدون عنوان'), t.includes('السجلات') && t.includes('الورقة1') && t.includes('رقم المزامنة'), t.includes('New version'), !!$('#modal a[href*="docs.google.com/spreadsheets/d/ss1"]')]; }), [true, true, true, true, true]);
@@ -598,7 +598,7 @@ const T0 = Date.now();
     eq('مفيش تعارض غلط: تعديل عادي بعد مزامنة، أو نفس التعديل على الجهازين', [await nCl(A), await nCl(B), await A.evaluate(() => IDX.tx.get('t_cf').amt), await B.evaluate(() => IDX.tx.get('t_cf').amt)], cl0.concat([66600, 66600]));
 
     sec('١١) شيت دفتر الخزنة مقفول بالمفتاح');
-    const C2 = await D1.page('cash.html'); await C2.click('nav button[data-go=set]');
+    const C2 = await D1.page('cash.html'); await C2.click('#bSet:visible, nav button[data-go=set]:visible');
     await C2.fill('#shUrl', CASH_URL); await C2.click('#shSave'); await C2.settle(300);
     await C2.click('#shHelp'); await C2.click('#hpCopy'); const cashCode = await C2.evaluate(() => navigator.clipboard.readText()); sheets.cash.load(cashCode); await C2.click('#hpX');
     await C2.click('#shSave'); await C2.settle(1500);
@@ -630,7 +630,7 @@ const T0 = Date.now();
     await Saf.settle(800);
     eq('لينك شيت الحسابات أو مفتاح غلط بيطلع رسالة واضحة', [await B.evaluate(u => connectCash(u, 'Wrong-Key-1234'), CASH_URL), await B.evaluate(([u, k]) => connectCash(u, k), [ACC_URL, KEY])],
       ['المفتاح السري مش بتاع شيت الدفتر ده. استخدم زرار "انسخ رابط الربط" من الدفتر.', 'ده لينك شيت الحسابات، مش شيت دفتر الخزنة.']);
-    await Saf.click('nav button[data-go=set]'); await Saf.click('#shAcc'); const cjl = await Saf.evaluate(() => navigator.clipboard.readText());
+    await Saf.click('#bSet:visible, nav button[data-go=set]:visible'); await Saf.click('#shAcc'); const cjl = await Saf.evaluate(() => navigator.clipboard.readText());
     eq('رابط الربط من الدفتر بيتقري في الحسابات', await B.evaluate(t => { const o = parseCashJoin(t); return !!(o && o.u && o.k); }, cjl), true);
     const vB0 = await B.evaluate(() => vaultBal(''));
     await bg(B, 'cashSync(true)'); await B.settle(300);
@@ -686,7 +686,7 @@ const T0 = Date.now();
     sec('١٢) الشركاء: مرتب كل خميس ومسحوبات');
     await bg(A, 'cashSync(true)');   // ياخد اللي اتسجل في الدفتر من الجهاز التاني الأول
     const vb0 = await A.evaluate(() => vaultBal(''));
-    eq('الموبايل: حركة السوق في الشريط اللي تحت مكان الشركاء، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ["home", "sup", "mkt", "cash", "set"]);
+    eq('الموبايل: حركة السوق في الشريط اللي تحت مكان الشركاء، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ["home", "sup", "mkt", "cash"]);
     await A.evaluate(() => go('cash')); await A.click('#cPart'); await A.waitForSelector('#ptBack', {timeout: 3000}).catch(() => {});   // الصفحة بتفتح بعد تغيير العنوان
     eq('الشركاء من الخزنة: الخزنة متعلّمة تحت وفيه رجوع', [await A.evaluate(() => $('nav button.on').dataset.go), !!await A.$('#ptBack')], ['cash', true]);
     await A.click('#psGo'); await A.fill('#psA', '10');
@@ -903,7 +903,7 @@ const T0 = Date.now();
     const C1 = 'عميل تجربة واحد', bal0 = await bal(A, C1), pid1 = await A.evaluate(n => liveParties().find(x => x.name === n).id, C1);
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('قبل الربط: مفيش سطر في الرئيسية، وتبويب حركة السوق بيوديه للإعدادات على كارتها', [(await A.textContent('#mkRem')).trim(), (await A.click('nav button[data-go=mkt]'), await A.click('#mkSet'), await A.settle(400), await A.evaluate(() => [location.hash, !!$('#sMkt #smHelp')]))], ['', ['#set', true]]);
-    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll());
+    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll());
     await A.click('#smHelp'); await A.click('#mhCopy'); const mkCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.mkt.load(mkCode); await A.click('#mhX');
     await A.fill('#smUrl', MKT_URL); await A.click('#smGo'); await A.settle(2500);
     await A.evaluate(() => putSet('tgOpts', {bk: false, sum: false, al: false}));   // رسايل الحسابات على تليجرام بتتجرب لوحدها تحت، علشان متدخلش وسط رسايل الشريك
@@ -1057,6 +1057,19 @@ const T0 = Date.now();
     eq('الجرس ← افتح الوارد، والزرار الجانبي هو اللي متعلّم', await A.evaluate(() => [location.hash, $('#mkPop').classList.contains('on'), $('nav button.on').dataset.go]), ['#mkt', false, 'mkt']);
     await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
     eq('الموبايل: زرار حركة السوق تحت مكان الشركاء (بطلب صاحب المشروع) ومفيش جرس', await A.evaluate(() => [getComputedStyle($('nav button[data-go=mkt]')).display, getComputedStyle($('nav button[data-go=part]')).display, getComputedStyle($('#bBell')).display]), ['flex', 'none', 'none']);
+    eq('الموبايل: الإعدادات ترس فوق (مش تحت) والتقارير والجرد زراير في العملاء', await A.evaluate(() => [getComputedStyle($('#bSet')).display !== 'none', getComputedStyle($('nav button[data-go=set]')).display, getComputedStyle($('nav')).gridTemplateColumns.split(' ').length]), [true, 'none', 4]);
+    await A.click('nav button[data-go=home]'); await A.settle(200);
+    eq('الموبايل: زراير التقارير والجرد جنب بعض فوق في العملاء', await A.evaluate(() => { const r = $('#hRep').getBoundingClientRect(), j = $('#hJrd').getBoundingClientRect(); return [Math.abs(r.top - j.top) < 4, r.left !== j.left]; }), [true, true]);
+    await A.click('#hJrd'); await A.settle(200);
+    eq('زرار الجرد فوق بيفتح الجرد', await A.evaluate(() => location.hash), '#jrd');
+    await A.click('#bSet'); await A.settle(200);
+    eq('ترس الإعدادات فوق بيفتح الإعدادات', await A.evaluate(() => location.hash), '#set');
+    await A.click('nav button[data-go=mkt]'); await A.settle(300);
+    eq('سطر الوارد: المستني نقل ظاهر فوق الوارد', await A.evaluate(() => [!!$('#mkStat'), /مستني نقل/.test($('#mkStat').textContent), $('#mkStat').getBoundingClientRect().top < $('#mkBody').getBoundingClientRect().top]), [true, true, true]);
+    eq('أول شاشة بعد القفل: الوارد لو فيه حاجة مستنية', await A.evaluate(() => landingHash()), '#mkt');
+    await A.setViewportSize({width: 1300, height: 800}); await A.settle(200);
+    eq('اللاب: أول سطرين في القايمة الوارد وبعده الجرس وبعدهم العملاء', await A.evaluate(() => { const b = [...$('nav').children].filter(x => x.tagName === 'BUTTON' && getComputedStyle(x).display !== 'none'); return [b[0].dataset.go, b[1].id, b[2].dataset.go]; }), ['mkt', 'bBell', 'home']);
+    await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('مفيش حاجة دخلت الحسابات لوحدها', [await bal(A, C1), await vbal(A, 'v_mkt'), await A.evaluate(() => db.entries.filter(e => e.id.startsWith('e_mk_')).length)], [bal0, 0, 0]);
     await A.click('nav button[data-go=mkt]'); await A.settle(200);
@@ -1493,7 +1506,7 @@ const T0 = Date.now();
     await A.evaluate(() => closeModal()); await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
 
     /* الشريط اللي تحت على الموبايل: العملاء | الموردين | حركة السوق | التقارير | الإعدادات */
-    eq('الموبايل: ترتيب الشريط اللي تحت', await A.evaluate(() => $$('nav button[data-go]').filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => (+getComputedStyle(a).order) - (+getComputedStyle(b).order)).map(b => b.innerText.trim())), ['العملاء', 'الموردين', 'حركة السوق', 'الخزنة', 'الإعدادات']);
+    eq('الموبايل: ترتيب الشريط اللي تحت', await A.evaluate(() => $$('nav button[data-go]').filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => (+getComputedStyle(a).order) - (+getComputedStyle(b).order)).map(b => b.innerText.trim())), ['العملاء', 'الموردين', 'الوارد', 'الخزنة']);
     await A.click('nav button[data-go=home]'); await A.settle(150);
     eq('العملاء: عملاء السوق والمواقع بس + زرار الخزنة، والبحث مبيجيبش موردين', await A.evaluate(() => { const t = $$('#hTabs button[data-t]').map(b => b.dataset.t); $('#hSearch').value = 'مورد'; renderList(); const n = $$('#hList .pt.sup').length; $('#hSearch').value = ''; renderList(); return [t, !!$('#hRep'), n]; }), [['mkt', 'site'], true, 0]);
     await A.click('nav button[data-go=sup]'); await A.settle(150);

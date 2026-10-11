@@ -185,7 +185,7 @@ table.ldg{width:100%;border-collapse:collapse;font-size:var(--f1)}
 .ldg td.b{background:var(--row);border-inline-start:2px solid var(--gold-d)}
 .ldg td.l{text-align:right;min-width:130px}.ldg td.l small{display:block;font-size:var(--f1);color:var(--gold-d);font-weight:700}
 .ldg td.dt{white-space:nowrap;font-size:var(--f1)}.ldg td.q{white-space:nowrap;font-size:var(--f1)}
-.ldg tr.more td{padding:10px}.ldg tr.more a{cursor:pointer;font-weight:800;color:var(--gold-d);text-decoration:underline}
+.ldg tr.more td{padding:8px 10px;text-align:right}.ldg tr.more td.b{text-align:inherit}.ldg tr.more a+a{margin-inline-start:16px}.ldg tr.more small{display:block;font-size:var(--f1);color:var(--sub);font-weight:600;margin-top:1px}.ldg tr.more a{cursor:pointer;font-weight:800;color:var(--gold-d);text-decoration:underline}
 .ldg td.n{direction:ltr;white-space:nowrap}.ldg td.b{direction:ltr;white-space:nowrap;font-weight:800}
 .ldg tr{cursor:pointer}.ldg tr:nth-child(even) td{background:var(--row)}
 .ldg tr.f td{border-top:1.5px solid var(--line)}
@@ -1949,7 +1949,8 @@ function renderParty(id) {
   if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
   $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => el.dataset.g ? mkGrpModal(p, el.dataset.g.split(',')) : el.dataset.li !== undefined ? lineModal(p, E.get(el.dataset.id), +el.dataset.li) : openEntry(p, E.get(el.dataset.id)));
   if ($('#ppEnd')) $('#ppEnd').onclick = () => jumpTo(true);
-  if ($('#ldgOld')) $('#ldgOld').onclick = () => { ldgAll.has(id) ? ldgAll.delete(id) : ldgAll.add(id); renderParty(id); };
+  if ($('#ldgOld')) $('#ldgOld').onclick = () => { ldgAll.set(id, (ldgAll.get(id) || 0) + LDG_SHOW); renderParty(id); };
+  if ($('#ldgFold')) $('#ldgFold').onclick = () => { ldgAll.delete(id); renderParty(id); };
   if (isFwdSrc(p)) fwBind(p);
   $$('#p-party [data-nl]').forEach(el => el.onclick = nlModal);
   runCounters($('#p-party'));
@@ -2383,16 +2384,16 @@ function ledgerHintOnce() {
 }
 /* الحساب الطويل: بنرسم آخر LDG_SHOW سطر بس، والأقدم متلموم في زرار واحد (فيه عدده والرصيد قبله) بيفرده ويطويه (ldgAll = الحسابات اللي اتفتح أقدمها).
    للعرض بس: الرصيد وكشف الحساب (PDF) ملهمش دعوة بيه */
-const LDG_MAX = 40, LDG_SHOW = 30, ldgAll = new Set();
+const LDG_MAX = 40, LDG_SHOW = 30, ldgAll = new Map();   // ldgAll: حساب ← كام سطر زيادة اتفرد من القديم
 function ledgerTable(p) {
   const s = stmtData(p.id, '', '');
-  const over = s.rows.length > LDG_MAX ? s.rows.length - LDG_SHOW : 0, open = ldgAll.has(p.id), cut = open ? 0 : over;
+  const over = s.rows.length > LDG_MAX ? s.rows.length - LDG_SHOW : 0, ext = ldgAll.get(p.id) || 0, cut = Math.max(0, over - ext);
   const fw = isFwdSrc(p), fwTag = r => !r.first ? '' : fw && r.e.kind === 'inv' ? `<small class="fwt ${fwState(r.e)}">${FW_SHORT[fwState(r.e)]}</small>` : r.e.fwFrom ? `<small class="fwt from">↩ من ${esc((P.get((E.get(r.e.fwFrom) || {}).party) || {}).name || 'الحساب الفرعي')}</small>` : '';
   let yPrev = matchMedia('(min-width:1000px)').matches ? '' : null;   // سطر السنة بيظهر بس لما السنة تتغير، على اللاب بس (في الموبايل مبيترسمش علشان ألوان الصفوف متتلخبطش)
   if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده.<br><small style="color:var(--sub)">ابدأ بفاتورة أو دفعة من الأزرار اللي فوق.</small></div>';
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
-    ${over ? `<tr class="more"><td colspan="7"><a id="ldgOld">${open ? `▲ طي الأقدم (${over})` : `▼ ${over} سطر أقدم — الرصيد قبلهم ${fmtP(s.rows[over - 1].run * s.sg)}`}</a></td></tr>` : ''}
+    ${over ? `<tr class="more"><td colspan="6">${ext ? '<a id="ldgFold">▲ طي</a>' : ''}${cut ? `<a id="ldgOld">▼ ${cut} سطر أقدم</a><small>الرصيد السابق</small>` : ''}</td><td class="b">${cut ? fmtP(s.rows[cut - 1].run * s.sg) : ''}</td></tr>` : ''}
     ${(cut ? s.rows.slice(cut) : s.rows).map(r => (yPrev !== null && (r.date || '').slice(0, 4) !== yPrev ? `<tr class="yr"><td colspan="7">${yPrev = (r.date || '').slice(0, 4)}</td></tr>` : '') + `<tr data-id="${esc(r.e.id)}"${r.li !== undefined ? ` data-li="${r.li}"` : ''}${r.grp && r.grp.length > 1 ? ` data-g="${esc(r.grp.map(x => x.id).join(','))}"` : ''} class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${fwTag(r)}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b data-ck="pe:${esc(p.id)}" data-cnt="${s.close * s.sg}">${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>

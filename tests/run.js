@@ -1027,12 +1027,15 @@ const T0 = Date.now();
     const exO = n => A.evaluate(n => { const o = Object.values(db.mkt.ops).find(x => x.t === 'exp' && x.cat === n), t = IDX.tx.get('t_mk_' + o.id); return [t ? !t.del : null, t ? t.amt : null, mkState(o), mkPending().some(x => x.id === o.id)]; }, n);
     await exA('غدا', 700);
     eq('المصروف مبيتسجلش لوحده: مستني مصطفى في الوارد', await exO('غدا'), [null, null, 'new', true]);
+    const exW = n => A.evaluate(n => { const id = Object.values(db.mkt.ops).find(x => x.t === 'exp' && x.cat === n).id, at = v => { mkView = v; mkDay = todayISO(); go('mkt'); renderMkt(); return !!$(`#mkBody [data-op="${id}"]`); }; const r = [at('in'), at('arch'), !!$('#maIn')]; at('in'); return r; }, n);   // [في الوارد، في الأرشيف، تنبيه "لسه" فوق الأرشيف]
+    eq('اللي لسه متنقلش في الوارد بس ومش في الأرشيف، والأرشيف بيقول إن فيه حاجة لسه', await exW('غدا'), [true, false, true]);
     eq('الشريك: مفيش حالة ولا انتظار على المصروف، وينفع يتعدل', await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); document.body.dataset.t = ''; nav(''); return [opState(o), stHtml(o)]; }), ['exp', '']);
     await M.evaluate(() => nav('')); await M.settle(150);
     eq('الشريك: سطر المصروف في الرئيسية من غير أي نص حالة', await M.evaluate(() => { const r = [...document.querySelectorAll('.row.t-exp')].find(x => x.textContent.includes('غدا')); return [!!r, r.querySelectorAll('.st').length]; }), [true, 0]);
     eq('عند مصطفى: زرار تجاهل جنب المصروف ومفيش رجّعها', await A.evaluate(() => { mkView = 'in'; go('mkt'); return new Promise(r => setTimeout(() => r([document.querySelectorAll('#mkBody [data-ig]').length > 0, !document.querySelector('#mkBody [data-bk="x:exp"]')]), 400)); }), [true, true]);
     await A.click('#p-mkt [data-mv="x:exp"]'); await A.settle(250); await A.click('#mvOk'); await A.settle(300);
     eq('"سجّلها مصروف": اتسجلت في خزنة السوق تحت مصاريف السوق', await exO('غدا'), [true, 70000, 'done', false]);
+    eq('أول ما اتنقل: خرج من الوارد وراح الأرشيف', (await exW('غدا')).slice(0, 2), [false, true]);
     await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); o.amt = 80000; bump(o); save(); sync(); }); await M.settle(500); await bg(A, 'mkSync()'); await A.settle(400);
     eq('الشريك عدّل بعد ما اتسجلت: الحركة عند مصطفى اتعدلت', await exO('غدا'), [true, 80000, 'done', false]);
     eq('والشريك لسه ينفع يعدّل (مفيش قفل)', await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); editSheet(o); const ok = !!$('#eOk'); closeModal(); return ok; }), true);

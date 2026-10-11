@@ -270,6 +270,18 @@ html[data-theme=dark] .row.d-to .a .money{color:#7FB3DD}
 .kres{margin-top:8px;border-radius:10px;padding:8px 12px;font-weight:800;font-size:16px;text-align:center}
 .kres.ok{background:var(--green-l);color:var(--green)}.kres.bad{background:var(--red-l);color:var(--red)}
 .kres small{display:block;font-size:12.5px;font-weight:600;color:var(--sub);margin-top:3px}
+.gtabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 10px;padding-bottom:2px;scrollbar-width:none}
+.gtabs::-webkit-scrollbar{display:none}
+.gtabs button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--sub);border-radius:20px;padding:6px 14px;font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap}
+.gtabs button.on{background:var(--ink);color:var(--gold);border-color:var(--ink)}
+.gtabs button.add{border-style:dashed;color:var(--gold-d);background:var(--gold-l)}
+html[data-theme=dark] .gtabs button.on{background:#3a352a;color:var(--gold)}
+.lbl .csort{font-size:13px;font-weight:800;color:var(--gold-d);display:flex;align-items:center;gap:3px}
+.lbl .csort select{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;font:inherit;font-size:13px;font-weight:700;padding:3px 6px}
+.gedit{border:0;background:none;color:var(--gold-d);font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;padding:0 4px}
+.gpick{max-height:44vh;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:8px}
+.gp{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--row);font-weight:700;font-size:16px;cursor:pointer}
+.gp:last-child{border-bottom:0}.gp input{width:20px;height:20px;accent-color:var(--green)}.gp.on{background:var(--green-l)}
 </style>
 </head>
 <body>
@@ -637,7 +649,7 @@ function drawHome() {
 /* ---------- العملاء (تبويب لوحده) ---------- */
 let custNo = new Map();
 const limOf = c => c.bal > 0 ? (c.lim || '') : '';
-const custTbl = list => `<table class="ctb"><thead><tr><th>#</th><th>العميل</th><th>الرصيد (عليه)</th></tr></thead><tbody>${list.map(c => `<tr class="${limOf(c) ? 'l-' + limOf(c) : ''}" data-c="${esc(c.id)}"><td class="no">${custNo.get(c.id) || ''}</td><td class="nm">${esc(c.name)}${c.nw ? '<span class="nw">جديد</span>' : ''}${c.want ? '<span class="wn">📌 مطلوب</span>' : ''}<small class="lp ${lpCls(c)}">${lpTxt(c)}</small></td><td class="bl ${c.bal > 0 ? 'money' : 'z'}">${c.bal > 0 ? fmt(c.bal) : '—'}</td></tr>`).join('')}</tbody></table>`;
+const custTbl = list => `<table class="ctb"><thead><tr><th>#</th><th>العميل</th><th>الرصيد (عليه)</th></tr></thead><tbody>${list.map(c => `<tr class="${limOf(c) ? 'l-' + limOf(c) : ''}" data-c="${esc(c.id)}"><td class="no">${custNo.get(c.id) || ''}</td><td class="nm">${esc(c.name)}${c.nw ? '<span class="nw">جديد</span>' : ''}${c.want ? '<span class="wn">📌 مطلوب</span>' : ''}</td><td class="bl ${c.bal > 0 ? 'money' : 'z'}">${c.bal > 0 ? fmt(c.bal) : '—'}</td></tr>`).join('')}</tbody></table>`;
 /* ترتيب العملاء (بيتحفظ على الموبايل): الأكتر عليه / مدفعش من زمان / بالحروف */
 const C_SORT = [['owe', 'الأكتر عليه'], ['old', 'مدفعش من زمان'], ['abc', 'بالحروف']];
 function sortCust(all, k) {
@@ -646,25 +658,71 @@ function sortCust(all, k) {
   if (k === 'old') return all.sort((a, b) => ((b.bal > 0) - (a.bal > 0)) || (a.lp || '').localeCompare(b.lp || '') || b.bal - a.bal || abc(a, b));
   return all.sort((a, b) => b.bal - a.bal || abc(a, b));
 }
+/* أقسام العملاء (بطلب صاحب المشروع): الشريك بيقسّمهم براحته (منطقة كذا...)، وكل قسم تبويب فوق جنب "كل العملاء".
+   متخزنة على الموبايل بس في S.groups = [{id, name, ids:[عميل]}] ومالهاش أي دعوة ببرنامج الحسابات */
+const groups = () => (S.groups = S.groups || []);
 function drawCustomers(q0) {
   const cs = customers();
   const owed = [...cs.values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0);
+  if (S.cGrp && !groups().some(g => g.id === S.cGrp)) S.cGrp = '';
+  const G = groups().find(g => g.id === S.cGrp);
   $('#main').innerHTML = `<section class="panel" style="margin-bottom:10px"><div class="p1"><span>إجمالي اللي على العملاء</span><b class="money" style="color:var(--red)">${fmt(owed)}</b></div></section>
     <div class="sr"><input class="search" id="q" type="search" placeholder="🔍 دوّر على عميل…" autocomplete="off" value="${esc(q0 || '')}"><button class="sbtn" id="bNew" type="button">＋ عميل جديد</button></div>
-    <div class="seg cs" id="cSort" style="--n:3">${C_SORT.map(([k, t]) => `<button type="button" data-v="${k}" class="${(S.cSort || 'owe') === k ? 'on' : ''}">${t}</button>`).join('')}</div><div id="lists"></div>`;
-  $$('#cSort button').forEach(b => b.onclick = () => { S.cSort = b.dataset.v; save(); $$('#cSort button').forEach(x => x.classList.toggle('on', x === b)); draw(); });
+    <div class="gtabs" id="gTabs"><button type="button" data-g="" class="${G ? '' : 'on'}">كل العملاء</button>${groups().map(g => `<button type="button" data-g="${esc(g.id)}" class="${G === g ? 'on' : ''}">${esc(g.name)}</button>`).join('')}<button type="button" class="add" id="gAdd">＋ قسم</button></div>
+    <div id="lists"></div>`;
+  $$('#gTabs button[data-g]').forEach(b => b.onclick = () => { S.cGrp = b.dataset.g; save(); drawCustomers($('#q').value); });
+  $('#gAdd').onclick = () => groupModal(null);
   const draw = () => {
-    const q = norm($('#q').value), all = sortCust([...cs.values()], S.cSort || 'owe');
+    const q = norm($('#q').value), all = sortCust([...cs.values()], S.cSort || 'owe'), al = aliases(), inG = G ? all.filter(c => G.ids.some(x => x === c.id || al[x] === c.id)) : all;   // العميل الجديد بعد ما مصطفى يربطه بيفضل في قسمه
     custNo = new Map(all.map((c, i) => [c.id, i + 1]));
-    if (q) { const f = all.filter(c => norm(c.name).includes(q)); $('#lists').innerHTML = f.length ? `<div class="lbl"><span>نتيجة البحث</span></div>${custTbl(f)}` : '<div class="empty">مفيش عميل بالاسم ده.<br>لو جديد دوس "＋ عميل جديد".</div>'; }
+    const sortSel = `<label class="csort">↕ <select id="cSort">${C_SORT.map(([k, t]) => `<option value="${k}" ${(S.cSort || 'owe') === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
+    if (q) { const f = all.filter(c => norm(c.name).includes(q)); $('#lists').innerHTML = f.length ? `<div class="lbl"><span>نتيجة البحث</span>${sortSel}</div>${custTbl(f)}` : '<div class="empty">مفيش عميل بالاسم ده.<br>لو جديد دوس "＋ عميل جديد".</div>'; }
     else {
-      $('#lists').innerHTML = `<div class="lbl"><span>كل العملاء</span><span>${all.length}</span></div>` + (all.length ? custTbl(all) : `<div class="empty">لسه العملاء منزلوش. استنى ثواني والنت شغال.</div>`);
+      custNo = new Map(inG.map((c, i) => [c.id, i + 1]));
+      $('#lists').innerHTML = `<div class="lbl"><span>${G ? esc(G.name) : 'كل العملاء'} (${inG.length})${G ? ' <button class="gedit" id="gEdit" type="button">✏️ تعديل القسم</button>' : ''}</span>${sortSel}</div>`
+        + (inG.length ? custTbl(inG) : G ? '<div class="empty">القسم ده فاضي.<br><button class="lnk" id="gFill" type="button" style="margin:0">＋ اختار عملاء القسم</button></div>' : '<div class="empty">لسه العملاء منزلوش. استنى ثواني والنت شغال.</div>');
     }
     $$('#lists tr[data-c]').forEach(r => r.onclick = () => { pyTab = 'pay'; nav('p/' + r.dataset.c); });
+    $('#cSort') && ($('#cSort').onchange = e => { S.cSort = e.target.value; save(); draw(); });
+    if ($('#gEdit')) $('#gEdit').onclick = () => groupModal(G);
+    if ($('#gFill')) $('#gFill').onclick = () => groupModal(G);
   };
   draw();
   $('#q').oninput = draw;
   $('#bNew').onclick = newCustomer;
+}
+/* قسم جديد أو تعديل قسم: الاسم + اختيار العملاء (بحث وعلامة صح) */
+function groupModal(G) {
+  const cs = [...customers().values()].sort((a, b) => a.name.localeCompare(b.name, 'ar')), al = aliases(), sel = new Set(G ? G.ids.map(x => al[x] || x) : []);
+  modal(`<h3>${G ? 'تعديل القسم' : 'قسم جديد'}</h3>
+    <input class="inp" id="gN" autocomplete="off" placeholder="اسم القسم (مثلاً: منطقة السوق الكبير)" value="${esc(G ? G.name : '')}">
+    <input class="inp" id="gQ" type="search" autocomplete="off" placeholder="🔍 دوّر على عميل" style="margin-top:8px">
+    <div class="gpick" id="gL"></div>
+    <p class="hint" id="gC"></p>
+    <button class="big b-cash" id="gOk" type="button">حفظ القسم</button>
+    ${G ? '<button class="big b-redo" id="gDel" type="button">🗑 امسح القسم (العملاء مش هيتمسحوا)</button>' : ''}
+    <button class="lnk" id="gX" type="button">رجوع</button>`);
+  const cnt = () => { $('#gC').textContent = `اخترت ${sel.size} ${sel.size === 1 ? 'عميل' : 'عملاء'}`; };
+  const draw = () => {
+    const q = norm($('#gQ').value), l = cs.filter(c => !q || norm(c.name).includes(q));
+    $('#gL').innerHTML = l.length ? l.map(c => `<label class="gp ${sel.has(c.id) ? 'on' : ''}"><input type="checkbox" data-c="${esc(c.id)}" ${sel.has(c.id) ? 'checked' : ''}><span>${esc(c.name)}</span></label>`).join('') : '<div class="empty">مفيش عميل بالاسم ده</div>';
+    $$('#gL input').forEach(x => x.onchange = () => { x.checked ? sel.add(x.dataset.c) : sel.delete(x.dataset.c); x.parentNode.classList.toggle('on', x.checked); cnt(); });
+  };
+  draw(); cnt(); $('#gQ').oninput = draw;
+  if (!G) setTimeout(() => $('#gN') && $('#gN').focus(), 60);
+  $('#gX').onclick = closeModal;
+  $('#gOk').onclick = () => {
+    const name = $('#gN').value.trim().replace(/\s+/g, ' ');
+    if (!name) { toast('اكتب اسم القسم'); return $('#gN').focus(); }
+    if (groups().some(g => g !== G && norm(g.name) === norm(name))) return toast('فيه قسم بنفس الاسم');
+    if (G) Object.assign(G, {name, ids: [...sel]});
+    else { G = {id: 'g' + Date.now().toString(36), name, ids: [...sel]}; groups().push(G); }
+    S.cGrp = G.id; save(); closeModal(); drawCustomers(''); toast('✔ اتحفظ القسم');
+  };
+  if ($('#gDel')) $('#gDel').onclick = async () => {
+    if (!(await ask(`تمسح قسم "${G.name}"؟ العملاء هيفضلوا في "كل العملاء".`, 'أيوه امسحه', 'لأ', true))) return;
+    S.groups = groups().filter(g => g !== G); S.cGrp = ''; save(); drawCustomers(''); toast('اتمسح القسم');
+  };
 }
 function newCustomer() {
   modal(`<h3>عميل جديد</h3><p style="font-size:14px;color:var(--sub);font-weight:600">اكتب اسمه بس، ومصطفى هيظبط الباقي.</p>

@@ -878,7 +878,13 @@ nav .nb:empty{display:none}
   nav button[data-go=mkt]{display:flex;order:1}
   nav button[data-go=part]{display:none}
   nav button[data-go=rep],nav button[data-go=set]{order:2}
+  /* بطلب صاحب المشروع: تحت من اليمين العملاء | الموردين | حركة السوق | التقارير | الإعدادات، والخزنة زرار في صفحة العملاء (#hCash) */
+  nav button[data-go=cash]{display:none}
+  nav .lbl-l{display:none}
 }
+nav button.mob{display:none}
+@media (max-width:999.98px){nav button.mob{display:flex}}
+@media (min-width:1000px){nav .lbl-m{display:none}#hTabs .hcash{display:none}}
 .ctools .btn.mob{display:none}
 @media (max-width:999.98px){.ctools .btn.mob{display:inline-flex}}
 @media (min-width:1000px){
@@ -1051,6 +1057,11 @@ html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
   main.split #hAlerts .todo .tdh span{font-size:11.5px}
   main.split #hAlerts .todo .sync{border-top:1px solid var(--line);background:none;border-radius:0;padding:3px 0;margin:0}
 }
+/* الموبايل: تبويب الموردين لوحده + زرار الخزنة جنب عملاء السوق والمواقع */
+#hTabs .supt{grid-column:1/-1;font-weight:800;font-size:17px;color:var(--blue);padding:2px 4px}
+#hTabs .supt small{font-size:13px;color:#888;margin-inline-start:4px}
+#hTabs .hcash{border-style:dashed;border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
+#hTabs .hcash small{font-size:11.5px!important;color:var(--gold-d)!important}
 </style>
 </head>
 <body>
@@ -1074,12 +1085,9 @@ html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
 <!-- ============== الحسابات ============== -->
 <section class="page" id="p-home">
   <div id="hAlerts"><div class="sync" id="syncBox"></div>
-  <div class="todo" id="todo"><div class="tdh"><b>📋 المطلوب منك النهارده</b><span id="tdN"></span></div>
   <div id="chk"></div>
-  <div id="bkRem"></div>
   <div id="mkRem"></div>
-  <div id="nlRem"></div>
-  <div id="tkRows"></div></div></div>
+  <div id="nlRem"></div></div>
   <div class="tots" id="hTots"></div>
   <div class="srow">
     <input class="inp" id="hSearch" type="search" placeholder="🔍 دوّر بالاسم أو التليفون" autocomplete="off">
@@ -1169,7 +1177,8 @@ html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
 
 <nav>
   <div class="ngrp">الشغل اليومي</div>
-  <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>الحسابات</button>
+  <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="lbl-l">الحسابات</span><span class="lbl-m">العملاء</span></button>
+  <button data-go="sup" class="mob"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l6 4V9l6 4V5h6v16z"/><path d="M7 17h2M12 17h2M17 17h2"/></svg>الموردين</button>
   <div class="qk"><button type="button" data-q="mkt">عملاء السوق</button><button type="button" data-q="site" class="lap">عملاء المواقع</button><button type="button" data-q="sup">الموردين</button></div>
   <button data-go="mkt" class="lap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg>حركة السوق<i class="nb" id="nbMkt"></i></button>
   <div class="ngrp">الفلوس</div>
@@ -1566,8 +1575,6 @@ function renderHome() {
   const au = db.cfg.audit;
   if (au && !au.ok) probs.unshift(au.msg);
   const lb = db.cfg.lastBackup || 0, every = db.cfg.sheetOk ? 30 : 7, days = Math.floor((Date.now() - lb) / 86400000);
-  $('#bkRem').innerHTML = db.parties.length && days >= every ? `<div class="sync">💾 ${lb ? `آخر نسخة احتياطية من ${days} يوم.` : 'لسه منزّلتش نسخة احتياطية.'} <a id="bkGo">نزّل واحدة دلوقتي</a></div>` : '';
-  if ($('#bkGo')) $('#bkGo').onclick = () => $('#bBackup').click();
   $('#nlRem').innerHTML = nlAlert(); if ($('#nlRem [data-nl]')) $('#nlRem [data-nl]').onclick = nlModal;
   $('#chk').innerHTML = chkAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '');
   const bal = allBalances();
@@ -1577,9 +1584,13 @@ function renderHome() {
     <div class="k"><span>الصافي ${net >= 0 ? 'ليا' : 'عليا'}</span><b data-ck="h:net" data-cnt="${Math.abs(net)}">${fmtP(Math.abs(net))} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>`;
   const ps = liveParties();
   const cnt = s => ps.filter(p => s === 'all' || p.sec === s).length;
-  $('#hTabs').innerHTML = [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']]
-    .map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small></button>`).join('');
-  $$('#hTabs button').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
+  /* الموبايل: "العملاء" فيها السوق والمواقع بس + زرار الخزنة، و"الموردين" تبويب لوحده تحت (#sup) */
+  const wide = isWide(), tabs = wide ? [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']] : tab === 'sup' ? [] : [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع']];
+  $('#hTabs').innerHTML = (!wide && tab === 'sup' ? `<div class="supt">🏭 الموردين <small>${cnt('sup')}</small></div>` : tabs.map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small></button>`).join(''))
+    + (!wide && tab !== 'sup' ? '<button class="hcash" id="hCash" type="button">🗄️ الخزنة<small>والمصروفات</small></button>' : '');
+  $('#hTabs').classList.toggle('t3', !wide && tab !== 'sup');
+  $$('#hTabs button[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
+  if ($('#hCash')) $('#hCash').onclick = () => go('cash');
   renderMkHome(); renderList(bal); qkMark(); runCounters($('#hTots'));
 }
 function qkMark() { const sp = $('main').classList.contains('split'); $$('nav .qk button').forEach(x => x.classList.toggle('on', sp && x.dataset.q === tab)); }
@@ -1588,7 +1599,7 @@ const isWide = () => matchMedia('(min-width:1000px)').matches;
 function renderList(bal) {
   bal = bal || allBalances();
   const q = norm($('#hSearch').value), sort = $('#hSort').value, last = sort === 'last' ? lastDates() : null;
-  let ps = liveParties().filter(p => (q ? true : p.sec === tab) && (!q || norm(p.name).includes(q) || norm(p.phone || '').includes(q)));
+  let ps = liveParties().filter(p => (q ? isWide() || (tab === 'sup') === (p.sec === 'sup') : p.sec === tab) && (!q || norm(p.name).includes(q) || norm(p.phone || '').includes(q)));
   if (sort === 'bal') ps.sort((a, b) => Math.abs(bal.get(b.id)) - Math.abs(bal.get(a.id)));
   else if (sort === 'last') ps.sort((a, b) => (last.get(b.id) || '').localeCompare(last.get(a.id) || ''));
   else ps.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
@@ -1832,7 +1843,7 @@ function renderParty(id) {
     ${ledgerTable(p)}
     ${nX ? `<div class="sech" style="margin-top:6px"><span></span><a id="ppX">${showX ? 'إخفاء الملغي' : `إظهار الملغي (${nX})`}</a></div>` : ''}
     ${showX && nX ? `<div class="sech"><span>الحركات الملغية</span></div>${all.filter(e => e.del).reverse().map(e => entryCard(e, 0)).join('')}` : ''}`;
-  $('#ppBack').onclick = () => go('home'); bindBar();
+  $('#ppBack').onclick = () => go(!isWide() && sup ? 'sup' : 'home'); bindBar();
   $('#ppEdit').onclick = () => partyModal(p);
   $('#ppStmt').onclick = () => stmtModal(p);
   $('#ppDoc').onclick = $('#fbDoc').onclick = () => docModal(p, sup ? 'pur' : 'inv');
@@ -4334,10 +4345,12 @@ function route() {
   let pg = 'home';
   try { localStorage.setItem('fo_lastpg', /^(cash|part|rep|set)$/.test(h) ? h : 'home'); } catch (e) {}
   if (h === 'set' || h === 'cash' || h === 'part' || (h === 'chk' && CHECKS_ON) || h === 'rep' || h === 'mkt') pg = h; else if (h.startsWith('p/')) pg = 'party';
+  if (h === 'sup') tab = 'sup'; else if (pg === 'home' && tab === 'sup' && !isWide()) tab = 'mkt';   // الموبايل: الموردين تبويب لوحده تحت
   autoPartners();
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
   document.body.dataset.pg = pg;   // زرار ＋ العايم بيظهر على الموبايل في الرئيسية ووارد السوق والتقارير بس
-  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (pg === 'party' ? 'home' : pg === 'part' && !isWide() ? 'cash' : pg)));   // على الموبايل الشركاء جوه الخزنة
+  const supOn = !isWide() && (pg === 'home' ? tab === 'sup' : pg === 'party' && (P.get(h.slice(2)) || {}).sec === 'sup');
+  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (supOn ? 'sup' : pg === 'party' ? 'home' : pg === 'part' && !isWide() ? 'cash' : pg)));   // على الموبايل الشركاء جوه الخزنة
   if (CHECKS_ON) { const nd = chkDue().length; $('#nbChk').textContent = nd || ''; $('#nbChk').style.display = nd ? '' : 'none'; }
   /* على اللاب توب: قايمة الحسابات على جنب والحساب المفتوح جنبها */
   const split = isWide() && (pg === 'home' || pg === 'party');
@@ -4924,37 +4937,8 @@ function renderMkHome() {
   const box = $('#mkRem'); if (!box) return;
   if (!db) { box.innerHTML = ''; return; }
   /* لسه متربطش: سطر واضح في الرئيسية بيوديه للإعدادات على طول */
-  if (!mkCreds()) { box.innerHTML = '<div class="sync mkrem" id="mkGo">📥 حركة السوق (تطبيق شريكك) لسه متربطتش <a>اربطها</a></div>'; $('#mkGo').onclick = mkGoSettings; renderTodo(); return; }
-  const n = mkPending().length;
-  box.innerHTML = `<div class="sync mkrem ${n ? '' : 'ok'}" id="mkGo">📥 وارد السوق: ${n ? `<b>${n}</b> ${n === 1 ? 'عملية متنقلتش' : 'عمليات متنقلتش'}` : 'مفيش حاجة مستنية'} <a>افتح</a></div>`;
-  $('#mkGo').onclick = () => go('mkt');
-  renderTodo();
-}
-/* "المطلوب منك النهارده": كل التنبيهات في صندوق واحد. السطور اللي فوق (المراجعة، النسخة، وارد السوق، البنود) ليها أماكنها،
-   وهنا بنزوّد: قايمة التحصيل عند شريكك، وتقفيل يوم شريكك لو فيه فرق، والعملا اللي فوق الحد الأحمر. العداد = اللي لسه مستنيك */
-function renderTodo() {
-  const box = $('#tkRows'); if (!box || !db) return;
-  const rows = [];
-  if (mkCreds()) {
-    const R = mkWantRows(), d = R.filter(x => x.paid).length;
-    if (R.length) rows.push(`<div class="sync tk ${d === R.length ? 'ok dn' : ''}" data-tk="mkt">📌 التحصيل عند شريكك: اتحصّل من <b>${d}</b> من <b>${R.length}</b>${d ? ` (${fmtP(R.reduce((s, x) => s + x.paid, 0))})` : ''} <a>افتح</a></div>`);
-    const k = mkCnt(todayISO());
-    if (k) rows.push(`<div class="sync tk ${k.amt === k.sys ? 'ok' : 'warn'}" data-tk="mkt">🔒 شريكك قفّل يومه: ${k.amt === k.sys ? 'مظبوط ✓' : `${k.amt < k.sys ? 'ناقص' : 'زيادة'} <b>${fmtP(Math.abs(k.amt - k.sys))}</b>`} <a>افتح</a></div>`);
-  }
-  const bal = allBalances(), red = liveParties().filter(p => !p.noTot && limitClass(p, bal.get(p.id) || 0) === 'lim-r');
-  if (red.length) rows.push(`<div class="sync tk" data-tk="red">🔴 <b>${red.length}</b> ${red.length === 1 ? 'عميل' : 'عملا'} فوق الحد الأحمر <a>شوفهم</a></div>`);
-  box.innerHTML = rows.join('');
-  $$('#tkRows [data-tk]').forEach(el => el.onclick = () => el.dataset.tk === 'mkt' ? go('mkt') : redModal());
-  const n = $$('#todo .sync:not(.ok)').length, t = $('#tdN');
-  t.textContent = n ? `${n} ${n === 1 ? 'حاجة' : 'حاجات'}` : '✔ مفيش حاجة مستنياك'; t.classList.toggle('z', !n);
-}
-function redModal() {
-  const bal = allBalances(), L = liveParties().filter(p => !p.noTot && limitClass(p, bal.get(p.id) || 0) === 'lim-r').sort((a, b) => bal.get(b.id) - bal.get(a.id));
-  modal(`<h3>🔴 فوق الحد الأحمر</h3>
-    ${L.map(p => `<div class="pt lim-r" data-p="${esc(p.id)}"><div class="m"><b>${esc(p.name)}</b><small>${esc(lpAgo(p.id))}</small></div><div class="a"><b>${fmtP(bal.get(p.id))}</b><small>عليه</small></div></div>`).join('')}
-    <button class="btn line" id="rdX" type="button" style="margin-top:10px">رجوع</button>`, true);
-  $('#rdX').onclick = closeModal;
-  $$('#modal .pt[data-p]').forEach(el => el.onclick = () => { closeModal(); go('p/' + el.dataset.p); });
+  /* بطلب صاحب المشروع: مفيش سطر لوارد السوق في الرئيسية، العدد على زرار "حركة السوق" تحت بس (#nbMkt) */
+  box.innerHTML = '';
 }
 /* "آخر دفعة من كام يوم" */
 function lpAgo(pid) {

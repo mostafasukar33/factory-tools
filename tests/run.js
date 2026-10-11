@@ -120,7 +120,7 @@ const MO = !!process.env.MARKET_ONLY;
 
     if (!MO) {   // ← MARKET_ONLY بيتخطى ٣ لحد ٩
     console.log('\n٣) فاتورة ودفعة ومرتجع وخصم');
-    await A.click('nav button[data-go=cash]'); await A.click('#cNew'); await A.click('#cOpen2'); await A.fill('#modal [data-v]', '1000'); await A.click('#opOk'); await A.waitForTimeout(200);
+    await A.evaluate(() => go('cash')); await A.click('#cNew'); await A.click('#cOpen2'); await A.fill('#modal [data-v]', '1000'); await A.click('#opOk'); await A.waitForTimeout(200);
     eq('رصيد بداية الخزنة', await vbal(A, 'v_main'), 100000);
     await openParty(A, 'عميل تجربة واحد');
     await A.click('#fbDoc'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.dispatchEvent('.li [data-f=name]', 'change');
@@ -159,7 +159,7 @@ const MO = !!process.env.MARKET_ONLY;
     eq('زرار احفظ نسخة مخفي على الموبايل', await A.evaluate(() => getComputedStyle($('#bBk')).display), 'none');
 
     console.log('\n٥) الخزنة');
-    await A.click('nav button[data-go=cash]'); await A.click('#cExp'); await A.fill('#txA', '30'); await A.click('#txOk'); await closed(A);
+    await A.evaluate(() => go('cash')); await A.click('#cExp'); await A.fill('#txA', '30'); await A.click('#txOk'); await closed(A);
     await A.click('#cPayS'); await A.click('#pkList .pt'); await A.fill('#pyAmt', '500'); await A.click('#pyOk'); await closed(A);
     eq('مصروف 30 ودفعة مورد 500', await vbal(A, 'v_main'), 150000 - 3000 - 50000);
     eq('رصيد المورد نزل', await bal(A, 'مورد تجربة'), -2950000 + 50000);
@@ -369,8 +369,8 @@ const MO = !!process.env.MARKET_ONLY;
     console.log('\n١٢) الشركاء: مرتب كل خميس ومسحوبات');
     await bg(A, 'cashSync(true)');   // ياخد اللي اتسجل في الدفتر من الجهاز التاني الأول
     const vb0 = await A.evaluate(() => vaultBal(''));
-    eq('الموبايل: حركة السوق في الشريط اللي تحت مكان الشركاء، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ['home', 'cash', 'mkt', 'rep', 'set']);
-    await A.click('nav button[data-go=cash]'); await A.click('#cPart'); await A.waitForSelector('#ptBack', {timeout: 3000}).catch(() => {});   // الصفحة بتفتح بعد تغيير العنوان
+    eq('الموبايل: حركة السوق في الشريط اللي تحت مكان الشركاء، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ['home', 'sup', 'mkt', 'rep', 'set']);
+    await A.evaluate(() => go('cash')); await A.click('#cPart'); await A.waitForSelector('#ptBack', {timeout: 3000}).catch(() => {});   // الصفحة بتفتح بعد تغيير العنوان
     eq('الشركاء من الخزنة: الخزنة متعلّمة تحت وفيه رجوع', [await A.evaluate(() => $('nav button.on').dataset.go), !!await A.$('#ptBack')], ['cash', true]);
     await A.click('#psGo'); await A.fill('#psA', '10');
     await A.fill('#psS', await A.evaluate(() => addDays(lastThu(), -14))); await A.click('#psOk'); await A.waitForTimeout(200);
@@ -436,7 +436,7 @@ const MO = !!process.env.MARKET_ONLY;
       return [partyEntries(p.id)[0].kind, stmtData(p.id, '', '').rows[0].run, s.open, s.n];
     });
     eq('رصيد أول المدة أول سطر حتى لو في بند بتاريخ قبله', OP, ['open', 20000, 25000, 0]);
-    await A.click('nav button[data-go=cash]'); await A.click('#cExp'); await A.waitForTimeout(150);
+    await A.evaluate(() => go('cash')); await A.click('#cExp'); await A.waitForTimeout(150);
     const DP = await A.evaluate(() => { const b = $('#txD').nextElementSibling; return [b.className, [...b.querySelectorAll('span')].slice(0, 5).map(x => x.textContent).join('') === dispDate(todayISO()).split('/').join('/') .replace(/\//g, '') || true, getComputedStyle(b).direction, b.firstElementChild.textContent === todayISO().slice(8)]; });
     eq('خانة التاريخ: اليوم أول واحد على اليمين', [DP[0], DP[2], DP[3]], ['dp', 'rtl', true]);
     await A.click('#txD + .dp'); await A.waitForSelector('.dpo');
@@ -450,7 +450,7 @@ const MO = !!process.env.MARKET_ONLY;
     console.log('\n١٦) حركة السوق: تطبيق الشريك ووارد السوق');
     const C1 = 'عميل تجربة واحد', bal0 = await bal(A, C1), pid1 = await A.evaluate(n => liveParties().find(x => x.name === n).id, C1);
     await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
-    eq('قبل الربط: سطر "حركة السوق لسه متربطتش" في الرئيسية بيفتح الإعدادات على كارتها', [(await A.textContent('#mkRem')).includes('لسه متربطتش'), (await A.click('#mkGo'), await A.waitForTimeout(400), await A.evaluate(() => [location.hash, !!$('#sMkt #smHelp')]))], [true, ['#set', true]]);
+    eq('قبل الربط: مفيش سطر في الرئيسية، وتبويب حركة السوق بيوديه للإعدادات على كارتها', [(await A.textContent('#mkRem')).trim(), (await A.click('nav button[data-go=mkt]'), await A.click('#mkSet'), await A.waitForTimeout(400), await A.evaluate(() => [location.hash, !!$('#sMkt #smHelp')]))], ['', ['#set', true]]);
     await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll());
     await A.click('#smHelp'); await A.click('#mhCopy'); const mkCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.mkt.load(mkCode); await A.click('#mhX');
     await A.fill('#smUrl', MKT_URL); await A.click('#smGo'); await A.waitForTimeout(2500);
@@ -496,7 +496,7 @@ const MO = !!process.env.MARKET_ONLY;
     eq('الرصيد عند الشريك = رصيد الحسابات − اللي اتسجل ولسه متنقلش', await M.evaluate(id => customers().get(id).bal, pid1), bal0 - 800000);
     eq('اتسجل للعميل ده النهارده بحالته', await M.evaluate(() => { const t = $('#tdy').textContent.replace(/\s+/g, ' '); return ['تحويل لمصطفى', '3,000', '⏳ عند مصطفى', 'كاش معايا', '5,000'].every(x => t.includes(x)); }), true);
     await M.click('#bBack'); await M.waitForTimeout(150);
-    eq('مفيش آخر زيارات، العملاء في جدول واحد', await M.evaluate(n => [$$('#lists .ctb').length, $('#lists .lbl span').textContent, $$('#lists .ctb .nm').some(x => x.firstChild.textContent === n)], C1), [1, 'كل العملاء', true]);
+    eq('مفيش آخر زيارات، العملاء في جدول واحد', await M.evaluate(n => [$$('#lists .ctb').length, $('#lists .lbl span').textContent.replace(/ \(\d+\)$/, ''), $$('#lists .ctb .nm').some(x => x.firstChild.textContent === n)], C1), [1, 'كل العملاء', true]);
 
     DM.netDown = true;
     await M.click('#bNew'); await M.fill('#ncN', 'عميل سوق جديد'); await M.click('#ncOk'); await M.fill('#amt', '1500'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(1500);
@@ -508,7 +508,7 @@ const MO = !!process.env.MARKET_ONLY;
     await bg(A, 'mkSync()'); await A.waitForTimeout(800);
     eq('تنبيه فوري في الحسابات (شريط فوق)', await A.evaluate(() => $('#mkBar').classList.contains('on')), true);
     await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
-    eq('عداد الوارد على الشاشة الرئيسية', (await A.textContent('#mkRem')).replace(/\s+/g, ' ').includes('3 عمليات متنقلتش'), true);
+    eq('عداد الوارد على زرار حركة السوق تحت (مش سطر في الرئيسية)', [await A.evaluate(() => $('#nbMkt').textContent), (await A.textContent('#mkRem')).trim()], ['3', '']);
     /* اللاب: العداد على زرار "حركة السوق" في القايمة الجانبية والجرس فوق، ودوسة الجرس بتعرض العمليات وبتفتح الوارد */
     await A.setViewportSize({width: 1300, height: 800}); await A.waitForTimeout(200);
     eq('اللاب: عداد حركة السوق على زرارها وعلى الجرس', await A.evaluate(() => [$('#nbMkt').textContent, $('#bellN').textContent, getComputedStyle($('nav button[data-go=mkt]')).display !== 'none']), ['3', '3', true]);
@@ -520,7 +520,7 @@ const MO = !!process.env.MARKET_ONLY;
     eq('الموبايل: زرار حركة السوق تحت مكان الشركاء (بطلب صاحب المشروع) ومفيش جرس', await A.evaluate(() => [getComputedStyle($('nav button[data-go=mkt]')).display, getComputedStyle($('nav button[data-go=part]')).display, getComputedStyle($('#bBell')).display]), ['flex', 'none', 'none']);
     await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
     eq('مفيش حاجة دخلت الحسابات لوحدها', [await bal(A, C1), await vbal(A, 'v_mkt'), await A.evaluate(() => db.entries.filter(e => e.id.startsWith('e_mk_')).length)], [bal0, 0, 0]);
-    await A.click('#mkGo'); await A.waitForTimeout(200);
+    await A.click('nav button[data-go=mkt]'); await A.waitForTimeout(200);
     const card = `#p-mkt [data-mv="${pid1}"]`;
     eq('الوارد متجمع بالعميل: 5,000 كاش + 3,000 تحويل = 8,000، والتحويل محسوب واصل من الأول (مفيش "وصل؟")', [(await A.textContent(`#p-mkt .ic:has([data-mv="${pid1}"])`)).replace(/\s+/g, ' ').includes('5,000 كاش + 3,000 تحويل = 8,000'), await A.isDisabled(card), await A.$('#p-mkt [data-ok]')], [true, false, null]);
     await A.click(card); await A.waitForTimeout(200);
@@ -554,7 +554,7 @@ const MO = !!process.env.MARKET_ONLY;
     await bg(M, 'sync()'); await M.waitForTimeout(500);
     eq('والشريك شافها "مصطفى شالها" ومبتتحسبش في رصيد العميل', await M.evaluate(() => opState(liveOps().find(x => x.m === 'cash' && x.amt === 500000))), 'rm');
 
-    await A.click('nav button[data-go=home]'); await A.click('#mkGo'); await A.waitForTimeout(200);
+    await A.click('nav button[data-go=mkt]'); await A.waitForTimeout(200);
     await A.click(`#p-mkt [data-bk="${pid1}"]`); await A.fill('#rtN', 'المبلغ 4,500 مش 5,000'); await A.click('#rtOk'); await A.waitForTimeout(300);
     await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(600);
     await M.evaluate(() => nav('')); await M.waitForTimeout(150);
@@ -629,7 +629,7 @@ const MO = !!process.env.MARKET_ONLY;
     await M.click('#uiFs button[data-v="1"]'); await M.evaluate(() => nav('')); await M.waitForTimeout(100);
 
     await bg(A, 'mkSync()'); await A.waitForTimeout(900);
-    await A.click('nav button[data-go=home]'); await A.click('#mkGo'); await A.waitForTimeout(250);
+    await A.click('nav button[data-go=mkt]'); await A.waitForTimeout(250);
     eq('الوارد عند مصطفى: 4 عمليات متنقلتش (كاش عميل + مصروف + مورد + تسليم)', await A.evaluate(() => [mkPending().length, mkPending().map(o => o.t).sort()]), [4, ['exp', 'hand', 'pay', 'spay']]);
     eq('مفيش حاجة دخلت الحسابات لوحدها (لا خزنة ولا مورد)', await A.evaluate(() => [vaultBal('v_mkt'), db.txs.filter(t => t.id.startsWith('t_mk_')).length, db.entries.filter(e => e.id.startsWith('e_mk_') && !e.del).length]), [150000, 0, 2]);
     const supB0 = await bal(A, 'مورد تجربة'), mainB0 = await vbal(A, 'v_main'), exp0 = await A.evaluate(() => profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp);
@@ -853,13 +853,22 @@ const MO = !!process.env.MARKET_ONLY;
     /* آخر دفعة: بتيجي من الحسابات مع رصيد العميل */
     eq('الحسابات بتبعت تاريخ آخر دفعة مع رصيد عميل السوق', JSON.parse(mkRows('cust').find(r => r[0] === pid1)[10]).lp, await A.evaluate(id => lastPays().get(id) || '', pid1));
     await M.evaluate(() => nav('c', true)); await M.waitForTimeout(150);
-    eq('العملاء: 3 ترتيبات والافتراضي "الأكتر عليه"', await M.evaluate(() => [$$('#cSort button').map(b => b.textContent), $('#cSort button.on').dataset.v]), [['الأكتر عليه', 'مدفعش من زمان', 'بالحروف'], 'owe']);
+    eq('العملاء: سهم ترتيب فيه 3 اختيارات والافتراضي "الأكتر عليه"، والجدول أسامي بس', await M.evaluate(() => [[...$('#cSort').options].map(o => o.textContent), $('#cSort').value, !!$('#lists .lp')]), [['الأكتر عليه', 'مدفعش من زمان', 'بالحروف'], 'owe', false]);
     eq('الأكتر عليه: مترتبين بالرصيد من الكبير للصغير', await M.evaluate(() => { const b = $$('#lists tr[data-c]').map(r => customers().get(r.dataset.c).bal); return b.every((x, i) => !i || b[i - 1] >= x); }), true);
-    eq('تحت كل عميل "آخر دفعة"', await M.evaluate(id => $(`#lists tr[data-c="${id}"] .lp`).textContent, pid1), 'دفع النهارده');
-    await M.click('#cSort button[data-v=abc]'); await M.waitForTimeout(100);
+    eq('"آخر دفعة" لسه بتظهر في صفحة العميل', await M.evaluate(id => { nav('p/' + id); const t = $('#cBox .lp').textContent; nav('c', true); return t; }, pid1), 'دفع النهارده');
+    await M.selectOption('#cSort', 'abc'); await M.waitForTimeout(100);
     eq('بالحروف: بيترتبوا بالاسم والاختيار بيتحفظ', await M.evaluate(() => { const n = $$('#lists tr[data-c] .nm').map(x => x.firstChild.textContent); return [n.every((x, i) => !i || n[i - 1].localeCompare(x, 'ar') <= 0), S.cSort, JSON.parse(localStorage.getItem('fo_mkt_v1')).cSort]; }), [true, 'abc', 'abc']);
-    await M.click('#cSort button[data-v=owe]');
+    await M.selectOption('#cSort', 'owe');
 
+    /* أقسام العملاء عند الشريك (على الموبايل بس) */
+    eq('"كل العملاء" أول تبويب ومفيش أقسام', await M.evaluate(() => $$('#gTabs button[data-g]').map(b => b.textContent)), ['كل العملاء']);
+    await M.click('#gAdd'); await M.fill('#gN', 'منطقة تجربة'); await M.click(`#gL input[data-c="${pid1}"]`); await M.click('#gOk'); await M.waitForTimeout(150);
+    eq('قسم جديد: بقى تبويب فوق وفيه العميل اللي اختاره بس', await M.evaluate(() => [$$('#gTabs button[data-g]').map(b => b.textContent), $('#gTabs button.on').textContent, $$('#lists tr[data-c]').length, JSON.parse(localStorage.getItem('fo_mkt_v1')).groups.length]), [['كل العملاء', 'منطقة تجربة'], 'منطقة تجربة', 1, 1]);
+    await M.click('#gTabs button[data-g=""]'); await M.waitForTimeout(100);
+    eq('"كل العملاء" لسه فيه الكل', await M.evaluate(() => $$('#lists tr[data-c]').length === customers().size), true);
+    await M.click('#gTabs button:nth-child(2)'); await M.click('#gEdit'); await M.click('#gDel'); await M.click('#aY'); await M.waitForTimeout(150);
+    eq('مسح القسم: العملاء فضلوا والتبويب اتشال', await M.evaluate(() => [$$('#gTabs button[data-g]').length, $$('#lists tr[data-c]').length === customers().size]), [1, true]);
+    eq('الأقسام مبتروحش الشيت ولا الحسابات', sheets.mkt.sheets['الحركات'].rows.some(r => String(r[10]).includes('منطقة تجربة')), false);
     /* حصّل من دول: مصطفى بيعلّم من الحسابات، والشريك بيشوفها في الرئيسية وبتتشطب لما يسجل دفعة */
     await openParty(A, C1); await A.click('#ppWant'); await A.fill('#wqA', '1,000'); await A.fill('#wqN', 'قبل الخميس'); await A.click('#wqOk'); await A.waitForTimeout(200);
     eq('الحسابات: العميل اتعلّم "مطلوب" وظهر سطر في صفحته', [await A.evaluate(id => mkWants()[id] && mkWants()[id].amt, pid1), (await A.textContent('#ppWantL')).includes('لسه')], [100000, true]);
@@ -871,7 +880,7 @@ const MO = !!process.env.MARKET_ONLY;
     await M.evaluate(() => nav('', true)); await M.waitForTimeout(150);
     eq('سجّل دفعة: اتشطبت عنده "✓ حصّلت"', await M.evaluate(id => { const r = $(`#want .wr[data-c="${id}"]`); return [r.classList.contains('ok'), r.textContent.includes('حصّلت 700')]; }, pid1), [true, true]);
     await sync2(); await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
-    eq('الحسابات: المطلوب منك النهارده فيه سطر التحصيل "1 من 1"', (await A.textContent('#tkRows')).replace(/\s+/g, ' ').includes('اتحصّل من 1 من 1'), true);
+    eq('الحسابات: كارت "حصّل من دول" في الوارد بيقول "1 من 1"', await A.evaluate(() => { go('mkt'); return new Promise(r => setTimeout(() => r($('#mkBody .mkw .mkwh span').textContent), 300)); }), '1 من 1');
     eq('بكرة اللي اتحصّل بيتشال من القايمة لوحده', await A.evaluate(() => { const n0 = Date.now, r0 = mkWantPrune(); Date.now = () => n0() + 86400000 * 1.1; let r; try { r = [r0, mkWantPrune(), Object.keys(mkWants()).length]; } finally { Date.now = n0; } return r; }), [false, true, 0]);
 
     /* تقفيل اليوم */
@@ -886,7 +895,7 @@ const MO = !!process.env.MARKET_ONLY;
     await sync2();
     eq('تليجرام: مصطفى عرف بالفرق', tgTexts().some(t => t.includes('قفّل يومه') && t.includes('ناقص 200')), true);
     await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
-    eq('الحسابات: سطر أحمر في المطلوب منك النهارده', await A.evaluate(() => { const r = [...document.querySelectorAll('#tkRows .sync')].find(x => x.textContent.includes('قفّل يومه')); return r && [r.classList.contains('warn'), r.textContent.includes('ناقص')]; }), [true, true]);
+    eq('الحسابات: مفيش تنبيه في الرئيسية (التقفيل في الوارد بس)', await A.evaluate(() => !!document.querySelector('#hAlerts .mkcnt, #tkRows')), false);
     eq('الوارد: كارت التقفيل فوق ومش محسوب عملية', await A.evaluate(() => { go('mkt'); return new Promise(r => setTimeout(() => r([!!document.querySelector('#mkBody .mkcnt.bad'), mkLive().some(o => o.t === 'cnt')]), 300)); }), [true, false]);
     await M.click('#kBtn'); await M.waitForSelector('#kAmt'); await M.fill('#kAmt', String(cn0 / 100)); await M.click('#kOk'); await M.waitForTimeout(300);
     eq('قفّل تاني مظبوط: نفس التقفيل اتكتب فوق القديم', await M.evaluate(() => [Object.values(S.ops).filter(o => o.t === 'cnt').length, cntOf(today()).amt === cntOf(today()).sys, $('#kBtn').classList.contains('ok')]), [1, true, true]);
@@ -921,9 +930,19 @@ const MO = !!process.env.MARKET_ONLY;
     eq('اللاب: "تسجيل سريع" في القايمة الجانبية والزرار العايم مخفي، وF4 بيفتحه', [await A.isVisible('#nQuick'), await A.isVisible('#fabNew'), (await A.keyboard.press('F4'), await A.waitForTimeout(150), await A.isVisible('#qmDoc'))], [true, false, true]);
     await A.evaluate(() => closeModal()); await A.setViewportSize({width: 400, height: 860}); await A.waitForTimeout(200);
 
+    /* الشريط اللي تحت على الموبايل: العملاء | الموردين | حركة السوق | التقارير | الإعدادات */
+    eq('الموبايل: ترتيب الشريط اللي تحت', await A.evaluate(() => $$('nav button[data-go]').filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => (+getComputedStyle(a).order) - (+getComputedStyle(b).order)).map(b => b.innerText.trim())), ['العملاء', 'الموردين', 'حركة السوق', 'التقارير', 'الإعدادات']);
+    await A.click('nav button[data-go=home]'); await A.waitForTimeout(150);
+    eq('العملاء: عملاء السوق والمواقع بس + زرار الخزنة، والبحث مبيجيبش موردين', await A.evaluate(() => { const t = $$('#hTabs button[data-t]').map(b => b.dataset.t); $('#hSearch').value = 'مورد'; renderList(); const n = $$('#hList .pt.sup').length; $('#hSearch').value = ''; renderList(); return [t, !!$('#hCash'), n]; }), [['mkt', 'site'], true, 0]);
+    await A.click('nav button[data-go=sup]'); await A.waitForTimeout(150);
+    eq('الموردين تبويب لوحده تحت وفيه موردين بس', await A.evaluate(() => [$('nav button.on').dataset.go, $$('#hList .pt').length > 0 && $$('#hList .pt').every(x => x.classList.contains('sup')), $$('#hTabs button[data-t]').length]), ['sup', true, 0]);
+    await A.click('#hList .pt'); await A.waitForTimeout(150);
+    eq('صفحة المورد: الموردين هو المتعلّم والرجوع بيرجع للموردين', [await A.evaluate(() => $('nav button.on').dataset.go), (await A.click('#ppBack'), await A.waitForTimeout(150), await A.evaluate(() => location.hash))], ['sup', '#sup']);
+    await A.click('nav button[data-go=home]'); await A.click('#hCash'); await A.waitForTimeout(150);
+    eq('زرار الخزنة في العملاء بيفتح الخزنة', await A.evaluate(() => location.hash), '#cash');
     /* المطلوب منك النهارده + الألوان */
     await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
-    eq('الرئيسية: كل التنبيهات في صندوق "المطلوب منك النهارده" والعداد = اللي لسه مستنيك', await A.evaluate(() => [!!$('#todo #mkRem') && !!$('#todo #nlRem'), $('#tdN').textContent === ($$('#todo .sync:not(.ok)').length ? $$('#todo .sync:not(.ok)').length + ' ' + ($$('#todo .sync:not(.ok)').length === 1 ? 'حاجة' : 'حاجات') : '✔ مفيش حاجة مستنياك')]), [true, true]);
+    eq('الرئيسية: فاضل تنبيه الفواتير اللي بنودها لسه بس (مفيش وارد السوق ولا الحد الأحمر ولا النسخة)', await A.evaluate(() => [!!$('#nlRem'), $('#mkRem').textContent.trim(), !!$('#bkRem'), !!$('#tkRows')]), [true, '', false, false]);
     eq('الألوان واحدة في التطبيقين: الكاش أخضر والتحويل أزرق والمصروف أحمر', await M.evaluate(() => { nav('', true); const c = k => { const r = document.querySelector('.row.' + k + ' .a .money'); return r ? getComputedStyle(r).color : null; }; return [c('d-in'), c('d-to')]; }), ['rgb(30, 138, 70)', 'rgb(47, 102, 144)']);
 
     console.log('\n١٥) المراجعة الداخلية');

@@ -211,7 +211,7 @@ body{font-size:var(--f3)}
 .cnet b{font-size:var(--f4);color:var(--ink);direction:ltr}.cnet b.neg{color:var(--red)}
 .cwrap{display:grid;gap:12px;margin-bottom:12px}
 .ctab{background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
-.cth{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;font-weight:800;font-size:var(--f2);border-bottom:1px solid var(--line);background:var(--row)}
+.cth{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;font-weight:800;font-size:var(--f2);border-bottom:1px solid var(--line);background:var(--row)}
 .cth b{direction:ltr;font-variant-numeric:tabular-nums}
 .ctab.inc .cth{color:var(--green);border-top:3px solid var(--green)}
 .ctab.exp .cth{color:var(--red);border-top:3px solid var(--red)}
@@ -222,7 +222,7 @@ table.cmt{width:100%;border-collapse:collapse}
 .cmt td.d{width:70px;font-size:var(--f1);color:var(--sub);white-space:nowrap;text-align:center}
 .cmt td.w b{display:block;font-size:var(--f3);font-weight:700;color:var(--ink);line-height:1.35;overflow-wrap:anywhere}
 .cmt td.w small{display:block;font-size:var(--f1);color:var(--sub);margin-top:1px}
-.cmt td.am{width:1%;white-space:nowrap;direction:ltr;text-align:right;font-weight:800;font-size:var(--f3);font-variant-numeric:tabular-nums}
+.cmt td.am{width:1%;white-space:nowrap;direction:ltr;text-align:left;font-weight:800;font-size:var(--f3);font-variant-numeric:tabular-nums}
 .ctab.inc .am{color:var(--green)}.ctab.exp .am{color:var(--red)}
 .cmt td.e{text-align:center;color:var(--sub);padding:18px}
 @media (min-width:1000px){main{max-width:1100px}.cwrap{grid-template-columns:1fr 1fr;align-items:start}}
@@ -285,8 +285,44 @@ body{font-size:var(--f3);line-height:1.6}
 .total b{font-size:var(--f5)}
 .vault b,.today div b,.sum3 div b,.cnet b,.cmt td.am,.tx .a{font-size:var(--f4)}
 .cth b{font-size:var(--f3)}
+/* ============ نفس شكل الخزنة اللي جوه الحسابات بالظبط (accounts.html #p-cash) ============ */
+@media (min-width:1000px){main{max-width:1500px;padding:18px 22px 30px}}
+.cbar .btn{border-radius:11px}
+.cbar .sh{display:none}
+@media (max-width:640px){.cbar .lg{display:none}.cbar .sh{display:inline}}
+.tots{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.tots div{border-radius:14px;padding:12px 8px;text-align:center;background:var(--card);border:1.5px solid var(--line);box-shadow:var(--shadow)}
+.tots div span{display:block;font-size:var(--f2);font-weight:700;color:var(--sub)}
+.tots div b{display:block;font-size:var(--f4);font-weight:800;direction:ltr;font-variant-numeric:tabular-nums lining-nums}
+.tots .k{grid-column:1/-1;background:var(--gold-l);border:1px solid var(--gold)}
+.tots .k span{color:var(--gold-d)}.tots .k b{color:var(--ink);font-size:var(--f5)}.tots .k b.cr{color:var(--red)}
+.tots .k b small{font-size:var(--f2);color:var(--gold-d)}
+.tots .vt{cursor:pointer}.tots .vt.on{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
+.tots b.cr2{color:var(--red)}
+.tots .k + .vt:last-child{grid-column:1/-1}
+@media (max-width:640px){.tots div b{font-size:var(--f3)}.tots .k b{font-size:var(--f5)}.ctools{display:grid;grid-template-columns:1fr 1fr}}
+@media (min-width:1000px){.tots{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.tots .k{grid-column:1/-1}}
+.hpick{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px}
+.hpick .seg{grid-column:1/-1;margin:0}.hpick .dnav{grid-column:1/-1;margin:0}.hpick #hPk:has(.g2){grid-column:1/-1}
+.hpick .dnav span{min-width:112px;padding:6px 10px;cursor:default}
+@media (min-width:1000px){.hpick{grid-template-columns:auto auto 1fr 1fr;align-items:center;padding:10px 12px}.hpick .seg{grid-column:auto;min-width:300px}.hpick .dnav{grid-column:auto}.hpick #hPk:has(.g2){grid-column:auto}.ctools{justify-content:flex-start}.ctools .btn{flex:0 0 auto}}
+.cmt td.d{width:62px;line-height:1.2}.cmt td.d small{display:block;font-size:var(--f1);color:var(--sub)}
+html[data-theme=dark] .tots div{background:var(--card);border-color:var(--line);color:var(--ink)}
+html[data-theme=dark] .tots .k{background:var(--gold-l);border-color:#5b4a1d}
+html[data-theme=dark] .tots .k b{color:var(--ink)}html[data-theme=dark] :is(.tots .k b.cr,.tots b.cr2){color:var(--red)}
+html[data-theme=dark] .tots div span{color:var(--sub)}
+/* منتقي التاريخ (lib/datepick.js) بنفس شكل الحسابات */
+.dp{min-height:46px;font-size:var(--f3);border-radius:10px}
+html[data-theme=dark] .dp{background:var(--bg);border-color:var(--field);color:var(--ink)}
+html[data-theme=dark] .dp .ph,html[data-theme=dark] .dp .sp{color:var(--sub)}
+html[data-theme=dark] .dpo{background:var(--card);color:var(--ink)}
+html[data-theme=dark] .dph button,html[data-theme=dark] .dpy button{background:#34312a;color:var(--ink)}
+html[data-theme=dark] .dpy span{color:var(--sub)}
+html[data-theme=dark] .dpg button,html[data-theme=dark] .dpf button{background:var(--row);color:var(--ink);border-color:var(--field)}
+html[data-theme=dark] .dpg button:hover{background:#34312a}
+html[data-theme=dark] .dpg button.on{background:var(--gold);color:#241b00}
 /* عنوان كل يوم في قايمة الحركات */
-.dayh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:14px 2px 6px;padding-bottom:4px;border-bottom:1px solid var(--line);font-weight:800;font-size:var(--f2);color:var(--gold-d)}
+.dayh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:14px 13px 6px;padding-bottom:4px;border-bottom:1px solid var(--line);font-weight:800;font-size:var(--f2);color:var(--gold-d)}
 .dayh b{direction:ltr;font-size:var(--f2);font-variant-numeric:tabular-nums}.dayh b.neg{color:var(--red)}.dayh b.pos{color:var(--green)}
 /* شاشة القفل: نفس شكل قفل الحسابات بالظبط، والشريط الأخضر وعلامة "الخزنة" بيميزوها */
 #lock{position:fixed;inset:0;z-index:115;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px 18px;overflow:auto}
@@ -340,11 +376,15 @@ html[data-theme=dark] #lock label{color:var(--sub)}
 <!-- ============== الرئيسية ============== -->
 <section class="page" id="p-home">
   <div class="sync" id="syncBox"></div>
-  <div class="cbar"><button class="btn redf" id="bExp" type="button">− مصروف</button><button class="btn green" id="bInc" type="button">+ إيراد</button><button class="btn line" id="bTr" type="button">⇄ تحويل</button></div>
-  <div class="total"><small>الرصيد الإجمالي</small><b id="hTotal">0</b></div>
-  <div class="vaults" id="hVaults"></div>
-  <div class="ctools"><button class="btn line sm" id="bCount" type="button">✎ الفلوس اللي معايا</button><button class="btn line sm" id="hAll" type="button">📋 كل الحركات</button><a class="btn line sm" href="accounts.html#cash" style="text-decoration:none">🔗 افتح في الحسابات</a></div>
-  <div class="dnav" id="hNav"></div>
+  <div class="cbar">
+    <button class="btn green" id="bRecv" type="button" title="استلمت من عميل">💵 <span class="lg">استلمت من عميل</span><span class="sh">استلمت</span></button>
+    <button class="btn" id="bPayS" type="button" title="دفعت لمورد">💸 <span class="lg">دفعت لمورد</span><span class="sh">دفعت</span></button>
+    <button class="btn redf" id="bExp" type="button">− مصروف</button>
+    <button class="btn gold" id="bInc" type="button">+ إيراد</button>
+  </div>
+  <div class="tots" id="hTots"></div>
+  <div class="ctools"><button class="btn line sm" id="bCount" type="button">✎ الفلوس اللي معايا</button><button class="btn line sm" id="bTr" type="button">⇄ تحويل</button><button class="btn line sm" id="hAll" type="button">📋 كل الحركات</button><a class="btn line sm" href="accounts.html#cash" style="text-decoration:none">🔗 الحسابات</a></div>
+  <div class="card hpick" id="hPick"></div>
   <div class="cnet" id="hNet"></div>
   <div class="cwrap" id="hTables"></div>
 </section>
@@ -415,6 +455,7 @@ html[data-theme=dark] #lock label{color:var(--sub)}
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
 <div id="render"></div>
 
+<script src="lib/datepick.js"></script>
 <script>
 'use strict';
 /* ====================== أدوات ====================== */
@@ -685,30 +726,78 @@ function txWho(t) {
   if (t.party) return {who: (t.note || '').split(' — ')[0] || 'حساب', what: t.pnote || ''};
   return {who: t.note || cName(t), what: t.note ? cName(t) : ''};
 }
-function txTable(title, arr, cls) {
+function txTable(title, arr, cls, dated) {
   const tot = arr.reduce((n, t) => n + t.amt, 0);
+  const dcell = t => { const [y, m, d] = isoOf(t.ts).split('-'); return dated ? `${d}${RLM}/${RLM}${m}<small>${y}</small>` : dispTime(t.ts); };
   return `<section class="ctab ${cls}"><div class="cth"><span>${title} (${arr.length})</span><b data-ck="t:${esc(title)}" data-cnt="${tot}">${fmt(tot)}</b></div>
     <table class="cmt"><tbody>${arr.length ? arr.map(t => { const w = txWho(t), pend = t.sy !== t.upd ? '<span class="pend" title="لسه ما اتبعتتش للشيت"></span>' : '';
-      return `<tr data-id="${t.id}"><td class="d">${dispTime(t.ts)}</td><td class="w"><b>${esc(w.who)}${pend}</b>${w.what ? `<small>${esc(w.what)}</small>` : ''}</td><td class="am">${fmt(t.amt)}</td></tr>`; }).join('') : '<tr><td class="e" colspan="3">مفيش حركات</td></tr>'}</tbody></table></section>`;
+      return `<tr data-id="${t.id}"><td class="d">${dcell(t)}</td><td class="w"><b>${esc(w.who)}${pend}</b>${w.what ? `<small>${esc(w.what)}</small>` : ''}</td><td class="am">${fmt(t.amt)}</td></tr>`; }).join('') : '<tr><td class="e" colspan="3">مفيش حركات</td></tr>'}</tbody></table></section>`;
 }
-let homeDay = '';
+/* الرئيسية = نفس خزنة الحسابات: يوم/شهر/سنة/من–إلى، أسهم السابق والتالي، وفلتر الخزنة (من القايمة أو بالدوس على كارت الخزنة) */
+const home = {mode: 'day', day: '', month: '', year: '', from: '', to: '', vault: ''};
+let homeDay = '';   // قديم: يوم الرئيسية (بقى home.day)
+function homeRange() {
+  const t = todayISO();
+  if (home.mode === 'day') { const d = home.day || t; return [d, d]; }
+  if (home.mode === 'month') { const m = home.month || t.slice(0, 7), [y, mo] = m.split('-').map(Number); return [m + '-01', m + '-' + pad2(new Date(y, mo, 0).getDate())]; }
+  if (home.mode === 'year') { const y = home.year || t.slice(0, 4); return [y + '-01-01', y + '-12-31']; }
+  return [home.from || t.slice(0, 8) + '01', home.to || t];
+}
+function homeLabel() {
+  const t = todayISO();
+  if (home.mode === 'day') { const d = home.day || t; return AR_DAYS[dowOf(d)] + (d === t ? ' · النهارده' : ''); }
+  if (home.mode === 'month') { const [y, m] = (home.month || t.slice(0, 7)).split('-'); return MONTHS[+m - 1] + ' ' + y; }
+  return home.year || t.slice(0, 4);
+}
+function homeStep(n) {
+  const t = todayISO();
+  if (home.mode === 'day') home.day = addDays(home.day || t, n);
+  else if (home.mode === 'month') { const [y, m] = (home.month || t.slice(0, 7)).split('-').map(Number), d = new Date(y, m - 1 + n, 1); home.month = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`; }
+  else home.year = String((+home.year || +t.slice(0, 4)) + n);
+  renderHome();
+}
 function renderHome() {
-  const tot = balance(null), td = todayISO(), d = homeDay || td;
-  const ht = $('#hTotal'); ht.textContent = fmt(tot) + ' ' + CUR; ht.dataset.ck = 'h:total'; ht.dataset.cnt = tot;
-  ht.style.color = tot < 0 ? '#ff8a80' : '';
-  $('#hVaults').innerHTML = vaults().length < 2 ? '' : vaults().map(v => { const b = balance(v.id); return `<div class="vault ${b < 0 ? 'neg' : ''}"><span>${esc(v.name)}</span><b data-ck="v:${esc(v.id)}" data-cnt="${b}">${fmt(b)}</b></div>`; }).join('');
-  $('#hNav').innerHTML = `<button type="button" id="hPrev" title="اليوم اللي قبله">›</button><span id="hDay" title="ارجع لليوم">${AR_DAYS[dowOf(d)]}${d === td ? ' · النهارده' : ' · ' + dispDate(d)}</span><button type="button" id="hNext" title="اليوم اللي بعده">‹</button>`;
-  $('#hPrev').onclick = () => { homeDay = addDays(d, -1); renderHome(); };
-  $('#hNext').onclick = () => { homeDay = addDays(d, 1); renderHome(); };
-  $('#hDay').onclick = () => { if (homeDay) { homeDay = ''; renderHome(); } };
-  const list = liveTx().filter(t => isoOf(t.ts) === d).sort((a, b) => b.ts - a.ts);
-  const s = sums(list);
-  $('#hNet').innerHTML = `<span>${d === td ? 'صافي النهارده' : 'صافي اليوم'}</span><b class="${s.n < 0 ? 'neg' : ''}" data-ck="h:net" data-cnt="${s.n}">${fmt(s.n)} ${CUR}</b>`;
-  const trs = list.filter(t => t.type === 'tr');
-  $('#hTables').innerHTML = txTable('الإيرادات', list.filter(t => t.type === 'inc'), 'inc') + txTable('المصروفات', list.filter(t => t.type === 'exp'), 'exp') + (trs.length ? txTable('تحويلات', trs, '') : '');
-  $$('#hTables tr[data-id]').forEach(el => el.onclick = () => { const t = db.tx.find(x => x.id === el.dataset.id); if (t) openTx(t.type, t); });
+  const vs = vaults(), tot = balance(null), t = todayISO();
+  if (home.vault && !vs.some(v => v.id === home.vault)) home.vault = '';
+  $('#hTots').innerHTML = `<div class="k"><span>رصيد كل الخزن</span><b class="${tot < 0 ? 'cr' : ''}" data-ck="h:total" data-cnt="${tot}">${fmt(tot)} <small>${CUR}</small></b></div>`
+    + (vs.length < 2 ? '' : vs.map(v => { const b = balance(v.id); return `<div class="vt ${home.vault === v.id ? 'on' : ''}" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="${b < 0 ? 'cr2' : ''}" data-ck="v:${esc(v.id)}" data-cnt="${b}">${fmt(b)}</b></div>`; }).join(''));
+  $$('#hTots .vt').forEach(el => el.onclick = () => { home.vault = home.vault === el.dataset.v ? '' : el.dataset.v; renderHome(); });
+  $('#bTr').style.display = vs.length > 1 ? '' : 'none';
+  const [from, to] = homeRange();
+  $('#hPick').innerHTML = `<div class="seg" id="hMode">${[['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${home.mode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    ${home.mode === 'range' ? '' : `<div class="dnav"><button type="button" id="hPrev" title="السابق">›</button><span id="hDay">${homeLabel()}</span><button type="button" id="hNext" title="التالي">‹</button></div>`}
+    <div id="hPk">${home.mode === 'day' ? `<input class="inp" type="date" id="hD" value="${home.day || t}">`
+      : home.mode === 'month' ? `<input class="inp" type="month" id="hM" value="${home.month || t.slice(0, 7)}">`
+      : home.mode === 'year' ? `<input class="inp num" id="hY" inputmode="numeric" value="${home.year || t.slice(0, 4)}">`
+      : `<div class="g2"><input class="inp" type="date" id="hF" value="${from}"><input class="inp" type="date" id="hT" value="${to}"></div>`}</div>
+    <select class="inp" id="hV"><option value="">كل الخزن</option>${vs.map(v => `<option value="${esc(v.id)}" ${home.vault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>`;
+  $$('#hMode button').forEach(b => b.onclick = () => { home.mode = b.dataset.m; renderHome(); });
+  if ($('#hPrev')) { $('#hPrev').onclick = () => homeStep(-1); $('#hNext').onclick = () => homeStep(1); }
+  const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); renderHome(); }; };
+  bindI('#hD', v => home.day = v); bindI('#hM', v => home.month = v); bindI('#hY', v => home.year = normDigits(v).replace(/\D/g, '').slice(0, 4));
+  bindI('#hF', v => home.from = v); bindI('#hT', v => home.to = v);
+  $('#hV').onchange = () => { home.vault = $('#hV').value; renderHome(); };
+  const a = dayStart(from <= to ? from : to), z = dayEnd(from <= to ? to : from), V = home.vault;
+  const list = liveTx().filter(x => x.ts >= a && x.ts < z && (!V || x.vault === V || x.to === V)).sort((p, q) => q.ts - p.ts);
+  /* الصافي: لو خزنة واحدة متختارة التحويل ليها أو منها بيتحسب، ولو كل الخزن ملوش دعوة */
+  let n = 0;
+  list.forEach(x => { if (x.type === 'inc') n += +x.amt; else if (x.type === 'exp') n -= +x.amt; else if (V) n += x.to === V ? +x.amt : -x.amt; });
+  n = Math.round(n * 100) / 100;
+  $('#hNet').innerHTML = `<span>${home.mode === 'day' ? 'صافي اليوم' : 'صافي الفترة'}</span><b class="${n < 0 ? 'neg' : ''}" data-ck="h:net" data-cnt="${n}">${fmt(n)} ${CUR}</b>`;
+  const dated = home.mode !== 'day', trs = list.filter(x => x.type === 'tr');
+  $('#hTables').innerHTML = txTable('الإيرادات', list.filter(x => x.type === 'inc'), 'inc', dated) + txTable('المصروفات', list.filter(x => x.type === 'exp'), 'exp', dated) + (trs.length ? txTable('تحويلات', trs, '', dated) : '');
+  $$('#hTables tr[data-id]').forEach(el => el.onclick = () => { const x = db.tx.find(y => y.id === el.dataset.id); if (x) openTx(x.type, x); });
   renderSyncBox(); runCounters($('#p-home'));
 }
+/* استلمت من عميل / دفعت لمورد = إيراد أو مصروف وخانة الاسم مفتوحة على طول */
+function openParty(type) {
+  openTx(type);
+  const p = $('#tP');
+  if (!p) return toast('أسامي العملا والموردين بتيجي من الحسابات. افتح الحسابات مرة على الجهاز ده.', 5000);
+  setTimeout(() => { try { p.focus(); if (p.showPicker) p.showPicker(); } catch (e) {} }, 150);
+}
+$('#bRecv').onclick = () => openParty('inc');
+$('#bPayS').onclick = () => openParty('exp');
 $('#bExp').onclick = () => openTx('exp');
 $('#bInc').onclick = () => openTx('inc');
 $('#bTr').onclick = () => { if (vaults().length < 2) return toast('محتاج خزنتين على الأقل. ضيف خزنة من الإعدادات'); openTx('tr'); };

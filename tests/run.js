@@ -1370,6 +1370,29 @@ const T0 = Date.now();
     eq('الحسابات (صفحة الحساب): الخط بالخمس أحجام بس', await fs5(A), [true, []]);
     for (const f of ['cash.html', 'market.html']) { const X = await D1.page(f); await X.settle(800); eq(`${f}: الخط بالخمس أحجام بس`, await fs5(X), [true, []]); await X.close(); }
 
+    sec('قاعدة الأرقام: تحت بعض في عمود واحد (الحسابات والخزنة والسوق)');
+    /* كل رقم في القايمة (وإجمالي القسم بتاعها) بيبدأ من نفس الخط على الشمال بالظبط: مفيش رقم داخل ورقم خارج */
+    const numCol = (X, root, sel) => X.evaluate(([root, sel]) => {
+      const L = [...document.querySelectorAll(root + ' ' + sel.split(',').join(',' + root + ' '))].filter(e => e.getClientRects().length && e.textContent.trim())
+        .map(e => { const g = document.createRange(); g.selectNodeContents(e); return [g.getBoundingClientRect().left, e.className + ':' + e.textContent.trim().slice(0, 12) + '@' + (e.closest('section,.list,.ctab') || {}).className + '|' + e.parentElement.className + '|' + e.parentElement.parentElement.className]; });
+      const xs = L.map(x => x[0]), lo = Math.min(...xs);
+      return [L.length, L.length ? Math.round(Math.max(...xs) - lo) : 0, L.filter(x => x[0] - lo > 1).slice(0, 4).map(x => Math.round(x[0] - lo) + ' ' + x[1])];
+    }, [root, sel]);
+    const colOk = async (name, X, root, sel) => { const [n, spread, off] = await numCol(X, root, sel); eq(`${name}: الأرقام تحت بعض (${n} رقم)`, [n >= 2, spread <= 1, off], [true, true, []]); };
+    await A.evaluate(() => { go('cash'); cashMode = 'year'; renderCash(); }); await A.settle(300);
+    await colOk('الحسابات — الخزنة', A, '#p-cash', '.cmt td.am,.cth b');
+    await A.evaluate(() => { cashMode = 'day'; go('home'); }); await A.settle(300);
+    await colOk('الحسابات — قايمة العملاء', A, '#hList', '.pt .a b');
+    { const X = await D1.page('cash.html'); await X.settle(800);
+      await X.evaluate(() => { home.mode = 'year'; renderHome(); }); await X.settle(200);
+      await colOk('دفتر الخزنة — الرئيسية', X, '#hTables', '.cmt td.am,.cth b');
+      eq('دفتر الخزنة نفس شكل خزنة الحسابات: نفس الزراير والكروت واختيار الفترة', await X.evaluate(() => [[...document.querySelectorAll('#p-home .cbar .btn')].map(b => b.querySelector('.lg') ? b.querySelector('.lg').textContent : b.textContent.trim()), $('#hTots .k span').textContent, [...document.querySelectorAll('#hMode button')].map(b => b.textContent)]),
+        [['استلمت من عميل', 'دفعت لمورد', '− مصروف', '+ إيراد'], 'رصيد كل الخزن', ['يوم', 'شهر', 'سنة', 'من–إلى']]);
+      await X.evaluate(() => { rep.mode = 'range'; rep.from = '2000-01-01'; rep.to = todayISO(); rep.detail = true; go('rep'); }); await X.settle(400);
+      await colOk('دفتر الخزنة — التقارير', X, '#rOut', '.tx .a,.dayh b');
+      await X.close(); }
+    if (DM) { const MX = DM.pages().find(p => p.url().includes('market.html')); if (MX) { await MX.evaluate(() => nav('')); await MX.settle(400); await colOk('حركة السوق — الرئيسية', MX, '#main', '.gh .money,.row .a .money,.lbl.dh .money'); } }
+
     sec('١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2 ? D2.errs : [], DM ? DM.errs : []), []);

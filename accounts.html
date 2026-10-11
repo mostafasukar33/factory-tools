@@ -4785,7 +4785,8 @@ function tgDoc_(name, text, caption) {
 }
 function tgState_() {
   const p = PropertiesService.getScriptProperties(), t = p.getProperty('TG_TOKEN');
-  return {ok: true, v: VER, token: !!t, bot: p.getProperty('TG_BOT') || '', chat: !!(t && tgChat_(t))};
+  let url = ''; try { url = SpreadsheetApp.getActiveSpreadsheet().getUrl(); } catch (e) {}
+  return {ok: true, v: VER, token: !!t, bot: p.getProperty('TG_BOT') || '', chat: !!(t && tgChat_(t)), url: url};
 }
 function tgTest_() {
   const st = tgState_();
@@ -5547,21 +5548,29 @@ function mktHelp() {
 const MK_VER = 3;
 /* تحديث كود شيت السوق (من الموبايل أو اللاب). بيتطلب بس لما VER يزيد: نص تنبيهات الشريك بييجي من التطبيق فمش محتاج تحديث */
 function mktUpdateHelp() {
-  const code = marketScript();
-  const wide = isWide();
+  const code = marketScript(), wide = isWide(), su = db && db.cfg.mkSheetUrl;
   modal(`<h3>تحديث كود شيت السوق${wide ? '' : ' (من الموبايل)'}</h3>
+  <p class="hint" style="margin-top:0">الكود متخزن جوه جدول جوجل اسمه <b>حركة السوق</b>، وبتوصله من جوه الجدول ده نفسه. لينك شريكك مش هيتغير.</p>
   <ol class="steps">
     <li>دوس <b>"انسخ الكود"</b> تحت.</li>
-    <li>دوس <b>"افتح Apps Script"</b>.${wide ? '' : ' هيفتح في كروم. من القايمة (⋮) فعّل <b>"موقع سطح المكتب" (Desktop site)</b>.'}</li>
-    <li>افتح مشروع <b>حركة السوق</b> (أو الاسم اللي سمّيته). جوه الكود: دوس مطوّل ← <b>تحديد الكل</b> ← الصق (<b>Paste</b>) فوق القديم. الكود الصح بيخلص عند السطر رقم ${code.split('\n').length}.</li>
-    <li>دوس أيقونة الحفظ 💾.</li>
-    <li>فوق: <b>نشر (Deploy)</b> ← <b>إدارة عمليات النشر (Manage deployments)</b> ← القلم ✏️ ← في <b>Version</b> اختار <b>New version</b> ← <b>Deploy</b>. <b>اللينك بيفضل زي ما هو</b>، ومتعملش نشر جديد.</li>
+    <li>${su ? 'دوس <b>"افتح جدول حركة السوق"</b> تحت.' : 'دوس <b>"افتح جداول جوجل"</b> تحت، ودوّر على جدول اسمه <b>حركة السوق</b> وافتحه (مش جدول الحسابات).'}${wide ? '' : ' من قايمة كروم (⋮) فعّل <b>"موقع سطح المكتب" (Desktop site)</b>.'}</li>
+    <li>من القايمة اللي فوق في الجدول: <b>الإضافات (Extensions)</b> ← <b>Apps Script</b>. هيفتح الكود القديم.</li>
+    <li>${wide ? 'دوس جوه الكود ← <b>Ctrl+A</b> (تحديد الكل) ← <b>Ctrl+V</b> (لصق) فوق القديم ← <b>Ctrl+S</b> (حفظ).' : 'جوه الكود: دوس مطوّل ← <b>تحديد الكل</b> ← الصق (<b>Paste</b>) فوق القديم ← أيقونة الحفظ 💾.'} الكود الصح بيخلص عند السطر رقم ${code.split('\n').length}.</li>
+    <li>فوق على اليمين: <b>نشر (Deploy)</b> ← <b>إدارة عمليات النشر (Manage deployments)</b> ← القلم ✏️ ← في <b>Version</b> اختار <b>New version</b> ← <b>Deploy</b>. <b>متعملش "نشر جديد" (New deployment)</b> علشان اللينك يفضل زي ما هو. لو طلب إذن: اختار حسابك ← Advanced ← Go to ... ← Allow.</li>
+    <li>ارجع هنا واعمل ريفرش للصفحة. التحذير الأصفر هيختفي، وجرّب "ابعت ملخص النهارده".</li>
   </ol>
-  <div class="stack" style="margin-top:12px"><button class="btn green" id="muCopy" type="button">انسخ الكود</button><a class="btn gold" href="https://script.google.com/home" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">افتح Apps Script</a><button class="btn line" id="muX" type="button">إغلاق</button></div>`, true);
+  <details class="fld"><summary style="font-weight:700;color:var(--gold-d);cursor:pointer">مش لاقي جدول "حركة السوق" أو الصفحة فاضية؟</summary>
+    <ol class="steps">
+      <li>غالباً انت داخل على اللاب <b>بحساب جوجل تاني</b> غير اللي عملت بيه الجدول. بص على الصورة الصغيرة فوق في ركن صفحة جوجل ودوس عليها: لو فيه أكتر من حساب اختار التاني، ولو مش موجود دوس <b>إضافة حساب آخر</b> وادخل بيه.</li>
+      <li>مش فاكر أنهي حساب؟ على الموبايل افتح تطبيق <b>Google Sheets</b> أو <b>Google Drive</b> ودوّر على <b>حركة السوق</b>. لما تلاقيه، الحساب اللي فاتح بيه التطبيق (الصورة فوق) هو اللي تدخل بيه على اللاب.</li>
+      <li>أو افتح <b>drive.google.com</b> واكتب في البحث: <b>حركة السوق</b>.</li>
+      <li>صفحة <b>script.google.com</b> ممكن تطلع فاضية حتى لو الكود موجود، علشان كده ادخل من الجدول نفسه (الإضافات ← Apps Script).</li>
+    </ol></details>
+  <div class="stack" style="margin-top:12px"><button class="btn green" id="muCopy" type="button">انسخ الكود</button>${su ? `<a class="btn gold" href="${esc(su)}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">افتح جدول حركة السوق</a>` : '<a class="btn gold" href="https://docs.google.com/spreadsheets/" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">افتح جداول جوجل</a>'}<button class="btn line" id="muX" type="button">إغلاق</button></div>`, true);
   $('#muX').onclick = closeModal;
   $('#muCopy').onclick = async () => {
-    try { await navigator.clipboard.writeText(code); toast('اتنسخ الكود ✔ دلوقتي افتح Apps Script والصقه', 5000); }
-    catch (e) { toast('الموبايل مش مدّيني أنسخ. من "كود شيت السوق والخطوات" اعرض الكود وانسخه.', 6000); }
+    try { await navigator.clipboard.writeText(code); toast('اتنسخ الكود ✔ دلوقتي افتح الجدول ← الإضافات ← Apps Script والصقه', 6000); }
+    catch (e) { toast('الجهاز مش مدّيني أنسخ. من "كود شيت السوق والخطوات" اعرض الكود وانسخه.', 6000); }
   };
 }
 /* ====================== تليجرام من الحسابات (لمصطفى بس) ======================
@@ -5671,6 +5680,7 @@ function renderMktSettings() {
       <button class="btn green" id="smShareP" type="button">📲 ابعت تطبيق "حركة السوق" لشريكك</button>
       <p class="hint" style="margin:6px 0 12px">ابعته على واتساب شريكك (أو افتحه على موبايله) ← من قايمة كروم (⋮) اختار <b>"إضافة إلى الشاشة الرئيسية"</b>. هيلاقي العملاء على طول، من غير كلمة سر.</p>
       <button class="btn line sm" id="smOpen" type="button">📥 افتح وارد السوق</button>
+      <button class="btn line sm" id="smUpd" type="button" style="margin-top:8px">🛠 تحديث كود شيت السوق (الخطوات)</button>
       <div class="sech"><span>🔔 تنبيهات تليجرام</span></div>
       <div id="tgSt" class="hint" style="margin:0 0 8px">⏳ بشوف حالة التنبيهات…</div>
       <details class="fld" id="tgHow"><summary style="font-weight:700;color:var(--gold-d);cursor:pointer">إزاي أعمل البوت؟ (من الموبايل، 3 دقايق)</summary>
@@ -5700,6 +5710,7 @@ function renderMktSettings() {
   };
   if (!c) return;
   $('#smOpen').onclick = () => go('mkt');
+  $('#smUpd').onclick = mktUpdateHelp;
   $('#smShareP').onclick = async () => {
     const url = mktLink(), text = 'افتح الرابط ده، وبعدين من قايمة كروم (⋮) اختار "إضافة إلى الشاشة الرئيسية":';
     try { if (navigator.share) { await navigator.share({title: 'حركة السوق', text, url}); return; } } catch (e) { if (e.name === 'AbortError') return; }
@@ -5709,6 +5720,7 @@ function renderMktSettings() {
     const el = $('#tgSt'); if (!el) return;
     if (!j) { el.innerHTML = '⚠️ معرفتش أوصل لشيت السوق دلوقتي.'; return; }
     tgInfo = j;
+    if (j.url && db && db.cfg.mkSheetUrl !== j.url) { db.cfg.mkSheetUrl = j.url; flushSave(); }   // لينك جدول "حركة السوق" نفسه (من نسخة 3): زرار يفتحه على طول
     el.innerHTML = (!j.v || j.v < MK_VER ? `<div class="sync warn" id="mkOld" style="margin-bottom:8px">⚠️ كود شيت السوق قديم: بعض تنبيهات شريكك بتوصل ناقصة، والنسخة اليومية والملخص مش هيوصلوك. <a>حدّثه (مرة واحدة)</a></div>` : '')
       + (!j.token ? 'لسه مفيش بوت. اعمله من الخطوات تحت (مرة واحدة).'
       : !j.chat ? `<b style="color:var(--gold-d)">⏳ البوت @${esc(j.bot)} محفوظ. افتحه في تليجرام وابعتله "ابدأ"، وبعدين دوس "جرّب التنبيه".</b>`

@@ -19,7 +19,7 @@ function makeGas(opts = {}) {
     };
     return sh;
   };
-  const ss = {getId: () => 'ss1', getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = mkSheet(n))};
+  const ss = {getId: () => 'ss1', getUrl: () => 'https://docs.google.com/spreadsheets/d/ss1/edit', getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = mkSheet(n))};
   const props = {}, triggers = [], folders = [], tg = {calls: [], updates: []};
   const ctx = {
     SpreadsheetApp: {getActiveSpreadsheet: () => ss},

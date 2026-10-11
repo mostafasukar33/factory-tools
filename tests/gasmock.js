@@ -2,6 +2,8 @@
 const vm = require('vm');
 function makeGas(opts = {}) {
   const sheets = {};
+  /* عدّاد القراية من الشيت (كام مرة getValues وكام خانة) علشان نقيس السحب أخف ولا لأ */
+  const reads = {calls: 0, cells: 0};
   const mkSheet = name => {
     const rows = [];
     const sh = {
@@ -10,7 +12,7 @@ function makeGas(opts = {}) {
       appendRow: r => { rows.push(r.slice()); },
       setFrozenRows: () => {},
       getRange: (r, c, nr, nc) => ({
-        getValues: () => { const o = []; for (let i = 0; i < (nr || 1); i++) { const row = rows[r - 1 + i] || []; const x = []; for (let j = 0; j < (nc || 1); j++) x.push(row[c - 1 + j] ?? ''); o.push(x); } return o; },
+        getValues: () => { reads.calls++; reads.cells += (nr || 1) * (nc || 1); const o = []; for (let i = 0; i < (nr || 1); i++) { const row = rows[r - 1 + i] || []; const x = []; for (let j = 0; j < (nc || 1); j++) x.push(row[c - 1 + j] ?? ''); o.push(x); } return o; },
         /* زي جوجل بالظبط: خانة فيها أكتر من 50 ألف حرف = الكتابة كلها بترفض */
         setValues: v => { if (v.some(row => row.some(x => String(x).length > 50000))) throw new Error('Exception: Your input contains more than the maximum of 50000 characters in a single cell.'); v.forEach((row, i) => { const t = rows[r - 1 + i] = rows[r - 1 + i] || []; row.forEach((val, j) => t[c - 1 + j] = val); }); },
         setValue: val => { const t = rows[r - 1] = rows[r - 1] || []; t[c - 1] = val; }
@@ -49,7 +51,7 @@ function makeGas(opts = {}) {
   };
   vm.createContext(ctx);
   return {
-    sheets, ctx, triggers, folders, props, tg,
+    sheets, ctx, triggers, folders, props, tg, reads,
     load(src) { vm.runInContext(src, ctx); },
     post(body) { return ctx.doPost({postData: {contents: body}}).t; },
     get() { return ctx.doGet({parameter: {}}).t; }

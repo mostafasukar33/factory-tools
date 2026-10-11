@@ -446,6 +446,61 @@ const T0 = Date.now();
     eq('النسخة الاحتياطية: مؤقّت واحد وفولدر واحد وآخر 30 بس', [G2.triggers, G2.folders.length, G2.folders[0].files.filter(f => !f.trashed).length], [['bkpRun'], 1, 30]);
     eq('الكود الأساسي لسه شغال بعد إضافة النسخة الاحتياطية', JSON.parse(G2.post(JSON.stringify({key: 'Some-Key-1234', action: 'ping'}))).ok, true);
 
+    /* كود الشيت نسخة 2 قدام نسخة 1 القديمة (tests/fixtures) بآلاف السطور: نفس الطلبات = نفس الردود ونفس الشيت بالظبط، والقراية من الشيت أقل بكتير */
+    const oldAcc = fs.readFileSync(path.join(__dirname, 'fixtures/acc-sheet-v1.gs'), 'utf8');
+    const GN = makeGas({noDrive: true}), GO = makeGas({noDrive: true}); GN.load(mainCode); GO.load(oldAcc);
+    const cost = {old: {}, neu: {}}, diff = [];
+    const both = (tag, o) => {
+      const b = JSON.stringify(Object.assign({key: 'Bench-Key-1234'}, o)), c0 = GO.reads.cells, c1 = GN.reads.cells;
+      const a = JSON.parse(GO.post(b)), n = JSON.parse(GN.post(b));
+      cost.old[tag] = (cost.old[tag] || 0) + GO.reads.cells - c0; cost.neu[tag] = (cost.neu[tag] || 0) + GN.reads.cells - c1;
+      const nv = Object.assign({}, n); if (o.action === 'pull') { if (nv.v !== 2) diff.push(tag + ': مفيش v'); delete nv.v; }
+      if (o.action === 'ping') { delete a.v; ['v', 'seq', 'url'].forEach(k => delete nv[k]); }   // ping الجديد بيزود النسخة ولينك الجدول بس
+      if (JSON.stringify(a) !== JSON.stringify(nv)) diff.push(tag);
+      return n;
+    };
+    const benchRow = (i, upd, del) => ({id: 'e_b' + i, kind: i % 9 ? 'entry' : 'tx', upd, del: !!del, view: ['2026-01-' + String(1 + i % 28).padStart(2, '0'), 'عميل تجربة ' + (i % 60), 'السوق', 'بيان تجربة ' + i, (i * 37 % 5000) + '.25', ''], data: {party: 'p_b' + (i % 60), dr: i * 3725, date: '2026-01-01', desc: 'حركة تجربة '.repeat(1 + i % 6), hist: []}});
+    const N = 6000;
+    for (let i = 0; i < N; i += 500) both('push', {action: 'push', rows: Array.from({length: 500}, (_, k) => benchRow(i + k, 1000 + i + k))});
+    const pullAll = (tag, since) => { const out = []; let more = true, nx = since, pages = 0; while (more && pages++ < 50) { const j = both(tag, {action: 'pull', since: nx}); out.push(...j.rows); nx = j.next; more = j.more; } return {out, nx, pages}; };
+    const full = pullAll('pull0', 0);
+    const seqNow = Number(GN.props.SEQ);
+    both('idle', {action: 'pull', since: seqNow});
+    /* تعديلات متفرقة على الشيت كله (منها القديم اللي لازم يتجاهل، ومتكرر في نفس الدفعة) + حركات جديدة */
+    const ed = [];
+    for (let k = 0; k < 25; k++) ed.push(benchRow(k * 233, k % 5 ? 900000 + k : 5, k % 7 === 0));
+    ed.push(benchRow(466, 900500)); ed.push(benchRow(466, 900400));
+    for (let k = 0; k < 30; k++) ed.push(benchRow(N + k, 950000 + k));
+    ed.push(benchRow(N + 3, 960000));
+    both('push2', {action: 'push', rows: ed});
+    const inc = pullAll('pull1', seqNow);
+    both('ping', {action: 'ping'});
+    const shOf = G => JSON.stringify(G.sheets['السجلات'].rows);
+    eq('كود الشيت الجديد: بآلاف السطور نفس الردود بالظبط زي القديم، ونفس الشيت خانة بخانة، ونفس الرقم', [diff, shOf(GN) === shOf(GO), GN.props.SEQ === GO.props.SEQ, full.out.length, full.pages, inc.out.length, new Set(inc.out.map(r => r.id)).size],
+      [[], true, true, N, 4, 25 - 5 + 30, 25 - 5 + 30]);
+    const pp = JSON.parse(GN.post(JSON.stringify({key: 'Bench-Key-1234', action: 'ping'})));
+    eq('ping الجديد بيقول النسخة 2 ولينك الجدول نفسه، والقديم نسخة 1', [pp.v, pp.url, pp.n, JSON.parse(GO.post(JSON.stringify({key: 'Bench-Key-1234', action: 'ping'}))).v], [2, 'https://docs.google.com/spreadsheets/d/ss1/edit', N + 30, 1]);
+    console.log('     خانات اتقرت من الشيت (القديم ← الجديد):', Object.keys(cost.old).map(k => `${k}: ${cost.old[k]} ← ${cost.neu[k]}`).join(' | '));
+    eq('السحب لو مفيش جديد مبيقراش ولا خانة، والسحب العادي والكامل والإرسال أخف بكتير', [cost.neu.idle, cost.neu.pull1 * 8 < cost.old.pull1, cost.neu.pull0 * 2 < cost.old.pull0, cost.neu.push * 2 < cost.old.push, cost.neu.push2 * 2 < cost.old.push2], [0, true, true, true, true]);
+
+    /* جهاز بالبرنامج الجديد على شيت لسه عليه الكود القديم: بيتزامن عادي، وبيظهر تحذير أصفر وزرار التحديث بخطوات من جوه الجدول */
+    const GOLD = makeGas(), accNew = sheets.acc; GOLD.load(oldAcc);
+    GOLD.sheets['السجلات'] = accNew.sheets['السجلات']; Object.assign(GOLD.props, accNew.props);
+    sheets.acc = GOLD;
+    await A.evaluate(() => { const now = Date.now(), r = {id: 't_oldsheet', type: 'exp', amt: 700, vault: 'v_main', to: '', cat: 'c_exp0', note: 'كود قديم', date: todayISO(), at: now, upd: now, del: true, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); saveDB(); });
+    await bg(A, 'syncNow()'); await A.settle(500);
+    eq('شيت بالكود القديم: المزامنة شغالة عادي والتحذير الأصفر ظاهر', await A.evaluate(() => [syncErr, pendingRecs().length, db.cfg.accV, $('#syncBox').classList.contains('warn'), !!$('#syUpd')]), ['', 0, 1, true, true]);
+    eq('الحركة وصلت الشيت القديم', GOLD.sheets['السجلات'].rows.some(r => r[0] === 't_oldsheet'), true);
+    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.settle(800);
+    eq('الإعدادات: تحذير "الكود قديم" وزرار ثابت "تحديث كود شيت الحسابات"', [!!(await A.$('#accOld')), (await A.textContent('#shUpd')).includes('تحديث كود شيت الحسابات')], [true, true]);
+    await A.click('#shUpd'); await A.settle(150);
+    eq('خطوات التحديث من جوه الجدول: إزاي تعرفه (بدون عنوان، ورقة السجلات جنب الورقة1، العناوين) ولينك الجدول نفسه', await A.evaluate(() => { const t = $('#modal').textContent; return [t.includes('الإضافات (Extensions)'), t.includes('جدول بيانات بدون عنوان'), t.includes('السجلات') && t.includes('الورقة1') && t.includes('رقم المزامنة'), t.includes('New version'), !!$('#modal a[href*="docs.google.com/spreadsheets/d/ss1"]')]; }), [true, true, true, true, true]);
+    await A.click('#auCopy'); const updCode = await A.evaluate(() => navigator.clipboard.readText()); await A.click('#auX');
+    eq('زرار "انسخ الكود" بينسخ الكود الجديد نفسه (من غير أي إذن زيادة)', [updCode === mainCode, /DriveApp|ScriptApp|UrlFetchApp/.test(updCode)], [true, false]);
+    accNew.sheets['السجلات'] = GOLD.sheets['السجلات']; Object.assign(accNew.props, GOLD.props); sheets.acc = accNew;   // "حدّث" الكود
+    await bg(A, 'syncNow()'); await A.evaluate(() => renderSettings()); await A.settle(800);
+    eq('بعد التحديث: التحذير بيختفي من الرئيسية والإعدادات', await A.evaluate(() => [db.cfg.accV, $('#syncBox').classList.contains('warn'), !!$('#accOld')]), [2, false, false]);
+
     const posts = [], origPost = sheets.acc.post.bind(sheets.acc);
     sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push') posts.push(q.rows.length); return origPost(body); };
     const addBulk = (X, n, tag) => X.evaluate(([n, tag]) => { for (let i = 0; i < n; i++) { const now = Date.now() + i; const r = {id: 't_' + tag + i, type: 'exp', amt: 100, vault: 'v_main', to: '', cat: 'c_exp0', note: tag, date: todayISO(), at: now, upd: now, del: true, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); } saveDB(); }, [n, tag]);

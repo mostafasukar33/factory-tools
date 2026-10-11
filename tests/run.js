@@ -54,6 +54,8 @@ function serve() {
 async function newDevice(browser, base, sheets) {
   const ctx = await browser.newContext({viewport: {width: 400, height: 860}, acceptDownloads: true, permissions: ['clipboard-read', 'clipboard-write']});
   ctx.errs = [];
+  await ctx.addInitScript(TRACKER);
+  ctx.on('page', p => { p.settle = settle; });
   await ctx.route('https://script.google.com/**', r => {
     if (ctx.netDown) return r.abort('failed');
     const q = r.request(), g = q.url().includes('TEST-CASH') ? sheets.cash : q.url().includes('TEST-MKT') ? sheets.mkt : sheets.acc;
@@ -65,7 +67,7 @@ async function newDevice(browser, base, sheets) {
     const tok = (r.request().url().match(/bot([^/]+)\//) || [])[1] || '', v = sheets.mkt.tg.valid;
     r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: JSON.stringify(v && !v.includes(decodeURIComponent(tok)) ? {ok: false, error_code: 401, description: 'Unauthorized'} : {ok: true, result: {username: 'test_souq_bot'}})});
   });
-  ctx.page = async url => { const p = await ctx.newPage(); p.on('pageerror', e => (ctx.errs.push(e.message), process.env.DBG && console.log('PAGEERR', e.message))); p.on('crash', () => process.env.DBG && console.log('CRASH')); p.on('close', () => process.env.DBG && console.log('PAGE CLOSED')); p.on('console', m => { if (process.env.DBG && m.type() === 'error') console.log('CONSOLE', m.text().slice(0, 120)); }); p.on('framenavigated', f => { if (process.env.DBG && f === p.mainFrame()) console.log('NAV', new Date().toISOString().slice(14, 23), f.url().slice(0, 80)); }); await p.goto(base + url); return p; };
+  ctx.page = async url => { const p = await ctx.newPage(); await p.addInitScript(v => { window.__tkOff0 = v; }, OFF); p.on('pageerror', e => (ctx.errs.push(e.message), process.env.DBG && console.log('PAGEERR', e.message))); p.on('crash', () => process.env.DBG && console.log('CRASH')); p.on('close', () => process.env.DBG && console.log('PAGE CLOSED')); p.on('console', m => { if (process.env.DBG && m.type() === 'error') console.log('CONSOLE', m.text().slice(0, 120)); }); p.on('framenavigated', f => { if (process.env.DBG && f === p.mainFrame()) console.log('NAV', new Date().toISOString().slice(14, 23), f.url().slice(0, 80)); }); await p.goto(base + url); return p; };
   return ctx;
 }
 async function unlock(A, first) {
@@ -83,44 +85,182 @@ const bg = async (X, code) => {
 const closed = A => A.waitForSelector('#mask', {state: 'hidden'});
 const bal = (A, name) => A.evaluate(n => { const p = liveParties().find(x => x.name === n); return p ? balance(p.id) : null; }, name);
 const vbal = (A, vid) => A.evaluate(v => vaultBal(v), vid || '');
-const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParties().find(x => x.name === n).id), name); await A.waitForTimeout(150); };
+const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParties().find(x => x.name === n).id), name); await A.settle(150); };
 
-/* MARKET_ONLY=1 node tests/run.js  → بيشغّل أقسام حركة السوق بس (١٦ و١٧ و١٨) والمراجعة، ويتخطى باقي الأقسام. أسرع بكتير للتعديلات الصغيرة. */
-const MO = !!process.env.MARKET_ONLY;
+/* ====================== أنهي أقسام تتشغل ======================
+   node tests/run.js              → كله
+   node tests/run.js --changed    → بيختار لوحده من الملفات اللي اتغيرت عن origin/main (الطريقة العادية)
+   node tests/run.js --only=mkt   → حركة السوق: ١ و٢ وأول ١٠ و١٦–٢٢ (زي MARKET_ONLY=1 القديم)
+   node tests/run.js --only=acc   → كل حاجة ما عدا السوق (١–١٤): الحسابات والدفتر والـPDF والمزامنة
+   node tests/run.js --only=smoke → ١ و٢ + كل الصفحات بتفتح من غير أخطاء (لتعديلات الشكل بس)
+   ممكن أكتر من واحد بفاصلة: --only=acc,mkt = كله
+   --dry مع أي واحد منهم = يقول هيشغّل إيه بس */
+const {execSync, spawnSync} = require('child_process');
+function changedModes() {
+  const sh = c => { try { return execSync(c, {cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore']}).toString(); } catch (e) { return null; } };
+  const files = new Set(((sh('git diff --name-only origin/main') || '') + (sh('git ls-files --others --exclude-standard') || '')).split('\n').filter(Boolean));
+  if (!files.size) { console.log('مفيش ملفات اتغيرت عن origin/main، هشغّل كله'); return ['full']; }
+  const modes = new Set(), why = [];
+  /* سطور accounts.html اللي اتغيرت: لو كلها جوه الـ style = شكل بس، ولو كلها في بلوك وارد السوق (آخر script) = سوق */
+  const accKind = () => {
+    const d = sh('git diff -U0 origin/main -- accounts.html'); if (d === null) return 'full';
+    const src = fs.readFileSync(path.join(ROOT, 'accounts.html'), 'utf8').split('\n');
+    const at = re => src.findIndex(l => re.test(l)) + 1;
+    const stEnd = at(/^<\/style>/), mkStart = src.findIndex((l, i) => /^<script>/.test(l) && /وارد السوق/.test(src.slice(i, i + 3).join('\n'))) + 1;
+    const hunks = [...d.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/gm)].map(m => [+m[1], +m[1] + Math.max(+(m[2] ?? 1), 1) - 1]);
+    if (!hunks.length) return null;
+    if (hunks.every(([a, b]) => b < stEnd)) return 'smoke';
+    if (mkStart > 0 && hunks.every(([a]) => a > mkStart)) return 'mkt';
+    return 'full';
+  };
+  for (const f of files) {
+    let m = null;
+    if (f === 'accounts.html') m = accKind();
+    else if (f === 'market.html' || f === 'market.webmanifest') m = 'mkt';
+    else if (f === 'cash.html') m = 'acc';
+    else if (f === 'payroll.html' || f === 'payroll.webmanifest' || f === 'tests/payroll.js') m = 'payroll';
+    else if (/^(tests\/(run|gasmock)\.js|lib\/|sw\.js|fonts\/)/.test(f)) m = 'full';
+    else if (/\.(html|webmanifest)$/.test(f) || /^(icons|calculator)\//.test(f)) m = 'smoke';
+    if (m) { modes.add(m); why.push(`${f} → ${m}`); }
+  }
+  console.log('الملفات اللي اتغيرت:\n  ' + (why.join('\n  ') || 'ملفات كلام بس (md وغيره)، ملهاش اختبار'));
+  return [...modes];
+}
+let MODES = (process.argv.find(a => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
+if (process.env.MARKET_ONLY) MODES = ['mkt'];
+if (process.argv.includes('--changed')) MODES = changedModes();
+if (MODES.includes('payroll')) {
+  console.log('\n— المرتبات: node tests/payroll.js —');
+  const r = spawnSync(process.execPath, [path.join(__dirname, 'payroll.js')], {stdio: 'inherit'});
+  MODES = MODES.filter(m => m !== 'payroll');
+  if (r.status) process.exit(r.status);
+  if (!MODES.length) process.exit(0);
+}
+if (process.argv.includes('--changed') && !MODES.length) { console.log('\n✔ مفيش اختبار مطلوب للتغيير ده'); process.exit(0); }
+if (!MODES.length || MODES.includes('full') || (MODES.includes('acc') && MODES.includes('mkt'))) MODES = ['full'];
+const FULL = MODES.includes('full');
+const RUN = {base: FULL || MODES.includes('acc'), sync: FULL || MODES.includes('acc') || MODES.includes('mkt'), mkt: FULL || MODES.includes('mkt'), smoke: MODES.includes('smoke')};
+const MO = MODES.includes('mkt') && !FULL;   // وضع السوق لوحده (بيضيف عميل سوق تجريبي مكان اللي بيتعمل في الأقسام اللي اتخطت)
+console.log('الأقسام:', FULL ? 'كله' : MODES.join(' + '));
+if (process.argv.includes('--dry')) process.exit(0);   // يقول هيشغّل إيه بس من غير ما يشغّل
+
+/* ====================== الانتظار الذكي (settle) ======================
+   بدل "استنى 300 ملّي" بوقت ثابت: بنستنى لحد ما كل الصفحات المفتوحة تخلص شغلها (مؤقتات قصيرة، طلبات شيت،
+   تشفير، IndexedDB، صور وسكربتات، رجوع في التاريخ، حركة الأرقام)، وبعدها فترة هدوء قصيرة.
+   أقصى انتظار = الرقم المكتوب، فعمره ما يبقى أبطأ من الانتظار الثابت القديم.
+   الساعة: لو رجعنا بدري، ساعة كل الصفحات (Date) بتتقدم بباقي الوقت اللي متستناش، فالبرنامج بيشوف إن الوقت
+   المكتوب عدّى فعلاً (زي "دوستين ورا بعض في أقل من 700 ملّي = دوسة واحدة" و"نفس المبلغ في دقيقتين").
+   كل الصفحات بتتقدم مع بعض بنفس المقدار، فترتيب الحركات بين الأجهزة زي ما هو. */
+const TRACKER = `(() => {
+  if (window.__tk) return;
+  const T = window.__tk = {n: 0, last: 0};
+  const RD = Date; let off = null;
+  const getOff = () => { if (off === null) { try { off = +sessionStorage.getItem('__tkOff') || +window.__tkOff0 || 0; } catch (e) { off = +window.__tkOff0 || 0; } } return off; };
+  window.__tkSetOff = v => { off = v; try { sessionStorage.setItem('__tkOff', String(v)); } catch (e) {} };
+  const realNow = RD.now.bind(RD), nowFn = () => realNow() + getOff();
+  let nowOv = null;   // لو الاختبار نفسه غيّر Date.now مؤقتاً (زي "بكرة")
+  window.Date = new Proxy(RD, {
+    construct: (t, a, nt) => Reflect.construct(t, a.length ? a : [nowFn()], nt),
+    apply: () => new RD(nowFn()).toString(),
+    get: (t, k) => k === 'now' ? (nowOv || nowFn) : Reflect.get(t, k),
+    set: (t, k, v) => { if (k === 'now') { nowOv = v === nowFn ? null : v; return true; } return Reflect.set(t, k, v); }
+  });
+  const inc = () => { T.n++; T.last = performance.now(); }, dec = () => { T.n = Math.max(0, T.n - 1); T.last = performance.now(); };
+  const once = () => { let d = false; return () => { if (!d) { d = true; dec(); } }; };
+  const st = window.setTimeout, ct = window.clearTimeout, raf = window.requestAnimationFrame, caf = window.cancelAnimationFrame, pend = new Set(), pr = new Set();
+  window.setTimeout = function (fn, ms, ...a) {
+    const d = +ms || 0;
+    if (typeof fn !== 'function' || d > 2500) return st.call(window, fn, ms, ...a);
+    inc(); const id = st.call(window, function () { if (pend.delete(id)) dec(); return fn.apply(this, a); }, ms); pend.add(id); return id;
+  };
+  window.clearTimeout = function (id) { if (pend.delete(id)) dec(); return ct.call(window, id); };
+  window.requestAnimationFrame = function (fn) { inc(); const id = raf.call(window, t => { if (pr.delete(id)) dec(); fn(t); }); pr.add(id); return id; };
+  window.cancelAnimationFrame = function (id) { if (pr.delete(id)) dec(); return caf.call(window, id); };
+  const wrapP = (obj, k) => { const f = obj && obj[k]; if (typeof f !== 'function') return; obj[k] = function (...a) { inc(); let p; try { p = f.apply(this, a); } catch (e) { dec(); throw e; } return Promise.resolve(p).finally(dec); }; };
+  wrapP(window, 'fetch');
+  ['text', 'json', 'blob', 'arrayBuffer'].forEach(k => wrapP(Response.prototype, k));
+  if (window.crypto && crypto.subtle) ['encrypt', 'decrypt', 'deriveKey', 'deriveBits', 'importKey', 'exportKey', 'digest', 'sign', 'verify', 'generateKey'].forEach(k => {
+    const f = crypto.subtle[k]; if (typeof f !== 'function') return;
+    crypto.subtle[k] = (...a) => { inc(); let p; try { p = f.apply(crypto.subtle, a); } catch (e) { dec(); throw e; } return Promise.resolve(p).finally(dec); };
+  });
+  if (navigator.clipboard) ['writeText', 'readText', 'write', 'read'].forEach(k => wrapP(navigator.clipboard, k));
+  const tx = IDBDatabase.prototype.transaction;
+  IDBDatabase.prototype.transaction = function (...a) { const t = tx.apply(this, a); inc(); const d = once(); ['complete', 'error', 'abort'].forEach(e => t.addEventListener(e, d)); return t; };
+  const op = IDBFactory.prototype.open;
+  IDBFactory.prototype.open = function (...a) { const r = op.apply(this, a); inc(); const d = once(); ['success', 'error', 'blocked'].forEach(e => r.addEventListener(e, d)); return r; };
+  const src = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+  Object.defineProperty(HTMLImageElement.prototype, 'src', {configurable: true, enumerable: src.enumerable, get: src.get, set(v) {
+    if (v) { inc(); const d = once(); this.addEventListener('load', d, {once: true}); this.addEventListener('error', d, {once: true}); st.call(window, d, 3000); }
+    src.set.call(this, v);
+  }});
+  const watch = el => { if (el && ((el.tagName === 'SCRIPT' && el.src) || el.tagName === 'IFRAME')) { inc(); const d = once(); el.addEventListener('load', d); el.addEventListener('error', d); st.call(window, d, 3000); } };
+  const ap = Node.prototype.appendChild, ib = Node.prototype.insertBefore;
+  Node.prototype.appendChild = function (el) { watch(el); return ap.call(this, el); };
+  Node.prototype.insertBefore = function (el, ref) { watch(el); return ib.call(this, el, ref); };
+  ['back', 'forward', 'go'].forEach(k => { const f = history[k]; history[k] = function (...a) { inc(); const d = once(); addEventListener('popstate', d, {once: true}); st.call(window, d, 400); return f.apply(history, a); }; });
+})();`;
+let BROWSER = null, settleCaps = 0, settleN = 0, OFF = 0;
+const QUIET = 60;   // لازم الصفحات تفضل هادية المدة دي ورا بعض
+async function settle(ms) {
+  settleN++;
+  const t0 = Date.now(), end = t0 + ms, min = t0 + Math.min(ms, 40);
+  let quiet = 0;
+  while (Date.now() < end) {
+    let busy = false;
+    for (const p of BROWSER.contexts().flatMap(c => c.pages())) {
+      if (p.isClosed()) continue;
+      try { if (await p.evaluate(() => !!window.__tk && (window.__tk.n > 0 || performance.now() - window.__tk.last < 25))) { busy = true; break; } }
+      catch (e) { if (!p.isClosed()) { busy = true; break; } }   // الصفحة بتتنقل/بتتحمّل
+    }
+    if (busy) quiet = 0; else if (!quiet) quiet = Date.now(); else if (Date.now() - quiet >= QUIET && Date.now() >= min) {
+      OFF += Math.max(0, ms - (Date.now() - t0));   // الوقت اللي وفّرناه: ساعة الصفحات بتتقدم بيه
+      for (const p of BROWSER.contexts().flatMap(c => c.pages())) if (!p.isClosed()) await p.evaluate(v => window.__tkSetOff && window.__tkSetOff(v), OFF).catch(() => {});
+      return;
+    }
+    await new Promise(r => setTimeout(r, 10));
+  }
+  settleCaps++;
+}
+
+/* وقت كل قسم بيتطبع في الآخر */
+const secT = [];
+const sec = name => { const n = Date.now(); if (secT.length) secT[secT.length - 1].s = (n - secT[secT.length - 1].t) / 1000; secT.push({name, t: n}); console.log('\n' + name); };
+const T0 = Date.now();
+
 (async () => {
   const srv = await serve(), base = `http://localhost:${srv.address().port}/`;
-  const browser = await pw.chromium.launch(CHROME ? {executablePath: CHROME} : {});
+  const browser = BROWSER = await pw.chromium.launch(CHROME ? {executablePath: CHROME} : {});
   const sheets = {acc: makeGas(), cash: makeGas(), mkt: makeGas()};
-  let DM = null;
+  let DM = null, D2 = null, B = null;
   const D1 = await newDevice(browser, base, sheets);
   const bad = importFile(); bad.parties[0].expected = 1;
   /* خانة ملف النقل اتشالت من الإعدادات، فبنفتح شاشة النقل مباشرة */
   const openImport = (A, d) => A.evaluate(x => importModal(readImport(x)), d);
   try {
-    console.log('\n١) كلمة السر والتشفير');
+    sec('١) كلمة السر والتشفير');
     const A = await D1.page('accounts.html');
     await unlock(A, true);
-    await A.click('#bLock'); await A.waitForSelector('#lkP'); await A.fill('#lkP', '999999'); await A.waitForTimeout(2000);
+    await A.click('#bLock'); await A.waitForSelector('#lkP'); await A.fill('#lkP', '999999'); await A.settle(2000);
     eq('كلمة سر غلط وقت الكتابة مفيهاش رسالة ولا بتفتح', [await A.textContent('#lkErr'), await A.evaluate(() => $('#lock').classList.contains('on'))], ['', true]);
-    await A.click('#lkGo'); await A.waitForTimeout(1500);
+    await A.click('#lkGo'); await A.settle(1500);
     eq('كلمة سر غلط بترفض', await A.textContent('#lkErr'), 'كلمة السر غلط');
     await unlock(A);
 
-    console.log('\n٢) نقل البيانات القديمة');
-    await openImport(A, bad); await A.waitForTimeout(300);
+    sec('٢) نقل البيانات القديمة');
+    await openImport(A, bad); await A.settle(300);
     eq('ملف فيه رصيد مش مطابق بيترفض', await A.$('#imGo'), null); await A.click('#imX');
-    await openImport(A, importFile()); await A.waitForTimeout(300); await A.click('#imGo'); await A.click('#cOk'); await A.waitForTimeout(400);
+    await openImport(A, importFile()); await A.settle(300); await A.click('#imGo'); await A.click('#cOk'); await A.settle(400);
     eq('رصيد عميل 1', await bal(A, 'عميل تجربة واحد'), 270000);
     eq('رصيد عميل 2', await bal(A, 'عميل تجربة اتنين'), 0);
     eq('رصيد المورد', await bal(A, 'مورد تجربة'), -2950000);
-    await openImport(A, importFile()); await A.waitForTimeout(300); await A.click('#imGo'); await A.click('#cOk'); await A.waitForTimeout(400);
+    await openImport(A, importFile()); await A.settle(300); await A.click('#imGo'); await A.click('#cOk'); await A.settle(400);
     eq('النقل مرتين مبيكررش', await A.evaluate(() => [db.parties.length, db.entries.length]), [3, 8]);
     const raw = await A.evaluate(async () => JSON.stringify(await idbGet('vault')));
     eq('البيانات على الجهاز متشفرة', raw.includes('عميل تجربة'), false);
 
-    if (!MO) {   // ← MARKET_ONLY بيتخطى ٣ لحد ٩
-    console.log('\n٣) فاتورة ودفعة ومرتجع وخصم');
-    await A.evaluate(() => go('cash')); await A.click('#cNew'); await A.click('#cOpen2'); await A.fill('#modal [data-v]', '1000'); await A.click('#opOk'); await A.waitForTimeout(200);
+    if (RUN.base) {   // ← وضع السوق (mkt) ووضع الشكل (smoke) بيتخطوا ٣ لحد ٩
+    sec('٣) فاتورة ودفعة ومرتجع وخصم');
+    await A.evaluate(() => go('cash')); await A.click('#cNew'); await A.click('#cOpen2'); await A.fill('#modal [data-v]', '1000'); await A.click('#opOk'); await A.settle(200);
     eq('رصيد بداية الخزنة', await vbal(A, 'v_main'), 100000);
     await openParty(A, 'عميل تجربة واحد');
     await A.click('#fbDoc'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.dispatchEvent('.li [data-f=name]', 'change');
@@ -132,63 +272,64 @@ const MO = !!process.env.MARKET_ONLY;
     await A.click('#ppAdj'); await A.fill('#adAmt', '15'); await A.fill('#adNote', 'جبر كسور'); await A.click('#adOk'); await closed(A);
     eq('بعد مرتجع 350 وخصم 15', await bal(A, 'عميل تجربة واحد'), 365000 - 35000 - 1500);
     await A.click('#fbPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await closed(A);
-    await A.click('#fbPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await A.waitForTimeout(150);
+    await A.click('#fbPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await A.settle(150);
     eq('تنبيه الدفعة المكررة', (await A.textContent('#pyWarn')).includes('بنفس المبلغ'), true); await A.click('#pyX');
 
-    console.log('\n٤) الشيكات مقفولة واختيارات كشف الحساب');
+    sec('٤) الشيكات مقفولة واختيارات كشف الحساب');
     eq('مفيش زرار شيكات ولا طريقة دفع شيك', [!!(await A.$('nav button[data-go=chk]')), (await A.click('#fbPay'), !!(await A.$('#pyM button[data-v=شيك]')))], [false, false]); await A.click('#pyX');
-    await A.click('#ppStmt'); await A.waitForTimeout(150);
+    await A.click('#ppStmt'); await A.settle(150);
     eq('الكشف بيفتح على آخر فاتورة والرصيد قبلها', [await A.getAttribute('#smMode .on', 'data-m'), (await A.textContent('#smOut')).includes('الرصيد قبل الفاتورة')], ['last', true]);
     eq('آخر فاتورة: الرصيد قبل وبعد', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), l = partyEntries(p.id).filter(e => e.kind === 'inv').pop(), s = stmtData(p.id, '', '', l.id); return [s.open, s.close, s.rows[0].kind || s.lastInv.kind]; }), [270000, 318500, 'inv']);
-    await A.click('#smMode button[data-m=prev]'); await A.waitForTimeout(100);
+    await A.click('#smMode button[data-m=prev]'); await A.settle(100);
     eq('آخر شهر = من شهر فات لحد النهارده (مفيش حاجة بتتساب)', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), d = new Date(); d.setMonth(d.getMonth() - 1);
       const n = partyEntries(p.id).filter(e => e.date >= isoOf(d.getTime()) && e.date <= todayISO() && e.kind !== 'open').length; return [+$('#smOut .stm div:nth-child(2) b').textContent, n]; }).then(([a, n]) => a === n && n > 0), true);
     eq('التاريخ يوم الأول على اليمين', await A.evaluate(() => dispDate('2026-02-05').replace(/\u200F/g, '|')), '05|/|02|/|2026');
     await A.click('#smX');
     eq('رابط الربط الملصوق بيتقري', await A.evaluate(() => { const o = parseJoin(' https://x/accounts.html#join=' + b64u(JSON.stringify({u: 'U', k: 'K'})) + ' '); return [o.u, o.k, parseJoin('كلام غلط')]; }), ['U', 'K', null]);
 
-    await A.setViewportSize({width: 1300, height: 800}); await A.waitForTimeout(200);
+    await A.setViewportSize({width: 1300, height: 800}); await A.settle(200);
     eq('اللاب توب: الحساب مفتوح جنب القايمة', await A.evaluate(() => [$('main').classList.contains('split'), getComputedStyle($('#p-home')).display, !!$('#hList .pt.cur'), getComputedStyle($('nav')).width]), [true, 'flex', true, '184px']);
     /* زرار "احفظ نسخة" في القايمة الجانبية: بيختار المكان ويكتب ملف متشفر بكل البيانات */
     await A.evaluate(() => { window.__bkFile = null; window.showSaveFilePicker = async o => ({createWritable: async () => { let d = ''; return {write: async b => { d += await b.text(); }, close: async () => { window.__bkFile = {name: o.suggestedName, d}; }}; }}); });
     await A.click('#bBk'); await A.waitForFunction(() => window.__bkFile, null, {timeout: 10000});
     eq('اللاب: احفظ نسخة بيكتب ملف متشفر فيه كل الحسابات', await A.evaluate(async () => { const f = window.__bkFile, box = JSON.parse(f.d), d = await unseal(cryptoKey, box); return [f.name.startsWith('flash-on-accounts-'), box.app, f.d.includes('عميل تجربة'), d.entries.length === db.entries.length, d.parties.length === db.parties.length]; }), [true, 'flash-on-accounts-backup', false, true, true]);
     eq('زرار احفظ نسخة ظاهر على اللاب', await A.evaluate(() => getComputedStyle($('#bBk')).display !== 'none'), true);
-    await A.setViewportSize({width: 400, height: 860}); await A.waitForTimeout(200);
+    await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
     eq('الموبايل: صفحة واحدة', await A.evaluate(() => [$('main').classList.contains('split'), getComputedStyle($('#p-home')).display]), [false, 'none']);
     eq('زرار احفظ نسخة مخفي على الموبايل', await A.evaluate(() => getComputedStyle($('#bBk')).display), 'none');
 
-    console.log('\n٥) الخزنة');
+    sec('٥) الخزنة');
     await A.evaluate(() => go('cash')); await A.click('#cExp'); await A.fill('#txA', '30'); await A.click('#txOk'); await closed(A);
     await A.click('#cPayS'); await A.click('#pkList .pt'); await A.fill('#pyAmt', '500'); await A.click('#pyOk'); await closed(A);
     eq('مصروف 30 ودفعة مورد 500', await vbal(A, 'v_main'), 150000 - 3000 - 50000);
     eq('رصيد المورد نزل', await bal(A, 'مورد تجربة'), -2950000 + 50000);
-    await A.click('#cOpen2'); await A.fill('#modal [data-v]', '960'); await A.click('#opOk'); await A.waitForTimeout(200);
+    await A.click('#cOpen2'); await A.fill('#modal [data-v]', '960'); await A.click('#opOk'); await A.settle(200);
     eq('الجرد سجّل الفرق تسوية', await vbal(A, 'v_main'), 96000);
 
-    console.log('\n٦) دفتر الخزنة متصل بالحسابات');
-    const C = await D1.page('cash.html'); await C.waitForTimeout(400);
+    sec('٦) دفتر الخزنة متصل بالحسابات');
+    const C = await D1.page('cash.html'); await C.settle(400);
     eq('الدفتر شايف نفس الرصيد', await C.evaluate(() => Math.round(balance(null) * 100)), 96000);
-    await C.click('#bInc'); await C.fill('#tAmt', '70'); await C.selectOption('#tP', {label: 'عميل تجربة اتنين'}); await C.click('#tSave'); await C.waitForTimeout(800);
+    await C.click('#bInc'); await C.fill('#tAmt', '70'); await C.selectOption('#tP', {label: 'عميل تجربة اتنين'}); await C.click('#tSave'); await C.settle(800);
     eq('دفعة من الدفتر نزلت على العميل', await bal(A, 'عميل تجربة اتنين'), -7000);
     eq('ودخلت خزنة الحسابات', await vbal(A, 'v_main'), 103000);
 
-    console.log('\n٧) كشف الحساب PDF');
+    await C.close();   // الدفتر خلص دوره هنا، وقفله بيخفف الأقسام الجاية
+    sec('٧) كشف الحساب PDF');
     await openParty(A, 'عميل تجربة واحد'); await A.click('#ppStmt');
     await A.evaluate(() => { window.__sh = null; navigator.canShare = () => true; navigator.share = d => { window.__sh = d; return Promise.resolve(); }; });
     await A.click('#smShare'); await A.waitForFunction(() => window.__sh, null, {timeout: 90000});
     eq('الواتساب: الملف بس باسم الشخص ومن غير رسالة مكتوبة', await A.evaluate(() => [Object.keys(__sh), __sh.files[0].name, __sh.files[0].type]), [['files'], 'عميل تجربة واحد.pdf', 'application/pdf']);
     await A.evaluate(() => { navigator.canShare = () => false; });
-    await A.waitForTimeout(300); if (!(await A.$('#smShare'))) await A.click('#ppStmt');
+    await A.settle(300); if (!(await A.$('#smShare'))) await A.click('#ppStmt');
     await A.evaluate(() => { window.__dn = ''; const o = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dn = this.download; return o.call(this); }; });
     const [dl] = await Promise.all([A.waitForEvent('download', {timeout: 90000}), A.click('#smShare')]);
     eq('لو الجهاز مبيدعمش المشاركة الملف بينزل باسم الشخص', await A.evaluate(() => __dn), 'عميل تجربة واحد.pdf');
     const pdf = fs.readFileSync(await dl.path());
     eq('الـ PDF اتعمل', pdf.slice(0, 4).toString(), '%PDF');
     /* آخر فاتورة بس: بنودها والإجمالي من غير الرصيد اللي قبلها، والكشف زي ما هو */
-    await A.evaluate(() => closeModal()); await A.click('#ppStmt'); await A.waitForTimeout(150);
+    await A.evaluate(() => closeModal()); await A.click('#ppStmt'); await A.settle(150);
     eq('الكشف لسه بيفتح على آخر فاتورة بالرصيد اللي قبلها', [await A.getAttribute('#smMode .on', 'data-m'), (await A.textContent('#smOut')).includes('الرصيد قبل الفاتورة')], ['last', true]);
-    await A.click('#smInv'); await A.waitForTimeout(150);
+    await A.click('#smInv'); await A.settle(150);
     eq('آخر فاتورة بس: إجماليها = إجمالي آخر فاتورة', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), l = partyEntries(p.id).filter(e => e.kind === 'inv').pop(); return $('#modal .stm .k b').textContent === fmtP(docTotal(l)); }), true);
     eq('صفحة الفاتورة: من غير رصيد سابق ولا دفعات ولا عمود رصيد', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), l = partyEntries(p.id).filter(e => e.kind === 'inv').pop();
       const pg = buildStmtPages(p, invOnlyData(p, l))[0], r = [pg.querySelector('h3').textContent, pg.querySelectorAll('thead th').length, pg.querySelectorAll('tbody tr').length === rowsOf(l).length, !pg.textContent.includes('الرصيد قبل'), !pg.textContent.includes('دفعة'), pg.querySelector('.sum b').textContent.includes(fmtP(docTotal(l)))]; $('#render').innerHTML = ''; return r; }), ['فاتورة', 5, true, true, true, true]);
@@ -196,102 +337,103 @@ const MO = !!process.env.MARKET_ONLY;
     await A.click('#ivShare'); await A.waitForFunction(() => window.__sh, null, {timeout: 90000});
     eq('واتساب الفاتورة: الملف بس واسمه "فاتورة" + اسم الشخص', await A.evaluate(() => [Object.keys(__sh), __sh.files[0].name]), [['files'], 'فاتورة عميل تجربة واحد.pdf']);
 
-    console.log('\n٧ب) نقل فواتير الحساب الفرعي لحسابه الأساسي (زي الهاشمية قنا)');
+    sec('٧ب) نقل فواتير الحساب الفرعي لحسابه الأساسي (زي الهاشمية قنا)');
     await A.evaluate(() => closeModal());
     const [fwM, fwS] = await A.evaluate(() => { const now = Date.now(), mk = (name, noTot) => { const p = {id: newId('p_'), sec: 'site', name, phone: '', note: '', noTot, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p); return p.id; };
       const m = mk('حساب أساسي تجربة', false), s = mk('فرع تجربة', true); P.get(s).fwd = m; saveDB(); return [m, s]; });
-    await A.evaluate(id => go('p/' + id), fwS); await A.waitForTimeout(200);
-    await A.click('#fbDoc'); await A.fill('.li [data-f=name]', 'صنف فرع تجربة'); await A.fill('.li [data-f=qty]', '2'); await A.fill('.li [data-f=price]', '100'); await A.click('#dcOk'); await closed(A); await A.waitForTimeout(200);
+    await A.evaluate(id => go('p/' + id), fwS); await A.settle(200);
+    await A.click('#fbDoc'); await A.fill('.li [data-f=name]', 'صنف فرع تجربة'); await A.fill('.li [data-f=qty]', '2'); await A.fill('.li [data-f=price]', '100'); await A.click('#dcOk'); await closed(A); await A.settle(200);
     const fwInv = await A.evaluate(id => partyEntries(id).find(e => e.kind === 'inv').id, fwS);
     eq('الفرعي: شريط "لسه 1" وعلامة "لسه متنقلتش" على الفاتورة، والأساسي لسه صفر', [(await A.textContent('.fwbar')).includes('لسه: 1'), (await A.textContent('#p-party .ldg')).includes('⏳ متنقلتش'), await A.evaluate(id => balance(id), fwM)], [true, true, 0]);
-    await A.click('#fwAll'); await A.click('#cOk'); await A.waitForTimeout(300);
+    await A.click('#fwAll'); await A.click('#cOk'); await A.settle(300);
     eq('بعد النقل: الفاتورة كاملة في الأساسي، وفاضلة في الفرعي بعلامة "اتنقلت"', await A.evaluate(([m, s, id]) => { const c = E.get('e_fw_' + id); return [balance(m), balance(s), c.lines[0].name, c.party === m, fwState(E.get(id)), $('.fwbar').textContent.includes('اتنقلت: 1'), $('#p-party .ldg').textContent.includes('✓ اتنقلت'), !$('#fwAll')]; }, [fwM, fwS, fwInv]), [20000, 20000, 'صنف فرع تجربة', true, 'ok', true, true, true]);
     eq('الفرعي برا الإجماليات والأساسي جواها (مفيش حساب مرتين)', await A.evaluate(([m, s]) => { const b = allBalances(); return [P.get(s).noTot, b.get(m)]; }, [fwM, fwS]), [true, 20000]);
-    await A.evaluate(id => openEntry(P.get(E.get(id).party), E.get(id)), fwInv); await A.waitForTimeout(150);
+    await A.evaluate(id => openEntry(P.get(E.get(id).party), E.get(id)), fwInv); await A.settle(150);
     eq('جوه الفاتورة: مكتوب إنها اتنقلت', (await A.textContent('#modal .fwbox')).includes('اتنقلت للحساب الأساسي'), true);
-    await A.fill('.li [data-f=qty]', '3'); await A.click('#dcOk'); await closed(A); await A.waitForTimeout(200);
+    await A.fill('.li [data-f=qty]', '3'); await A.click('#dcOk'); await closed(A); await A.settle(200);
     eq('لو الأصل اتعدل: "اتعدلت بعد النقل" والأساسي لسه بالقديم', [await A.evaluate(id => fwState(E.get(id)), fwInv), (await A.textContent('#p-party .ldg')).includes('⚠ اتعدلت'), await A.evaluate(id => balance(id), fwM)], ['chg', true, 20000]);
-    await A.evaluate(id => openEntry(P.get(E.get(id).party), E.get(id)), fwInv); await A.waitForTimeout(150); await A.click('#fwOne'); await A.waitForTimeout(250);
+    await A.evaluate(id => openEntry(P.get(E.get(id).party), E.get(id)), fwInv); await A.settle(150); await A.click('#fwOne'); await A.settle(250);
     eq('"انقل التعديل": الأساسي اتعدل ومفيش نسخة مكررة', await A.evaluate(([m, id]) => [balance(m), fwState(E.get(id)), db.entries.filter(e => e.fwFrom === id).length], [fwM, fwInv]), [30000, 'ok', 1]);
-    await A.evaluate(id => cancelEntry(E.get('e_fw_' + id)), fwInv); await A.waitForTimeout(200);
+    await A.evaluate(id => cancelEntry(E.get('e_fw_' + id)), fwInv); await A.settle(200);
     eq('لو اتلغت من الأساسي: ترجع "لسه متنقلتش"', await A.evaluate(([m, id]) => [balance(m), fwState(E.get(id))], [fwM, fwInv]), [0, 'no']);
     /* فاتورة كانت اتنقلت بإيده قبل الزرار: بيعرفها من التاريخ والبنود، ومبيعملش نسخة تانية */
     const [fwA, fwB, fwMan] = await A.evaluate(([m, s]) => { const mk = (party, qty, d) => { const e = addEntry({party, kind: 'inv', date: d, lines: [{name: 'صنف يدوي تجربة', unit: 'لفة', qty, price: 5000}]}); applyAmounts(e); return e.id; };
       const a = mk(s, 4, '2026-03-03'), b = mk(s, 6, '2026-03-04'), man = mk(m, 4, '2026-03-03'); mk(m, 7, '2026-03-04'); saveDB(); return [a, b, man]; }, [fwM, fwS]);
-    await A.evaluate(id => go('p/' + id), fwS); await A.waitForTimeout(250);
+    await A.evaluate(id => go('p/' + id), fwS); await A.settle(250);
     eq('بيعرف الفاتورة المنقولة بإيده من التاريخ والبنود (واللي بنودها مختلفة لسه)', await A.evaluate(([a, b, man]) => [fwState(E.get(a)), fwState(E.get(b)), E.get(man).fwFrom === a], [fwA, fwB, fwMan]), ['ok', 'no', true]);
     const nM0 = await A.evaluate(m => partyEntries(m).filter(e => e.kind === 'inv').length, fwM);
-    await A.click('#fwAll'); await A.click('#cOk'); await A.waitForTimeout(300);
+    await A.click('#fwAll'); await A.click('#cOk'); await A.settle(300);
     eq('"انقل اللي لسه" مبيكررش اليدوية (اتنقلت بس اللي لسه)', await A.evaluate(([m, a, b]) => [partyEntries(m).filter(e => e.kind === 'inv').length, fwState(E.get(a)), fwState(E.get(b))], [fwM, fwA, fwB]), [nM0 + 2, 'ok', 'ok']);
-    await A.evaluate(([a]) => { const e = E.get(a); e.lines[0].qty = 5; applyAmounts(e); touch(e); saveDB(); route(); }, [fwA]); await A.waitForTimeout(200);
+    await A.evaluate(([a]) => { const e = E.get(a); e.lines[0].qty = 5; applyAmounts(e); touch(e); saveDB(); route(); }, [fwA]); await A.settle(200);
     eq('تعديل الأصل: "اتعدلت"، و"انقل التعديل" بيعدّل اليدوية نفسها', await A.evaluate(([s, a, man, m]) => { const st = fwState(E.get(a)); fwMove(P.get(s), E.get(a)); return [st, E.get(man).dr, db.entries.filter(x => x.fwFrom === a && !x.del).length, !E.get('e_fw_' + a)]; }, [fwS, fwA, fwMan, fwM]), ['chg', 25000, 1, true]);
     const fwC = await A.evaluate(s => { const e = addEntry({party: s, kind: 'inv', date: '2026-03-09', lines: [{name: 'صنف مكتوب مختلف', unit: 'لفة', qty: 1, price: 1000}]}); applyAmounts(e); saveDB(); return e.id; }, fwS);
-    await A.evaluate(id => openEntry(P.get(E.get(id).party), E.get(id)), fwC); await A.waitForTimeout(150); await A.click('#fwMk'); await A.waitForTimeout(250);
+    await A.evaluate(id => openEntry(P.get(E.get(id).party), E.get(id)), fwC); await A.settle(150); await A.click('#fwMk'); await A.settle(250);
     eq('"دي متنقلة بالفعل": بقت اتنقلت من غير ما تتنسخ', await A.evaluate(([m, c]) => [fwState(E.get(c)), db.entries.some(x => x.fwFrom === c), !E.get('e_fw_' + c)], [fwM, fwC]), ['ok', false, true]);
-    await A.evaluate(id => openEntry(P.get(E.get(id).party), E.get(id)), fwC); await A.waitForTimeout(150); await A.click('#fwUn'); await A.waitForTimeout(250);
+    await A.evaluate(id => openEntry(P.get(E.get(id).party), E.get(id)), fwC); await A.settle(150); await A.click('#fwUn'); await A.settle(250);
     eq('"رجّعها متنقلتش" بترجّعها', await A.evaluate(c => fwState(E.get(c)), fwC), 'no');
     /* المسح من الفرعي: المنقولة تتمسح عادي من غير تحذير والأساسي زي ما هو، واللي لسه متنقلتش تحذير مرة واحدة وقت المسح */
     const mBal = await A.evaluate(m => balance(m), fwM);
-    await A.evaluate(a => { cancelEntry(E.get(a)); }, fwA); await A.waitForTimeout(250);
+    await A.evaluate(a => { cancelEntry(E.get(a)); }, fwA); await A.settle(250);
     eq('مسح فاتورة منقولة: من غير سؤال، والأساسي زي ما هو، ومفيش تحذير فاضل', await A.evaluate(([a, m]) => [E.get(a).del, !$('#cOk'), balance(m), $('.fwbar').textContent.includes('اتلغت')], [fwA, fwM]), [true, true, mBal, false]);
-    await A.evaluate(c => { cancelEntry(E.get(c)); }, fwC); await A.waitForTimeout(200);
+    await A.evaluate(c => { cancelEntry(E.get(c)); }, fwC); await A.settle(200);
     eq('مسح فاتورة لسه متنقلتش: بيسأل الأول', [(await A.textContent('#modal')).includes('لسه متنقلتش'), await A.evaluate(c => E.get(c).del, fwC)], [true, false]);
-    await A.click('#cNo'); await A.waitForTimeout(150);
+    await A.click('#cNo'); await A.settle(150);
     eq('"إلغاء" = الفاتورة فاضلة', await A.evaluate(c => E.get(c).del, fwC), false);
-    await A.evaluate(c => { cancelEntry(E.get(c)); }, fwC); await A.waitForTimeout(200); await A.click('#cOk'); await A.waitForTimeout(250);
+    await A.evaluate(c => { cancelEntry(E.get(c)); }, fwC); await A.settle(200); await A.click('#cOk'); await A.settle(250);
     eq('"امسحها" = اتمسحت', await A.evaluate(c => E.get(c).del, fwC), true);
-    const fwA2 = await A.evaluate(([s, a]) => { const o = E.get(a), e = addEntry({party: s, kind: 'inv', date: o.date, lines: JSON.parse(JSON.stringify(o.lines))}); applyAmounts(e); saveDB(); route(); return e.id; }, [fwS, fwA]); await A.waitForTimeout(250);
+    const fwA2 = await A.evaluate(([s, a]) => { const o = E.get(a), e = addEntry({party: s, kind: 'inv', date: o.date, lines: JSON.parse(JSON.stringify(o.lines))}); applyAmounts(e); saveDB(); route(); return e.id; }, [fwS, fwA]); await A.settle(250);
     eq('فاتورة جديدة بنفس التاريخ والبنود بعد المسح: بتتعرف "اتنقلت" على نفس اللي في الأساسي (من غير تكرار)', await A.evaluate(([a2, m, b]) => [fwState(E.get(a2)), balance(m)], [fwA2, fwM, mBal]), ['ok', mBal]);
     await A.evaluate(([m, s]) => { [m, s].forEach(id => partyEntries(id).forEach(e => { e.del = true; e.delAt = Date.now(); touch(e); })); saveDB(); }, [fwM, fwS]);
     await openParty(A, 'عميل تجربة واحد');
     eq('باقي العملا مفيهمش الشريط ولا العلامات', [await A.$('.fwbar'), (await A.textContent('#p-party .ldg')).includes('متنقلتش')], [null, false]);
     await A.evaluate(([m, s, id]) => { const e = E.get(id); e.del = true; e.delAt = Date.now(); touch(e); [m, s].forEach(x => { P.get(x).del = true; touch(P.get(x)); }); saveDB(); }, [fwM, fwS, fwInv]);
 
-    console.log('\n٨) التقارير');
-    await A.click('nav button[data-go=rep]'); await A.waitForTimeout(200);
+    sec('٨) التقارير');
+    await A.click('nav button[data-go=rep]'); await A.settle(200);
     const R = await A.evaluate(() => { repKind = 'debt'; repSide = 'mkt'; return buildReport(); });
     eq('رصيد السوق في التقرير = رصيد العميل', R.fin[1], await A.evaluate(n => fmtP(balance(liveParties().find(x => x.name === n).id)), 'عميل تجربة واحد'));
     eq('المسحوبات − المدفوعات = الرصيد', await A.evaluate(() => { const s = stmtData(liveParties().find(x => x.name === 'عميل تجربة واحد').id, '', ''); return s.tg - s.tp === s.close; }), true);
     eq('ملخص فوق كشف المورد بس', await A.evaluate(() => { const ps = liveParties(); const sup = ps.find(p => p.sec === 'sup'), cu = ps.find(p => p.sec === 'mkt');
       const a = buildStmtPages(sup, stmtData(sup.id, '', ''))[0].querySelector('.sbox'), b = buildStmtPages(cu, stmtData(cu.id, '', ''))[0].querySelector('.sbox'); $('#render').innerHTML = ''; return [!!a, !!b]; }), [true, false]);
 
-    console.log('\n٩) قفل الفترة');
-    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.fill('#sLockD', today); await A.click('#sLockGo'); await A.click('#cOk'); await A.waitForTimeout(200);
-    await openParty(A, 'عميل تجربة واحد'); await A.click('#fbPay'); await A.fill('#pyAmt', '1'); await A.click('#pyOk'); await A.waitForTimeout(150);
+    sec('٩) قفل الفترة');
+    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.fill('#sLockD', today); await A.click('#sLockGo'); await A.click('#cOk'); await A.settle(200);
+    await openParty(A, 'عميل تجربة واحد'); await A.click('#fbPay'); await A.fill('#pyAmt', '1'); await A.click('#pyOk'); await A.settle(150);
     eq('مينفعش تسجل في فترة مقفولة', (await A.textContent('#toast')).includes('مقفولة'), true); await A.click('#pyX');
-    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.click('#sUnlock'); await A.fill('#apP', PASS); await A.click('#apOk'); await A.waitForTimeout(600);
+    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.click('#sUnlock'); await A.fill('#apP', PASS); await A.click('#apOk'); await A.settle(600);
 
     }
-    console.log('\n١٠) المزامنة مع الشيت وجهاز تاني');
-    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.waitForTimeout(300);
+    if (RUN.sync) {   // ← وضع الشكل (smoke) بيتخطى ١٠ لحد ٢٢
+    sec('١٠) المزامنة مع الشيت وجهاز تاني');
+    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.settle(300);
     await A.click('#shHelp'); await A.click('#hpCopy'); const accCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.acc.load(accCode); await A.click('#hpX');
     eq('كود الشيت مفيهوش المفتاح', accCode.includes(KEY), false);
     eq('رقم تعريف النشر بيتحول للينك', await A.evaluate(() => normSheetUrl(' AKfycbxTEST1234567890abcdefghij ')), 'https://script.google.com/macros/s/AKfycbxTEST1234567890abcdefghij/exec');
-    await A.click('#shSave'); await A.waitForTimeout(4000);
+    await A.click('#shSave'); await A.settle(4000);
     eq('الشيت مقفول من غير المفتاح', JSON.parse(sheets.acc.get()).ok, false);
     eq('الشيت اتقفل على أول مفتاح', JSON.parse(sheets.acc.post(JSON.stringify({key: 'Other-Key-123', action: 'ping'}))).error, 'key');
     eq('الشيت بيرفض مفتاح غلط', JSON.parse(sheets.acc.post(JSON.stringify({key: 'x', action: 'pull'}))).error, 'key');
-    const D2 = await newDevice(browser, base, sheets), B = await D2.page('accounts.html');
+    D2 = await newDevice(browser, base, sheets); B = await D2.page('accounts.html');
     await unlock(B, true);
-    await B.click('nav button[data-go=set]'); await B.evaluate(() => setOpenAll()); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.waitForTimeout(4000);
+    await B.click('nav button[data-go=set]'); await B.evaluate(() => setOpenAll()); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.settle(4000);
     if (MO) await A.evaluate(() => { const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name: 'عميل ترتيب تجربة', phone: '', note: '', noTot: false, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p); saveDB(); });
-    if (!MO) {   // ← MARKET_ONLY بيتخطى باقي ١٠ لحد ١٤
+    if (RUN.base) {   // ← وضع السوق بيتخطى باقي ١٠ لحد ١٤
     const snap = X => X.evaluate(() => [liveParties().map(p => balance(p.id)).sort(), vaultBal(''), selfCheck().length]);
     eq('الجهاز التاني نزل نفس الأرصدة', await snap(B), await snap(A));
-    await bg(B, 'syncNow()'); await bg(A, 'syncNow()'); await A.waitForTimeout(1500);
+    await bg(B, 'syncNow()'); await bg(A, 'syncNow()'); await A.settle(1500);
     const rows = sheets.acc.sheets['السجلات'].rows.slice(1).map(r => r[0]);
     eq('مفيش سجلات متكررة في الشيت', new Set(rows).size, rows.length);
     const link = await A.evaluate(() => joinLink());
     eq('رابط الربط مفيهوش المفتاح مكشوف', link.includes('Test-Key'), false);
     const D3 = await newDevice(browser, base, sheets), J = await D3.page('accounts.html' + link.slice(link.indexOf('#')));
-    await unlock(J, true); await J.waitForTimeout(5000);
+    await unlock(J, true); await J.settle(5000);
     eq('جهاز جديد برابط الربط بس نزلت عليه كل الحسابات', await snap(J), await snap(A));
     eq('الجهاز الجديد فضل مربوط', await J.evaluate(() => db.cfg.sheetOk), true);
     eq('الرابط اتشال من شريط العنوان', J.url().includes('join'), false);
-    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.click('#shAudit'); await A.waitForTimeout(3000);
+    await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll()); await A.click('#shAudit'); await A.settle(3000);
     eq('مراجعة الجهاز مع الشيت متطابقة', (await A.textContent('#modal .sync')).includes('متطابقين ('), true); await A.click('#saX');
 
-    console.log('\n١٠ج) كود الشيت الأساسي والنسخة الاحتياطية المنفصلة، والمزامنة بدفعات');
+    sec('١٠ج) كود الشيت الأساسي والنسخة الاحتياطية المنفصلة، والمزامنة بدفعات');
     /* الكود الأساسي لوحده من غير أي خدمة درايف: لازم يشتغل ومفيهوش DriveApp ولا ScriptApp */
     const mainCode = await A.evaluate(() => scriptFor()), bkCode = await A.evaluate(() => backupScript());
     const G = makeGas({noDrive: true}); G.load(mainCode);
@@ -307,95 +449,97 @@ const MO = !!process.env.MARKET_ONLY;
     const posts = [], origPost = sheets.acc.post.bind(sheets.acc);
     sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push') posts.push(q.rows.length); return origPost(body); };
     const addBulk = (X, n, tag) => X.evaluate(([n, tag]) => { for (let i = 0; i < n; i++) { const now = Date.now() + i; const r = {id: 't_' + tag + i, type: 'exp', amt: 100, vault: 'v_main', to: '', cat: 'c_exp0', note: tag, date: todayISO(), at: now, upd: now, del: true, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); } saveDB(); }, [n, tag]);
-    await addBulk(A, 130, 'bulk'); await bg(A, 'syncNow()'); await A.waitForTimeout(500);
+    await addBulk(A, 130, 'bulk'); await bg(A, 'syncNow()'); await A.settle(500);
     eq('المزامنة بتبعت دفعات 50 كحد أقصى (130 حركة)', [Math.max(...posts) <= 50, posts.reduce((a, b) => a + b, 0) >= 130, await A.evaluate(() => pendingRecs().length)], [true, true, 0]);
     sheets.acc.post = body => { const q = JSON.parse(body); return q.action === 'push' ? JSON.stringify({ok: false, error: 'boom'}) : origPost(body); };
-    await addBulk(A, 3, 'fail'); await bg(A, 'syncNow()'); await A.waitForTimeout(300);
+    await addBulk(A, 3, 'fail'); await bg(A, 'syncNow()'); await A.settle(300);
     eq('ok:false: بيعرض الخطأ اللي راجع والحركات تفضل مستنية ومفيش "تمام"', await A.evaluate(() => [syncErr, pendingRecs().length >= 3, $('#syncBox').textContent.includes('✔ كل حاجة')]), ['boom', true, false]);
     let lockTry = 0;
     sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push' && lockTry++ < 1) return JSON.stringify({ok: false, error: 'Exception: Lock timeout: another process was holding the lock for too long.'}); return origPost(body); };
-    await bg(A, 'syncNow()'); await A.waitForTimeout(3500);
+    await bg(A, 'syncNow()'); await A.settle(3500);
     eq('القفل بيستنى ويعيد بدل ما يرفض: اتبعت بعد المحاولة التانية', [lockTry >= 2, await A.evaluate(() => pendingRecs().length)], [true, 0]);
     sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push') return JSON.stringify({ok: true, ack: q.rows.map(r => r.id), seq: 1}); return origPost(body); };   // بيقول تمام وهو مكتبش حاجة
-    await addBulk(A, 2, 'ghost'); await bg(A, 'syncNow()'); await A.waitForTimeout(500);
+    await addBulk(A, 2, 'ghost'); await bg(A, 'syncNow()'); await A.settle(500);
     eq('شيت بيرد ok وهو فاضي: التطبيق يكتشف الفرق ومبيقولش تمام', await A.evaluate(() => [/الشيت فيه/.test(syncErr), pendingRecs().length > 0, $('#syncBox').textContent.includes('✔ كل حاجة')]), [true, true, false]);
     sheets.acc.post = origPost;
-    await bg(A, 'syncNow()'); await A.waitForTimeout(1500);
+    await bg(A, 'syncNow()'); await A.settle(1500);
     eq('بعد ما الشيت يرجع سليم كل حاجة تتبعت وتبقى تمام', await A.evaluate(() => [syncErr, pendingRecs().length]), ['', 0]);
 
-    console.log('\n١١) شيت دفتر الخزنة مقفول بالمفتاح');
+    sec('١١) شيت دفتر الخزنة مقفول بالمفتاح');
     const C2 = await D1.page('cash.html'); await C2.click('nav button[data-go=set]');
-    await C2.fill('#shUrl', CASH_URL); await C2.click('#shSave'); await C2.waitForTimeout(300);
+    await C2.fill('#shUrl', CASH_URL); await C2.click('#shSave'); await C2.settle(300);
     await C2.click('#shHelp'); await C2.click('#hpCopy'); const cashCode = await C2.evaluate(() => navigator.clipboard.readText()); sheets.cash.load(cashCode); await C2.click('#hpX');
-    await C2.click('#shSave'); await C2.waitForTimeout(1500);
+    await C2.click('#shSave'); await C2.settle(1500);
     const cKey = await C2.evaluate(() => db.sheetKey);
     eq('مفتاح الدفتر اتعمل لوحده ومش في الكود، والشيت اتقفل عليه', [cKey.length >= 8, cashCode.includes(cKey), await C2.evaluate(() => db.sheetLocked), JSON.parse(sheets.cash.post(JSON.stringify({key: 'Other-Key-123', action: 'ping'}))).error], [true, false, true, 'key']);
     eq('شيت الدفتر مقفول', JSON.parse(sheets.cash.get()).ok, false);
 
-    console.log('\n١٠ب) رابط الربط مع نت بيقطع أو صفحة بتتعمل لها ريفرش');
+    sec('١٠ب) رابط الربط مع نت بيقطع أو صفحة بتتعمل لها ريفرش');
     const D4 = await newDevice(browser, base, sheets); D4.netDown = true;
     const J2 = await D4.page('accounts.html' + link.slice(link.indexOf('#')));
     await J2.fill('#suP', PASS); await J2.fill('#suP2', PASS);
     await J2.reload(); await J2.waitForSelector('#suP');   // ريفرش قبل كلمة السر: الرابط لازم ميضيعش
-    await J2.fill('#suP', PASS); await J2.fill('#suP2', PASS); await J2.click('#suGo'); await J2.waitForTimeout(9000);
+    await J2.fill('#suP', PASS); await J2.fill('#suP2', PASS); await J2.click('#suGo'); await J2.settle(9000);
     eq('النت واقع وقت الربط: الربط محفوظ ومستني وبيقول السبب', await J2.evaluate(() => [db.cfg.joinWait, db.cfg.sheetOk, !!db.cfg.sheetUrl, joinErr.length > 5]), [true, false, true, true]);
     D4.netDown = false;
-    await bg(J2, 'finishJoin(false)'); await J2.waitForTimeout(3000);
+    await bg(J2, 'finishJoin(false)'); await J2.settle(3000);
     eq('النت رجع: كمّل الربط لوحده ونزّل نفس الأرصدة', [await J2.evaluate(() => [db.cfg.sheetOk, !!db.cfg.joinWait]), await snap(J2)], [[true, false], await snap(A)]);
-    eq('رابط مقطوع بيطلع رسالة', await (async () => { const X = await D4.page('accounts.html#join=AAAA'); await X.waitForTimeout(1200); return (await X.textContent('#toast')).includes('ناقص'); })(), true);
+    eq('رابط مقطوع بيطلع رسالة', await (async () => { const X = await D4.page('accounts.html#join=AAAA'); await X.settle(1200); return (await X.textContent('#toast')).includes('ناقص'); })(), true);
 
-    console.log('\n١١ب) الخزنة واحدة حتى لو الحسابات في تخزين لوحدها (أيقونة الأيفون)');
+    sec('١١ب) الخزنة واحدة حتى لو الحسابات في تخزين لوحدها (أيقونة الأيفون)');
     eq('الحسابات بتتزامن مع شيت الدفتر وبتحفظ لينكه كإعداد مشترك', [await bg(A, 'cashSync(true)'), await A.evaluate(() => !!getSet('cashSheet', null))], [true, true]);
-    await bg(A, 'syncNow()'); await A.waitForTimeout(1200);
-    await bg(B, 'syncNow()'); await B.waitForTimeout(3500);
+    await bg(A, 'syncNow()'); await A.settle(1200);
+    await bg(B, 'syncNow()'); await B.settle(3500);
     eq('جهاز الحسابات التاني خد ربط الدفتر لوحده ونفس رصيد الخزنة', [await B.evaluate(() => !!cashCreds()), await B.evaluate(() => vaultBal(''))], [true, await A.evaluate(() => vaultBal(''))]);
     const cjoin = await B.evaluate(() => { const c = cashCreds(); return 'cash.html#cashjoin=' + b64u(JSON.stringify({u: c.u, k: c.k})); });
-    const Saf = await D3.page(cjoin); await Saf.waitForTimeout(1500);
+    const Saf = await D3.page(cjoin); await Saf.settle(1500);
     eq('الدفتر على جهاز جديد اتربط برابط الربط بس', await Saf.evaluate(() => [db.sheetLocked, location.hash]), [true, '']);
     await Saf.evaluate(() => { const c = db.cats.find(x => x.type === 'exp' && !x.del); db.tx.push({id: 't_from_ledger', type: 'exp', amt: 77, ts: Date.now(), vault: 'v_main', cat: c.id, note: 'من الدفتر', upd: Date.now(), del: false, sy: 0}); saveDB(); return syncNow(true); });
-    await Saf.waitForTimeout(800);
+    await Saf.settle(800);
     eq('لينك شيت الحسابات أو مفتاح غلط بيطلع رسالة واضحة', [await B.evaluate(u => connectCash(u, 'Wrong-Key-1234'), CASH_URL), await B.evaluate(([u, k]) => connectCash(u, k), [ACC_URL, KEY])],
       ['المفتاح السري مش بتاع شيت الدفتر ده. استخدم زرار "انسخ رابط الربط" من الدفتر.', 'ده لينك شيت الحسابات، مش شيت دفتر الخزنة.']);
     await Saf.click('nav button[data-go=set]'); await Saf.click('#shAcc'); const cjl = await Saf.evaluate(() => navigator.clipboard.readText());
     eq('رابط الربط من الدفتر بيتقري في الحسابات', await B.evaluate(t => { const o = parseCashJoin(t); return !!(o && o.u && o.k); }, cjl), true);
     const vB0 = await B.evaluate(() => vaultBal(''));
-    await bg(B, 'cashSync(true)'); await B.waitForTimeout(300);
+    await bg(B, 'cashSync(true)'); await B.settle(300);
     eq('مصروف من الدفتر (Safari) ظهر في الحسابات (الأيقونة)', [await B.evaluate(() => !!IDX.tx.get('t_from_ledger')), await B.evaluate(() => vaultBal(''))], [true, vB0 - 7700]);
     await B.evaluate(() => { const now = Date.now(); const r = {id: 't_from_app', type: 'exp', amt: 3300, vault: 'v_main', to: '', cat: 'c_exp0', note: 'من الحسابات', date: todayISO(), at: now, upd: now, del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); saveDB(); });
-    await bg(B, 'cashSync(true)'); await B.waitForTimeout(300);
-    await bg(Saf, 'autoPull()'); await Saf.waitForTimeout(500);
+    await bg(B, 'cashSync(true)'); await B.settle(300);
+    await bg(Saf, 'autoPull()'); await Saf.settle(500);
     eq('مصروف من الحسابات ظهر في الدفتر', await Saf.evaluate(() => !!db.tx.find(t => t.id === 't_from_app' && !t.del)), true);
 
-    console.log('\n١٢) الشركاء: مرتب كل خميس ومسحوبات');
+    /* الأجهزة دي خلصت دورها: قفلها بيوقف المزامنة اللي شغالة فيها في الخلفية (كانت بتبطّأ كل الأقسام اللي بعدها) */
+    await C2.close(); await D3.close(); await D4.close();
+    sec('١٢) الشركاء: مرتب كل خميس ومسحوبات');
     await bg(A, 'cashSync(true)');   // ياخد اللي اتسجل في الدفتر من الجهاز التاني الأول
     const vb0 = await A.evaluate(() => vaultBal(''));
     eq('الموبايل: حركة السوق في الشريط اللي تحت مكان الشركاء، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ['home', 'sup', 'mkt', 'rep', 'set']);
     await A.evaluate(() => go('cash')); await A.click('#cPart'); await A.waitForSelector('#ptBack', {timeout: 3000}).catch(() => {});   // الصفحة بتفتح بعد تغيير العنوان
     eq('الشركاء من الخزنة: الخزنة متعلّمة تحت وفيه رجوع', [await A.evaluate(() => $('nav button.on').dataset.go), !!await A.$('#ptBack')], ['cash', true]);
     await A.click('#psGo'); await A.fill('#psA', '10');
-    await A.fill('#psS', await A.evaluate(() => addDays(lastThu(), -14))); await A.click('#psOk'); await A.waitForTimeout(200);
+    await A.fill('#psS', await A.evaluate(() => addDays(lastThu(), -14))); await A.click('#psOk'); await A.settle(200);
     const autoN = X => X.evaluate(() => db.txs.filter(t => t.id.startsWith('t_ps_') && !t.del).length);
     eq('اتسجل مرتب 3 خميسات لـ 3 شركاء بتواريخ الخميس', [await autoN(A), await A.evaluate(() => db.txs.filter(t => t.auto).every(t => dowOf(t.date) === 4)), await A.evaluate(() => vaultBal(''))], [9, true, vb0 - 9000]);
     eq('التشغيل تاني مبيكررش', await A.evaluate(() => autoPartners(true)), 0);
-    await bg(A, 'syncNow()'); await bg(B, 'syncNow()'); await B.waitForTimeout(1500);
+    await bg(A, 'syncNow()'); await bg(B, 'syncNow()'); await B.settle(1500);
     eq('الجهاز التاني مسجلش تاني', [await B.evaluate(() => autoPartners(true)), await autoN(B)], [0, 9]);
-    await A.click('#p-part tr[data-i]'); await A.click('#ptDel'); await A.click('#cOk'); await A.waitForTimeout(150);
+    await A.click('#p-part tr[data-i]'); await A.click('#ptDel'); await A.click('#cOk'); await A.settle(150);
     eq('المرتب الملغي مبيرجعش يتسجل', [await A.evaluate(() => autoPartners(true)), await autoN(A)], [0, 8]);
     await A.click('#ptNew'); await A.fill('#ptA', '50'); await A.fill('#ptN', 'سلفة'); await A.click('#ptOk'); await closed(A);
     eq('المسحوبات اتسجلت للشريك ونزلت الخزنة', await A.evaluate(() => [db.txs.filter(t => t.cat === 'c_pdraw' && !t.del).map(t => [partName(t.pt), t.amt, t.note]), vaultBal('')]), [[['مصطفى', 5000, 'مسحوبات مصطفى — سلفة']], vb0 - 8000 - 5000]);
     eq('حركات الشركاء ظاهرة في دفتر الخزنة', await A.evaluate(() => (bridgeOut(), readCash().tx.filter(t => t.pt && !t.del).length)), 9);
     eq('بنود الشركاء مش في قايمة المصروفات العادية', await A.evaluate(() => catsL('exp').some(c => c.id === 'c_psal' || c.id === 'c_pdraw')), false);
 
-    console.log('\n١٣) الأرباح ولوحة النهارده والبحث');
+    sec('١٣) الأرباح ولوحة النهارده والبحث');
     const PR = await A.evaluate(() => { const y = todayISO().slice(0, 4) + '-01-01', x = profitOf(y, todayISO()), ex = db.txs.filter(t => !t.del && t.type === 'exp' && !t.pt && !NOT_PL.has(t.cat) && t.date >= y).reduce((s, t) => s + t.amt, 0); return [x.sales, x.purch, x.part, x.exp === ex, x.before === x.sales - x.purch - x.exp + x.inc, x.after === x.before - x.part]; });
     eq('الأرباح: المبيعات والمشتريات والشركاء لوحدهم والربح قبل وبعد', PR, [968500, 5050000, 13000, true, true, true]);
-    await A.click('nav button[data-go=rep]'); await A.click('#rpK button[data-v=profit]'); await A.waitForTimeout(200);
+    await A.click('nav button[data-go=rep]'); await A.click('#rpK button[data-v=profit]'); await A.settle(200);
     eq('تقرير الأرباح هو أول تقرير', [await A.getAttribute('#rpK .on', 'data-v'), (await A.textContent('#p-rep .ldgf')).includes('بعد الشركاء')], ['profit', true]);
-    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('لوحة النهارده اتشالت من الرئيسية', await A.$('#hDash'), null);
     const SR = await A.evaluate(() => [searchAll('لفة تجربة').length, searchAll('1350').map(r => r.title)[0] || '', searchAll('سلفة').length, searchAll('x').length]);
     eq('البحث بالصنف وبالمبلغ', SR, [3, 'فاتورة بيع — عميل تجربة واحد', 1, 0]);
-    await A.click('#bSearch'); await A.fill('#saQ', 'سلفة'); await A.waitForTimeout(400);
+    await A.click('#bSearch'); await A.fill('#saQ', 'سلفة'); await A.settle(400);
     eq('البحث في الحركات', (await A.textContent('#saR')).includes('مسحوبات الشركاء'), true); await A.click('#saX2');
 
     eq('مفيش أرقام فواتير: لا خانة ولا عرض في الكشف ولا العنوان', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv'); const f = !!$('#dcNo'); closeModal();
@@ -426,7 +570,7 @@ const MO = !!process.env.MARKET_ONLY;
     eq('كشف العميل مفيهوش "عميل سوق/مواقع"، والمورد فيه "مورد"', await A.evaluate(() => { const ps = liveParties(), c = ps.find(x => x.sec === 'mkt'), m = ps.find(x => x.sec === 'sup');
       const t = (p) => { const pg = buildStmtPages(p, stmtData(p.id, '', '')); const r = pg[0].querySelector('.cust i'); const v = r ? r.textContent : ''; $('#render').innerHTML = ''; return v; };
       return [t(c), t(m)]; }), ['', 'مورد']);
-    console.log('\n١٤) التاريخ ورصيد أول المدة');
+    sec('١٤) التاريخ ورصيد أول المدة');
     const OP = await A.evaluate(() => {
       const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name: 'عميل ترتيب تجربة', phone: '', note: '', noTot: false, at: now, upd: now, del: false};
       db.parties.push(p); P.set(p.id, p);
@@ -436,7 +580,7 @@ const MO = !!process.env.MARKET_ONLY;
       return [partyEntries(p.id)[0].kind, stmtData(p.id, '', '').rows[0].run, s.open, s.n];
     });
     eq('رصيد أول المدة أول سطر حتى لو في بند بتاريخ قبله', OP, ['open', 20000, 25000, 0]);
-    await A.evaluate(() => go('cash')); await A.click('#cExp'); await A.waitForTimeout(150);
+    await A.evaluate(() => go('cash')); await A.click('#cExp'); await A.settle(150);
     const DP = await A.evaluate(() => { const b = $('#txD').nextElementSibling; return [b.className, [...b.querySelectorAll('span')].slice(0, 5).map(x => x.textContent).join('') === dispDate(todayISO()).split('/').join('/') .replace(/\//g, '') || true, getComputedStyle(b).direction, b.firstElementChild.textContent === todayISO().slice(8)]; });
     eq('خانة التاريخ: اليوم أول واحد على اليمين', [DP[0], DP[2], DP[3]], ['dp', 'rtl', true]);
     await A.click('#txD + .dp'); await A.waitForSelector('.dpo');
@@ -446,14 +590,15 @@ const MO = !!process.env.MARKET_ONLY;
     await A.click('#txX');
 
 
-    }   // نهاية الأقسام اللي بتتخطى في MARKET_ONLY
-    console.log('\n١٦) حركة السوق: تطبيق الشريك ووارد السوق');
+    }   // نهاية الأقسام اللي بتتخطى في وضع السوق
+    if (RUN.mkt) {   // ← وضع الحسابات (acc) بيتخطى أقسام السوق ١٦–٢٢
+    sec('١٦) حركة السوق: تطبيق الشريك ووارد السوق');
     const C1 = 'عميل تجربة واحد', bal0 = await bal(A, C1), pid1 = await A.evaluate(n => liveParties().find(x => x.name === n).id, C1);
-    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
-    eq('قبل الربط: مفيش سطر في الرئيسية، وتبويب حركة السوق بيوديه للإعدادات على كارتها', [(await A.textContent('#mkRem')).trim(), (await A.click('nav button[data-go=mkt]'), await A.click('#mkSet'), await A.waitForTimeout(400), await A.evaluate(() => [location.hash, !!$('#sMkt #smHelp')]))], ['', ['#set', true]]);
+    await A.click('nav button[data-go=home]'); await A.settle(200);
+    eq('قبل الربط: مفيش سطر في الرئيسية، وتبويب حركة السوق بيوديه للإعدادات على كارتها', [(await A.textContent('#mkRem')).trim(), (await A.click('nav button[data-go=mkt]'), await A.click('#mkSet'), await A.settle(400), await A.evaluate(() => [location.hash, !!$('#sMkt #smHelp')]))], ['', ['#set', true]]);
     await A.click('nav button[data-go=set]'); await A.evaluate(() => setOpenAll());
     await A.click('#smHelp'); await A.click('#mhCopy'); const mkCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.mkt.load(mkCode); await A.click('#mhX');
-    await A.fill('#smUrl', MKT_URL); await A.click('#smGo'); await A.waitForTimeout(2500);
+    await A.fill('#smUrl', MKT_URL); await A.click('#smGo'); await A.settle(2500);
     const mkc = await A.evaluate(() => getSet('mktSheet', null));
     eq('شيت السوق اتربط ومقفول على مفتاح اتعمل لوحده ومش في الكود', [!!(mkc && mkc.k), mkCode.includes(mkc.k) || /TEST-|script\.google\.com\/macros/.test(mkCode), JSON.parse(sheets.mkt.post(JSON.stringify({key: 'Other-Key-123', action: 'ping'}))).error, JSON.parse(sheets.mkt.get()).ok], [true, false, 'key', false]);
     eq('كود شيت الحسابات الأساسي متلمسش (مفيش تليجرام ولا إذن زيادة)', await A.evaluate(() => /UrlFetchApp|telegram|DriveApp|ScriptApp/.test(scriptFor())), false);
@@ -461,72 +606,72 @@ const MO = !!process.env.MARKET_ONLY;
     const mkRows = kind => sheets.mkt.sheets['الحركات'].rows.slice(1).filter(r => r[1] === kind);
     eq('الشيت فيه عملاء السوق بس بأرصدتهم (من غير مواقع ولا موردين)', mkRows('cust').map(r => JSON.parse(r[10]).name).sort(), ['عميل ترتيب تجربة', C1].sort());
 
-    await A.fill('#tgTok', 'كلام مش توكن'); await A.click('#tgSave'); await A.waitForTimeout(300);
+    await A.fill('#tgTok', 'كلام مش توكن'); await A.click('#tgSave'); await A.settle(300);
     eq('تليجرام: لو اللي اتلصق مش شكل توكن بيقول كده ومبيتحفظش', [sheets.mkt.props.TG_TOKEN || '', (await A.textContent('#tgSt')).includes('مش شكل توكن')], ['', true]);
     const TOK = '123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi';   // آخره 35 حرف زي تليجرام
     sheets.mkt.tg.valid = [TOK];
-    await A.fill('#tgTok', '123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghX'); await A.click('#tgSave'); await A.waitForTimeout(600);
+    await A.fill('#tgTok', '123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghX'); await A.click('#tgSave'); await A.settle(600);
     eq('تليجرام: توكن غلط فعلاً تليجرام بيرفضه ومبيتحفظش، والرسالة بتقول يجيبه منين', [sheets.mkt.props.TG_TOKEN || '', (await A.textContent('#tgSt')).includes('/mybots')], ['', true]);
     /* رسالة BotFather كلها اتلصقت في الخانة من غير سطور: "Keep" بتلزق في آخر التوكن */
     await A.evaluate(t => { $('#tgTok').value = '\u200F' + 'Use this token to access the HTTP API:' + t.replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[d]).replace(/[A-Za-z:]/g, x => x) + 'Keep your token secure and store it safely'; }, TOK.split(':')[0] + ':' + TOK.split(':')[1]);
-    await A.click('#tgSave'); await A.waitForTimeout(800);
+    await A.click('#tgSave'); await A.settle(800);
     sheets.mkt.tg.updates = [{update_id: 1, message: {chat: {id: 777}, text: 'ابدأ'}}];
-    await A.click('#tgTest'); await A.waitForTimeout(800);
+    await A.click('#tgTest'); await A.settle(800);
     eq('تليجرام: التوكن في الشيت بس، والـ chat id اتجاب لوحده من "ابدأ"', [sheets.mkt.props.TG_TOKEN, sheets.mkt.props.TG_CHAT, await A.evaluate(() => JSON.stringify(db).includes('ABCDEFGHIJ')), (await A.textContent('#tgSt')).includes('شغالة')], [TOK, '777', false, true]);
     const tgTexts = () => sheets.mkt.tg.calls.filter(c => c.url.endsWith('/sendMessage')).map(c => c.body.text);
 
     const mlink = await A.evaluate(() => mktLink());
     DM = await newDevice(browser, base, sheets);
-    const M = await DM.page('market.html' + mlink.slice(mlink.indexOf('#'))); await M.waitForTimeout(1500);
+    const M = await DM.page('market.html' + mlink.slice(mlink.indexOf('#'))); await M.settle(1500);
     eq('تطبيق الشريك اتربط بالرابط بس، والرابط اتشال من العنوان', [M.url().includes('marketjoin'), await M.evaluate(() => !!S.u && !!S.k)], [false, true]);
     eq('العملاء: عملاء السوق بس بأرصدتهم', await M.evaluate(() => [...customers().values()].map(c => [c.name, c.bal]).sort()), (await A.evaluate(() => liveParties().filter(p => p.sec === 'mkt').map(p => [p.name, balance(p.id)]))).sort());
     eq('الرئيسية: معاك كاش 0، ومفيهاش قايمة العملاء (ليها تبويب لوحدها) وفيه 4 تبويبات', [await M.textContent('#cashT'), await M.$('#lists'), await M.evaluate(() => document.querySelectorAll('#tabs button').length)], ['0', null, 4]);
-    await M.click('#tabs button[data-t=c]'); await M.waitForTimeout(150);
+    await M.click('#tabs button[data-t=c]'); await M.settle(150);
     await M.click(`#lists tr[data-c="${pid1}"]`);
     eq('شاشة الدفعة: خانة المبلغ مفتوحة على لوحة الأرقام', await M.evaluate(() => [document.activeElement.id, $('#amt').inputMode]), ['amt', 'numeric']);
-    await M.fill('#amt', '5000'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(1500);
+    await M.fill('#amt', '5000'); await M.click('.big[data-m=cash]'); await M.settle(1500);
     eq('اتسجلت: إشعار صغير بس وفضل في صفحة العميل (المبلغ اتمسح) ووصلت لمصطفى', [await M.textContent('#toast'), await M.evaluate(() => [scr.v, $('#amt').value, !!$('.done')]), await M.textContent('#top .dot')], ['✔ اتسجلت دفعة 5,000 — كاش معايا', ['pay', '', false], 'متصل']);
     eq('الدفعة: زرارين بس (فلوس معايا / تحويل لمصطفى)', await M.evaluate(() => $$('#pyBtns .big[data-m]').map(b => [b.dataset.m, b.textContent])), [['cash', '💵 فلوس معايا'], ['tr', '📲 تحويل لمصطفى']]);
     eq('تليجرام: رسالة لمصطفى مع الحركة', tgTexts().pop(), `💵 ${C1} دفع 5,000 كاش`);
-    await M.fill('#amt', '3000'); await M.click('.big[data-m=tr]'); await M.waitForTimeout(900);
-    await M.fill('#amt', '3000'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(300);
+    await M.fill('#amt', '3000'); await M.click('.big[data-m=tr]'); await M.settle(900);
+    await M.fill('#amt', '3000'); await M.click('.big[data-m=cash]'); await M.settle(300);
     eq('حماية من التكرار: نفس المبلغ في دقيقتين بيسأل', (await M.textContent('#modal')).includes('دي دفعة تانية؟'), true);
-    await M.click('#aN'); await M.waitForTimeout(200);
+    await M.click('#aN'); await M.settle(200);
     eq('لما قال لأ متسجلتش', await M.evaluate(() => liveOps().length), 2);
     eq('الرصيد عند الشريك = رصيد الحسابات − اللي اتسجل ولسه متنقلش', await M.evaluate(id => customers().get(id).bal, pid1), bal0 - 800000);
     eq('اتسجل للعميل ده النهارده بحالته', await M.evaluate(() => { const t = $('#tdy').textContent.replace(/\s+/g, ' '); return ['تحويل لمصطفى', '3,000', '⏳ عند مصطفى', 'كاش معايا', '5,000'].every(x => t.includes(x)); }), true);
-    await M.click('#bBack'); await M.waitForTimeout(150);
+    await M.click('#bBack'); await M.settle(150);
     eq('مفيش آخر زيارات، العملاء في جدول واحد', await M.evaluate(n => [$$('#lists .ctb').length, $('#lists .lbl span').textContent.replace(/ \(\d+\)$/, ''), $$('#lists .ctb .nm').some(x => x.firstChild.textContent === n)], C1), [1, 'كل العملاء', true]);
 
     DM.netDown = true;
-    await M.click('#bNew'); await M.fill('#ncN', 'عميل سوق جديد'); await M.click('#ncOk'); await M.fill('#amt', '1500'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(1500);
+    await M.click('#bNew'); await M.fill('#ncN', 'عميل سوق جديد'); await M.click('#ncOk'); await M.fill('#amt', '1500'); await M.click('.big[data-m=cash]'); await M.settle(1500);
     eq('من غير نت: اتحفظت على الموبايل ومستنية', [(await M.textContent('#tdy .row')).includes('لسه متبعتتش'), (await M.textContent('#top')).includes('1 مستنية تتبعت')], [true, true]);
-    DM.netDown = false; await bg(M, 'sync()'); await M.waitForTimeout(1200);
+    DM.netDown = false; await bg(M, 'sync()'); await M.settle(1200);
     eq('النت رجع: اتبعتت لوحدها', [await M.evaluate(() => pending().length), (await M.textContent('#tdy .row')).includes('عند مصطفى')], [0, true]);
     eq('مفيش اعتماد على navigator.onLine في تطبيق الشريك', /navigator\.onLine/.test(fs.readFileSync(path.join(ROOT, 'market.html'), 'utf8')), false);
 
-    await bg(A, 'mkSync()'); await A.waitForTimeout(800);
+    await bg(A, 'mkSync()'); await A.settle(800);
     eq('تنبيه فوري في الحسابات (شريط فوق)', await A.evaluate(() => $('#mkBar').classList.contains('on')), true);
-    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('عداد الوارد على زرار حركة السوق تحت (مش سطر في الرئيسية)', [await A.evaluate(() => $('#nbMkt').textContent), (await A.textContent('#mkRem')).trim()], ['3', '']);
     /* اللاب: العداد على زرار "حركة السوق" في القايمة الجانبية والجرس فوق، ودوسة الجرس بتعرض العمليات وبتفتح الوارد */
-    await A.setViewportSize({width: 1300, height: 800}); await A.waitForTimeout(200);
+    await A.setViewportSize({width: 1300, height: 800}); await A.settle(200);
     eq('اللاب: عداد حركة السوق على زرارها وعلى الجرس', await A.evaluate(() => [$('#nbMkt').textContent, $('#bellN').textContent, getComputedStyle($('nav button[data-go=mkt]')).display !== 'none']), ['3', '3', true]);
-    await A.click('#bBell'); await A.waitForTimeout(150);
+    await A.click('#bBell'); await A.settle(150);
     eq('الجرس: بيعرض العمليات اللي مستنية', await A.evaluate(() => [$('#mkPop').classList.contains('on'), $$('#mkPop .mpi').length]), [true, 3]);
-    await A.click('#mpGo'); await A.waitForTimeout(250);
+    await A.click('#mpGo'); await A.settle(250);
     eq('الجرس ← افتح الوارد، والزرار الجانبي هو اللي متعلّم', await A.evaluate(() => [location.hash, $('#mkPop').classList.contains('on'), $('nav button.on').dataset.go]), ['#mkt', false, 'mkt']);
-    await A.setViewportSize({width: 400, height: 860}); await A.waitForTimeout(200);
+    await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
     eq('الموبايل: زرار حركة السوق تحت مكان الشركاء (بطلب صاحب المشروع) ومفيش جرس', await A.evaluate(() => [getComputedStyle($('nav button[data-go=mkt]')).display, getComputedStyle($('nav button[data-go=part]')).display, getComputedStyle($('#bBell')).display]), ['flex', 'none', 'none']);
-    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('مفيش حاجة دخلت الحسابات لوحدها', [await bal(A, C1), await vbal(A, 'v_mkt'), await A.evaluate(() => db.entries.filter(e => e.id.startsWith('e_mk_')).length)], [bal0, 0, 0]);
-    await A.click('nav button[data-go=mkt]'); await A.waitForTimeout(200);
+    await A.click('nav button[data-go=mkt]'); await A.settle(200);
     const card = `#p-mkt [data-mv="${pid1}"]`;
     eq('الوارد متجمع بالعميل: 5,000 كاش + 3,000 تحويل = 8,000، والتحويل محسوب واصل من الأول (مفيش "وصل؟")', [(await A.textContent(`#p-mkt .ic:has([data-mv="${pid1}"])`)).replace(/\s+/g, ' ').includes('5,000 كاش + 3,000 تحويل = 8,000'), await A.isDisabled(card), await A.$('#p-mkt [data-ok]')], [true, false, null]);
-    await A.click(card); await A.waitForTimeout(200);
+    await A.click(card); await A.settle(200);
     eq('شاشة التأكيد: الكاش ← خزنة السوق والتاريخ لوحده', await A.evaluate(() => [$$('#modal .mvr [data-f=v]').map(x => x.value)[0], $$('#modal .mvr [data-f=d]')[0].value, $('#modal').textContent.includes('عمليات')]), ['v_mkt', today, true]);
     await A.evaluate(() => { const s = $$('#modal .mvr [data-f=v]')[1]; s.value = ''; });   // التحويل: من غير خزنة (في حساب العميل بس)
-    await A.click('#mvOk'); await A.waitForTimeout(300);
+    await A.click('#mvOk'); await A.settle(300);
     eq('النقل: العميل نزل 8,000، وخزنة السوق دخلها الكاش بس', [await bal(A, C1), await vbal(A, 'v_mkt')], [bal0 - 800000, 500000]);
     const twice = await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(x => x.m === 'cash' && x.amt === 500000); const r = mkMove(o, {pid: o.cid, amt: o.amt, date: todayISO(), vault: 'v_mkt'}); return [r, db.entries.filter(e => e.id.startsWith('e_mk_') && !e.del).length]; });
     eq('مستحيل تتنقل مرتين', twice, [false, 2]);
@@ -536,117 +681,118 @@ const MO = !!process.env.MARKET_ONLY;
     await openParty(A, C1);
     const gRow = await A.$('#p-party .ldg tr[data-g]');
     eq('سطر الدفعة المتجمعة في الجدول', [!!gRow, gRow && (await gRow.textContent()).includes('8,000')], [true, true]);
-    await gRow.click(); await A.waitForTimeout(150);
+    await gRow.click(); await A.settle(150);
     eq('دوسة عليه: تفاصيله لمصطفى بس (جزئين بخزنهم)', await A.evaluate(() => [$$('#modal .pt[data-e]').length, $('#modal .dtot b').textContent]), [2, '8,000']);
-    await A.evaluate(() => { closeModal(); go('mkt'); }); await A.waitForTimeout(250);
-    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(800);
+    await A.evaluate(() => { closeModal(); go('mkt'); }); await A.settle(250);
+    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(800);
     eq('الشريك شاف ✓ اتنقلت، والرصيد عنده اتظبط', await M.evaluate(id => [liveOps().filter(o => opState(o) === 'done').length, customers().get(id).bal], pid1), [2, bal0 - 800000]);
     eq('بعد النقل الشريك لسه يقدر يعدّل ويمسح', await M.evaluate(() => { const o = liveOps().find(x => opState(x) === 'done'); nav('ok/' + o.id); return [!!$('#sDel'), !!$('#sEdit')]; }), [true, true]);
 
-    await A.click('#p-mkt [data-mv^="n:"]'); await A.waitForTimeout(200); await A.click('#lkNew'); await A.waitForTimeout(150); await A.click('#mvOk'); await A.waitForTimeout(300);
+    await A.click('#p-mkt [data-mv^="n:"]'); await A.settle(200); await A.click('#lkNew'); await A.settle(150); await A.click('#mvOk'); await A.settle(300);
     eq('عميل جديد: اتفتحله حساب في عملاء السوق واتنقلت الدفعة', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل سوق جديد'); return p ? [p.sec, balance(p.id)] : null; }), ['mkt', -150000]);
-    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(800);
+    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(800);
     eq('عند الشريك: العميل الجديد بقى تحت الحساب الحقيقي', await M.evaluate(() => [...customers().values()].filter(c => c.name === 'عميل سوق جديد').map(c => [!!c.nw, c.id.startsWith('n_')])), [[false, false]]);
 
-    await A.evaluate(() => cancelEntry(E.get('e_mk_' + Object.values(db.mkt.ops).find(x => x.m === 'cash' && x.amt === 500000).id))); await A.waitForTimeout(200);
-    await bg(A, 'mkSync()'); await A.waitForTimeout(400);
+    await A.evaluate(() => cancelEntry(E.get('e_mk_' + Object.values(db.mkt.ops).find(x => x.m === 'cash' && x.amt === 500000).id))); await A.settle(200);
+    await bg(A, 'mkSync()'); await A.settle(400);
     eq('مسح الحركة المنقولة من الحسابات: العملية رجعت "متنقلتش"', [await A.evaluate(() => mkPending().length), await bal(A, C1)], [1, bal0 - 300000]);
-    await bg(M, 'sync()'); await M.waitForTimeout(500);
+    await bg(M, 'sync()'); await M.settle(500);
     eq('والشريك شافها "مصطفى شالها" ومبتتحسبش في رصيد العميل', await M.evaluate(() => opState(liveOps().find(x => x.m === 'cash' && x.amt === 500000))), 'rm');
 
-    await A.click('nav button[data-go=mkt]'); await A.waitForTimeout(200);
-    await A.click(`#p-mkt [data-bk="${pid1}"]`); await A.fill('#rtN', 'المبلغ 4,500 مش 5,000'); await A.click('#rtOk'); await A.waitForTimeout(300);
-    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(600);
-    await M.evaluate(() => nav('')); await M.waitForTimeout(150);
+    await A.click('nav button[data-go=mkt]'); await A.settle(200);
+    await A.click(`#p-mkt [data-bk="${pid1}"]`); await A.fill('#rtN', 'المبلغ 4,500 مش 5,000'); await A.click('#rtOk'); await A.settle(300);
+    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(600);
+    await M.evaluate(() => nav('')); await M.settle(150);
     eq('رجّعها: الشريك شاف 🔴 والملاحظة', [await M.evaluate(() => backs().length), (await M.textContent('#bk')).includes('رجّعلك')], [1, true]);
-    await M.click('#bk'); await M.waitForTimeout(200);
+    await M.click('#bk'); await M.settle(200);
     eq('نافذة التصليح بتفتح على طول فيها ملاحظة مصطفى', (await M.textContent('#modal')).includes('المبلغ 4,500 مش 5,000'), true);
-    await M.fill('#eA', '4500'); await M.click('#eOk'); await M.waitForTimeout(1200);
+    await M.fill('#eA', '4500'); await M.click('#eOk'); await M.settle(1200);
     eq('تليجرام: رسالة التعديل', tgTexts().pop(), `✏️ اتعدلت: ${C1} دفع 5,000 كاش\nبقت: ${C1} دفع 4,500 كاش`);
-    await bg(A, 'mkSync()'); await A.waitForTimeout(300);
+    await bg(A, 'mkSync()'); await A.settle(300);
     eq('بعد التصليح رجعت لمصطفى تاني وعليها "اتصلحت"', [await A.evaluate(() => mkPending().length), (await A.textContent('#p-mkt')).includes('اتصلحت')], [1, true]);
 
-    await M.evaluate(i => nav('p/' + i), pid1); await M.fill('#amt', '200'); await M.click('.big[data-m=tr]'); await M.waitForTimeout(800);
-    await M.click('#tdy .row[data-o]'); await M.waitForTimeout(150); await M.click('#eDel'); await M.click('#aY'); await M.waitForTimeout(1000);
+    await M.evaluate(i => nav('p/' + i), pid1); await M.fill('#amt', '200'); await M.click('.big[data-m=tr]'); await M.settle(800);
+    await M.click('#tdy .row[data-o]'); await M.settle(150); await M.click('#eDel'); await M.click('#aY'); await M.settle(1000);
     eq('تليجرام: رسالة المسح (من نفس صفحة العميل)', tgTexts().pop(), `🗑 اتمسحت: ${C1} دفع 200 تحويل`);
-    await bg(A, 'mkSync()'); await A.waitForTimeout(300);
+    await bg(A, 'mkSync()'); await A.settle(300);
     eq('اللي اتمسح مش في الوارد', await A.evaluate(() => mkPending().map(o => o.amt)), [450000]);
 
-    await bg(B, 'syncNow()'); await B.waitForTimeout(1500); await bg(B, 'mkSync()'); await B.waitForTimeout(800);
-    await bg(A, 'syncNow()'); await A.waitForTimeout(1500);
+    await bg(B, 'syncNow()'); await B.settle(1500); await bg(B, 'mkSync()'); await B.settle(800);
+    await bg(A, 'syncNow()'); await A.settle(1500);
     eq('جهاز حسابات تاني: خد ربط السوق لوحده ونفس الوارد، ومفيش خزنة سوق مكررة', [await B.evaluate(() => mkPending().map(o => o.amt)), await B.evaluate(() => db.vaults.filter(v => v.name === 'خزنة السوق').length), await A.evaluate(() => db.vaults.filter(v => v.name === 'خزنة السوق').length)], [[450000], 1, 1]);
     eq('الشيت: كل عملية مرة واحدة', new Set(mkRows('op').map(r => r[0])).size, mkRows('op').length);
 
-    console.log('\n١٧) حركة السوق (المرحلة التانية): صرفت وسلمت والتجميع والأرشيف');
-    await M.evaluate(() => nav('')); await M.waitForTimeout(200);
+    await D2.close();   // الجهاز التاني (B) خلص دوره في ١٦
+    sec('١٧) حركة السوق (المرحلة التانية): صرفت وسلمت والتجميع والأرشيف');
+    await M.evaluate(() => nav('')); await M.settle(200);
     const cash0 = await M.evaluate(() => cashNow());
     eq('اللي معاك كاش = الكاش اللي حصّلته (من غير التحويلات)', [cash0, await M.evaluate(() => liveOps().filter(o => o.t === 'pay' && o.m === 'cash').reduce((a, o) => a + o.amt, 0))], [cash0, 600000]);
     eq('الرئيسية فيها دفعة عميل وصرفت وسلمت لمصطفى', await M.evaluate(() => [...document.querySelectorAll('.qa2 button')].map(b => b.textContent)), ['💵دفعة أو فاتورة', '🏭بيع كاش من المصنع', '⛽صرفت', '🤝سلمت لمصطفى']);
-    await M.click('#qSp'); await M.waitForTimeout(200);
+    await M.click('#qSp'); await M.settle(200);
     eq('صرفت: خانة المبلغ مفتوحة وخانة يكتب فيها المصروف (من غير أنواع جاهزة)', await M.evaluate(() => [document.activeElement.id, document.querySelectorAll('.cat').length, !!$('#nt')]), ['amt', 0, true]);
-    await M.fill('#amt', '200'); await M.click('#spOk'); await M.waitForTimeout(300);
+    await M.fill('#amt', '200'); await M.click('#spOk'); await M.settle(300);
     eq('من غير اسم للمصروف: مبيتسجلش', [(await M.textContent('#toast')).includes('اكتب المصروف'), await M.evaluate(() => liveOps().filter(o => o.t === 'exp').length)], [true, 0]);
-    await M.fill('#nt', 'بنزين'); await M.click('#spOk'); await M.waitForTimeout(1200);
+    await M.fill('#nt', 'بنزين'); await M.click('#spOk'); await M.settle(1200);
     eq('اتسجل مصروف بنزين: إشعار صغير ونفس الشاشة (مفيش صفحة كاملة) واتخصم من اللي معاه', [(await M.textContent('#toast')).includes('اتسجل: بنزين'), await M.evaluate(() => [scr.v, $('#nt').value, $$('#spList .row').length]), await M.evaluate(() => cashNow())], [true, ['spend', '', 1], cash0 - 20000]);
     eq('تليجرام: رسالة المصروف', tgTexts().pop(), '⛽ مصروف بنزين: 200');
     const expId = await M.evaluate(() => liveOps().find(o => o.t === 'exp').id);
-    await M.evaluate(() => nav('')); await M.waitForTimeout(150);
-    await M.click(`.row[data-o="${expId}"]`); await M.waitForTimeout(200);
+    await M.evaluate(() => nav('')); await M.settle(150);
+    await M.click(`.row[data-o="${expId}"]`); await M.settle(200);
     eq('تعديل المصروف من الرئيسية بدوسة: الرقم القديم والنوع ظاهرين', [await M.inputValue('#eA'), await M.inputValue('#eNt')], ['200', 'بنزين']);
-    await M.fill('#eA', '250'); await M.fill('#eNt', 'مواصلات'); await M.click('#eOk'); await M.waitForTimeout(1200);
+    await M.fill('#eA', '250'); await M.fill('#eNt', 'مواصلات'); await M.click('#eOk'); await M.settle(1200);
     eq('تليجرام: رسالة تعديل المصروف', tgTexts().pop(), '✏️ اتعدلت: مصروف بنزين: 200\nبقت: مصروف مواصلات: 250');
-    await M.evaluate(() => nav('')); await M.click('#qSp'); await M.click('#spT button[data-v=spay]'); await M.fill('#sn', 'مورد تجربة'); await M.fill('#amt', '3000'); await M.click('#spOk'); await M.waitForTimeout(1200);
+    await M.evaluate(() => nav('')); await M.click('#qSp'); await M.click('#spT button[data-v=spay]'); await M.fill('#sn', 'مورد تجربة'); await M.fill('#amt', '3000'); await M.click('#spOk'); await M.settle(1200);
     eq('دفعة لمورد (باسم مكتوب بإيده) اتسجلت: إشعار وفي القايمة تحت', [(await M.textContent('#toast')).includes('اتسجل: مورد تجربة'), tgTexts().pop(), await M.evaluate(() => $$('#spList .row').length)], [true, '🏭 دفع للمورد مورد تجربة 3,000', 1]);
     eq('الأسامي اللي كتبها قبل كده بتطلع يختار منها (من غير قايمة موردين)', await M.evaluate(() => [...document.querySelectorAll('#spBody .chip')].map(c => c.textContent)), ['مورد تجربة']);
-    await M.evaluate(() => nav('')); await M.click('#qHand'); await M.fill('#hAmt', '1000'); await M.click('#hOk'); await M.waitForTimeout(1200);
+    await M.evaluate(() => nav('')); await M.click('#qHand'); await M.fill('#hAmt', '1000'); await M.click('#hOk'); await M.settle(1200);
     eq('سلمت لمصطفى كاش اتسجلت (إشعار وفضل في الرئيسية)، وتليجرام', [await M.textContent('#toast'), await M.evaluate(() => scr.v), tgTexts().pop()], ['✔ اتسجل: سلمت لمصطفى 1,000', 'home', '🤝 سلّمك 1,000 كاش']);
     eq('معاه دلوقتي = كاش − مصروف − مورد − اللي سلمه', await M.evaluate(() => cashNow()), cash0 - 25000 - 300000 - 100000);
-    await M.evaluate(() => nav('')); await M.waitForTimeout(200);
+    await M.evaluate(() => nav('')); await M.settle(200);
     eq('الرئيسية: اللي معاه وإجمالي النهارده (حصّلت | صرفت | سلّمت لمصطفى)', await M.evaluate(() => [$('#cashT').textContent, [...document.querySelectorAll('.panel .pn b')].map(b => b.textContent), document.querySelectorAll('#main .row[data-o]').length]), ['1,750', ['9,000', '3,250', '4,000'], 6]);
-    await M.click('#tabs button[data-t=a]'); await M.waitForTimeout(200);
+    await M.click('#tabs button[data-t=a]'); await M.settle(200);
     eq('الأرشيف: إجمالي الأسبوع (حصّلت | صرفت | سلّمت لمصطفى | معايا)', await M.evaluate(() => [...document.querySelector('.wk tfoot tr').querySelectorAll('td')].slice(1).map(b => b.textContent.trim())), ['9,000', '3,250', '4,000', '1,750']);
     eq('الأرشيف: سطر النهارده بنفس الأرقام ومعاه اسم اليوم', await M.evaluate(() => { const r = [...document.querySelectorAll('.wk tr[data-d]')[0].querySelectorAll('td')].map(x => x.textContent.trim()); return [r.slice(1), r[0].startsWith(AR_DAYS[dowOf(today())])]; }), [['9,000', '3,250', '4,000', '1,750'], true]);
-    await M.click('.wk tr[data-d]'); await M.waitForTimeout(200);
+    await M.click('.wk tr[data-d]'); await M.settle(200);
     eq('يوم النهارده: كل حركاته (6) وإجماليه', await M.evaluate(() => [document.querySelectorAll('#main .row[data-o]').length, [...document.querySelector('.panel .pn').querySelectorAll('b')].map(b => b.textContent)]), [6, ['9,000', '3,250', '4,000', '1,750']]);
-    await M.click('#aPrev'); await M.waitForTimeout(150);
+    await M.click('#aPrev'); await M.settle(150);
     eq('اليوم اللي قبله فاضي، وسهم التالي بيرجع النهارده', [await M.evaluate(() => document.querySelectorAll('#main .row[data-o]').length), (await M.textContent('#main')).includes('مفيش حركات في اليوم ده'), await M.isDisabled('#aNext')], [0, true, false]);
-    await M.click('#aNext'); await M.waitForTimeout(150);
+    await M.click('#aNext'); await M.settle(150);
     eq('بعد النهارده السهم مقفول', await M.isDisabled('#aNext'), true);
-    await M.evaluate(() => nav('a/2020-03-05')); await M.waitForTimeout(150);
+    await M.evaluate(() => nav('a/2020-03-05')); await M.settle(150);
     eq('أي يوم قديم بالتاريخ بيفتح', (await M.textContent('.dnav span')).includes('2020'), true);
     /* تعديل ومسح أي حركة بسهولة، من الأرشيف كمان */
-    await M.evaluate(() => nav('')); await M.click('#qSp'); await M.fill('#amt', '10'); await M.fill('#nt', 'أكل'); await M.click('#spOk'); await M.waitForTimeout(500);
+    await M.evaluate(() => nav('')); await M.click('#qSp'); await M.fill('#amt', '10'); await M.fill('#nt', 'أكل'); await M.click('#spOk'); await M.settle(500);
     const tmpId = await M.evaluate(() => liveOps().find(o => o.t === 'exp' && o.cat === 'أكل').id);
-    await M.evaluate(() => nav('a/' + today())); await M.waitForTimeout(150); await M.click(`.row[data-o="${tmpId}"]`); await M.waitForTimeout(150);
-    await M.fill('#eA', '20'); await M.click('#eOk'); await M.waitForTimeout(500);
+    await M.evaluate(() => nav('a/' + today())); await M.settle(150); await M.click(`.row[data-o="${tmpId}"]`); await M.settle(150);
+    await M.fill('#eA', '20'); await M.click('#eOk'); await M.settle(500);
     eq('تعديل مصروف من الأرشيف', await M.evaluate(id => [S.ops[id].amt, cashNow()], tmpId), [2000, 175000 - 2000]);
-    await M.click(`.row[data-o="${tmpId}"]`); await M.waitForTimeout(150); await M.click('#eDel'); await M.click('#aY'); await M.waitForTimeout(500);
+    await M.click(`.row[data-o="${tmpId}"]`); await M.settle(150); await M.click('#eDel'); await M.click('#aY'); await M.settle(500);
     eq('مسح مصروف بنافذة التعديل، واللي معاه رجع زي ما كان', await M.evaluate(id => [S.ops[id].del, cashNow()], tmpId), [true, 175000]);
-    await M.click('#tabs button[data-t=s]'); await M.waitForTimeout(150); await M.click('#uiTheme button[data-v=dark]');
+    await M.click('#tabs button[data-t=s]'); await M.settle(150); await M.click('#uiTheme button[data-v=dark]');
     eq('الإعدادات: داكن بيشتغل ويتحفظ على الموبايل', await M.evaluate(() => [document.documentElement.dataset.theme, JSON.parse(localStorage.getItem('fo_ui')).theme]), ['dark', 'dark']);
     await M.click('#uiTheme button[data-v=light]'); await M.click('#uiFs button[data-v="1.12"]');
     eq('الإعدادات: فاتح وحجم خط كبير', await M.evaluate(() => [document.documentElement.dataset.theme, document.documentElement.dataset.fs]), ['light', 'z']);
-    await M.click('#uiFs button[data-v="1"]'); await M.evaluate(() => nav('')); await M.waitForTimeout(100);
+    await M.click('#uiFs button[data-v="1"]'); await M.evaluate(() => nav('')); await M.settle(100);
 
-    await bg(A, 'mkSync()'); await A.waitForTimeout(900);
-    await A.click('nav button[data-go=mkt]'); await A.waitForTimeout(250);
+    await bg(A, 'mkSync()'); await A.settle(900);
+    await A.click('nav button[data-go=mkt]'); await A.settle(250);
     eq('الوارد عند مصطفى: 4 عمليات متنقلتش (كاش عميل + مصروف + مورد + تسليم)', await A.evaluate(() => [mkPending().length, mkPending().map(o => o.t).sort()]), [4, ['exp', 'hand', 'pay', 'spay']]);
     eq('مفيش حاجة دخلت الحسابات لوحدها (لا خزنة ولا مورد)', await A.evaluate(() => [vaultBal('v_mkt'), db.txs.filter(t => t.id.startsWith('t_mk_')).length, db.entries.filter(e => e.id.startsWith('e_mk_') && !e.del).length]), [150000, 0, 2]);
     const supB0 = await bal(A, 'مورد تجربة'), mainB0 = await vbal(A, 'v_main'), exp0 = await A.evaluate(() => profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp);
-    await A.click('#p-mkt [data-mv="x:exp"]'); await A.waitForTimeout(200);
+    await A.click('#p-mkt [data-mv="x:exp"]'); await A.settle(200);
     eq('تأكيد المصروف: من فلوس الشريك لوحده من غير اختيار خزنة', await A.evaluate(() => [$('#modal [data-f=v]').value, !$('#modal select[data-f=v]'), $('#modal').textContent.includes('مع شريكك'), $('#modal').textContent.includes('مصاريف السوق')]), ['v_mkt', true, true, true]);
-    await A.click('#mvOk'); await A.waitForTimeout(300);
+    await A.click('#mvOk'); await A.settle(300);
     eq('المصروف اتنقل كمصروف خزنة تحت "مصاريف السوق"، وخزنة السوق نزلت، وطلع في الأرباح', await A.evaluate(([e0]) => { const t = IDX.tx.get('t_mk_' + Object.values(db.mkt.ops).find(o => o.t === 'exp').id); return [t.type, t.cat, cName(t.cat), t.amt, vaultBal('v_mkt'), profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp - e0]; }, [exp0]), ['exp', 'c_mkexp', 'مصاريف السوق', 25000, 125000, 25000]);
-    await A.click('#p-mkt [data-mv^="s:"]'); await A.waitForTimeout(250);
+    await A.click('#p-mkt [data-mv^="s:"]'); await A.settle(250);
     eq('دفعة المورد زي العميل الجديد: بتطلب ربط بحساب مورد', [(await A.textContent('#modal h3')).includes('مورد'), await A.evaluate(() => [...document.querySelectorAll('#lkL .pt .m b')].map(x => x.textContent))], [true, ['مورد تجربة']]);
-    await A.click('#lkL .pt'); await A.waitForTimeout(250);
-    await A.click('#mvOk'); await A.waitForTimeout(300);
+    await A.click('#lkL .pt'); await A.settle(250);
+    await A.click('#mvOk'); await A.settle(300);
     eq('اتنقلت للمورد كدفعة (ppay) من خزنة السوق، ورصيد المورد اتغير', await A.evaluate(([b0]) => { const e = E.get('e_mk_' + Object.values(db.mkt.ops).find(o => o.t === 'spay').id); return [e.kind, e.vault, e.amt, balance(e.party) - b0, vaultBal('v_mkt')]; }, [supB0]), ['ppay', 'v_mkt', 300000, 300000, -175000]);
-    await A.click('#p-mkt [data-mv="x:hand"]'); await A.waitForTimeout(250);
+    await A.click('#p-mkt [data-mv="x:hand"]'); await A.settle(250);
     eq('الاستلام: بيختار بس الخزنة اللي استلم فيها (خزنة السوق مش في الاختيارات)', await A.evaluate(() => [$('#modal [data-f=v]').value, $('#modal [data-f=t]').value, [...$('#modal select[data-f=t]').options].some(o => o.value === 'v_mkt')]), ['v_mkt', 'v_main', false]);
-    await A.click('#mvOk'); await A.waitForTimeout(300);
+    await A.click('#mvOk'); await A.settle(300);
     eq('الكاش المسلَّم اتنقل كتحويل خزنة لخزنة', await A.evaluate(([m0]) => { const t = IDX.tx.get('t_mk_' + Object.values(db.mkt.ops).find(o => o.t === 'hand').id); return [t.type, t.vault, t.to, t.amt, vaultBal('v_mkt'), vaultBal('v_main') - m0]; }, [mainB0]), ['tr', 'v_mkt', 'v_main', 100000, -275000, 100000]);
-    await A.click('#p-mkt [data-mv]'); await A.waitForTimeout(250); await A.click('#mvOk'); await A.waitForTimeout(300);
+    await A.click('#p-mkt [data-mv]'); await A.settle(250); await A.click('#mvOk'); await A.settle(300);
     const finalCash = await M.evaluate(() => cashNow());
     eq('بعد نقل الكل: خزنة السوق (المخفية) = اللي مع الشريك، ورصيدها ظاهر فوق في حركة السوق للعرض بس', [await vbal(A, 'v_mkt'), finalCash, await A.evaluate(() => mkPending().length), (await A.textContent('#p-mkt .mkbal')).includes('مش بيتعدل'), (await A.textContent('#p-mkt .mkvb b')).replace(/\D/g, '') === String(finalCash / 100), !!(await A.$('#p-mkt .mkvb input, #p-mkt .mkvb button'))], [175000, 175000, 0, true, true, false]);
     eq('خزنة السوق مخفية من الخزنة: مش في القايمة ولا الاختيارات ولا "رصيد كل الخزن"، وكاش الشريك ظاهر دخل', await A.evaluate(() => {
@@ -654,302 +800,319 @@ const MO = !!process.env.MARKET_ONLY;
       go('cash'); renderCash(); const r = [vaultsL().some(v => v.id === 'v_mkt'), vaultOpts('').includes('v_mkt'), vaultBal('') === all, $('#p-cash').textContent.includes('خزنة السوق'),
         vaultMoves('', todayISO(), todayISO()).some(m => m.who === 'كاش من شريك السوق' && m.sign === 1), vaultMoves('', todayISO(), todayISO()).some(m => m.r.vault === 'v_mkt' && m.r.type !== 'tr')];
       go('mkt'); return r; }), [false, false, true, false, true, false]);
-    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(900);
+    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(900);
     eq('الشريك شاف ✓ على كل حاجة (من غير مسح)', await M.evaluate(() => [liveOps().filter(o => !['done', 'exp'].includes(opState(o))).length, liveOps().length]), [0, 6]);
     await A.evaluate(() => { const t = IDX.tx.get('t_mk_' + Object.values(db.mkt.ops).find(o => o.t === 'hand').id); t.del = true; touch(t); saveDB(); });
-    await bg(A, 'mkSync()'); await A.waitForTimeout(300);
+    await bg(A, 'mkSync()'); await A.settle(300);
     eq('لو مسح حركة الكاش المنقولة: التسليم يرجع "متنقلش"', await A.evaluate(() => mkPending().map(o => o.t)), ['hand']);
     await A.evaluate(() => { const o = mkPending()[0]; mkMove(o, {amt: o.amt, date: todayISO(), vault: 'v_mkt', to: 'v_main'}); saveDB(); });
     eq('وإعادة النقل بتعيد نفس الحركة من غير ما تتكرر', await A.evaluate(() => [mkPending().length, db.txs.filter(t => t.id.startsWith('t_mk_') && !t.del).length, db.txs.filter(t => t.id.startsWith('t_mk_')).length]), [0, 2, 2]);
-    await A.click('#mkTabs button[data-v=arch]'); await A.waitForTimeout(250);
+    await A.click('#mkTabs button[data-v=arch]'); await A.settle(250);
     eq('أرشيف مصطفى: اليوم بحركات الشريك كلها وإجمالي اليوم', await A.evaluate(() => [document.querySelectorAll('#mkBody .il').length, [...document.querySelectorAll('#mkBody .mkbal .bl b')].map(b => b.textContent)]), [6, ['9,000', '4,000', '3,250', '1,750']]);
-    await A.click('#maPrev'); await A.waitForTimeout(200);
+    await A.click('#maPrev'); await A.settle(200);
     eq('أرشيف مصطفى: اليوم اللي قبله فاضي', (await A.textContent('#mkBody')).includes('مفيش حركات من الشريك في اليوم ده'), true);
     await A.click('#mkTabs button[data-v=in]');
     eq('الشيت: كل عملية مرة واحدة برضه', new Set(mkRows('op').map(r => r[0])).size, mkRows('op').length);
 
-    console.log('\n١٨) حركة السوق: فاتورة بإجمالي بس من الشريك، ومصطفى بيكتب بنودها');
-    for (let i = 0; i < 4; i++) { await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(700); }   // الشريك ياخد آخر حالات وأرصدة قبل ما نقيس
+    sec('١٨) حركة السوق: فاتورة بإجمالي بس من الشريك، ومصطفى بيكتب بنودها');
+    for (let i = 0; i < 4; i++) { await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(700); }   // الشريك ياخد آخر حالات وأرصدة قبل ما نقيس
     await M.waitForFunction(() => liveOps().every(o => ['done', 'exp'].includes(opState(o))), null, {timeout: 20000});
     const bI0 = await bal(A, C1), cashB = await M.evaluate(() => cashNow());
-    await M.evaluate(i => { pyTab = 'pay'; nav('p/' + i); }, pid1); await M.waitForTimeout(200);
+    await M.evaluate(i => { pyTab = 'pay'; nav('p/' + i); }, pid1); await M.settle(200);
     eq('شاشة العميل: دفعة أو فاتورة (الدفعة هي الافتراضي)', await M.evaluate(() => [[...document.querySelectorAll('#pyT button')].map(b => b.dataset.v), document.querySelector('#pyT button.on').dataset.v, document.querySelectorAll('#pyBtns .big[data-m]').length]), [['pay', 'inv', 'rt'], 'pay', 2]);
-    await M.click('#pyT button[data-v=inv]'); await M.fill('#amt', '10000'); await M.click('#invOk'); await M.waitForTimeout(1200);
+    await M.click('#pyT button[data-v=inv]'); await M.fill('#amt', '10000'); await M.click('#invOk'); await M.settle(1200);
     eq('فاتورة إجمالي بس: إشعار وفضل في صفحة العميل، وتليجرام', [await M.textContent('#toast'), await M.evaluate(() => [scr.v, $('#amt').value, $('#tdy').textContent.includes('10,000')]), tgTexts().pop()], ['✔ اتسجلت فاتورة 10,000', ['pay', '', true], `🧾 ${C1} فاتورة بـ 10,000`]);
     eq('الفاتورة اتضافت على حساب العميل عند الشريك لوحدها، واللي معاه كاش مبيتغيرش', await M.evaluate(([id, c0]) => [customers().get(id).bal - S.cust[id].bal, cashNow() - c0], [pid1, cashB]), [1000000, 0]);
-    await M.click('#pyT button[data-v=pay]'); await M.waitForTimeout(150);
-    await M.fill('#amt', '3300'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(1200);
+    await M.click('#pyT button[data-v=pay]'); await M.settle(150);
+    await M.fill('#amt', '3300'); await M.click('.big[data-m=cash]'); await M.settle(1200);
     eq('"العميل دفع حاجة دلوقتي؟" فتح شاشة الدفعة ونزلت من حسابه، واللي معاه زاد 3,300', await M.evaluate(([id, c0]) => [customers().get(id).bal - S.cust[id].bal, cashNow() - c0], [pid1, cashB]), [670000, 330000]);
-    await M.evaluate(() => nav('')); await M.waitForTimeout(150);
+    await M.evaluate(() => nav('')); await M.settle(150);
     eq('الرئيسية عند الشريك: الفواتير في سطر لوحدها ومبتدخلش في حصّلت', await M.evaluate(() => [document.querySelector('.invln b').textContent, [...document.querySelectorAll('.panel .pn b')].map(b => b.textContent)[0]]), ['10,000', '12,300']);
 
-    await A.evaluate(() => { mkView = 'in'; go('mkt'); mkSync(); }); await A.waitForTimeout(900);
+    await A.evaluate(() => { mkView = 'in'; go('mkt'); mkSync(); }); await A.settle(900);
     const invOp = await A.evaluate(() => mkPending().find(o => o.t === 'inv').id);
     eq('الوارد عند مصطفى: الفاتورة والدفعة مع بعض، ومفيش حاجة دخلت الحسابات', [await A.evaluate(() => mkPending().map(o => o.t).sort()), await bal(A, C1), await A.$(`#p-mkt [data-inv="${invOp}"]`) !== null, await A.$(`#p-mkt [data-mv="${pid1}"]`) !== null], [['inv', 'pay'], bI0, true, true]);
-    await A.click(`#p-mkt [data-inv="${invOp}"]`); await A.waitForTimeout(300); await A.click('#iqItems'); await A.waitForTimeout(300);
+    await A.click(`#p-mkt [data-inv="${invOp}"]`); await A.settle(300); await A.click('#iqItems'); await A.settle(300);
     eq('نافذة الفاتورة: إجمالي شريكك ظاهر والتاريخ بتاعه، ومفيش خانة "دفع دلوقتي"', [(await A.textContent('#modal')).includes('فاتورة من شريكك'), await A.inputValue('#dcDate'), await A.$('#dcPaid')], [true, today, null]);
     await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.dispatchEvent('.li [data-f=name]', 'change'); await A.fill('.li [data-f=qty]', '10'); await A.fill('.li [data-f=price]', '500');
     eq('الفرق عن إجمالي شريكك بيظهر', (await A.textContent('#dcMk')).includes('الفرق'), true);
-    await A.click('#dcOk'); await A.waitForTimeout(150);
+    await A.click('#dcOk'); await A.settle(150);
     eq('لو الإجمالي مش مطابق: تحذير ومبيتسجلش', [(await A.textContent('#dcWarn')).includes('مش مساوي'), await bal(A, C1)], [true, bI0]);
     await A.fill('.li [data-f=qty]', '20');
     eq('بعد التظبيط: مطابق', (await A.textContent('#dcMk')).includes('مطابق'), true);
-    await A.click('#dcOk'); await closed(A); await A.waitForTimeout(300);
+    await A.click('#dcOk'); await closed(A); await A.settle(300);
     eq('الفاتورة اتسجلت بالبنود على حساب العميل، بنفس تاريخ الشريك وبـ id ثابت', await A.evaluate(([id, pid]) => { const e = E.get('e_mk_' + id); return [e.kind, e.party === pid, docTotal(e), e.lines.length, e.date]; }, [invOp, pid1]), ['inv', true, 1000000, 1, today]);
     eq('رصيد العميل زاد 10,000 والدفعة لسه مستنياك', [await bal(A, C1) - bI0, await A.evaluate(() => mkPending().map(o => o.t))], [1000000, ['pay']]);
-    await A.click(`#p-mkt [data-mv="${pid1}"]`); await A.waitForTimeout(250); await A.click('#mvOk'); await A.waitForTimeout(300);
+    await A.click(`#p-mkt [data-mv="${pid1}"]`); await A.settle(250); await A.click('#mvOk'); await A.settle(300);
     eq('نقل الدفعة: الرصيد = القديم + الفاتورة − الدفعة، وخزنة السوق = اللي مع الشريك', [await bal(A, C1) - bI0, await vbal(A, 'v_mkt'), cashB + 330000], [670000, cashB + 330000, cashB + 330000]);
-    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(900);
+    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(900);
     await M.waitForFunction(([id, v]) => liveOps().every(o => ['done', 'exp'].includes(opState(o))) && customers().get(id).bal === v, [pid1, bI0 + 670000], {timeout: 15000}).catch(() => {});
     eq('الشريك شاف ✓ على الاتنين ورصيد العميل عنده = رصيد الحسابات', await M.evaluate(id => [liveOps().filter(o => !['done', 'exp'].includes(opState(o))).length, customers().get(id).bal], pid1), [0, bI0 + 670000]);
-    await A.evaluate(id => cancelEntry(E.get('e_mk_' + id)), invOp); await A.waitForTimeout(200); await bg(A, 'mkSync()'); await A.waitForTimeout(300);
+    await A.evaluate(id => cancelEntry(E.get('e_mk_' + id)), invOp); await A.settle(200); await bg(A, 'mkSync()'); await A.settle(300);
     eq('لو مسح الفاتورة من الحسابات: ترجع "متنقلتش"', await A.evaluate(() => mkPending().map(o => o.t)), ['inv']);
     await bg(M, 'sync()'); await M.waitForFunction(id => customers().get(id).bal === S.cust[id].bal && S.cust[id].bal !== undefined, pid1, {timeout: 15000}).catch(() => {});
     eq('والشريك: رصيد العميل عنده = رصيد الحسابات بعد المسح، والفاتورة عليها "مصطفى شالها"', [await M.evaluate(id => customers().get(id).bal, pid1), await bal(A, C1), await M.evaluate(id => [opState(S.ops[id]), stHtml(S.ops[id]).includes('شالها')], invOp)], [bI0 - 330000, bI0 - 330000, ['rm', true]]);
-    await A.click(`#p-mkt [data-inv="${invOp}"]`); await A.waitForTimeout(300); await A.click('#iqItems'); await A.waitForTimeout(300); await A.click('#dcOk'); await closed(A); await A.waitForTimeout(300);
+    await A.click(`#p-mkt [data-inv="${invOp}"]`); await A.settle(300); await A.click('#iqItems'); await A.settle(300); await A.click('#dcOk'); await closed(A); await A.settle(300);
     eq('وإعادة كتابتها بترجع نفس الفاتورة من غير تكرار', await A.evaluate(id => [mkPending().length, db.entries.filter(e => e.id === 'e_mk_' + id).length, E.get('e_mk_' + id).del], invOp), [0, 1, false]);
     await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForFunction(id => opState(S.ops[id]) === 'done', invOp, {timeout: 15000}).catch(() => {});
     eq('بعد ما اتنقلت تاني: الشريك شايفها اتنقلت والرصيد زي الحسابات', await M.evaluate(([id, pid]) => [opState(S.ops[id]), customers().get(pid).bal], [invOp, pid1]), ['done', bI0 + 670000]);
 
     /* مرتجع / شغل: مبلغ + ملاحظة بيتخصم من حساب العميل، من غير ما يلمس الكاش ولا أي خزنة */
     const rB0 = await bal(A, C1), rV0 = await vbal(A, 'v_mkt'), rC0 = await M.evaluate(() => cashNow());
-    await M.evaluate(i => { pyTab = 'pay'; nav('p/' + i); }, pid1); await M.waitForTimeout(200);
+    await M.evaluate(i => { pyTab = 'pay'; nav('p/' + i); }, pid1); await M.settle(200);
     eq('صفحة العميل: 3 تابات (دفعة / فاتورة / مرتجع-شغل)', await M.evaluate(() => $$('#pyT button').map(b => b.dataset.v)), ['pay', 'inv', 'rt']);
-    await M.click('#pyT button[data-v=rt]'); await M.fill('#amt', '1500'); await M.click('#rtOk'); await M.waitForTimeout(300);
+    await M.click('#pyT button[data-v=rt]'); await M.fill('#amt', '1500'); await M.click('#rtOk'); await M.settle(300);
     eq('مرتجع من غير ملاحظة: بيطلب الملاحظة ومبيتسجلش', [(await M.textContent('#toast')).includes('ملاحظة'), await M.evaluate(() => liveOps().filter(o => o.t === 'rt').length)], [true, 0]);
-    await M.fill('#rtN', 'مرتجع 2 لفة 16 مم'); await M.click('#rtOk'); await M.waitForTimeout(1200);
+    await M.fill('#rtN', 'مرتجع 2 لفة 16 مم'); await M.click('#rtOk'); await M.settle(1200);
     const rtOp = await M.evaluate(() => liveOps().find(o => o.t === 'rt').id);
     eq('مرتجع/شغل اتسجل: إشعار وفضل في صفحة العميل، واتخصم من رصيده عند الشريك، والكاش زي ما هو، وتليجرام', [await M.textContent('#toast'), await M.evaluate(() => [scr.v, pyTab, $('#amt').value, $('#rtN').value, $('#tdy').textContent.includes('مرتجع 2 لفة')]), await M.evaluate(([id, c0]) => [customers().get(id).bal - S.cust[id].bal, cashNow() - c0], [pid1, rC0]), tgTexts().pop().replace(/^\S+ /, '')],
       ['✔ اتسجل مرتجع/شغل 1,500 — اتخصم من حسابه', ['pay', 'rt', '', '', true], [-150000, 0], `${C1} مرتجع/شغل بـ 1,500 — مرتجع 2 لفة 16 مم`]);
-    await A.evaluate(() => { mkView = 'in'; go('mkt'); mkSync(); }); await A.waitForTimeout(900);
+    await A.evaluate(() => { mkView = 'in'; go('mkt'); mkSync(); }); await A.settle(900);
     eq('عند مصطفى: في كارت العميل بزرار "انقلها"، ومدخلش الحسابات لوحده', [await A.$(`#p-mkt [data-rt="${rtOp}"]`) !== null, (await A.textContent('#p-mkt')).includes('مرتجع 2 لفة 16 مم'), await bal(A, C1)], [true, true, rB0]);
-    await A.click(`#p-mkt [data-rt="${rtOp}"]`); await A.waitForTimeout(250);
+    await A.click(`#p-mkt [data-rt="${rtOp}"]`); await A.settle(250);
     eq('شاشة التأكيد: خصم على الحساب من غير خزنة', [(await A.textContent('#modal')).includes('من غير خزنة'), await A.$('#modal select[data-f=v]')], [true, null]);
-    await A.click('#mvOk'); await A.waitForTimeout(300);
+    await A.click('#mvOk'); await A.settle(300);
     eq('اتنقلت خصم على حساب العميل بالملاحظة، والخزنة متأثرتش', [await A.evaluate(id => { const e = E.get('e_mk_' + id); return [e.kind, e.dir, e.amt, e.note, !e.vault]; }, rtOp), await bal(A, C1) - rB0, await vbal(A, 'v_mkt') - rV0],
       [['adj', 'dn', 150000, 'مرتجع/شغل (السوق) — مرتجع 2 لفة 16 مم', true], -150000, 0]);
     await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForFunction(id => opState(S.ops[id]) === 'done', rtOp, {timeout: 15000}).catch(() => {});
     eq('الشريك: اتنقلت والرصيد عنده = رصيد الحسابات', await M.evaluate(([id, pid]) => [opState(S.ops[id]), customers().get(pid).bal], [rtOp, pid1]), ['done', rB0 - 150000]);
 
     /* الشريك بيعدّل حركة اتنقلت: بتتعدل في الحسابات لوحدها ومصطفى يوصله إشعار */
-    await M.evaluate(i => { pyTab = 'pay'; nav('p/' + i); }, pid1); await M.waitForTimeout(200);
-    await M.click(`#tdy .row[data-o="${rtOp}"]`); await M.waitForTimeout(150);
+    await M.evaluate(i => { pyTab = 'pay'; nav('p/' + i); }, pid1); await M.settle(200);
+    await M.click(`#tdy .row[data-o="${rtOp}"]`); await M.settle(150);
     eq('نافذة التعديل بتفتح على حركة اتنقلت، وفيها إن التعديل هيوصل لمصطفى', [!!(await M.$('#eOk')), (await M.textContent('#modal')).includes('يوصله إشعار')], [true, true]);
-    await M.fill('#eA', '2000'); await M.click('#eOk'); await M.waitForTimeout(300);
+    await M.fill('#eA', '2000'); await M.click('#eOk'); await M.settle(300);
     eq('عند الشريك: "التعديل عند مصطفى" لحد ما يتطبق', await M.evaluate(id => stHtml(S.ops[id]).includes('التعديل عند مصطفى'), rtOp), true);
-    await bg(M, 'sync()'); await A.evaluate(() => go('home')); await A.waitForTimeout(200); await bg(A, 'mkSync()'); await A.waitForTimeout(300);
+    await bg(M, 'sync()'); await A.evaluate(() => go('home')); await A.settle(200); await bg(A, 'mkSync()'); await A.settle(300);
     eq('عند مصطفى: الخصم اتعدل لوحده لـ 2,000 والرصيد اتظبط، وطلعله إشعار بالتعديل', [await A.evaluate(id => E.get('e_mk_' + id).amt, rtOp), await bal(A, C1) - rB0, (await A.textContent('#mkBar')).includes('شريكك عدّل'), await A.evaluate(() => $('#mkBar').classList.contains('on'))], [200000, -200000, true, true]);
     await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForFunction(([id, v]) => !editPend(S.ops[id]) && customers().get(S.ops[id].cid).bal === v, [rtOp, rB0 - 200000], {timeout: 15000}).catch(() => {});
     eq('عند الشريك: رجعت "اتنقلت" والرصيد = الحسابات', await M.evaluate(([id, pid]) => [stHtml(S.ops[id]).includes('✓ اتنقلت'), customers().get(pid).bal], [rtOp, pid1]), [true, rB0 - 200000]);
-    await M.click(`#tdy .row[data-o="${rtOp}"]`); await M.waitForTimeout(150); await M.click('#eDel'); await M.click('#aY'); await M.waitForTimeout(300);
-    await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.waitForTimeout(300);
+    await M.click(`#tdy .row[data-o="${rtOp}"]`); await M.settle(150); await M.click('#eDel'); await M.click('#aY'); await M.settle(300);
+    await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(300);
     eq('الشريك مسح حركة اتنقلت: اتشالت من الحسابات لوحدها وإشعار', [await A.evaluate(id => E.get('e_mk_' + id).del, rtOp), await bal(A, C1), (await A.textContent('#mkBar')).includes('شريكك مسح')], [true, rB0, true]);
-    await A.evaluate(() => { $('#mkBar').classList.remove('on'); mkView = 'in'; go('mkt'); }); await A.waitForTimeout(200);
+    await A.evaluate(() => { $('#mkBar').classList.remove('on'); mkView = 'in'; go('mkt'); }); await A.settle(200);
     /* دفعة كاش اتنقلت: الشريك غيّر المبلغ وخلاها تحويل، وبعدين رجّعها زي ما كانت */
     const pyOp = await M.evaluate(() => liveOps().find(o => o.t === 'pay' && o.amt === 330000 && opState(o) === 'done').id), pV0 = await vbal(A, 'v_mkt'), pB0 = await bal(A, C1);
-    const editPay = async (amt, m) => { await M.evaluate(i => { pyTab = 'pay'; nav('p/' + i); }, pid1); await M.waitForTimeout(150); await M.click(`#tdy .row[data-o="${pyOp}"]`); await M.waitForTimeout(150); await M.fill('#eA', amt); await M.click(`#eM button[data-m=${m}]`); await M.click('#eOk'); await M.waitForTimeout(200); await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.waitForTimeout(200); };
+    const editPay = async (amt, m) => { await M.evaluate(i => { pyTab = 'pay'; nav('p/' + i); }, pid1); await M.settle(150); await M.click(`#tdy .row[data-o="${pyOp}"]`); await M.settle(150); await M.fill('#eA', amt); await M.click(`#eM button[data-m=${m}]`); await M.click('#eOk'); await M.settle(200); await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(200); };
     await editPay('3000', 'tr');
     eq('دفعة كاش اتنقلت والشريك خلاها تحويل 3,000: اتعدلت في الحساب وطلعت من خزنة السوق', [await A.evaluate(id => { const e = E.get('e_mk_' + id); return [e.amt, e.method, e.vault === 'v_mkt']; }, pyOp), await bal(A, C1) - pB0, await vbal(A, 'v_mkt') - pV0], [[300000, 'تحويل', false], 30000, -330000]);
     await editPay('3300', 'cash');
     eq('ورجّعها كاش 3,300: رجعت زي ما كانت', [await A.evaluate(id => { const e = E.get('e_mk_' + id); return [e.amt, e.method, e.vault]; }, pyOp), await bal(A, C1) - pB0, await vbal(A, 'v_mkt') - pV0], [[330000, 'نقدي', 'v_mkt'], 0, 0]);
-    await A.evaluate(() => { $('#mkBar').classList.remove('on'); mkView = 'in'; go('mkt'); }); await A.waitForTimeout(200);
+    await A.evaluate(() => { $('#mkBar').classList.remove('on'); mkView = 'in'; go('mkt'); }); await A.settle(200);
 
     /* عميل جديد: فاتورة بإجمالي بس */
-    await M.evaluate(() => nav('c')); await M.click('#bNew'); await M.fill('#ncN', 'عميل فاتورة جديد'); await M.click('#ncOk'); await M.click('#pyT button[data-v=inv]'); await M.fill('#amt', '2500'); await M.click('#invOk'); await M.waitForTimeout(1200);
+    await M.evaluate(() => nav('c')); await M.click('#bNew'); await M.fill('#ncN', 'عميل فاتورة جديد'); await M.click('#ncOk'); await M.click('#pyT button[data-v=inv]'); await M.fill('#amt', '2500'); await M.click('#invOk'); await M.settle(1200);
     eq('تليجرام: فاتورة عميل جديد', tgTexts().pop(), '🧾 عميل فاتورة جديد (عميل جديد) فاتورة بـ 2,500');
-    await bg(A, 'mkSync()'); await A.waitForTimeout(800);
-    await A.click('#p-mkt [data-inv]'); await A.waitForTimeout(300); await A.click('#iqItems'); await A.waitForTimeout(300);
+    await bg(A, 'mkSync()'); await A.settle(800);
+    await A.click('#p-mkt [data-inv]'); await A.settle(300); await A.click('#iqItems'); await A.settle(300);
     eq('عميل جديد: بيطلب ربط بحساب الأول', (await A.textContent('#modal h3')).includes('اربط'), true);
-    await A.click('#lkNew'); await A.waitForTimeout(300);
-    await A.fill('.li [data-f=name]', 'صنف تجربة جديد'); await A.fill('.li [data-f=qty]', '1'); await A.fill('.li [data-f=price]', '2500'); await A.click('#dcOk'); await closed(A); await A.waitForTimeout(300);
+    await A.click('#lkNew'); await A.settle(300);
+    await A.fill('.li [data-f=name]', 'صنف تجربة جديد'); await A.fill('.li [data-f=qty]', '1'); await A.fill('.li [data-f=price]', '2500'); await A.click('#dcOk'); await closed(A); await A.settle(300);
     eq('اتفتحله حساب في عملاء السوق وفيه الفاتورة بالبنود', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل فاتورة جديد'); return p ? [p.sec, balance(p.id), partyEntries(p.id).map(e => e.kind)] : null; }), ['mkt', 250000, ['inv']]);
-    await M.evaluate(() => nav('a')); await M.waitForTimeout(200);
+    await M.evaluate(() => nav('a')); await M.settle(200);
     eq('الأرشيف عند الشريك: الفواتير في سطر لوحدها في الأسبوع', (await M.textContent('.wk .inr')).includes('12,500'), true);
     eq('الشيت: كل عملية مرة واحدة', new Set(mkRows('op').map(r => r[0])).size, mkRows('op').length);
 
     /* فاتورة تتنقل بالإجمالي بس، والبنود بتتكتب بعدين من حساب العميل (وعليها تنبيه لحد ما تتكتب) */
-    await M.evaluate(() => nav('c')); await M.click('#bNew'); await M.fill('#ncN', 'عميل فاتورة سريعة'); await M.click('#ncOk'); await M.click('#pyT button[data-v=inv]'); await M.fill('#amt', '4000'); await M.click('#invOk'); await M.waitForTimeout(1200);
-    await bg(A, 'mkSync()'); await A.waitForTimeout(800);
-    await A.evaluate(() => { mkView = 'in'; go('mkt'); }); await A.waitForTimeout(300);
+    await M.evaluate(() => nav('c')); await M.click('#bNew'); await M.fill('#ncN', 'عميل فاتورة سريعة'); await M.click('#ncOk'); await M.click('#pyT button[data-v=inv]'); await M.fill('#amt', '4000'); await M.click('#invOk'); await M.settle(1200);
+    await bg(A, 'mkSync()'); await A.settle(800);
+    await A.evaluate(() => { mkView = 'in'; go('mkt'); }); await A.settle(300);
     const qOp = await A.evaluate(() => (mkPending().find(o => o.t === 'inv') || {}).id);
-    await A.click(`#p-mkt [data-inv="${qOp}"]`); await A.waitForTimeout(300);
+    await A.click(`#p-mkt [data-inv="${qOp}"]`); await A.settle(300);
     eq('زرار الفاتورة بيسأل: انقلها بالإجمالي ولا اكتب البنود دلوقتي', [!!await A.$('#iqGo'), !!await A.$('#iqItems')], [true, true]);
-    await A.click('#iqGo'); await A.waitForTimeout(300); await A.click('#lkNew'); await A.waitForTimeout(400);
+    await A.click('#iqGo'); await A.settle(300); await A.click('#lkNew'); await A.settle(400);
     const qp = await A.evaluate(() => (liveParties().find(x => x.name === 'عميل فاتورة سريعة') || {}).id);
     eq('اتنقلت بالإجمالي: الرصيد 4,000 والوارد فاضي وعليها "البنود لسه"', await A.evaluate(([id, pid]) => { const e = E.get('e_mk_' + id); return [e.mkNL, e.party === pid, balance(pid), mkPending().length, nlList().length]; }, [qOp, qp]), [true, true, 400000, 0, 1]);
-    await A.evaluate(() => go('home')); await A.waitForTimeout(300);
+    await A.evaluate(() => go('home')); await A.settle(300);
     eq('تنبيه في الرئيسية', (await A.textContent('#nlRem')).includes('بنودها لسه'), true);
-    await A.evaluate(pid => go('p/' + pid), qp); await A.waitForTimeout(300);
+    await A.evaluate(pid => go('p/' + pid), qp); await A.settle(300);
     eq('في الحساب: تنبيه وعلامة "البنود لسه" على الفاتورة', [(await A.textContent('#p-party .nlb')).includes('بنودها لسه'), (await A.textContent('#p-party .ldg')).includes('البنود لسه')], [true, true]);
-    await A.click('#p-party .nlb'); await A.waitForTimeout(300);
+    await A.click('#p-party .nlb'); await A.settle(300);
     eq('نافذة البنود بتفتح فاضية وإجمالي الشريك ظاهر', [await A.inputValue('.li [data-f=name]'), (await A.textContent('#dcMk')).includes('الفرق')], ['', true]);
     await A.fill('.li [data-f=name]', 'صنف سريع'); await A.fill('.li [data-f=qty]', '4'); await A.fill('.li [data-f=price]', '1000');
     eq('البنود مطابقة', (await A.textContent('#dcMk')).includes('مطابق'), true);
-    await A.click('#dcOk'); await closed(A); await A.waitForTimeout(300);
+    await A.click('#dcOk'); await closed(A); await A.settle(300);
     eq('بعد كتابة البنود: التنبيه راح والرصيد زي ما هو ومن غير "اتعدّلت"', await A.evaluate(([id, pid]) => { const e = E.get('e_mk_' + id); return [!!e.mkNL, e.lines.length, e.lines[0].name, balance(pid), nlList().length, (e.hist || []).length]; }, [qOp, qp]), [false, 1, 'صنف سريع', 400000, 0, 0]);
 
-    console.log('\n١٩) حركة السوق: بيع كاش من المصنع (اسم مشتري ومبلغ بس، من غير عملاء)');
+    sec('١٩) حركة السوق: بيع كاش من المصنع (اسم مشتري ومبلغ بس، من غير عملاء)');
     const csC0 = await M.evaluate(() => cashNow()), csP0 = await A.evaluate(() => db.parties.length);
-    await M.evaluate(() => nav('')); await M.waitForTimeout(200);
+    await M.evaluate(() => nav('')); await M.settle(200);
     eq('زرار بيع كاش من المصنع في الرئيسية', await M.evaluate(() => !!$('#qSale')), true);
-    await M.click('#qSale'); await M.waitForTimeout(200);
+    await M.click('#qSale'); await M.settle(200);
     await M.fill('#bn', 'مشتري تجربة'); await M.fill('#amt', '4500');
     eq('خانة التاريخ بأسهم يمين وشمال', await M.evaluate(() => [$$('.dpk button').length, $('#bDT').textContent.includes('النهارده'), $('.dpk [data-st="1"]').disabled]), [2, true, true]);
     await M.click('.dpk [data-st="-1"]');
     eq('السهم الأيمن بيجيب اليوم اللي قبله', await M.evaluate(() => $('#bD').value === addDays(today(), -1)), true);
-    await M.click('#bOk'); await M.waitForTimeout(1200);
+    await M.click('#bOk'); await M.settle(1200);
     eq('اتسجل البيع: إشعار وفضل في نفس الشاشة فاضية', [(await M.textContent('#toast')).includes('اتسجل بيع 4,500 — مشتري تجربة'), await M.evaluate(() => [scr.v, $('#amt').value, $('#bn').value])], [true, ['sale', '', '']]);
     eq('اللي معاه كاش زاد 4,500 ومفيش عميل اتضاف', await M.evaluate(([c0]) => [cashNow() - c0, [...customers().values()].some(c => c.name === 'مشتري تجربة')], [csC0]), [450000, false]);
     eq('تاريخ البيع اللي اختاره (إمبارح)', await M.evaluate(() => { const o = liveOps().find(x => x.t === 'cs'); return dayOf(o.ts) === addDays(today(), -1); }), true);
-    await M.evaluate(() => nav('c')); await M.waitForTimeout(200);
+    await M.evaluate(() => nav('c')); await M.settle(200);
     eq('صفحة العملاء: إجمالي اللي على العملاء ظاهر', await M.evaluate(() => { const t = [...customers().values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0); return $('#main .panel .money').textContent === fmt(t); }), true);
-    await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.waitForTimeout(500);
+    await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(500);
     eq('وصل لمصطفى في الوارد', await A.evaluate(() => mkPending().filter(o => o.t === 'cs').map(o => [o.buyer, o.amt])), [['مشتري تجربة', 450000]]);
     eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 2', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 2]);
     const csV0 = await A.evaluate(() => vaultBal('v_mkt'));
     await A.evaluate(() => { const o = mkPending().find(x => x.t === 'cs'); mkMove(o, {amt: o.amt, date: todayISO(), vault: 'v_mkt', to: ''}); saveDB(); });
     eq('اتنقل إيراد في خزنة السوق (مبيعات نقدي) من غير ما يتعمل عميل', await A.evaluate(([v0, p0]) => [vaultBal('v_mkt') - v0, db.txs.filter(t => t.id.startsWith('t_mk_') && t.type === 'inc' && t.cat === 'c_inc1' && !t.del).length > 0, db.parties.length], [csV0, csP0]), [450000, true, csP0]);
-    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(500);
+    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(500);
     eq('الشريك شاف إنها اتنقلت', await M.evaluate(() => opState(liveOps().find(x => x.t === 'cs'))), 'done');
 
-    console.log('\n٢٠) المصروف: إشعار عند مصطفى (يسجّله أو يتجاهله) ومن غير أي حالة عند الشريك');
-    const exA = async (name, amt) => { await M.evaluate(() => nav('')); await M.click('#qSp'); await M.fill('#amt', String(amt)); await M.fill('#nt', name); await M.click('#spOk'); await M.waitForTimeout(400); await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.waitForTimeout(400); await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(300); };
+    sec('٢٠) المصروف: إشعار عند مصطفى (يسجّله أو يتجاهله) ومن غير أي حالة عند الشريك');
+    const exA = async (name, amt) => { await M.evaluate(() => nav('')); await M.click('#qSp'); await M.fill('#amt', String(amt)); await M.fill('#nt', name); await M.click('#spOk'); await M.settle(400); await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(400); await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(300); };
     const exO = n => A.evaluate(n => { const o = Object.values(db.mkt.ops).find(x => x.t === 'exp' && x.cat === n), t = IDX.tx.get('t_mk_' + o.id); return [t ? !t.del : null, t ? t.amt : null, mkState(o), mkPending().some(x => x.id === o.id)]; }, n);
     await exA('غدا', 700);
     eq('المصروف مبيتسجلش لوحده: مستني مصطفى في الوارد', await exO('غدا'), [null, null, 'new', true]);
     eq('الشريك: مفيش حالة ولا انتظار على المصروف، وينفع يتعدل', await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); document.body.dataset.t = ''; nav(''); return [opState(o), stHtml(o)]; }), ['exp', '']);
-    await M.evaluate(() => nav('')); await M.waitForTimeout(150);
+    await M.evaluate(() => nav('')); await M.settle(150);
     eq('الشريك: سطر المصروف في الرئيسية من غير أي نص حالة', await M.evaluate(() => { const r = [...document.querySelectorAll('.row.t-exp')].find(x => x.textContent.includes('غدا')); return [!!r, r.querySelectorAll('.st').length]; }), [true, 0]);
     eq('عند مصطفى: زرار تجاهل جنب المصروف ومفيش رجّعها', await A.evaluate(() => { mkView = 'in'; go('mkt'); return new Promise(r => setTimeout(() => r([document.querySelectorAll('#mkBody [data-ig]').length > 0, !document.querySelector('#mkBody [data-bk="x:exp"]')]), 400)); }), [true, true]);
-    await A.click('#p-mkt [data-mv="x:exp"]'); await A.waitForTimeout(250); await A.click('#mvOk'); await A.waitForTimeout(300);
+    await A.click('#p-mkt [data-mv="x:exp"]'); await A.settle(250); await A.click('#mvOk'); await A.settle(300);
     eq('"سجّلها مصروف": اتسجلت في خزنة السوق تحت مصاريف السوق', await exO('غدا'), [true, 70000, 'done', false]);
-    await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); o.amt = 80000; bump(o); save(); sync(); }); await M.waitForTimeout(500); await bg(A, 'mkSync()'); await A.waitForTimeout(400);
+    await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); o.amt = 80000; bump(o); save(); sync(); }); await M.settle(500); await bg(A, 'mkSync()'); await A.settle(400);
     eq('الشريك عدّل بعد ما اتسجلت: الحركة عند مصطفى اتعدلت', await exO('غدا'), [true, 80000, 'done', false]);
     eq('والشريك لسه ينفع يعدّل (مفيش قفل)', await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); editSheet(o); const ok = !!$('#eOk'); closeModal(); return ok; }), true);
-    await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); o.del = true; bump(o); save(); sync(); }); await M.waitForTimeout(500); await bg(A, 'mkSync()'); await A.waitForTimeout(400);
+    await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); o.del = true; bump(o); save(); sync(); }); await M.settle(500); await bg(A, 'mkSync()'); await A.settle(400);
     eq('الشريك مسحها: اتشالت من الخزنة عند مصطفى', await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(x => x.cat === 'غدا'); return IDX.tx.get('t_mk_' + o.id).del; }), true);
     await exA('تاكسي', 300);
-    await A.evaluate(() => { mkIgnore(Object.values(db.mkt.ops).find(x => x.cat === 'تاكسي')); }); await A.click('#igOk'); await A.waitForTimeout(400);
+    await A.evaluate(() => { mkIgnore(Object.values(db.mkt.ops).find(x => x.cat === 'تاكسي')); }); await A.click('#igOk'); await A.settle(400);
     eq('تجاهل: مش في اللي متنقلش ومفيش حركة خزنة', await exO('تاكسي'), [null, null, 'ign', false]);
-    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.waitForTimeout(300);
+    await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(300);
     eq('الشريك مشافش أي تغيير في المصروف المتجاهَل، وينفع يعدّله', await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'تاكسي'); return [opState(o), stHtml(o), cashNow() < 0 || true]; }), ['exp', '', true]);
     eq('دفعة المورد والتسليم لسه بموافقته (متسجلوش لوحدهم)', await A.evaluate(() => db.txs.filter(t => t.id.startsWith('t_mk_') && !t.del).every(t => t.type === 'tr' || t.cat === 'c_inc1' || t.cat === 'c_mkexp')), true);
 
-    console.log('\n٢١) حركة السوق: زرار الرجوع بتاع الموبايل');
-    await M.evaluate(() => nav('', true)); await M.waitForTimeout(150);
+    sec('٢١) حركة السوق: زرار الرجوع بتاع الموبايل');
+    await M.evaluate(() => nav('', true)); await M.settle(150);
     await M.click('#tabs button[data-t=c]'); await M.click('#tabs button[data-t=a]');
-    await M.goBack(); await M.waitForTimeout(150);
+    await M.goBack(); await M.settle(150);
     eq('الرجوع من الأرشيف بيرجع للعملاء (مش بيخرج)', await M.evaluate(() => scr.v), 'c');
     await M.evaluate(() => handModal()); await M.waitForSelector('#hAmt');
-    await M.goBack(); await M.waitForTimeout(150);
+    await M.goBack(); await M.settle(150);
     eq('الرجوع وفي نافذة مفتوحة بيقفلها ويفضل في نفس الصفحة', await M.evaluate(() => [scr.v, $('#mask').classList.contains('on')]), ['c', false]);
-    await M.evaluate(() => handModal()); await M.waitForSelector('#hAmt'); await M.click('#hX'); await M.waitForTimeout(300);
-    await M.goBack(); await M.waitForTimeout(150);
+    await M.evaluate(() => handModal()); await M.waitForSelector('#hAmt'); await M.click('#hX'); await M.settle(300);
+    await M.goBack(); await M.settle(150);
     eq('قفل النافذة بزرارها مبيسيبش خانة زيادة: الرجوع بيروح للصفحة اللي قبلها', await M.evaluate(() => scr.v), 'home');
 
-    console.log('\n٢٢) ترتيب العملاء وآخر دفعة، "حصّل من دول"، تقفيل اليوم، انقل كل الجاهز، التسجيل السريع، والمطلوب منك النهارده');
-    const sync2 = async () => { await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.waitForTimeout(300); await bg(M, 'sync()'); await M.waitForTimeout(200); };
+    sec('٢٢) ترتيب العملاء وآخر دفعة، "حصّل من دول"، تقفيل اليوم، انقل كل الجاهز، التسجيل السريع، والمطلوب منك النهارده');
+    const sync2 = async () => { await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(300); await bg(M, 'sync()'); await M.settle(200); };
     await sync2();
     /* آخر دفعة: بتيجي من الحسابات مع رصيد العميل */
     eq('الحسابات بتبعت تاريخ آخر دفعة مع رصيد عميل السوق', JSON.parse(mkRows('cust').find(r => r[0] === pid1)[10]).lp, await A.evaluate(id => lastPays().get(id) || '', pid1));
-    await M.evaluate(() => nav('c', true)); await M.waitForTimeout(150);
+    await M.evaluate(() => nav('c', true)); await M.settle(150);
     eq('العملاء: سهم ترتيب فيه 3 اختيارات والافتراضي "الأكتر عليه"، والجدول أسامي بس', await M.evaluate(() => [[...$('#cSort').options].map(o => o.textContent), $('#cSort').value, !!$('#lists .lp')]), [['الأكتر عليه', 'مدفعش من زمان', 'بالحروف'], 'owe', false]);
     eq('الأكتر عليه: مترتبين بالرصيد من الكبير للصغير', await M.evaluate(() => { const b = $$('#lists tr[data-c]').map(r => customers().get(r.dataset.c).bal); return b.every((x, i) => !i || b[i - 1] >= x); }), true);
     eq('"آخر دفعة" لسه بتظهر في صفحة العميل', await M.evaluate(id => { nav('p/' + id); const t = $('#cBox .lp').textContent; nav('c', true); return t; }, pid1), 'دفع النهارده');
-    await M.selectOption('#cSort', 'abc'); await M.waitForTimeout(100);
+    await M.selectOption('#cSort', 'abc'); await M.settle(100);
     eq('بالحروف: بيترتبوا بالاسم والاختيار بيتحفظ', await M.evaluate(() => { const n = $$('#lists tr[data-c] .nm').map(x => x.firstChild.textContent); return [n.every((x, i) => !i || n[i - 1].localeCompare(x, 'ar') <= 0), S.cSort, JSON.parse(localStorage.getItem('fo_mkt_v1')).cSort]; }), [true, 'abc', 'abc']);
     await M.selectOption('#cSort', 'owe');
 
     /* أقسام العملاء عند الشريك (على الموبايل بس) */
     eq('"كل العملاء" أول تبويب ومفيش أقسام', await M.evaluate(() => $$('#gTabs button[data-g]').map(b => b.textContent)), ['كل العملاء']);
-    await M.click('#gAdd'); await M.fill('#gN', 'منطقة تجربة'); await M.click(`#gL input[data-c="${pid1}"]`); await M.click('#gOk'); await M.waitForTimeout(150);
+    await M.click('#gAdd'); await M.fill('#gN', 'منطقة تجربة'); await M.click(`#gL input[data-c="${pid1}"]`); await M.click('#gOk'); await M.settle(150);
     eq('قسم جديد: بقى تبويب فوق وفيه العميل اللي اختاره بس', await M.evaluate(() => [$$('#gTabs button[data-g]').map(b => b.textContent), $('#gTabs button.on').textContent, $$('#lists tr[data-c]').length, JSON.parse(localStorage.getItem('fo_mkt_v1')).groups.length]), [['كل العملاء', 'منطقة تجربة'], 'منطقة تجربة', 1, 1]);
-    await M.click('#gTabs button[data-g=""]'); await M.waitForTimeout(100);
+    await M.click('#gTabs button[data-g=""]'); await M.settle(100);
     eq('"كل العملاء" لسه فيه الكل', await M.evaluate(() => $$('#lists tr[data-c]').length === customers().size), true);
-    await M.click('#gTabs button:nth-child(2)'); await M.click('#gEdit'); await M.click('#gDel'); await M.click('#aY'); await M.waitForTimeout(150);
+    await M.click('#gTabs button:nth-child(2)'); await M.click('#gEdit'); await M.click('#gDel'); await M.click('#aY'); await M.settle(150);
     eq('مسح القسم: العملاء فضلوا والتبويب اتشال', await M.evaluate(() => [$$('#gTabs button[data-g]').length, $$('#lists tr[data-c]').length === customers().size]), [1, true]);
     eq('الأقسام مبتروحش الشيت ولا الحسابات', sheets.mkt.sheets['الحركات'].rows.some(r => String(r[10]).includes('منطقة تجربة')), false);
     /* حصّل من دول: مصطفى بيعلّم من الحسابات، والشريك بيشوفها في الرئيسية وبتتشطب لما يسجل دفعة */
-    await openParty(A, C1); await A.click('#ppWant'); await A.fill('#wqA', '1,000'); await A.fill('#wqN', 'قبل الخميس'); await A.click('#wqOk'); await A.waitForTimeout(200);
+    await openParty(A, C1); await A.click('#ppWant'); await A.fill('#wqA', '1,000'); await A.fill('#wqN', 'قبل الخميس'); await A.click('#wqOk'); await A.settle(200);
     eq('الحسابات: العميل اتعلّم "مطلوب" وظهر سطر في صفحته', [await A.evaluate(id => mkWants()[id] && mkWants()[id].amt, pid1), (await A.textContent('#ppWantL')).includes('لسه')], [100000, true]);
-    await sync2(); await M.evaluate(() => nav('', true)); await M.waitForTimeout(150);
+    await sync2(); await M.evaluate(() => nav('', true)); await M.settle(150);
     eq('الشريك: "مطلوب تحصّل من دول" فوق في الرئيسية بالمبلغ والملاحظة', await M.evaluate(id => { const r = $(`#want .wr[data-c="${id}"]`); return r && [r.querySelector('.a .money').textContent, r.textContent.includes('قبل الخميس'), r.classList.contains('ok'), $('#want .wh2 span').textContent]; }, pid1), ['1,000', true, false, '0 من 1']);
-    await M.click(`#want .wr[data-c="${pid1}"]`); await M.waitForTimeout(150);
+    await M.click(`#want .wr[data-c="${pid1}"]`); await M.settle(150);
     eq('دوسة على العميل بتفتح الدفعة وفيها سطر "مصطفى عاوز منه"', [await M.evaluate(() => scr.v), (await M.textContent('#cBox .cwant')).includes('1,000')], ['pay', true]);
-    await M.fill('#amt', '700'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(400);
-    await M.evaluate(() => nav('', true)); await M.waitForTimeout(150);
+    await M.fill('#amt', '700'); await M.click('.big[data-m=cash]'); await M.settle(400);
+    await M.evaluate(() => nav('', true)); await M.settle(150);
     eq('سجّل دفعة: اتشطبت عنده "✓ حصّلت"', await M.evaluate(id => { const r = $(`#want .wr[data-c="${id}"]`); return [r.classList.contains('ok'), r.textContent.includes('حصّلت 700')]; }, pid1), [true, true]);
-    await sync2(); await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    await sync2(); await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('الحسابات: كارت "حصّل من دول" في الوارد بيقول "1 من 1"', await A.evaluate(() => { go('mkt'); return new Promise(r => setTimeout(() => r($('#mkBody .mkw .mkwh span').textContent), 300)); }), '1 من 1');
     eq('بكرة اللي اتحصّل بيتشال من القايمة لوحده', await A.evaluate(() => { const n0 = Date.now, r0 = mkWantPrune(); Date.now = () => n0() + 86400000 * 1.1; let r; try { r = [r0, mkWantPrune(), Object.keys(mkWants()).length]; } finally { Date.now = n0; } return r; }), [false, true, 0]);
 
     /* تقفيل اليوم */
-    await M.evaluate(() => nav('', true)); await M.waitForTimeout(150);
+    await M.evaluate(() => nav('', true)); await M.settle(150);
     const cn0 = await M.evaluate(() => cashNow());
     await M.click('#kBtn'); await M.waitForSelector('#kAmt');
     eq('تقفيل اليوم: بيقول المفروض معاك كام', await M.evaluate(() => $('.kexp .money').textContent), await M.evaluate(() => fmtN(cashNow())));
-    await M.fill('#kAmt', String((cn0 - 20000) / 100)); await M.click('#kOk'); await M.waitForTimeout(100);
+    await M.fill('#kAmt', String((cn0 - 20000) / 100)); await M.click('#kOk'); await M.settle(100);
     eq('فيه فرق: بينبّه الأول ومبيقفلش', [(await M.textContent('#kRes')).includes('ناقص 200'), await M.evaluate(() => !!cntOf(today()))], [true, false]);
-    await M.click('#kOk'); await M.waitForTimeout(300);
+    await M.click('#kOk'); await M.settle(300);
     eq('"قفّل برضه": اتسجل التقفيل والفرق ظاهر، و"معاك كاش" متغيرش', await M.evaluate(() => { const k = cntOf(today()); return [k.amt - k.sys, $('#kBtn').classList.contains('bad'), cashNow(), liveOps().some(o => o.t === 'cnt')]; }), [-20000, true, cn0, false]);
     await sync2();
     eq('تليجرام: مصطفى عرف بالفرق', tgTexts().some(t => t.includes('قفّل يومه') && t.includes('ناقص 200')), true);
-    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('الحسابات: مفيش تنبيه في الرئيسية (التقفيل في الوارد بس)', await A.evaluate(() => !!document.querySelector('#hAlerts .mkcnt, #tkRows')), false);
     eq('الوارد: كارت التقفيل فوق ومش محسوب عملية', await A.evaluate(() => { go('mkt'); return new Promise(r => setTimeout(() => r([!!document.querySelector('#mkBody .mkcnt.bad'), mkLive().some(o => o.t === 'cnt')]), 300)); }), [true, false]);
-    await M.click('#kBtn'); await M.waitForSelector('#kAmt'); await M.fill('#kAmt', String(cn0 / 100)); await M.click('#kOk'); await M.waitForTimeout(300);
+    await M.click('#kBtn'); await M.waitForSelector('#kAmt'); await M.fill('#kAmt', String(cn0 / 100)); await M.click('#kOk'); await M.settle(300);
     eq('قفّل تاني مظبوط: نفس التقفيل اتكتب فوق القديم', await M.evaluate(() => [Object.values(S.ops).filter(o => o.t === 'cnt').length, cntOf(today()).amt === cntOf(today()).sys, $('#kBtn').classList.contains('ok')]), [1, true, true]);
 
     /* انقل كل الجاهز */
-    await M.evaluate(id => { pyTab = 'pay'; nav('p/' + id, true); }, pid1); await M.waitForTimeout(150);
-    await M.fill('#amt', '110'); await M.click('.big[data-m=cash]'); await M.waitForTimeout(800);
-    await M.fill('#amt', '220'); await M.click('.big[data-m=tr]'); await M.waitForTimeout(400);
-    await M.evaluate(() => nav('b', true)); await M.waitForTimeout(100); await M.fill('#bn', 'مشتري جاهز'); await M.fill('#amt', '330'); await M.click('#bOk'); await M.waitForTimeout(300);
+    await M.evaluate(id => { pyTab = 'pay'; nav('p/' + id, true); }, pid1); await M.settle(150);
+    await M.fill('#amt', '110'); await M.click('.big[data-m=cash]'); await M.settle(800);
+    await M.fill('#amt', '220'); await M.click('.big[data-m=tr]'); await M.settle(400);
+    await M.evaluate(() => nav('b', true)); await M.settle(100); await M.fill('#bn', 'مشتري جاهز'); await M.fill('#amt', '330'); await M.click('#bOk'); await M.settle(300);
     await sync2();
     const bB = await bal(A, C1), vB = await vbal(A, 'v_mkt');
     const rdy = await A.evaluate(() => mkReady().map(o => o.amt)), [eC, eV] = await A.evaluate(id => { const R = mkReady(); return [R.filter(o => o.t === 'pay' && mkPid(o) === id).reduce((s, o) => s + o.amt, 0), R.filter(o => o.t === 'cs' || (o.t === 'pay' && o.m === 'cash')).reduce((s, o) => s + o.amt, 0)]; }, pid1);
     eq('الجاهز للنقل فيه الدفعتين والبيع الكاش', [rdy.includes(11000), rdy.includes(22000), rdy.includes(33000)], [true, true, true]);
-    await A.evaluate(() => { mkView = 'in'; go('mkt'); }); await A.waitForTimeout(300);
-    await A.click('#mkAll'); await A.waitForSelector('#mbOk'); await A.click('#mbOk'); await A.waitForTimeout(400);
+    await A.evaluate(() => { mkView = 'in'; go('mkt'); }); await A.settle(300);
+    await A.click('#mkAll'); await A.waitForSelector('#mbOk'); await A.click('#mbOk'); await A.settle(400);
     eq('انقل كل الجاهز: اتنقلوا كلهم بشاشة واحدة', await A.evaluate(() => [mkReady().length, Object.values(db.mkt.ops).filter(o => [11000, 22000, 33000].includes(o.amt) && !o.del).map(o => mkState(o))]), [0, ['done', 'done', 'done']]);
     eq('العميل نزل بكل دفعاته الجاهزة والكاش (دفعات + بيع) في خزنة السوق', [bB - await bal(A, C1), await vbal(A, 'v_mkt') - vB], [eC, eV]);
     eq('دفعتين نفس العميل = "دفعة" واحدة في حسابه', await A.evaluate(() => { const L = db.entries.filter(e => e.id.startsWith('e_mk_') && !e.del && [11000, 22000].includes(e.amt)); return [L.length, new Set(L.map(e => e.mkg)).size, !!L[0].mkg]; }), [2, 1, true]);
 
     /* التسجيل السريع (＋) */
-    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('الموبايل: زرار ＋ ظاهر في الرئيسية ومخفي في صفحة الحساب', [await A.isVisible('#fabNew'), (await openParty(A, C1), await A.isVisible('#fabNew'))], [true, false]);
-    await A.click('nav button[data-go=home]'); await A.waitForTimeout(150);
-    await A.click('#fabNew'); await A.click('#qmPay'); await A.fill('#qpQ', C1); await A.waitForTimeout(100);
-    await A.press('#qpQ', 'Enter'); await A.waitForTimeout(200);
+    await A.click('nav button[data-go=home]'); await A.settle(150);
+    await A.click('#fabNew'); await A.click('#qmPay'); await A.fill('#qpQ', C1); await A.settle(100);
+    await A.press('#qpQ', 'Enter'); await A.settle(200);
     eq('＋ ← دفعة ← اكتب حرفين ← Enter: نافذة الدفعة للعميل', [!!(await A.$('#pyAmt')), (await A.textContent('#modal')).includes(C1)], [true, true]);
     await A.evaluate(() => closeModal());
-    await A.click('#fabNew'); await A.click('#qmExp'); await A.waitForTimeout(150);
+    await A.click('#fabNew'); await A.click('#qmExp'); await A.settle(150);
     eq('＋ ← مصروف: نافذة مصروف الخزنة', (await A.textContent('#modal h3')).includes('مصروف'), true);
     await A.evaluate(() => closeModal());
-    await A.setViewportSize({width: 1300, height: 800}); await A.waitForTimeout(200);
-    eq('اللاب: "تسجيل سريع" في القايمة الجانبية والزرار العايم مخفي، وF4 بيفتحه', [await A.isVisible('#nQuick'), await A.isVisible('#fabNew'), (await A.keyboard.press('F4'), await A.waitForTimeout(150), await A.isVisible('#qmDoc'))], [true, false, true]);
-    await A.evaluate(() => closeModal()); await A.setViewportSize({width: 400, height: 860}); await A.waitForTimeout(200);
+    await A.setViewportSize({width: 1300, height: 800}); await A.settle(200);
+    eq('اللاب: "تسجيل سريع" في القايمة الجانبية والزرار العايم مخفي، وF4 بيفتحه', [await A.isVisible('#nQuick'), await A.isVisible('#fabNew'), (await A.keyboard.press('F4'), await A.settle(150), await A.isVisible('#qmDoc'))], [true, false, true]);
+    await A.evaluate(() => closeModal()); await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
 
     /* الشريط اللي تحت على الموبايل: العملاء | الموردين | حركة السوق | التقارير | الإعدادات */
     eq('الموبايل: ترتيب الشريط اللي تحت', await A.evaluate(() => $$('nav button[data-go]').filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => (+getComputedStyle(a).order) - (+getComputedStyle(b).order)).map(b => b.innerText.trim())), ['العملاء', 'الموردين', 'حركة السوق', 'التقارير', 'الإعدادات']);
-    await A.click('nav button[data-go=home]'); await A.waitForTimeout(150);
+    await A.click('nav button[data-go=home]'); await A.settle(150);
     eq('العملاء: عملاء السوق والمواقع بس + زرار الخزنة، والبحث مبيجيبش موردين', await A.evaluate(() => { const t = $$('#hTabs button[data-t]').map(b => b.dataset.t); $('#hSearch').value = 'مورد'; renderList(); const n = $$('#hList .pt.sup').length; $('#hSearch').value = ''; renderList(); return [t, !!$('#hCash'), n]; }), [['mkt', 'site'], true, 0]);
-    await A.click('nav button[data-go=sup]'); await A.waitForTimeout(150);
+    await A.click('nav button[data-go=sup]'); await A.settle(150);
     eq('الموردين تبويب لوحده تحت وفيه موردين بس', await A.evaluate(() => [$('nav button.on').dataset.go, $$('#hList .pt').length > 0 && $$('#hList .pt').every(x => x.classList.contains('sup')), $$('#hTabs button[data-t]').length]), ['sup', true, 0]);
-    await A.click('#hList .pt'); await A.waitForTimeout(150);
-    eq('صفحة المورد: الموردين هو المتعلّم والرجوع بيرجع للموردين', [await A.evaluate(() => $('nav button.on').dataset.go), (await A.click('#ppBack'), await A.waitForTimeout(150), await A.evaluate(() => location.hash))], ['sup', '#sup']);
-    await A.click('nav button[data-go=home]'); await A.click('#hCash'); await A.waitForTimeout(150);
+    await A.click('#hList .pt'); await A.settle(150);
+    eq('صفحة المورد: الموردين هو المتعلّم والرجوع بيرجع للموردين', [await A.evaluate(() => $('nav button.on').dataset.go), (await A.click('#ppBack'), await A.settle(150), await A.evaluate(() => location.hash))], ['sup', '#sup']);
+    await A.click('nav button[data-go=home]'); await A.click('#hCash'); await A.settle(150);
     eq('زرار الخزنة في العملاء بيفتح الخزنة', await A.evaluate(() => location.hash), '#cash');
     /* المطلوب منك النهارده + الألوان */
-    await A.click('nav button[data-go=home]'); await A.waitForTimeout(200);
+    await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('الرئيسية: فاضل تنبيه الفواتير اللي بنودها لسه بس (مفيش وارد السوق ولا الحد الأحمر ولا النسخة)', await A.evaluate(() => [!!$('#nlRem'), $('#mkRem').textContent.trim(), !!$('#bkRem'), !!$('#tkRows')]), [true, '', false, false]);
     eq('الألوان واحدة في التطبيقين: الكاش أخضر والتحويل أزرق والمصروف أحمر', await M.evaluate(() => { nav('', true); const c = k => { const r = document.querySelector('.row.' + k + ' .a .money'); return r ? getComputedStyle(r).color : null; }; return [c('d-in'), c('d-to')]; }), ['rgb(30, 138, 70)', 'rgb(47, 102, 144)']);
 
-    console.log('\n١٥) المراجعة الداخلية');
+    }   // نهاية أقسام السوق
+    }   // نهاية RUN.sync
+    if (RUN.smoke) {
+      sec('الشكل: كل الصفحات بتفتح من غير أخطاء');
+      /* بعد تعديل شكل بس: البرنامج بيفتح، الحسابات والخزنة والتقارير والإعدادات بترسم، والصفحات التانية بتفتح من غير أخطاء */
+      for (const g of ['home', 'cash', 'rep', 'set', 'mkt']) { await A.evaluate(x => go(x), g); await A.settle(400); }
+      await A.evaluate(n => go('p/' + liveParties().find(x => x.name === n).id), 'عميل تجربة واحد'); await A.settle(400);
+      eq('صفحة الحساب بترسم والرصيد سليم', [await A.evaluate(() => !!document.querySelector('main table')), await bal(A, 'عميل تجربة واحد')], [true, 270000]);
+      await A.setViewportSize({width: 1280, height: 860}); await A.settle(400);
+      eq('اللاب توب: القايمة الجانبية ظاهرة', await A.evaluate(() => getComputedStyle(document.querySelector('nav')).display !== 'none'), true);
+      await A.setViewportSize({width: 400, height: 860});
+      for (const f of ['index.html', 'cash.html', 'market.html', 'quote.html', 'delivery.html', 'cost.html', 'calculator/index.html', 'payroll.html']) { const X = await D1.page(f); await X.settle(800); await X.close(); }
+    }
+    sec('١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
-    eq('مفيش أخطاء في الصفحات', D1.errs.concat(typeof D2 !== 'undefined' ? D2.errs : [], DM ? DM.errs : []), []);
+    eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2 ? D2.errs : [], DM ? DM.errs : []), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();
+  if (secT.length) secT[secT.length - 1].s = (Date.now() - secT[secT.length - 1].t) / 1000;
+  console.log('\n— الوقت —');
+  secT.forEach(x => console.log(`  ${String(Math.round(x.s || 0)).padStart(4)} ث  ${x.name}`));
+  console.log(`  الإجمالي ${Math.round((Date.now() - T0) / 1000)} ثانية (الانتظار الذكي: ${settleN} مرة، وصل للحد الأقصى ${settleCaps} مرة)`);
   console.log(`\n${fails ? '✖' : '✔'} ${oks} نجح، ${fails} فشل\n`);
   process.exit(fails ? 1 : 0);
 })();

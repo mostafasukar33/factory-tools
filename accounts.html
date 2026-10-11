@@ -771,6 +771,14 @@ html[data-theme=dark] .mtag.insta{background:#2a2240;color:#B9A6F0}html[data-the
 .mtag.inv{background:var(--tr-l);color:var(--tr)}
 .seg.s2{grid-template-columns:1fr 1fr}
 #mkBody .dnav{margin-bottom:0}
+/* سطر العملية في كارت الوارد: فوق الاسم والمبلغ، وتحت الوقت وزرار الإجراء (من غير ما حاجة تتكسر فوق التانية) */
+.il.cl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:8px 14px;min-height:0}
+.il.cl .m{flex-wrap:wrap;min-width:0;gap:4px 8px}
+.il.cl .m .mtag{white-space:normal;line-height:1.5;padding:2px 10px}
+.il.cl .money{text-align:left;white-space:nowrap}
+.il.cl .ilw{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.il.cl .ilw .tm{white-space:nowrap}
+.il.cl .ilw .vbtn{white-space:nowrap;margin-inline-start:auto}
 /* الوارد والأرشيف متفصولين: عداد على التاب، وعنوان لكل قسم، و"رجعتها لشريكك" تحت لوحدها */
 #mkTabs .mkn{display:inline-block;min-width:24px;border-radius:12px;padding:0 7px;background:var(--red);color:var(--card);font-size:var(--f1);font-weight:800;margin-inline-start:4px}
 .mkh .mkha{font-size:var(--f1);font-weight:700;color:var(--sub);margin-inline-start:6px}
@@ -5203,9 +5211,10 @@ function mkCard(g) {
       : o.t === 'inv' ? `<button class="vbtn" data-inv="${esc(o.id)}" type="button">📥 انقلها</button>`
       : o.t === 'rt' ? `<button class="vbtn" data-rt="${esc(o.id)}" type="button">📥 انقلها</button>`
       : mkNeeds(o) ? (mkArrived(o) ? '<span class="vok">✓ وصل</span>' : `<button class="vbtn" data-ok="${esc(o.id)}" type="button">🔔 وصل؟</button>`)
-      : `<span class="tm">${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</span>`)) + igBtn;
+      : '')) + igBtn;
+    const when = st === 'new' || st === 'back' ? `<small class="tm">${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' · ' + dispDate(isoOf(o.ts)) : ''}</small>` : '';
     const fixed = st === 'new' && s && s.back && s.bv !== o.upd ? ' <small class="fx">اتصلحت</small>' : '';
-    return `<div class="il ${st === 'done' ? 'dn' : ''} ${mkDir(o)}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<b class="money">${fmtP(o.amt)}</b>${(o.t === 'exp' || o.t === 'rt') && o.note ? `<small class="tm">${esc(o.note)}</small>` : ''}${o.t === 'cs' && o.buyer ? `<small class="tm">${esc(o.buyer)}</small>` : ''}${fixed}</span>${right}</div>
+    return `<div class="il cl ${st === 'done' ? 'dn' : ''} ${mkDir(o)}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}${(o.t === 'exp' || o.t === 'rt') && o.note ? `<small class="tm">${esc(o.note)}</small>` : ''}${o.t === 'cs' && o.buyer ? `<small class="tm">${esc(o.buyer)}</small>` : ''}${when}${fixed}</span><b class="money">${fmtP(o.amt)}</b>${right ? `<span class="ilw">${right}</span>` : ''}</div>
       ${st === 'back' && s ? `<div class="ilnote">ملاحظتك: ${esc(s.back)}</div>` : ''}`;
   };
   const sum = g.kind === 'pay' && pendPays.length > 1 ? `<div class="ilsum">${['cash', 'tr', 'insta', 'voda'].map(m => { const t = pendPays.filter(o => o.m === m).reduce((a, o) => a + o.amt, 0); return t ? `${fmtP(t)} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ')} = <b>${fmtP(tot)}</b></div>` : '';

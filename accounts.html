@@ -4014,6 +4014,7 @@ function cashView(kind, r, c) {
   return ['', '', r.type === 'exp' ? 'بند مصروف' : 'بند إيراد', '', '', cell(r.name), ''];
 }
 let cashSyncing = false, cashSyncAt = 0, cashSyncErr = '';
+const FIXED_CASH_CATS = new Set(['c_payout', 'c_mkexp', 'c_psal', 'c_pdraw']);
 async function cashSync(force) {
   if (!db || cashSyncing) return false;
   if (!force && Date.now() - cashSyncAt < 60000) return false;
@@ -4026,7 +4027,8 @@ async function cashSync(force) {
     if (!j || !j.ok || !Array.isArray(j.rows)) throw new Error(j && j.error === 'key' ? 'key' : 'pull');
     const c = readCash(); if (!c) throw new Error('local');
     const got = cashMerge(c, j.rows);
-    const pend = () => [...c.vaults.map(r => ['vault', r]), ...c.cats.map(r => ['cat', r]), ...c.tx.map(r => ['tx', r])].filter(([k, r]) => r.sy !== r.upd && r.upd > 1);
+    /* البنود الثابتة اللي الحسابات بتعملها (upd = 1) بتتبعت كمان، علشان الدفتر يعرف اسمها بدل "بدون بند" */
+    const pend = () => [...c.vaults.map(r => ['vault', r]), ...c.cats.map(r => ['cat', r]), ...c.tx.map(r => ['tx', r])].filter(([k, r]) => r.sy !== r.upd && (r.upd > 1 || k === 'cat' && FIXED_CASH_CATS.has(r.id)));
     let p = pend();
     while (p.length) {
       const batch = p.slice(0, 40);
@@ -4079,7 +4081,8 @@ function renderCashLink() {
   box.innerHTML = `<h2>🔗 دفتر الخزنة اللي في الأدوات</h2>
     ${cr ? `<div class="sync ${cashSyncErr ? 'warn' : 'ok'}">${cashSyncErr ? '⚠️ آخر مزامنة مع شيت الدفتر فشلت. هتتعاد لوحدها.' : `✔ الحسابات والدفتر حاجة واحدة: أي حركة تتسجل هنا أو هناك بتظهر في المكانين.${c.lastSync ? ' آخر مزامنة: ' + dispTime(c.lastSync) : ''}`}</div>
       <button class="btn line sm" id="scNow" type="button">زامن الخزنة دلوقتي</button>
-      <button class="btn line sm" id="scShare" type="button" style="margin-top:8px">🔗 ابعت رابط الدفتر لجهاز تاني</button>`
+      <button class="btn line sm" id="scShare" type="button" style="margin-top:8px">🔗 ابعت رابط الدفتر لجهاز تاني</button>
+      <button class="btn line sm" id="scIcon" type="button" style="margin-top:8px">📲 الدفتر أيقونة لوحده على الموبايل (الخطوات)</button>`
     : `<p class="hint" style="margin:0 0 8px">علشان الخزنة هنا والدفتر يبقوا حاجة واحدة: افتح <b>دفتر الخزنة</b> من الأدوات ← <b>الإعدادات</b> ← اضغط <b>"انسخ رابط الربط لبرنامج الحسابات"</b>، وارجع هنا والصقه.</p>
       <div class="fld"><input class="inp" id="scL" style="direction:ltr;font-size:var(--f2)" placeholder="الصق رابط الربط هنا" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
       <details class="fld"><summary style="font-weight:700;color:var(--sub);cursor:pointer">أو اكتب لينك الشيت والمفتاح بإيدك</summary>
@@ -4092,6 +4095,7 @@ function renderCashLink() {
     try { if (navigator.share) { await navigator.share({title: 'دفتر الخزنة', text: 'رابط ربط دفتر الخزنة (متبعتوش لحد):', url}); return; } } catch (e) { if (e.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(url); toast('اتنسخ ✔ افتحه على الجهاز التاني', 6000); } catch (e) { toast('معرفتش أنسخ الرابط'); }
   };
+  if ($('#scIcon')) $('#scIcon').onclick = () => cashIconHelp(location.origin + location.pathname.replace(/[^/]*$/, '') + 'cash.html#cashjoin=' + b64u(JSON.stringify({u: cr.u, k: cr.k})));
   if ($('#scNow')) $('#scNow').onclick = async () => { toast('⏳ بزامن الخزنة…'); const ok = await cashSync(true); toast(ok ? 'الخزنة متزامنة ✔' : 'معرفتش أوصل لشيت الدفتر. اتأكد من النت.'); renderCashLink(); };
   if ($('#scGo')) $('#scGo').onclick = async () => {
     const o = parseCashJoin($('#scL').value) || {u: $('#scU').value, k: $('#scK').value};
@@ -4101,6 +4105,21 @@ function renderCashLink() {
     if (err) { $('#scGo').disabled = false; $('#scGo').textContent = 'اربط'; $('#scE').textContent = '❌ ' + err; return; }
     renderCashLink(); toast('✔ اتربطت الخزنة بدفتر الخزنة', 5000);
   };
+}
+/* دفتر الخزنة أيقونة لوحده: الأيقونة على الأيفون ليها تخزين لوحدها، فبتتربط بنفس الرابط من جواها (خانة "الصق رابط الربط") */
+function cashIconHelp(url) {
+  modal(`<h3>📲 دفتر الخزنة أيقونة لوحده</h3>
+    <ol class="steps">
+      <li>دوس <b>"انسخ رابط الدفتر"</b> تحت.</li>
+      <li>افتح <b>Safari</b> (على الأيفون) أو <b>كروم</b> (على الأندرويد)، والصق الرابط في خانة العنوان فوق وادخل.</li>
+      <li>الأيفون: زرار المشاركة <b>⬆️</b> ← <b>إضافة إلى الشاشة الرئيسية</b> ← <b>إضافة</b>. الأندرويد: قايمة كروم <b>⋮</b> ← <b>إضافة إلى الشاشة الرئيسية</b>.</li>
+      <li>افتح الأيقونة الجديدة <b>دفتر الخزنة</b>. لو لقيته فاضي ومكتوب "الدفتر لسه مش مربوط": دوس <b>الصق رابط الربط</b> ← <b>📋 الصق من الحافظة</b> (أو الصقه بإيدك ودوس <b>اربط</b>). هتنزل كل حركات الخزنة.</li>
+      <li>من <b>الإعدادات</b> جوه الأيقونة ← <b>🔒 الرقم السري</b>: اكتب رقم مرتين ودوس <b>شغّل القفل</b>.</li>
+    </ol>
+    <p class="hint">الرابط ده فيه مفتاح الشيت، متبعتوش لحد.</p>
+    <div class="stack" style="margin-top:12px"><button class="btn green" id="ciCopy" type="button">انسخ رابط الدفتر</button><button class="btn line" id="ciX" type="button">إغلاق</button></div>`, true);
+  $('#ciX').onclick = closeModal;
+  $('#ciCopy').onclick = async () => { try { await navigator.clipboard.writeText(url); toast('اتنسخ ✔ افتح Safari أو كروم والصقه', 6000); } catch (e) { $('#ciCopy').insertAdjacentHTML('afterend', `<pre class="code">${esc(url)}</pre>`); toast('دوس مطوّل على الرابط وانسخه', 5000); } };
 }
 addEventListener('storage', ev => {
   if (!db || ev.key !== 'fo_cash_v1') return;

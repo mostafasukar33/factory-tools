@@ -6,10 +6,10 @@
 <meta name="theme-color" content="#111111">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="فلاش أون">
+<meta name="apple-mobile-web-app-title" content="دفتر الخزنة">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>فلاش أون - دفتر الخزنة</title>
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="cash.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="fonts/fonts.css">
@@ -285,14 +285,38 @@ body{font-size:var(--f3);line-height:1.6}
 .total b{font-size:var(--f5)}
 .vault b,.today div b,.sum3 div b,.cnet b,.cmt td.am,.tx .a{font-size:var(--f4)}
 .cth b{font-size:var(--f3)}
+/* عنوان كل يوم في قايمة الحركات */
+.dayh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:14px 2px 6px;padding-bottom:4px;border-bottom:1px solid var(--line);font-weight:800;font-size:var(--f2);color:var(--gold-d)}
+.dayh b{direction:ltr;font-size:var(--f2);font-variant-numeric:tabular-nums}.dayh b.neg{color:var(--red)}.dayh b.pos{color:var(--green)}
+/* القفل بالرقم السري */
+#lock{position:fixed;inset:0;z-index:115;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px 18px;overflow:auto}
+#lock.on{display:flex}
+#lock img{width:96px;border-radius:18px;background:var(--card);box-shadow:var(--shadow)}
+#lock h2{margin:12px 0 2px;font-size:var(--f5);font-weight:800}
+#lock .box{width:100%;max-width:340px;margin-top:16px;display:grid;gap:10px}
+#lock .inp{text-align:center;font-size:var(--f5);letter-spacing:.3em;direction:ltr}
+.lkerr{color:var(--red);font-weight:800;text-align:center;min-height:1.5em}
 </style>
 </head>
 <body>
+<div id="lock" aria-hidden="true">
+  <img src="icons/logo.jpg" alt="فلاش أون">
+  <h2>دفتر الخزنة</h2>
+  <div style="color:var(--gold-d);font-weight:700">فلاش أون</div>
+  <div class="box">
+    <input class="inp" id="lkP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="الرقم السري">
+    <div class="lkerr" id="lkErr"></div>
+    <button class="btn gold" id="lkGo" type="button">فتح</button>
+    <details class="hint"><summary style="cursor:pointer;font-weight:700">نسيت الرقم السري؟</summary>
+      <p class="hint">الحركات كلها محفوظة على الشيت ومش هتضيع. امسح أيقونة الدفتر وضيفها تاني، وبعدين من الحسابات ← الإعدادات ← "الدفتر أيقونة لوحده" اربطها تاني وهتنزل كل الحركات، واعمل رقم سري جديد.</p></details>
+  </div>
+</div>
+<script>try { if (localStorage.getItem('fo_cash_lock')) document.getElementById('lock').classList.add('on'); } catch (e) {}</script>
 <header class="top">
   <img src="icons/logo.jpg" alt="فلاش أون">
   <div><h1>فلاش أون</h1><small>دفتر الخزنة</small></div>
   <button class="homebtn" id="bTheme" type="button" title="ليلي / فاتح" style="min-width:40px;justify-content:center;padding:8px 10px;margin-inline-start:auto;background:#222;color:var(--gold);border-color:#444"></button>
-  <a class="homebtn" href="index.html" style="margin-inline-start:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>الرئيسية</a>
+  <button class="homebtn" id="bLockNow" type="button" title="قفل" style="margin-inline-start:0;display:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>قفل</button>
 </header>
 
 <main>
@@ -344,6 +368,10 @@ body{font-size:var(--f3);line-height:1.6}
     <h2 class="inc">بنود الإيرادات</h2>
     <div id="sInc"></div>
     <button class="btn line sm" data-addcat="inc" type="button">+ بند إيراد</button>
+  </div>
+  <div class="card">
+    <h2>🔒 الرقم السري</h2>
+    <div id="sPin"></div>
   </div>
   <div class="card">
     <h2>النسخة على Google Sheet</h2>
@@ -451,7 +479,9 @@ const catOf = id => db.cats.find(c => c.id === id);
 const cats = t => db.cats.filter(c => !c.del && c.type === t).sort((a, b) => a.ord - b.ord);
 const liveTx = () => db.tx.filter(t => !t.del);
 const vName = id => (vaultOf(id) || {name: '؟'}).name;
-const cName = t => t.type === 'tr' ? 'تحويل' : (catOf(t.cat) || {name: 'بدون بند'}).name;
+/* بنود ثابتة بتيجي من الحسابات (دفعات العملا والموردين والسوق والشركاء): اسمها معروف حتى لو البند نفسه لسه منزلش من الشيت */
+const FIXED_CATS = {c_inc0: 'تحصيل من عميل', c_payout: 'دفعات للموردين', c_mkexp: 'مصاريف السوق', c_psal: 'مرتبات الشركاء', c_pdraw: 'مسحوبات الشركاء', c_inc1: 'مبيعات نقدي'};
+const cName = t => t.type === 'tr' ? 'تحويل' : (catOf(t.cat) || {name: FIXED_CATS[t.cat] || 'بدون بند'}).name;
 
 /* رصيد خزنة (أو الكل) لحد لحظة معينة (حصري). ts=Infinity يعني دلوقتي */
 function balance(vid, ts = Infinity) {
@@ -584,13 +614,31 @@ function countModal() {
 $('#bCount').onclick = countModal;
 
 /* ====================== الشاشة الرئيسية ====================== */
+/* كارت الحركة: الاسم (العميل أو المورد أو المصروف) هو الكبير، والبند والخزنة والوقت صغيرين تحته */
 function txCard(t, showDate) {
-  const cls = t.type;
-  const sub = t.type === 'tr' ? `${esc(vName(t.vault))} ← ${esc(vName(t.to))}` : esc(vName(t.vault));
+  const cls = t.type, w = txWho(t), cn = cName(t);
+  const bits = [(showDate ? dispDate(isoOf(t.ts)) + ' · ' : '') + dispTime(t.ts)];
+  if (t.type !== 'tr') { if (w.who !== cn) bits.push(cn); bits.push(vName(t.vault)); }
+  if (w.what && w.what !== cn) bits.push(w.what);
   const pend = t.sy !== t.upd ? '<span class="pend" title="لسه ما اتبعتتش للشيت"></span>' : '';
-  return `<div class="tx ${cls}" data-id="${t.id}"><div class="m"><b>${esc(cName(t))}${pend}</b>
-    <small>${showDate ? dispDate(isoOf(t.ts)) + ' · ' : ''}${dispTime(t.ts)} · ${sub}${t.note ? ' · ' + esc(t.note) : ''}</small></div>
+  return `<div class="tx ${cls}" data-id="${t.id}"><div class="m"><b>${esc(w.who)}${pend}</b>
+    <small>${bits.map(esc).join(' · ')}</small></div>
     <div class="a money">${sgn(0, t.type)}${fmt(t.amt)}</div></div>`;
+}
+/* الحركات متقسمة بالأيام: عنوان لكل يوم فيه اسم اليوم والتاريخ وصافيه */
+function txDays(list) {
+  const by = new Map();
+  list.forEach(t => { const d = isoOf(t.ts); if (!by.has(d)) by.set(d, []); by.get(d).push(t); });
+  let h = '', day = '';
+  list.forEach(t => {
+    const d = isoOf(t.ts);
+    if (d !== day) {
+      day = d; const s = sums(by.get(d));
+      h += `<div class="dayh"><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}</span><b class="${s.n < 0 ? 'neg' : s.n > 0 ? 'pos' : ''}">${s.n > 0 ? '+' : ''}${fmt(s.n)}</b></div>`;
+    }
+    h += txCard(t, false);
+  });
+  return h;
 }
 function bindTx(root) { root.querySelectorAll('.tx').forEach(el => el.onclick = () => { const t = db.tx.find(x => x.id === el.dataset.id); if (t) openTx(t.type, t); }); }
 
@@ -732,7 +780,7 @@ function renderRep() {
   if (D.cols.length && D.cols.some(c => c.e || c.i)) h += `<div class="card"><h2>الحركة على مدار الفترة <small style="font-weight:600"><span class="exp">■ مصروف</span> <span class="inc">■ إيراد</span></small></h2>${colsHtml(D.cols)}</div>`;
   if (D.exp.length) h += `<div class="card"><h2 class="exp">المصروفات حسب البند</h2>${barsHtml(D.exp, 'e')}</div>`;
   if (D.inc.length) h += `<div class="card"><h2 class="inc">الإيرادات حسب البند</h2>${barsHtml(D.inc, 'i')}</div>`;
-  if (rep.detail) h += `<div class="sech"><span>الحركات (${D.list.length})</span></div>` + (D.list.length ? D.list.map(t => txCard(t, rep.mode !== 'day')).join('') : '');
+  if (rep.detail) h += `<div class="sech"><span>الحركات (${D.list.length})</span></div>` + (D.list.length ? (rep.mode === 'day' ? D.list.map(t => txCard(t, false)).join('') : txDays(D.list)) : '');
   if (!D.list.length) h += '<div class="empty">مفيش حركات في الفترة دي</div>';
   $('#rOut').innerHTML = h; bindTx($('#rOut'));
 }
@@ -918,7 +966,7 @@ function renderSettings() {
       c.del = true; touch(c); saveDB(); renderSettings();
     };
   });
-  renderSheetBox();
+  renderSheetBox(); renderPin();
 }
 $('#sAddVault').onclick = () => {
   modal(`<h3>خزنة جديدة</h3><div class="fld"><label>الاسم</label><input class="inp" id="nvN" placeholder="مثلاً: البنك"></div><div class="fld"><label>الرصيد الافتتاحي (${CUR})</label><input class="inp num" id="nvO" placeholder="0"></div>
@@ -1077,7 +1125,7 @@ function renderListsPending() { if (cur === 'home') renderHome(); }
 function renderSyncBox() {
   const b = $('#syncBox'); if (!b) return;
   const n = pendingRecs().length;
-  if (!db.sheetUrl) { b.className = 'sync'; b.innerHTML = `الشيت لسه مش مربوط — الحسابات محفوظة على الموبايل بس. <a id="syGo">اربطه</a>`; $('#syGo').onclick = () => go('set'); return; }
+  if (!db.sheetUrl) { b.className = 'sync'; b.innerHTML = `الدفتر لسه مش مربوط بالحسابات — الحركات على الجهاز ده بس. <a id="syGo">الصق رابط الربط</a>`; $('#syGo').onclick = () => { go('set'); setTimeout(() => { const j = $('#sJoin'); if (j) j.scrollIntoView({block: 'center'}); }, 100); }; return; }
   if (!db.sheetLocked) { b.className = 'sync warn'; b.innerHTML = `⚠️ لينك الشيت لسه مش مقفول بمفتاح سري، وأي حد يوصله يقدر يشوف الحركات. <a id="syGo">اقفله دلوقتي</a>`; $('#syGo').onclick = () => go('set'); return; }
   if (syncing) { b.className = 'sync'; b.textContent = 'جاري الإرسال للشيت…'; return; }
   if (syncErr === 'key') { b.className = 'sync warn'; b.innerHTML = `الشيت رفض المفتاح السري، والحركات مستنية. <a id="syGo">راجع المفتاح</a>`; $('#syGo').onclick = () => go('set'); return; }
@@ -1093,7 +1141,10 @@ function makeKey() {
 function renderSheetBox() {
   if (!db.sheetKey) { db.sheetKey = makeKey(); saveDB(); }   // المفتاح بيتعمل لوحده على الجهاز
   const n = pendingRecs().length;
-  $('#sSheet').innerHTML = `<p class="hint" style="margin:0 0 10px">كل حركة بتتبعت لوحدها لجدول Google بتاعك، وأي تعديل أو مسح بيتعدّل هناك كمان. الأداة بتشتغل عادي من غير الشيت.</p>
+  $('#sSheet').innerHTML = `${!db.sheetUrl ? `<div class="fld" id="sJoin"><label>عندك رابط ربط من الحسابات؟ الصقه هنا (علشان الدفتر يبقى هو هو خزنة الحسابات)</label>
+      <input class="inp" id="jIn" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:var(--f2)" placeholder="https://…cash.html#cashjoin=…">
+      <div class="g2" style="margin-top:8px"><button class="btn green" id="jGo" type="button">🔗 اربط</button><button class="btn line" id="jClip" type="button">📋 الصق من الحافظة</button></div>
+      <div class="lkerr" id="jErr"></div></div>` : ''}<p class="hint" style="margin:0 0 10px">كل حركة بتتبعت لوحدها لجدول Google بتاعك، وأي تعديل أو مسح بيتعدّل هناك كمان. الأداة بتشتغل عادي من غير الشيت.</p>
     ${db.sheetUrl && !db.sheetLocked ? `<div class="sync warn" style="margin:0 0 10px">⚠️ الشيت لسه بالكود القديم المفتوح. اضغط "خطوات قفل الشيت" تحت ونفّذها مرة واحدة.</div>` : ''}
     <div class="fld"><label>لينك الشيت (Web app URL)</label><input class="inp" id="shUrl" style="direction:ltr;font-size:var(--f2)" placeholder="https://script.google.com/macros/s/..../exec" value="${esc(db.sheetUrl)}"></div>
     <details class="fld"><summary style="font-weight:700;color:var(--sub);cursor:pointer">المفتاح السري (بيتعمل لوحده — مش محتاج تحفظه)</summary>
@@ -1118,6 +1169,11 @@ function renderSheetBox() {
     catch (e) { modal(`<h3>رابط الربط للحسابات</h3><p style="font-size:var(--f2)">اضغط مطوّل على الرابط وانسخه، وبعدين الصقه في الحسابات ← الإعدادات ← "دفتر الخزنة":</p><pre class="code" style="white-space:pre-wrap;word-break:break-all;direction:ltr">${esc(link)}</pre><button class="btn line" id="alX" type="button">تمام</button>`); $('#alX').onclick = closeModal; }
   };
   $('#shEye').onclick = () => { const k = $('#shKey'); k.type = k.type === 'password' ? 'text' : 'password'; };
+  if ($('#jGo')) {
+    const join = t => { const o = readJoin(t); if (!o) { $('#jErr').textContent = 'ده مش رابط ربط الدفتر. انسخه من الحسابات ← الإعدادات ← "الدفتر أيقونة لوحده".'; return; } useJoin(o); refresh(); };
+    $('#jGo').onclick = () => join($('#jIn').value);
+    $('#jClip').onclick = async () => { try { const t = await navigator.clipboard.readText(); $('#jIn').value = t; join(t); } catch (e) { $('#jErr').textContent = 'دوس مطوّل جوه الخانة واختار لصق (Paste)، وبعدين "اربط".'; } };
+  }
   $('#shSave').onclick = async () => {
     const u = $('#shUrl').value.trim(), k = $('#shKey').value.trim();
     if (u && !/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u)) return setStat('bad', '❌ اللينك مش شكل لينك Apps Script. لازم يبدأ بـ https://script.google.com ويخلص بـ /exec. راجع الخطوات.');
@@ -1268,14 +1324,87 @@ function route() {
 }
 $$('nav button').forEach(b => b.onclick = () => go(b.dataset.go));
 /* رابط الربط (cashjoin=...): فيه لينك الشيت ومفتاحه، فالجهاز ده يتربط من غير ما يكتب أي حاجة */
-try {
-  const m = location.hash.match(/^#cashjoin=([\w-]+)/);
-  if (m) {
-    const o = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')))));
-    history.replaceState(null, '', location.pathname);
-    if (o && o.u && o.k) { db.sheetUrl = o.u; db.sheetKey = o.k; db.sheetLocked = true; saveDB(); setTimeout(() => { toast('✔ الدفتر اتربط بالشيت، وبنزّل الحركات…', 5000); autoPull(); syncNow(); }, 500); }
+function readJoin(txt) {
+  const m = String(txt || '').match(/cashjoin=([\w-]+)/);
+  try { const o = m && JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/'))))); return o && o.u && o.k ? o : null; } catch (e) { return null; }
+}
+function useJoin(o, later) {
+  db.sheetUrl = o.u; db.sheetKey = o.k; db.sheetLocked = true; saveDB();
+  setTimeout(() => { toast('✔ الدفتر اتربط بالشيت، وبنزّل الحركات…', 5000); autoPull().finally(() => syncNow()); }, later ? 500 : 0);
+}
+if (/^#cashjoin=/.test(location.hash)) { const o = readJoin(location.hash); history.replaceState(null, '', location.pathname); if (o) useJoin(o, true); }
+/* ====================== القفل بالرقم السري ======================
+   الرقم نفسه مبيتخزنش: بيتخزن ملح وبصمة منه (PBKDF2) في مفتاح لوحده fo_cash_lock، على الجهاز ده بس (كل أيقونة ليها رقمها).
+   الحركات نفسها في fo_cash_v1 زي ما هي، لأن برنامج الحسابات بيقرا ويكتب فيها على نفس الجهاز. */
+const PIN_KEY = 'fo_cash_lock', PIN_HIDDEN = 5 * 60 * 1000, PIN_IDLE = 10 * 60 * 1000;
+const pinGet = () => { try { const o = JSON.parse(localStorage.getItem(PIN_KEY) || 'null'); return o && o.h && o.s ? o : null; } catch (e) { return null; } };
+const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+async function pinHash(pin, salt) {
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(pin)), 'PBKDF2', false, ['deriveBits']);
+  return hex(await crypto.subtle.deriveBits({name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode(salt), iterations: 60000}, k, 256));
+}
+async function pinOk(pin) { const o = pinGet(); return !o || (await pinHash(normDigits(pin), o.s)) === o.h; }
+let pinLastAct = Date.now(), pinHiddenAt = 0;
+function lockNow() {
+  if (!pinGet()) return;
+  if ($('#mask').classList.contains('on') && !$('#modal').querySelector('#tSave')) closeModal();
+  $('#lock').classList.add('on'); $('#lkP').value = ''; $('#lkErr').textContent = '';
+  setTimeout(() => { try { $('#lkP').focus(); } catch (e) {} }, 50);
+}
+const isLocked = () => $('#lock').classList.contains('on');
+async function tryUnlock(show) {
+  const v = normDigits($('#lkP').value).trim(), o = pinGet();
+  if (!o) { $('#lock').classList.remove('on'); return; }
+  if (!v) { if (show) $('#lkErr').textContent = 'اكتب الرقم السري'; return; }
+  if (await pinOk(v)) { $('#lock').classList.remove('on'); $('#lkP').value = ''; $('#lkErr').textContent = ''; pinLastAct = Date.now(); refresh(); }
+  else if (show) { $('#lkErr').textContent = 'الرقم السري غلط'; $('#lkP').select(); }
+}
+$('#lkP').oninput = () => { $('#lkErr').textContent = ''; const o = pinGet(); if (o && normDigits($('#lkP').value).length === o.n) tryUnlock(false); };
+$('#lkP').onkeydown = e => { if (e.key === 'Enter') tryUnlock(true); };
+$('#lkGo').onclick = () => tryUnlock(true);
+$('#bLockNow').onclick = lockNow;
+['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => { pinLastAct = Date.now(); }, true));
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pinHiddenAt = Date.now();
+  else if (pinHiddenAt && Date.now() - pinHiddenAt > PIN_HIDDEN) lockNow();
+});
+setInterval(() => { if (!isLocked() && Date.now() - pinLastAct > PIN_IDLE) lockNow(); }, 20000);
+function pinBtn() { $('#bLockNow').style.display = pinGet() ? '' : 'none'; }
+function askPin(title) {
+  return new Promise(res => {
+    modal(`<h3>${esc(title)}</h3><input class="inp num amt" id="apP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off"><div class="lkerr" id="apE"></div><div class="g2"><button class="btn gold" id="apOk" type="button">تمام</button><button class="btn line" id="apX" type="button">رجوع</button></div>`);
+    setTimeout(() => $('#apP').focus(), 50);
+    $('#apX').onclick = () => { closeModal(); res(false); };
+    $('#apOk').onclick = async () => { if (await pinOk($('#apP').value)) { closeModal(); res(true); } else $('#apE').textContent = 'الرقم السري غلط'; };
+  });
+}
+function renderPin() {
+  const box = $('#sPin'); if (!box) return;
+  pinBtn();
+  if (pinGet()) {
+    box.innerHTML = `<div class="sync ok">✔ الدفتر مقفول برقم سري على الجهاز ده. بيتقفل لوحده لو سبته 10 دقايق، أو قفلته ورجعتله بعد 5 دقايق.</div>
+      <div class="g2"><button class="btn line sm" id="pinCh" type="button">غيّر الرقم السري</button><button class="btn red sm" id="pinOff" type="button">شيل القفل</button></div>`;
+    $('#pinCh').onclick = async () => { if (await askPin('اكتب الرقم السري الحالي')) { localStorage.removeItem(PIN_KEY); renderPin(); toast('اكتب الرقم الجديد مرتين ودوس "شغّل القفل"', 4000); } };
+    $('#pinOff').onclick = async () => { if (await askPin('اكتب الرقم السري علشان تشيل القفل')) { localStorage.removeItem(PIN_KEY); renderPin(); toast('اتشال القفل'); } };
+    return;
   }
-} catch (e) {}
+  box.innerHTML = `<p class="hint" style="margin:0 0 8px">زي الحسابات: الدفتر مبيتفتحش غير بالرقم السري. الرقم على الجهاز ده (أو الأيقونة دي) بس.</p>
+    <div class="g2"><input class="inp num" id="pin1" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" placeholder="رقم سري جديد"><input class="inp num" id="pin2" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" placeholder="اكتبه تاني"></div>
+    <div class="lkerr" id="pinE"></div>
+    <button class="btn gold" id="pinOn" type="button">🔒 شغّل القفل</button>`;
+  $('#pinOn').onclick = async () => {
+    const a = normDigits($('#pin1').value).trim(), b = normDigits($('#pin2').value).trim();
+    if (!/^\d{4,12}$/.test(a)) return $('#pinE').textContent = 'الرقم السري لازم يبقى أرقام بس، من 4 لـ 12 رقم';
+    if (a !== b) return $('#pinE').textContent = 'الرقمين مش زي بعض';
+    if (!(crypto && crypto.subtle)) return $('#pinE').textContent = 'المتصفح ده مش بيدعم القفل';
+    const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
+    try { localStorage.setItem(PIN_KEY, JSON.stringify({s: salt, h: await pinHash(a, salt), n: a.length})); } catch (e) { return $('#pinE').textContent = 'معرفتش أحفظ الرقم'; }
+    renderPin(); toast('✔ الدفتر بقى مقفول بالرقم السري', 4000);
+  };
+}
+pinBtn();
+if (isLocked() && !pinGet()) $('#lock').classList.remove('on');
+if (isLocked()) setTimeout(() => { try { $('#lkP').focus(); } catch (e) {} }, 100);
 window.addEventListener('hashchange', route);
 $('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#tSave')) closeModal(); });
 route();

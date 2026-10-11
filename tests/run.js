@@ -605,6 +605,45 @@ const T0 = Date.now();
     await bg(Saf, 'autoPull()'); await Saf.settle(500);
     eq('مصروف من الحسابات ظهر في الدفتر', await Saf.evaluate(() => !!db.tx.find(t => t.id === 't_from_app' && !t.del)), true);
 
+    /* الدفتر: الاسم هو الكبير، البنود الثابتة من الحسابات ليها اسم، والحركات متقسمة بالأيام */
+    eq('كارت الحركة: اسم العميل كبير والبند والخزنة صغيرين، ومصروف السوق مش "بدون بند"', await Saf.evaluate(() => {
+      const card = t => { const d = document.createElement('div'); d.innerHTML = txCard(t); return [d.querySelector('b').textContent, d.querySelector('small').textContent]; };
+      const now = Date.now();
+      return [card({id: 'x1', type: 'inc', amt: 50, ts: now, vault: 'v_main', cat: 'c_inc0', note: 'عميل تجربة اسم — ملاحظة', party: 'p_x', pnote: 'باقي الحساب', upd: 1, sy: 1}),
+        card({id: 'x2', type: 'exp', amt: 10, ts: now, vault: 'v_main', cat: 'c_mkexp', note: 'تروسيكل', upd: 1, sy: 1}).map(x => x.includes('مصاريف السوق') || x)];
+    }), [['عميل تجربة اسم', `${await Saf.evaluate(() => dispTime(Date.now()))} · تحصيل من عميل · خزنة المصنع · باقي الحساب`], ['تروسيكل', true]]);
+    eq('قايمة الحركات متقسمة بالأيام (عنوان لكل يوم بصافيه)', await Saf.evaluate(() => { const d = document.createElement('div'), t0 = Date.now(); d.innerHTML = txDays([{id: 'a', type: 'inc', amt: 100, ts: t0 - 86400000, vault: 'v_main', cat: 'c_inc0', note: 'أ'}, {id: 'b', type: 'exp', amt: 30, ts: t0 - 86400000, vault: 'v_main', cat: '', note: 'ب'}, {id: 'c', type: 'exp', amt: 5, ts: t0, vault: 'v_main', cat: '', note: 'ج'}]); return [...d.querySelectorAll('.dayh b')].map(b => b.textContent); }), ['+70', '-5']);
+    eq('الحسابات بتبعت البنود الثابتة (دفعات الموردين) لشيت الدفتر', JSON.stringify(sheets.cash.sheets).includes('c_payout'), true);
+    /* القفل بالرقم السري */
+    await Saf.evaluate(() => go('set')); await Saf.settle(200);
+    await Saf.fill('#pin1', '2468'); await Saf.fill('#pin2', '1357'); await Saf.click('#pinOn');
+    eq('الرقم السري: الرقمين لازم زي بعض', [await Saf.textContent('#pinE'), await Saf.evaluate(() => localStorage.getItem('fo_cash_lock'))], ['الرقمين مش زي بعض', null]);
+    await Saf.fill('#pin2', '2468'); await Saf.click('#pinOn'); await Saf.settle(600);
+    eq('القفل اشتغل: الرقم نفسه مش متخزن، وبيانات الدفتر زي ما هي', await Saf.evaluate(() => { const l = localStorage.getItem('fo_cash_lock'); return [!!JSON.parse(l).h, l.includes('2468'), localStorage.getItem('fo_cash_v1').includes('fo_cash_lock') || 'pin' in JSON.parse(localStorage.getItem('fo_cash_v1')), getComputedStyle($('#bLockNow')).display !== 'none']; }), [true, false, false, true]);
+    await Saf.reload(); await Saf.settle(800);
+    eq('بعد ما يتفتح تاني: مقفول ومحدش شايف حاجة', await Saf.evaluate(() => [$('#lock').classList.contains('on'), getComputedStyle($('#lock')).display]), [true, 'flex']);
+    await Saf.fill('#lkP', '1111'); await Saf.click('#lkGo'); await Saf.settle(600);
+    eq('رقم غلط: لسه مقفول وبيقول غلط', [await Saf.evaluate(() => $('#lock').classList.contains('on')), await Saf.textContent('#lkErr')], [true, 'الرقم السري غلط']);
+    await Saf.fill('#lkP', '2468'); await Saf.settle(800);
+    eq('الرقم الصح: بيفتح لوحده أول ما يكتمل', await Saf.evaluate(() => $('#lock').classList.contains('on')), false);
+    await Saf.click('#bLockNow'); eq('زرار القفل بيقفل على طول', await Saf.evaluate(() => $('#lock').classList.contains('on')), true);
+    await Saf.fill('#lkP', '2468'); await Saf.settle(800);
+    await Saf.evaluate(() => go('set')); await Saf.settle(200); await Saf.click('#pinOff'); await Saf.fill('#apP', '2468'); await Saf.click('#apOk'); await Saf.settle(600);
+    eq('شيل القفل محتاج الرقم الحالي، وبعدها مفيش قفل', await Saf.evaluate(() => [localStorage.getItem('fo_cash_lock'), !!$('#pin1')]), [null, true]);
+    /* الدفتر أيقونة لوحده: تخزين فاضي بيتربط بلصق الرابط من جوه الإعدادات */
+    const D5 = await newDevice(browser, base, sheets), Ic = await D5.page('cash.html'); await Ic.settle(800);
+    eq('أيقونة جديدة فاضية: بتقول "الصق رابط الربط"', (await Ic.textContent('#syncBox')).includes('الصق رابط الربط'), true);
+    await Ic.click('#syGo'); await Ic.settle(200); await Ic.fill('#jIn', 'كلام غلط'); await Ic.click('#jGo');
+    eq('رابط غلط بيقول كده', (await Ic.textContent('#jErr')).includes('مش رابط ربط'), true);
+    await Ic.fill('#jIn', base + cjoin); await Ic.click('#jGo'); await Ic.settle(2500);
+    eq('لصق الرابط ربط الأيقونة ونزلت حركات الخزنة', await Ic.evaluate(() => [db.sheetLocked, !!db.tx.find(t => t.id === 't_from_app' && !t.del)]), [true, true]);
+    await D5.close();
+    eq('دفتر الخزنة أيقونة لوحده: manifest لوحده ومن غير زرار الرئيسية، ومالوش زرار في الأدوات', [fs.readFileSync(path.join(ROOT, 'cash.html'), 'utf8').includes('href="cash.webmanifest"'), fs.readFileSync(path.join(ROOT, 'cash.html'), 'utf8').includes('href="index.html"'), fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').includes('href="cash.html"'), JSON.parse(fs.readFileSync(path.join(ROOT, 'cash.webmanifest'), 'utf8')).start_url],
+      [true, false, false, './cash.html']);
+    await B.evaluate(() => go('set')); await B.evaluate(() => setOpenAll()); await B.settle(300); await B.click('#scIcon'); await B.settle(150);
+    eq('الحسابات: زرار "الدفتر أيقونة لوحده" بالخطوات ونسخ الرابط', await B.evaluate(() => [$('#modal').textContent.includes('إضافة إلى الشاشة الرئيسية'), $('#modal').textContent.includes('الصق من الحافظة')]), [true, true]);
+    await B.click('#ciCopy'); eq('الرابط اللي اتنسخ هو رابط ربط الدفتر', (await B.evaluate(() => navigator.clipboard.readText())).includes('cash.html#cashjoin='), true); await B.click('#ciX');
+
     /* الأجهزة دي خلصت دورها: قفلها بيوقف المزامنة اللي شغالة فيها في الخلفية (كانت بتبطّأ كل الأقسام اللي بعدها) */
     await C2.close(); await D3.close(); await D4.close();
     sec('١٢) الشركاء: مرتب كل خميس ومسحوبات');

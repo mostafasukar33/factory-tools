@@ -2573,7 +2573,23 @@ async function callSheet(body, url = db.cfg.sheetUrl, key = db.cfg.sheetKey, ms 
     try { return JSON.parse(txt); } catch (e) { const x = new Error('page'); x.code = 'page'; throw x; }
   } finally { clearTimeout(tm); }
 }
-const pendingRecs = () => db ? Object.entries(STORE).flatMap(([k, a]) => db[a].filter(r => r.sy !== r.upd).map(r => [k, r])) : [];
+const pendingRecs = () => db ? Object.entries(STORE).flatMap(([k, a]) => db[a].filter(r => r.sy !== r.upd && r.big !== r.upd).map(r => [k, r])) : [];
+/* خانة شيت جوجل حدها 50 ألف حرف، ولو سجل واحد عدّاها الشيت بيرفض الدفعة كلها والمزامنة تقف.
+   اللي بيكبر هو سجل التعديلات (hist): النسخة اللي بتروح الشيت بتاخد أحدث التعديلات اللي تساعها بس،
+   واللي على الجهاز بيفضل كامل (mergeRow بيجمع القديم مع اللي نازل). لو السجل نفسه أكبر من الخانة حتى من غير hist
+   بيتعلّم big ومبيتبعتش (بيفضل على الجهاز وفي النسخة الاحتياطية) علشان ميوقفش باقي الحركات */
+const CELL_MAX = 45000;
+const bigRecs = () => db ? Object.values(STORE).flatMap(a => db[a].filter(r => r.big === r.upd)) : [];
+function sheetData(r) {
+  const d = stripLocal(r);
+  let n = JSON.stringify(d).length;
+  if (n <= CELL_MAX || !Array.isArray(d.hist) || !d.hist.length) return d;
+  const h = d.hist.slice();
+  while (h.length && n > CELL_MAX) n -= JSON.stringify(h.shift()).length + 1;   // الأقدم الأول
+  d.hist = h;
+  return d;
+}
+const clipCell = v => typeof v === 'string' && v.length > 2000 ? v.slice(0, 2000) + '…' : v;
 const cell = s => { s = String(s ?? ''); return /^[=+\-@]/.test(s) ? "'" + s : s; };   // علشان الشيت ميفهمش الكلام كمعادلة
 function viewOf(kind, r) {
   if (kind === 'party') return ['', cell(r.name), SECS[r.sec] || '', cell(r.phone || ''), '', ''];
@@ -2584,7 +2600,7 @@ function viewOf(kind, r) {
   const p = P.get(r.party);
   return [r.date, cell(p ? p.name : '؟'), p ? SECS[p.sec] : '', cell(noRef(r.desc)), (r.dr || 0) / 100, (r.cr || 0) / 100];
 }
-const stripLocal = r => { const o = Object.assign({}, r); delete o.sy; return o; };
+const stripLocal = r => { const o = Object.assign({}, r); delete o.sy; delete o.big; return o; };
 function mergeRow(r) {
   const map = IDX[r.kind];
   if (!map || !STORE[r.kind] || !r.data || !r.id) return false;
@@ -2592,10 +2608,27 @@ function mergeRow(r) {
   if (cur && cur.upd > r.upd) return false;
   if (cur && cur.upd === r.upd) { cur.sy = cur.upd; return false; }
   const rec = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del, sy: r.upd});
-  if (cur) { Object.keys(cur).forEach(k => delete cur[k]); Object.assign(cur, rec); }
+  if (cur) { keepHist(cur, rec); Object.keys(cur).forEach(k => delete cur[k]); Object.assign(cur, rec); }
   else { db[STORE[r.kind]].push(rec); map.set(r.id, rec); }
   return true;
 }
+/* سجل التعديلات اللي نازل من الشيت ممكن يكون متقصوص (sheetData): التعديلات القديمة اللي على الجهاز متضيعش */
+function keepHist(cur, rec) {
+  if (!Array.isArray(cur.hist) || !cur.hist.length) return;
+  const inc = Array.isArray(rec.hist) ? rec.hist : [], seen = new Set(inc.map(h => JSON.stringify(h)));
+  const old = cur.hist.filter(h => !seen.has(JSON.stringify(h)));
+  if (old.length) rec.hist = old.concat(inc).sort((a, b) => (a.t || 0) - (b.t || 0));
+}
+/* ملخص السجل بالعربي (لتنبيه التعارض) */
+function recSum(kind, r) {
+  const x = r.del ? ' (ملغية)' : '';
+  if (kind === 'entry') { const p = P.get(r.party); return `${KIND[r.kind] || 'حركة'}${p ? ' — ' + p.name : ''} ${fmtP(r.dr || r.cr || r.amt || 0)} بتاريخ ${dispDate(r.date)}${x}`; }
+  if (kind === 'tx') return `خزنة: ${TXT[r.type] || ''} ${fmtP(r.amt)} بتاريخ ${dispDate(r.date)}${r.note ? ' — ' + r.note : ''}${x}`;
+  if (kind === 'set') return 'إعداد: ' + r.id;
+  return (r.name || r.id) + x;
+}
+/* نفس البيانات (من غير الوقت وعلامات الجهاز وسجل التعديلات) = مفيش تعارض حقيقي */
+const sameData = (a, b) => { const c = o => { const x = Object.assign({}, o); ['id', 'upd', 'sy', 'big', 'hist', 'del'].forEach(k => delete x[k]); return JSON.stringify(Object.keys(x).sort().map(k => [k, x[k]])); }; return !!a.del === !!b.del && c(a) === c(b); };
 let syncing = false, syncT = null, syncErr = '', syncWhy = '', lastPullAt = 0;
 function schedSync() { clearTimeout(syncT); syncT = setTimeout(() => syncNow(), 1500); }
 async function syncNow(manual) {
@@ -2606,10 +2639,30 @@ async function syncNow(manual) {
   const d0 = db;
   let got = 0;
   try {
+    /* السحب الأول: علشان لو جهاز تاني عدّل نفس الحركة اللي اتعدّلت هنا ولسه متبعتتش نعرف ونطلّع تنبيه "تعارض"،
+       بدل ما واحد يكتب فوق التاني من غير ما حد يحس. الأحدث تعديلاً هو اللي بيكسب زي ما هو */
+    let more = true;
+    const clash = [];
+    while (more) {
+      const j = await callSheet({action: 'pull', since: db.cfg.cursor});
+      if (db !== d0) return;
+      if (!j || j.ok !== true || !Array.isArray(j.rows)) { const x = new Error(j && j.error ? String(j.error) : 'الشيت مردش ok'); x.srv = true; throw x; }
+      j.rows.forEach(r => {
+        const cur = IDX[r.kind] && r.id && r.data ? IDX[r.kind].get(r.id) : null;
+        const c = cur && cur.sy !== undefined && cur.sy !== cur.upd && r.upd !== cur.sy && r.upd !== cur.upd
+          && !sameData(cur, Object.assign({}, r.data, {del: !!r.del})) ? {mine: recSum(r.kind, cur), mu: cur.upd} : null;
+        if (mergeRow(r)) got++;
+        if (c) clash.push({at: Date.now(), id: r.id, kind: r.kind, here: c.mu > r.upd, mine: c.mine, theirs: recSum(r.kind, Object.assign({}, r.data, {del: !!r.del}))});
+      });
+      db.cfg.cursor = j.next; more = !!j.more;
+    }
+    if (clash.length) noteClash(clash);
     let p = pendingRecs(), pushed = 0;
     while (p.length) {
-      const batch = p.slice(0, 50);   // دفعات صغيرة: 50 حركة كل مرة
-      const rows = batch.map(([kind, r]) => ({id: r.id, kind, upd: r.upd, del: !!r.del, view: viewOf(kind, r), data: stripLocal(r)}));
+      /* دفعات صغيرة: 50 حركة كل مرة. السجل الأكبر من خانة الشيت حتى بعد قص سجل التعديلات بيتعلّم ومبيتبعتش */
+      const batch = p.slice(0, 50).map(([kind, r]) => [kind, r, sheetData(r)]).filter(([kind, r, d]) => JSON.stringify(d).length <= CELL_MAX || (r.big = r.upd, false));
+      if (!batch.length) { p = pendingRecs(); continue; }
+      const rows = batch.map(([kind, r, d]) => ({id: r.id, kind, upd: r.upd, del: !!r.del, view: viewOf(kind, r).map(clipCell), data: d}));
       let j = null;
       for (let t = 0; t < 3; t++) {   // لو الشيت مشغول (القفل) بنستنى ونعيد، مش بنرفض على طول
         j = await callSheet({action: 'push', rows});
@@ -2626,18 +2679,10 @@ async function syncNow(manual) {
       pushed += batch.length;
       p = pendingRecs(); renderSyncBox();
     }
-    let more = true;
-    while (more) {
-      const j = await callSheet({action: 'pull', since: db.cfg.cursor});
-      if (db !== d0) return;
-      if (!j || j.ok !== true || !Array.isArray(j.rows)) { const x = new Error(j && j.error ? String(j.error) : 'الشيت مردش ok'); x.srv = true; throw x; }
-      j.rows.forEach(r => { if (mergeRow(r)) got++; });
-      db.cfg.cursor = j.next; more = !!j.more;
-    }
     /* اتأكد إن الشيت فعلاً اتملى: عدد السجلات اللي فيه لازم يساوي (أو يزيد عن) اللي على الجهاز */
     if (pushed) {
       const v = await callSheet({action: 'ping'});
-      const total = Object.values(STORE).reduce((n, a) => n + db[a].length, 0);
+      const total = Object.values(STORE).reduce((n, a) => n + db[a].length, 0) - bigRecs().filter(r => r.sy === undefined).length;
       if (!v || v.ok !== true || !(v.n >= total)) {
         const retry = Date.now() - (db.cfg.vfAt || 0) > 180000;
         if (retry) { db.cfg.vfAt = Date.now(); Object.values(STORE).forEach(a => db[a].forEach(r => { delete r.sy; })); }
@@ -2658,8 +2703,24 @@ async function syncNow(manual) {
     if (db === d0) { renderSyncBox(); if (got) { if (Object.entries(STORE).some(([k, a]) => IDX[k].size !== db[a].length)) reindex(); if (!$('#mask').classList.contains('on')) route(); } }
   }
 }
+/* تنبيه التعارض: بيتحفظ على الجهاز (آخر 30) ويفضل ظاهر فوق في الرئيسية لحد ما تشوفه */
+function noteClash(list) {
+  db.cfg.clash = list.map(c => Object.assign(c, {seen: false})).concat(db.cfg.clash || []).slice(0, 30);
+  toast(`⚠️ تعارض: ${list.length === 1 ? 'حركة اتعدّلت' : list.length + ' حركات اتعدّلت'} على جهازين في نفس الوقت`, 8000);
+  if (!$('#mask').classList.contains('on')) clashModal();
+}
+function clashModal() {
+  const L = db.cfg.clash || [];
+  modal(`<h3>⚠️ تعارض</h3><p style="font-size:15px">الحركات دي اتعدّلت على جهازين قبل ما الجهازين يتزامنوا. اتحفظ التعديل الأحدث، وده اللي اتلغى علشان تراجعه بنفسك:</p>
+    ${L.map(c => `<div class="hist"><b>${dispDate(isoOf(c.at))} ${dispTime(c.at)}</b><br>اتحفظ: ${esc(c.here ? c.mine : c.theirs)} (${c.here ? 'تعديل الجهاز ده' : 'تعديل الجهاز التاني'})<br>اتلغى: ${esc(c.here ? c.theirs : c.mine)}</div>`).join('')}
+    <div class="stack"><button class="btn gold" id="clX" type="button">تمام، شفته</button></div>`);
+  $('#clX').onclick = () => { L.forEach(c => c.seen = true); saveDB(); closeModal(); renderSyncBox(); };
+}
 function renderSyncBox() {
   const b = $('#syncBox'); if (!b || !db) return;
+  const cl = (db.cfg.clash || []).filter(c => !c.seen).length, big = bigRecs().length;
+  if (cl) { b.className = 'sync warn'; b.innerHTML = `⚠️ تعارض: ${cl === 1 ? 'حركة اتعدّلت' : cl + ' حركات اتعدّلت'} على جهازين في نفس الوقت <a id="syClash">شوف</a>`; $('#syClash').onclick = clashModal; return; }
+  if (big && !syncing) { b.className = 'sync warn'; b.textContent = `⚠️ ${big === 1 ? 'سجل كبير قوي' : big + ' سجلات كبيرة قوي'} على خانة الشيت ومش بيتبعت (محفوظ على الجهاز وفي النسخة الاحتياطية)`; return; }
   const n = pendingRecs().length;
   if (db.cfg.joinWait && db.cfg.sheetUrl && !db.cfg.sheetOk) { b.className = 'sync warn'; b.innerHTML = `⏳ الربط محفوظ بس لسه مش قادر يوصل للشيت${joinErr ? ' (' + esc(joinErr) + ')' : ''}. بحاول لوحدي. <a id="syRetry">جرّب دلوقتي</a>`; $('#syRetry').onclick = () => { toast('⏳ بحاول…'); finishJoin(true); }; return; }
   if (!db.cfg.sheetUrl || !db.cfg.sheetOk) { b.className = 'sync warn'; b.innerHTML = `الشيت لسه مش مربوط — البيانات على الجهاز ده بس. <a id="syGo">اربطه</a>`; $('#syGo').onclick = () => go('set'); return; }
@@ -4298,6 +4359,7 @@ async function sheetAudit(manual) {
   const toPush = [];
   Object.entries(STORE).forEach(([k, a]) => db[a].forEach(r => {
     const u = srv.get(k + ':' + r.id);
+    if (r.big === r.upd) { srv.delete(k + ':' + r.id); return; }   // أكبر من خانة الشيت: مبيتبعتش أصلاً (sheetData)
     if (u === undefined) { missing++; toPush.push(r); } else if (u < r.upd) { ahead++; toPush.push(r); } else if (u > r.upd) behind++; else same++;
     srv.delete(k + ':' + r.id);
   }));
@@ -4821,7 +4883,7 @@ function mkSync() {
 function mkNext() { mkQ = null; return mkSync(); }
 async function mkSyncOnce() {
   const cr = mkCreds(); if (!db || !cr || mkBusy) return false;
-  mkBusy = true; const d0 = db;
+  mkBusy = true; mkAt = Date.now(); const d0 = db;
   let fresh = [], ch = false, edits = [];
   try {
     const d = mkDb();
@@ -4854,7 +4916,7 @@ async function mkSyncOnce() {
         if (cur && cur.upd >= r.upd) { if (cur.upd === r.upd && r.kind === 'st') cur.sy = cur.upd; return; }
         box[r.id] = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del}, r.kind === 'st' ? {sy: r.upd} : {});
         if (r.kind === 'op' && !cur && !r.del && !first) fresh.push(box[r.id]);
-        ch = true;
+        ch = true; mkNew = Date.now();
       });
       d.cursor = j.next || d.cursor; more = !!j.more;
     }
@@ -4873,8 +4935,13 @@ async function mkSyncOnce() {
   }
   return !mkErr;
 }
-/* طول ما البرنامج مفتوح بيسحب الجديد كل 8 ثواني */
-setInterval(() => { if (db && mkCreds() && !document.hidden) mkSync(); }, 8000);
+/* سحب وارد السوق: كل 8 ثواني وانت شغال أو لما يوصل جديد. لو مفيش لمس ولا جديد بيهدى لوحده:
+   كل 20 ثانية بعد دقيقة، وكل دقيقة بعد 5 دقايق. أول لمسة بترجّعه سريع، وبيسحب على طول لو كان هادي */
+let mkNew = 0, mkAt = 0, mkPollT = null, mkSlow = 0;
+const mkGap = () => { const i = Date.now() - Math.max(lastAct, mkNew); return i < 60000 ? 8000 : i < 300000 ? 20000 : 60000; };
+function mkPoll() { clearTimeout(mkPollT); mkSlow = mkGap(); mkPollT = setTimeout(() => { if (db && mkCreds() && !document.hidden) mkSync(); mkPoll(); }, mkSlow); }
+mkPoll();
+['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => { if (mkSlow > 8000) { if (db && mkCreds() && Date.now() - mkAt > 8000) mkSync(); mkPoll(); } }, {passive: true, capture: true}));
 document.addEventListener('visibilitychange', () => { if (!document.hidden && db && mkCreds()) setTimeout(mkSync, 700); });
 function mkRefresh() {
   if (!db) return;

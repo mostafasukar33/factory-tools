@@ -465,6 +465,48 @@ const T0 = Date.now();
     await bg(A, 'syncNow()'); await A.settle(1500);
     eq('بعد ما الشيت يرجع سليم كل حاجة تتبعت وتبقى تمام', await A.evaluate(() => [syncErr, pendingRecs().length]), ['', 0]);
 
+    sec('١٠د) خانة الشيت (50 ألف حرف) وتنبيه التعارض بين جهازين');
+    eq('الشيت التجريبي بيرفض خانة أكبر من 50 ألف حرف زي جوجل', gp({action: 'push', rows: [{id: 'x2', kind: 'tx', upd: 6, view: [], data: {a: 'س'.repeat(50001)}}]}).ok, false);
+    /* حركة سجل تعديلاتها كبير (90 تعديل × ~1000 حرف): لازم تتبعت والمزامنة متقفش، والجهاز يفضل شايل كل التعديلات */
+    const mkTx = (X, id, o) => X.evaluate(([id, o]) => { const now = Date.now(); const r = Object.assign({id, type: 'exp', amt: 100, vault: 'v_main', to: '', cat: 'c_exp0', note: 'تجربة', date: todayISO(), at: now, upd: now, del: true, hist: []}, o); db.txs.push(r); IDX.tx.set(r.id, r); saveDB(); }, [id, o]);
+    await A.evaluate(() => { const now = Date.now(); const r = {id: 't_bighist', type: 'exp', amt: 100, vault: 'v_main', to: '', cat: 'c_exp0', note: 'تعديلات كتير', date: todayISO(), at: now, upd: now, del: true,
+      hist: Array.from({length: 90}, (_, i) => ({t: now - (90 - i) * 1000, date: todayISO(), desc: 'تعديل رقم ' + i + ' ' + 'ب'.repeat(1000), dr: i, cr: 0}))}; db.txs.push(r); IDX.tx.set(r.id, r); saveDB(); });
+    await mkTx(A, 't_small1', {note: 'حركة عادية في نفس الدفعة'});
+    await bg(A, 'syncNow()');
+    const cellOf = id => { const r = sheets.acc.sheets['السجلات'].rows.find(x => x[0] === id); return r ? String(r[r.length - 1]) : ''; };
+    eq('سجل تعديلات كبير: اتبعت والمزامنة مكملة، والخانة أقل من 50 ألف، والجهاز لسه فيه الـ 90 تعديل', await A.evaluate(() => [syncErr, pendingRecs().length, IDX.tx.get('t_bighist').hist.length]).then(r => r.concat([cellOf('t_bighist').length > 0 && cellOf('t_bighist').length <= 50000, !!cellOf('t_small1')])), ['', 0, 90, true, true]);
+    const shH = JSON.parse(cellOf('t_bighist')).hist;
+    eq('الشيت خد أحدث التعديلات (الأقدم اتقص)', [shH.length > 10 && shH.length < 90, shH[shH.length - 1].dr], [true, 89]);
+    await bg(B, 'syncNow()');
+    eq('الجهاز التاني نزلت عليه الحركة بأحدث التعديلات', await B.evaluate(() => { const r = IDX.tx.get('t_bighist'); return [!!r, r.hist.length < 90, r.hist[r.hist.length - 1].dr]; }), [true, true, 89]);
+    await B.evaluate(() => { const t = IDX.tx.get('t_bighist'); t.hist.push({t: Date.now(), date: t.date, desc: 'تعديل من الجهاز التاني', dr: 999, cr: 0}); t.note = 'اتعدلت من التاني'; touch(t); saveDB(); });
+    await bg(B, 'syncNow()'); await bg(A, 'syncNow()');
+    eq('تعديل من الجهاز التاني: الأول خد التعديل ومخسرش ولا تعديل قديم', await A.evaluate(() => { const t = IDX.tx.get('t_bighist'); return [t.note, t.hist.length, t.hist[0].dr, t.hist[t.hist.length - 1].dr, syncErr]; }), ['اتعدلت من التاني', 91, 0, 999, '']);
+    /* سجل أكبر من الخانة حتى من غير تعديلات (مستحيل تقريباً): ميوقفش الباقي ويتقال عليه */
+    await mkTx(A, 't_huge', {note: 'ج'.repeat(60000)}); await mkTx(A, 't_small2', {note: 'بعد الكبير'});
+    await bg(A, 'syncNow()'); await A.evaluate(() => { closeModal(); go('home'); });
+    eq('سجل أكبر من الخانة: الباقي اتبعت عادي ومفيش خطأ، ومتعلّم ومكتوب عليه فوق', await A.evaluate(() => [syncErr, pendingRecs().length, bigRecs().map(r => r.id), $('#syncBox').textContent.includes('كبير')]).then(r => r.concat([!!cellOf('t_small2'), !cellOf('t_huge')])), ['', 0, ['t_huge'], true, true, true]);
+    await A.evaluate(() => { const t = IDX.tx.get('t_huge'); t.note = 'اتصغرت'; touch(t); saveDB(); }); await bg(A, 'syncNow()');
+    eq('لما يصغر بيتبعت عادي والتنبيه يروح', await A.evaluate(() => [syncErr, bigRecs().length, pendingRecs().length]).then(r => r.concat([JSON.parse(cellOf('t_huge') || '{}').note])), ['', 0, 0, 'اتصغرت']);
+
+    /* التعارض: نفس الحركة اتعدلت على الجهازين قبل ما يتزامنوا */
+    await mkTx(A, 't_cf', {amt: 100}); await bg(A, 'syncNow()'); await bg(B, 'syncNow()');
+    const setAmt = (X, a) => X.evaluate(a => { const t = IDX.tx.get('t_cf'); t.amt = a; touch(t); saveDB(); }, a);
+    await B.evaluate(() => { closeModal(); go('home'); }); await A.evaluate(() => { closeModal(); go('home'); });
+    await setAmt(A, 11100); await bg(A, 'syncNow()');
+    await setAmt(B, 22200); await bg(B, 'syncNow()');
+    eq('تعارض: الجهاز التاني طلّع تنبيه "تعارض" فيه التعديلين، والأحدث (بتاعه) اتحفظ', await B.evaluate(() => { const c = db.cfg.clash[0]; return [c.id, c.here, c.mine.includes('222'), c.theirs.includes('111'), $('#modal').textContent.includes('تعارض'), IDX.tx.get('t_cf').amt, pendingRecs().length]; }), ['t_cf', true, true, true, true, 22200, 0]);
+    await B.click('#clX');
+    eq('بعد "تمام، شفته" التنبيه بيروح من فوق', await B.evaluate(() => [$('#mask').classList.contains('on'), $('#syncBox').textContent.includes('تعارض'), db.cfg.clash[0].seen]), [false, false, true]);
+    await setAmt(A, 33300); await setAmt(B, 44400); await bg(B, 'syncNow()'); await bg(A, 'syncNow()');
+    eq('تعارض والتاني أحدث: الجهاز ده عرف إن تعديله اتلغى، والاتنين على نفس الرقم', [await A.evaluate(() => { const c = db.cfg.clash[0]; return [c.here, c.mine.includes('333'), c.theirs.includes('444'), IDX.tx.get('t_cf').amt]; }), await B.evaluate(() => IDX.tx.get('t_cf').amt)], [[false, true, true, 44400], 44400]);
+    await A.evaluate(() => { closeModal(); db.cfg.clash.forEach(c => c.seen = true); renderSyncBox(); });
+    const nCl = X => X.evaluate(() => (db.cfg.clash || []).length);
+    const cl0 = [await nCl(A), await nCl(B)];
+    await setAmt(A, 55500); await bg(A, 'syncNow()'); await bg(B, 'syncNow()');
+    await setAmt(B, 66600); await setAmt(A, 66600); await bg(B, 'syncNow()'); await bg(A, 'syncNow()');
+    eq('مفيش تعارض غلط: تعديل عادي بعد مزامنة، أو نفس التعديل على الجهازين', [await nCl(A), await nCl(B), await A.evaluate(() => IDX.tx.get('t_cf').amt), await B.evaluate(() => IDX.tx.get('t_cf').amt)], cl0.concat([66600, 66600]));
+
     sec('١١) شيت دفتر الخزنة مقفول بالمفتاح');
     const C2 = await D1.page('cash.html'); await C2.click('nav button[data-go=set]');
     await C2.fill('#shUrl', CASH_URL); await C2.click('#shSave'); await C2.settle(300);
@@ -649,6 +691,26 @@ const T0 = Date.now();
     DM.netDown = false; await bg(M, 'sync()'); await M.settle(1200);
     eq('النت رجع: اتبعتت لوحدها', [await M.evaluate(() => pending().length), (await M.textContent('#tdy .row')).includes('عند مصطفى')], [0, true]);
     eq('مفيش اعتماد على navigator.onLine في تطبيق الشريك', /navigator\.onLine/.test(fs.readFileSync(path.join(ROOT, 'market.html'), 'utf8')), false);
+    /* تخزين دائم: التطبيق بيطلبه أول ما يفتح */
+    const MP = await DM.newPage();
+    await MP.addInitScript(() => { window.__pc = 0; Object.defineProperty(navigator, 'storage', {configurable: true, value: {persisted: () => Promise.resolve(false), persist: () => { window.__pc++; return Promise.resolve(true); }}}); });
+    await MP.goto(base + 'market.html'); await MP.waitForFunction(() => stoP !== null);
+    eq('تطبيق الشريك بيطلب تخزين دائم (navigator.storage.persist)', await MP.evaluate(() => [window.__pc, stoP]), [1, true]);
+    await MP.close();
+    /* حركة مستنية من أكتر من ساعة: تنبيه أحمر واضح فوق */
+    DM.netDown = true;
+    const stId = await M.evaluate(() => { const id = newId(); S.ops[id] = {id, t: 'exp', amt: 100, cat: 'تجربة تأخير', note: '', ts: Date.now(), upd: Date.now() - 2 * 3600000, del: true}; drawTop(); return id; });
+    const stuckSt = () => M.evaluate(() => [getComputedStyle($('#stuck')).display !== 'none', $('#stuck').textContent.includes('من أكتر من ساعة'), $('#stuck').classList.contains('alert')]);
+    eq('حركة مستنية من أكتر من ساعة: تنبيه أحمر فوق', await stuckSt(), [true, true, true]);
+    await M.evaluate(id => { bump(S.ops[id]); drawTop(); }, stId);
+    eq('لو لسه مستنية من دقايق: مفيش تنبيه', (await stuckSt())[0], false);
+    await M.evaluate(id => { delete S.ops[id]; save(); drawTop(); }, stId); DM.netDown = false;
+    /* السحب بيهدى لوحده لو مفيش حركة، وأول لمسة بترجّعه سريع */
+    eq('تطبيق الشريك: كل 5 ثواني وانت شغال، و15 بعد دقيقة، ودقيقة بعد 5 دقايق', await M.evaluate(() => { const g = []; [0, 120000, 400000].forEach(b => { lastAct = lastNew = Date.now() - b; poll(); g.push(pollMs); }); return g; }), [5000, 15000, 60000]);
+    eq('أول لمسة: رجع كل 5 ثواني وسحب على طول', await M.evaluate(() => { lastAct = lastNew = Date.now() - 400000; poll(); syncAt = 0; again = false; document.body.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true})); return [pollMs, syncAt > 0 || again]; }), [5000, true]);
+    await M.settle(800);
+    eq('الحسابات: سحب وارد السوق بيهدى لوحده ويرجع كل 8 ثواني مع أول لمسة', await A.evaluate(() => { lastAct = mkNew = Date.now() - 400000; mkPoll(); const slow = mkSlow; lastAct = mkNew = Date.now() - 120000; mkPoll(); const mid = mkSlow; mkAt = 0; document.body.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true})); return [slow, mid, mkSlow, mkAt > 0 || !!mkQ]; }), [60000, 20000, 8000, true]);
+    await A.settle(800);
 
     await bg(A, 'mkSync()'); await A.settle(800);
     eq('تنبيه فوري في الحسابات (شريط فوق)', await A.evaluate(() => $('#mkBar').classList.contains('on')), true);
@@ -684,7 +746,9 @@ const T0 = Date.now();
     await gRow.click(); await A.settle(150);
     eq('دوسة عليه: تفاصيله لمصطفى بس (جزئين بخزنهم)', await A.evaluate(() => [$$('#modal .pt[data-e]').length, $('#modal .dtot b').textContent]), [2, '8,000']);
     await A.evaluate(() => { closeModal(); go('mkt'); }); await A.settle(250);
+    await M.evaluate(() => { lastAct = lastNew = Date.now() - 400000; poll(); });
     await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(800);
+    eq('لما يوصل جديد من مصطفى السحب بيرجع سريع لوحده', await M.evaluate(() => [Date.now() - lastNew < 60000, pollGap()]), [true, 5000]);
     eq('الشريك شاف ✓ اتنقلت، والرصيد عنده اتظبط', await M.evaluate(id => [liveOps().filter(o => opState(o) === 'done').length, customers().get(id).bal], pid1), [2, bal0 - 800000]);
     eq('بعد النقل الشريك لسه يقدر يعدّل ويمسح', await M.evaluate(() => { const o = liveOps().find(x => opState(x) === 'done'); nav('ok/' + o.id); return [!!$('#sDel'), !!$('#sEdit')]; }), [true, true]);
 

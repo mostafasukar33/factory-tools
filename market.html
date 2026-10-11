@@ -114,6 +114,7 @@ html[data-theme=dark] .ctb tr.l-r td.nm{color:var(--red)}
 .ok{color:var(--green)}.wt{color:var(--wait)}.bk{color:var(--red)}.ns{color:var(--sub)}
 .empty{text-align:center;color:var(--sub);padding:22px 10px;font-weight:600;font-size:14.5px}
 .alert{display:block;width:100%;text-align:right;background:var(--red-l);color:var(--red);border:1px solid var(--red);border-radius:12px;padding:9px 13px;font-weight:700;font-size:14.5px;margin-bottom:10px;cursor:pointer}
+.alert.stuck{width:calc(100% - 24px);max-width:536px;margin:12px auto 0;border-width:2px;font-size:15.5px}
 .lnk{display:block;width:100%;margin-top:12px;background:none;border:0;color:var(--gold-d);font-weight:800;font-size:14.5px;padding:8px;cursor:pointer}
 .search{width:100%;height:46px;border:1px solid var(--field);border-radius:11px;background:var(--card);padding:0 14px;font-size:16px;outline:none}
 .search:focus,.inp2:focus{border-color:var(--gold);box-shadow:0 0 0 3px #D9AE5740}
@@ -291,6 +292,7 @@ html[data-theme=dark] .gtabs button.on{background:#3a352a;color:var(--gold)}
 </head>
 <body>
 <header class="top" id="top"></header>
+<button class="alert stuck" id="stuck" type="button" style="display:none"></button>
 <main id="main"></main>
 <nav id="tabs"></nav>
 <div class="mask" id="mask"><div class="modal" id="modal"></div></div>
@@ -356,6 +358,9 @@ function load() {
 }
 function save() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { toast('الموبايل مش قادر يحفظ. كلّم مصطفى.', 6000); } }
 load();
+/* تخزين دائم: من غيره المتصفح ممكن يمسح بيانات التطبيق لوحده لو مساحة الموبايل قلّت (والحركات اللي لسه متبعتتش تضيع) */
+let stoP = null;
+(async () => { try { const st = navigator.storage; if (st && st.persist) stoP = (st.persisted && await st.persisted()) || await st.persist(); } catch (e) { stoP = false; } })();
 const newId = () => 'm_' + Date.now().toString(36) + S.dev + Math.random().toString(36).slice(2, 6);
 const bump = o => { o.upd = Math.max(Date.now(), (o.upd || 0) + 1); };
 
@@ -437,6 +442,17 @@ function sums(ops) {
 const opWhat = o => o.t === 'rt' ? '↩️ مرتجع/شغل ' + o.cname : o.t === 'cs' ? 'بيع كاش — ' + o.buyer : o.t === 'pay' ? o.cname : o.t === 'inv' ? 'فاتورة ' + o.cname : o.t === 'exp' ? o.cat + (o.note ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعت لـ ' + o.sname : 'سلمت لمصطفى';
 const opHow = o => o.t === 'rt' ? 'مرتجع/شغل' + (o.note ? ' — ' + o.note : '') : o.t === 'cs' ? 'من المصنع' : o.t === 'pay' ? M_TXT[o.m] : o.t === 'inv' ? 'فاتورة (إجمالي بس)' : o.t === 'hand' ? 'كاش' : o.t === 'exp' ? 'مصروف' : 'دفعة مورد';
 const pending = () => Object.values(S.ops).filter(o => o.sy !== o.upd);
+/* حركة مستنية تتبعت من أكتر من ساعة (من آخر مرة اتسجلت أو اتعدّلت) = تنبيه أحمر فوق في كل الشاشات */
+const STUCK_MS = 3600000;
+const stuckOps = () => pending().filter(o => Date.now() - (o.upd || 0) > STUCK_MS);
+function drawStuck() {
+  const b = $('#stuck'); if (!b) return;
+  const n = S.u ? stuckOps().length : 0;
+  b.style.display = n ? '' : 'none';
+  if (!n) return;
+  b.textContent = `🔴 ${n === 1 ? 'فيه حركة' : 'فيه ' + n + ' حركات'} مستنية تتبعت لمصطفى من أكتر من ساعة. اتأكد إن النت شغال ودوس هنا. لو فضلت كده كلّم مصطفى.`;
+  b.onclick = async () => { toast('⏳ ببعت…'); await sync(); toast(stuckOps().length ? 'لسه مبعتتش. اتأكد من النت أو كلّم مصطفى.' : '✔ اتبعتت', 4000); };
+}
 const backs = () => liveOps().filter(o => opState(o) === 'back').sort((a, b) => b.ts - a.ts);
 
 /* ====================== الاتصال بالشيت ====================== */
@@ -468,7 +484,7 @@ const view = o => o.t === 'cnt' ? [dayOf(o.ts) + ' ' + timeOf(o.ts), 'تقفيل
 async function sync() {
   if (!S.u || S.bad) return;
   if (syncing) { again = true; return; }
-  syncing = true; let changed = false;
+  syncing = true; syncAt = Date.now(); let changed = false;
   try {
     let p = pending();
     while (p.length) {
@@ -487,7 +503,7 @@ async function sync() {
       const j = await callSheet({action: 'pull', since: S.cursor});
       if (j && j.error === 'key') { S.bad = true; throw new Error('key'); }
       if (!j || j.ok !== true || !Array.isArray(j.rows)) throw new Error('pull');
-      j.rows.forEach(r => { if (merge(r)) changed = true; });
+      j.rows.forEach(r => { if (merge(r)) { changed = true; lastNew = Date.now(); } });
       S.cursor = j.next || S.cursor; more = !!j.more;
     }
     online = true; S.lastOk = Date.now();
@@ -498,9 +514,15 @@ async function sync() {
     if (again) { again = false; setTimeout(sync, 300); }
   }
 }
-/* طول ما التطبيق مفتوح: بيسحب الجديد كل 5 ثواني، وأي حاجة مستنية بتتبعت لوحدها */
-setInterval(() => { if (!document.hidden) sync(); }, 5000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
+/* طول ما التطبيق مفتوح وانت شغال (أو لما يوصل جديد): بيسحب كل 5 ثواني، وأي حاجة مستنية بتتبعت لوحدها.
+   لو مفيش لمس ولا جديد بيهدى لوحده: كل 15 ثانية بعد دقيقة، وكل دقيقة بعد 5 دقايق. أول لمسة بترجّعه سريع وبيسحب على طول */
+let lastAct = Date.now(), lastNew = 0, syncAt = 0, pollT = null, pollMs = 0;
+const pollGap = () => { const i = Date.now() - Math.max(lastAct, lastNew); return i < 60000 ? 5000 : i < 300000 ? 15000 : 60000; };
+function poll() { clearTimeout(pollT); pollMs = pollGap(); pollT = setTimeout(() => { if (!document.hidden) sync(); poll(); }, pollMs); }
+function woke() { lastAct = Date.now(); if (pollMs > 5000) { if (Date.now() - syncAt > 5000) sync(); poll(); } }
+['pointerdown', 'keydown'].forEach(t => addEventListener(t, woke, {passive: true, capture: true}));
+poll();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { lastAct = Date.now(); sync(); poll(); } });
 addEventListener('pageshow', () => sync());
 
 /* ====================== الشاشات ====================== */
@@ -549,6 +571,7 @@ function dotHtml() {
 }
 function drawTop() {
   const t = $('#top'), sub = scr.v === 'pay' || scr.v === 'spend' || scr.v === 'sale' || scr.v === 'ok';
+  drawStuck();
   t.innerHTML = sub ? `<button class="back" id="bBack" type="button">→ رجوع</button>${TITLE[scr.v] ? `<b style="font-size:16px">${TITLE[scr.v]}</b>` : ''}${dotHtml()}`
     : `${LOGO}<h1>${TITLE[scr.v] || 'حركة السوق'}${scr.v === 'home' ? '<small>فلاش أون</small>' : ''}</h1>${dotHtml()}`;
   if ($('#bBack')) $('#bBack').onclick = () => nav(scr.v === 'pay' ? 'c' : '');

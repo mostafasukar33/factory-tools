@@ -1219,7 +1219,7 @@ body{font-size:var(--f3);line-height:1.6}
     <div class="seg s3" id="uiTheme"><button type="button" data-v="auto">تلقائي</button><button type="button" data-v="light">فاتح</button><button type="button" data-v="dark">ليلي</button></div>
     <label>حجم الخط</label>
     <div class="seg s3" id="uiFs"><button type="button" data-v="1">عادي</button><button type="button" data-v="1.12">كبير</button><button type="button" data-v="1.25">أكبر</button></div>
-    <div class="hint">الإعداد ده على الجهاز ده بس، وكل جهاز ليه إعداده.</div>
+    
   </div>
   <div class="card">
     <h2>النسخة على Google Sheet</h2>
@@ -1253,7 +1253,7 @@ body{font-size:var(--f3);line-height:1.6}
   </div>
   <div class="card">
     <h2>كلمة السر</h2>
-    <p class="hint" style="margin:0 0 10px">البرنامج بيتقفل لوحده بعد 10 دقايق من غير استخدام، أو لو قفلت الشاشة أكتر من 5 دقايق.</p>
+    
     <button class="btn line" id="sPass" type="button">تغيير كلمة السر</button>
     <button class="btn line" id="sBio" type="button" style="display:none;margin-top:8px"></button>
   </div>
@@ -1743,7 +1743,7 @@ function partyModal(p) {
     <div class="fld"><label>التليفون (اختياري)</label><input class="inp" id="pmPh" inputmode="tel" style="direction:ltr;text-align:right" value="${esc(p ? p.phone || '' : '')}"></div>
     <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="pmNote" value="${esc(p ? p.note || '' : '')}"></div>
     <div class="chkrow"><input type="checkbox" id="pmNoTot" ${p && p.noTot ? 'checked' : ''}><label for="pmNoTot">حساب فرعي: ميدخلش في أي إجماليات</label></div>
-    <p class="hint" style="margin:-4px 0 10px">زي فاتورة فرع محسوبة أصلاً في حساب الشركة الأساسية. الحساب بيفضل موجود بكشفه، بس رصيده مش بيتجمع مع ليا وعليا.</p>
+    
     ${p && isFwdSrc(p) ? `<div class="fld"><label>فواتيره بتتنقل لحساب</label><select class="inp" id="pmFwd">${liveParties().filter(x => x.id !== p.id && x.sec !== 'sup').sort((a, b) => a.name.localeCompare(b.name, 'ar')).map(x => `<option value="${esc(x.id)}" ${fwdMain(p) && fwdMain(p).id === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` : ''}
     ${isNew ? `<div class="card" style="background:var(--gold-l);margin:4px 0 12px">
       <label>رصيد أول المدة (لو ليه رصيد قديم، وإلا سيبه فاضي)</label>
@@ -2024,7 +2024,7 @@ function mkGrpModal(p, ids) {
   const L = ids.map(id => E.get(id)).filter(e => e && !e.del);
   if (L.length === 1) return openEntry(p, L[0]);
   modal(`<h3>💵 دفعة — ${esc(p.name)}</h3>
-    <p class="hint" style="margin:-6px 0 10px">اتنقلت من حركة السوق مرة واحدة، وفي الحساب والكشف بتظهر "دفعة" واحدة بس. التفاصيل دي ليك انت بس:</p>
+    
     ${L.map(e => `<div class="pt" data-e="${esc(e.id)}"><div class="m"><b>${esc(e.method || 'نقدي')}${e.note && e.note !== 'حركة السوق' ? ' — ' + esc(e.note.replace(/^حركة السوق — /, '')) : ''}</b><small>${dispDate(e.date)}${e.vault ? ' — ' + esc(vName(e.vault)) : ''}</small></div><div class="a"><b>${fmtP(e.amt)}</b></div></div>`).join('')}
     <div class="dtot"><span>الإجمالي</span><b>${fmtP(L.reduce((s, e) => s + (e.amt || 0), 0))}</b></div>
     <button class="btn line" id="mgX" type="button">رجوع</button>`, true);
@@ -2099,7 +2099,6 @@ function docModal(p, kind, e, opts = {}) {
     ${mkT !== null ? `<div class="sync" style="margin:0 0 10px;display:block">📥 فاتورة من شريكك في السوق${nl ? ' (اتنقلت بالإجمالي)' : ''} — إجمالي: <b class="money">${fmtP(mkT)}</b><br><small>اكتب البنود (كمية وسعر) والإجمالي لازم يطابق ده.</small><div id="dcMk" style="margin-top:4px;font-weight:800"></div></div>` : ''}
     ${e && kind === 'inv' && isFwdSrc(p) ? `<div class="fwbox ${fwState(e)}"><span>${FW_TAG[fwState(e)]}${fwState(e) !== 'no' && fwdMain(p) ? ` <small>(في حساب ${esc(fwdMain(p).name)})</small>` : ''}</span>${fwState(e) !== 'ok' && fwdMain(p) ? `<button class="btn gold sm" id="fwOne" type="button">📤 ${fwState(e) === 'chg' ? 'انقل التعديل' : 'انقلها للحساب الأساسي'}</button>` : ''}${fwState(e) === 'no' ? '<button class="btn line sm" id="fwMk" type="button">✓ دي متنقلة بالفعل</button>' : ''}${e.fwMan && !fwCopyOf(e) ? '<button class="btn line sm" id="fwUn" type="button">↩ رجّعها متنقلتش</button>' : ''}</div>` : ''}
     ${e && e.fwFrom ? `<div class="fwbox from"><span>↩ الفاتورة دي منقولة من حساب ${esc((P.get((E.get(e.fwFrom) || {}).party) || {}).name || 'فرعي')}. التعديل يكون هناك وبعدين "انقل التعديل".</span></div>` : ''}
-    ${ret ? `<p class="hint" style="margin:-6px 0 10px">البضاعة اللي ${kind === 'rinv' ? 'رجعت من العميل' : 'رجعتها للمورد'}. قيمتها ${kind === 'rinv' ? 'بتنزل من اللي عليه' : 'بتنزل من اللي ليه'}.</p>` : ''}
     <div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${e ? e.date : opts.mk ? isoOf(opts.mk.ts) : todayISO()}"></div>
     <div id="dcLines"></div>
     <div class="mtools"><button class="btn line sm" id="dcAdd" type="button">+ صنف كمان</button>
@@ -2380,7 +2379,7 @@ function histHtml(e) {
 const shortDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}${RLM}/${RLM}${m}<small>${y}</small>` : ''; };   // اليوم/الشهر وتحتهم السنة علشان الجدول يدخل في الموبايل
 function ledgerHintOnce() {
   try { if (localStorage.getItem('fo_hint_ledger')) return ''; localStorage.setItem('fo_hint_ledger', '1'); } catch (e) { return ''; }
-  return '<p class="hint">دوس على أي سطر علشان تعدّله. الدفعات أخضر، والمرتجعات والخصومات برتقاني، والشيكات المرتجعة أحمر. (الجملة دي بتظهر مرة واحدة بس)</p>';
+  return '';
 }
 /* الحساب الطويل أوي: بنرسم آخر LDG_SHOW سطر بس علشان الشاشة تفتح بسرعة، والأقدم بدوسة (ldgAll = الحسابات اللي اتفتح أقدمها) */
 const LDG_MAX = 300, LDG_SHOW = 200, ldgAll = new Set();
@@ -2491,7 +2490,7 @@ function invOnlyModal(p, e) {
   modal(`<h3>آخر فاتورة بس — ${esc(p.name)}</h3>
     <div class="stm"><div><span>تاريخ الفاتورة</span><b>${dispDate(e.date)}</b></div><div><span>عدد البنود</span><b>${(e.lines || []).length}</b></div>
       <div class="k"><span>إجمالي الفاتورة</span><b>${fmtP(tot)}</b></div></div>
-    <p class="hint">الملف فيه الفاتورة دي بس: البنود${e.disc ? ' والخصم' : ''} والإجمالي، من غير الرصيد اللي قبلها ومن غير الدفعات.</p>
+    
     <div class="mfoot"><div class="mrow3"><button class="btn green" id="ivShare" type="button">📲 واتساب</button>
       <button class="btn gold" id="ivPdf" type="button">📄 معاينة PDF</button><button class="btn line" id="ivBack" type="button">رجوع</button></div></div>`, true);
   $('#ivBack').onclick = () => stmtModal(p);
@@ -2877,7 +2876,7 @@ function renderSettings() {
     <details class="fld"><summary style="font-weight:700;color:var(--sub);cursor:pointer">المفتاح السري (بيتعمل لوحده — مش محتاج تلمسه)</summary>
       <div class="krow" style="margin-top:6px"><input class="inp" id="shKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:var(--f3)" value="${esc(c.sheetKey)}">
       <button class="ibtn" id="shEye" type="button" title="إظهار">👁</button></div>
-      <p class="hint">ده اللي بيقفل الشيت، فمحدش يقدر يقرا حاجة حتى لو معاه لينك الشيت. رابط الربط بيشيله جواه، فمش محتاج تكتبه في حتة.</p>
+      
     </details>
     <div class="stack">
       <button class="btn gold" id="shSave" type="button">حفظ واختبار الاتصال</button>
@@ -3114,7 +3113,7 @@ $('#sPass').onclick = () => {
     <div class="fld"><label>كلمة السر الحالية</label><input class="inp" id="cpO" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password"></div>
     <div class="fld"><label>كلمة السر الجديدة (6 على الأقل)</label><input class="inp" id="cpN" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password"></div>
     <div class="fld"><label>الجديدة تاني</label><input class="inp" id="cpN2" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password"></div>
-    <p class="hint">كلمة السر بتتغير على الجهاز ده بس. كل جهاز ليه كلمة السر بتاعته.</p>
+    
     <div class="stack" style="margin-top:10px"><button class="btn gold" id="cpOk" type="button">غيّر</button><button class="btn line" id="cpX" type="button">إلغاء</button></div>`);
   $('#cpX').onclick = closeModal;
   $('#cpOk').onclick = async () => {
@@ -3379,10 +3378,6 @@ function cashStep(n) {
   else cashYear = String((+cashYear || +t.slice(0, 4)) + n);
   renderCash();
 }
-function cashNoteOnce() {
-  try { if (localStorage.getItem('fo_hint_cash')) return ''; localStorage.setItem('fo_hint_cash', '1'); } catch (e) { return ''; }
-  return '<div class="sync ok">🔗 الخزنة دي هي نفسها "دفتر الخزنة" اللي في الصفحة الرئيسية. اللي بتسجله هنا أو هناك بيظهر في المكانين. (الرسالة دي بتظهر مرة واحدة)</div>';
-}
 /* حركة السوق جوه الخزنة: اللي جه من الشريك (وارد كاش) واللي اتصرف من فلوسه، يوم بيوم ومفصول تماماً عن خزنتي. للعرض بس: التعديل من وارد السوق */
 const MK_CK = {pay: ['cash', 'تحصيل', 1], cs: ['cash', 'بيع كاش', 1], exp: ['exp', 'مصروف', -1], spay: ['voda', 'مورد', -1], hand: ['tr', 'سلّم لك', -1]};
 function mkCashKind(m) { return m.src === 'pay' ? (m.r.kind === 'pay' ? 'pay' : 'spay') : m.r.type === 'inc' ? 'cs' : m.r.type === 'exp' ? 'exp' : 'hand'; }
@@ -3429,7 +3424,6 @@ function renderCash() {
     if (m.sign) { const x = by.get(k) || {n: k, i: 0, o: 0}; if (m.sign > 0) x.i += m.amt; else x.o += m.amt; by.set(k, x); } });
   const t = todayISO();
   pg.innerHTML = `
-    ${cashNoteOnce()}
     <div class="cbar">
       <button class="btn green" id="cRecv" type="button" title="استلمت من عميل">💵 <span class="lg">استلمت من عميل</span><span class="sh">استلمت</span></button>
       <button class="btn" id="cPayS" type="button" title="دفعت لمورد">💸 <span class="lg">دفعت لمورد</span><span class="sh">دفعت</span></button>
@@ -3797,7 +3791,7 @@ function renderPartners() {
   const next = thuOnOrAfter(addDays(t, dowOf(t) === 4 ? 1 : 0));
   pg.innerHTML = back + `
     <div class="cbar"><button class="btn redf" id="ptNew" type="button">− مسحوبات شريك</button><button class="btn line" id="ptSet" type="button">⚙ إعدادات الشركاء</button></div>
-    <div class="hint" style="margin:0 2px 8px">✔ مرتب ${fmtP(s.amt)} لكل شريك بيتسجل لوحده كل خميس من ${esc(vName(s.vault))}. الخميس الجاي: ${dispDate(next)}</div>
+    
     <div class="card">
       <div class="seg s3" id="ptMode">${[['month', 'شهر'], ['year', 'سنة'], ['all', 'الكل']].map(([k, n]) => `<button type="button" data-m="${k}" class="${partMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
       ${partMode === 'month' ? `<input class="inp" type="month" id="ptMonth" value="${partMonth || t.slice(0, 7)}">` : partMode === 'year' ? `<input class="inp num" id="ptYear" inputmode="numeric" value="${partYear || t.slice(0, 4)}">` : ''}
@@ -4367,7 +4361,6 @@ function renderReports() {
     <div class="seg s5" id="rpK">${[['profit', 'الأرباح'], ['debt', 'المسحوبات والمدفوعات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="card">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
-      ${repKind === 'tot' ? '<p class="hint" style="margin:0">كل الحسابات اللي ليها رصيد، والحساب الفرعي ظاهر لوحده ومش داخل في الإجمالي.</p>' : ''}
       ${repKind === 'item' ? `<div class="seg" id="rpIK">${[['inv', 'المبيعات'], ['pur', 'المشتريات']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repItemKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${needRange ? `<div class="seg s4" id="rpM">${[['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${repMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${repMode === 'day' ? `<input class="inp" type="date" id="rpDay" value="${repDay || t}">` : repMode === 'month' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">`
@@ -4376,7 +4369,7 @@ function renderReports() {
       ${repKind === 'cash' ? `<select class="inp" id="rpV" style="margin-top:8px"><option value="">كل الخزن</option>${vaultsL().map(v => `<option value="${esc(v.id)}" ${repVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>` : ''}
     </div>
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
-    ${R.rows.length ? `<p class="hint" style="margin:0 0 6px">${R.cols.length > 5 ? 'لو الجدول عريض، اسحبه يمين وشمال. ' : ''}${R.rows.some(r => r.id) ? 'دوس على أي اسم يفتحلك حسابه.' : ''}</p><div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
+    ${R.rows.length ? `<div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
       ${R.rows.map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
     <div class="card" style="margin-top:10px">${R.sum.map(([a, b]) => `<div class="bl"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
     <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>
@@ -4517,7 +4510,7 @@ function auditModal() {
   });
   items.sort((a, b) => b.t - a.t);
   modal(`<h3>سجل التعديلات والإلغاء</h3>
-    <p class="hint" style="margin:-6px 0 10px">كل تعديل أو إلغاء حصل، الأحدث فوق. الحاجة الأصلية بتفضل محفوظة جوه الحركة نفسها.</p>
+    
     ${items.length ? items.slice(0, 300).map(x => `<div class="hist"><b>${dispDate(isoOf(x.t))} ${dispTime(x.t)}</b> — ${esc(x.txt)}</div>`).join('') : '<div class="empty">مفيش تعديلات لحد دلوقتي</div>'}
     <button class="btn line" id="auX" type="button" style="margin-top:12px">رجوع</button>`, true);
   $('#auX').onclick = closeModal;
@@ -4942,7 +4935,7 @@ function mkWantRows() {
 function mkWantModal(p, back) {
   const w = mkWants()[p.id], b = balance(p.id);
   modal(`<h3>📌 حصّل من ${esc(p.name)}</h3>
-    <p class="hint" style="margin:-6px 0 10px">هيظهر عند شريكك في الرئيسية "مطلوب تحصّل من دول"، ولما يسجّل دفعة منه بيتشطب لوحده.</p>
+    
     <div class="fld"><label>عاوز منه كام؟</label><input class="inp num amt" id="wqA" value="${fmtP(w ? w.amt : Math.max(b, 0))}"></div>
     <div class="fld"><label>ملاحظة لشريكك (اختياري)</label><input class="inp" id="wqN" value="${esc(w ? w.note || '' : '')}" placeholder="مثلاً: قبل الخميس" autocomplete="off"></div>
     <p class="hint" style="margin:-4px 0 10px">رصيده دلوقتي: <b>${fmtP(Math.abs(b))}</b> ${balWord(b)}</p>
@@ -5175,7 +5168,7 @@ function renderMkt() {
   const n = mkPending().length;
   box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a><b style="font-size:var(--f3);color:var(--ink)">📥 وارد السوق</b><span class="mkdot ${mkErr ? 'w' : ''}"><i></i>${mkErr === 'key' ? 'الشيت رفض المفتاح' : mkErr ? 'مش قادر يوصل للشيت' : mkLastOk ? 'متصل' : '…'}</span></div>
     <div class="mkvb"><span>🗄️ رصيد خزنة السوق</span><b>${fmtP(mkLive().reduce((s, o) => s + mkSign(o) * o.amt, 0))} <small>${CUR}</small></b></div>
-    <div class="seg s2" id="mkTabs"><button type="button" data-v="in" class="${mkView === 'in' ? 'on' : ''}">📥 الوارد — لسه${n ? ` <b class="mkn">${n}</b>` : ' ✔'}</button><button type="button" data-v="arch" class="${mkView === 'arch' ? 'on' : ''}">🗂️ الأرشيف — اتنقل</button></div>
+    <div class="seg s2" id="mkTabs"><button type="button" data-v="in" class="${mkView === 'in' ? 'on' : ''}">الوارد${n ? ` <b class="mkn">${n}</b>` : ''}</button><button type="button" data-v="arch" class="${mkView === 'arch' ? 'on' : ''}">الأرشيف</button></div>
     <div id="mkBody"></div>`;
   $('#mkBack').onclick = () => go('home');
   $$('#mkTabs button').forEach(b => b.onclick = () => { mkView = b.dataset.v; renderMkt(); });
@@ -5189,8 +5182,8 @@ function mkInbox() {
   const pAmt = mkPending().reduce((s, o) => s + o.amt, 0), mv = mkMovedOn(todayISO());
   $('#mkBody').innerHTML = `${nlAlert()}${k ? mkCntLine(k, true) : ''}<div class="mkh"><b>⏳ مستنياك تنقلها${n ? ` <small class="mkha">${fmtP(pAmt)} ${CUR}</small>` : ''}</b><span class="n">${n}</span></div>
     ${rd.length > 1 ? `<button class="btn green mkall" id="mkAll" type="button">⚡ انقل كل الجاهز (${rd.length}) — ${fmtP(rd.reduce((s, o) => s + o.amt, 0))}</button>` : ''}
-    ${act.length ? act.map(mkCard).join('') : `<div class="card empty mkclr">✔ مفيش حاجة مستنياك.<br><small>${mkLive().length ? 'كل اللي بعته شريكك اتنقل، وتلاقيه في الأرشيف.' : 'لسه شريكك مسجلش حاجة.'}</small></div>`}
-    ${wait.length ? `<div class="mksub"><b>🔴 رجعتها لشريكك</b><span>مستنيه يصلحها (${nb})</span></div>${wait.map(mkCard).join('')}` : ''}
+    ${act.length ? act.map(mkCard).join('') : `<div class="card empty mkclr">✔ مفيش حاجة مستنياك</div>`}
+    ${wait.length ? `<div class="mksub"><b>🔴 رجعتها لشريكك</b><span>${nb}</span></div>${wait.map(mkCard).join('')}` : ''}
     ${mv.length ? `<a class="mkgo" id="mkToArch">✓ اتنقل النهارده <b>${mv.length}</b> ${mv.length === 1 ? 'عملية' : 'عمليات'} (${fmtP(mv.reduce((s, o) => s + o.amt, 0))}) — شوفها في الأرشيف ←</a>` : ''}
     ${mkWantCard()}`;
   $$('#mkBody [data-op]').forEach(el => el.onclick = ev => { ev.stopPropagation(); mkOpMenu(mkDb().ops[el.dataset.op]); });
@@ -5221,10 +5214,10 @@ function mkArch() {
   const prev = mkLive().filter(o => mkDone(o) && isoOf(o.ts) < d).reduce((m, o) => Math.max(m, o.ts), 0);
   $('#mkBody').innerHTML = `<div class="card"><div class="dnav"><button type="button" id="maPrev" title="اليوم اللي قبله">›</button><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}${d === t ? ' · النهارده' : ''}</span><button type="button" id="maNext" title="اليوم اللي بعده">‹</button></div>
       <label style="margin-top:8px">📅 اختار يوم</label><input class="inp" type="date" id="maDay" value="${d}"></div>
-    ${left.length ? `<div class="sync warn mkleft" id="maIn">⏳ فيه <b>${left.length}</b> من اليوم ده لسه متنقلتش (${fmtP(left.reduce((a, o) => a + o.amt, 0))}) — دول في الوارد مش هنا <a>افتح الوارد</a></div>` : ''}
+    ${left.length ? `<div class="sync warn mkleft" id="maIn">⏳ <b>${left.length}</b> لسه في الوارد (${fmtP(left.reduce((a, o) => a + o.amt, 0))}) <a>افتح</a></div>` : ''}
     ${ops.length ? `<div class="mkh mkha2"><b>✓ اتنقل من اليوم ده</b><span class="n">${ops.length}</span></div><div class="ic">${ops.map(o => `<div class="il ${mkDir(o)}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<span><b>${esc(o.t === 'pay' || o.t === 'inv' || o.t === 'rt' ? o.cname : o.t === 'spay' ? o.sname : o.t === 'exp' ? (o.note || o.cat) : o.t === 'cs' ? (o.buyer || 'بيع كاش') : 'تسليم كاش')}</b><br><small class="tm">سجلها ${dispTime(o.ts)}</small></span></span><span style="text-align:left"><b class="money">${fmtP(o.amt)}</b><br>${mkStTxt(o)}</span></div>`).join('')}</div>`
       : `<div class="card empty">${day.length ? 'لسه متنقلش حاجة من اليوم ده.' : 'مفيش حركات من الشريك في اليوم ده.'}${prev ? `<br><a class="lnk" id="maLast">← آخر يوم قبله فيه حاجة اتنقلت: ${dispDate(isoOf(prev))}</a>` : ''}</div>`}
-    ${mkCnt(d) ? mkCntLine(mkCnt(d)) : ''}${day.length ? `<div class="card mkbal"><div class="mkbt">حساب اليوم كله عند شريكك${left.length ? ' (حتى اللي لسه)' : ''}</div><div class="bl"><span>حصّلت</span><b>${fmtP(s.col)}</b></div><div class="bl"><span>راح لمصطفى (تحويلات + كاش سلّمه)</span><b>${fmtP(s.toM)}</b></div><div class="bl"><span>مصروف (مصروفات + دفعات موردين)</span><b>${fmtP(s.sp)}</b></div><div class="bl k"><span>معاه</span><b>${fmtP(s.left)}</b></div>${s.inv ? `<div class="bl"><span>🧾 فواتير (إجمالي بس)</span><b>${fmtP(s.inv)}</b></div>` : ''}</div>` : ''}`;
+    ${mkCnt(d) ? mkCntLine(mkCnt(d)) : ''}${day.length ? `<div class="card mkbal"><div class="mkbt">حساب اليوم</div><div class="bl"><span>حصّلت</span><b>${fmtP(s.col)}</b></div><div class="bl"><span>راح لمصطفى (تحويلات + كاش سلّمه)</span><b>${fmtP(s.toM)}</b></div><div class="bl"><span>مصروف (مصروفات + دفعات موردين)</span><b>${fmtP(s.sp)}</b></div><div class="bl k"><span>معاه</span><b>${fmtP(s.left)}</b></div>${s.inv ? `<div class="bl"><span>🧾 فواتير (إجمالي بس)</span><b>${fmtP(s.inv)}</b></div>` : ''}</div>` : ''}`;
   $('#maPrev').onclick = () => { mkDay = addDays(d, -1); mkArch(); };
   $('#maNext').onclick = () => { if (d < t) { mkDay = addDays(d, 1); mkArch(); } };
   $('#maDay').onchange = () => { if (/^\d{4}-\d{2}-\d{2}$/.test($('#maDay').value)) { mkDay = $('#maDay').value; mkArch(); } };
@@ -5367,7 +5360,7 @@ function mkInvQuick(o) {
   modal(`<h3>🧾 فاتورة ${esc(o.cname)} — <span class="money">${fmtP(o.amt)}</span></h3>
     <p style="margin:-4px 0 12px;font-size:var(--f2)">بتاريخ ${dispDate(d)}${pid ? '' : ' — <span class="nwt">عميل جديد</span>'}</p>
     <div class="stack"><button class="btn gold big" id="iqGo" type="button">📥 انقلها بالإجمالي، والبنود بعدين</button>
-      <p class="hint" style="margin:-4px 2px 4px">الفاتورة هتدخل حساب العميل دلوقتي بإجماليها، وهيفضل عليها تنبيه "📝 البنود لسه" لحد ما تكتبها من حسابه.</p>
+      
       <button class="btn line" id="iqItems" type="button">📝 هكتب البنود دلوقتي</button>
       <button class="btn line" id="iqX" type="button">رجوع</button></div>`);
   $('#iqX').onclick = closeModal;
@@ -5398,7 +5391,7 @@ function nlModal(ev) {
   if (!l.length) return;
   if (l.length === 1) { const e = l[0]; return docModal(P.get(e.party), 'inv', e); }
   modal(`<h3>📝 فواتير بنودها لسه متكتبتش</h3>
-    <p class="hint" style="margin:-6px 0 10px">اتنقلت من حركة السوق بالإجمالي بس. دوس على أي واحدة واكتب بنودها.</p>
+    
     ${l.map(e => `<div class="pt" data-e="${esc(e.id)}"><div class="m"><b>${esc(P.get(e.party).name)}</b><small>${dispDate(e.date)}</small></div><div class="a"><b>${fmtP(docTotal(e))}</b></div></div>`).join('')}
     <button class="btn line" id="nlX" type="button" style="margin-top:10px">رجوع</button>`, true);
   $('#nlX').onclick = closeModal;
@@ -5416,7 +5409,7 @@ function mkBulk() {
   ops.forEach(o => { const k = o.t === 'cs' ? 'x:cs' : mkPid(o, al); if (!by.has(k)) by.set(k, []); by.get(k).push(o); });
   const hasTr = ops.some(o => o.t === 'pay' && o.m !== 'cash'), tot = ops.reduce((s, o) => s + o.amt, 0);
   modal(`<h3>⚡ انقل كل الجاهز</h3>
-    <p class="hint" style="margin:-6px 0 10px">${ops.length} عمليات هتتنقل بمبالغها وتواريخها زي ما الشريك سجلها. الكاش بيفضل "مع شريكك".</p>
+    
     <div class="mkbl">${[...by.entries()].map(([k, L]) => `<div class="mkbg"><div class="mkbgh"><b>${k === 'x:cs' ? '💰 بيع كاش من المصنع' : (L[0].t === 'spay' ? '🏭 ' : '') + esc(P.get(k).name)}</b><b class="money">${fmtP(L.reduce((s, o) => s + o.amt, 0))}</b></div>
       ${L.map(o => `<div class="mkbr"><span>${mkLTag(o)}${o.t === 'cs' && o.buyer ? ' <small>' + esc(o.buyer) + '</small>' : ''}</span><span><b class="money">${fmtP(o.amt)}</b> <small class="tm">${dispDate(isoOf(o.ts))}</small></span></div>`).join('')}</div>`).join('')}</div>
     ${hasTr ? `<div class="fld"><label>التحويلات تدخل خزنة</label><select class="inp" id="mbV">${vaultOpts(mkVaultFor('tr'), 'من غير خزنة (في حساب العميل بس)')}</select></div>` : ''}
@@ -5457,7 +5450,6 @@ function mkConfirm(ops, to) {
           : `<div class="fld"><label>← الخزنة</label><select class="inp" data-f="v">${vaultOpts(mkVaultFor(key(o)), 'من غير خزنة (في حساب العميل بس)')}</select></div>`}</div>
       <div class="fld"><label>التاريخ</label><input class="inp" type="date" data-f="d" value="${isoOf(o.ts)}"></div></div>`).join('')}
     <div id="mvW"></div>
-    ${kind === 'pay' && ops.length > 1 ? '<p class="hint" style="margin:0 2px 8px">في حساب العميل وكشفه هتظهر <b>"دفعة" واحدة بالإجمالي</b> من غير تفاصيل.</p>' : ''}
     <div class="mfoot">${ops.length > 1 ? `<div class="dtot"><span>الإجمالي</span><b id="mvT">${fmtP(ops.reduce((s, o) => s + o.amt, 0))}</b></div>` : ''}
       <div class="mrow"><button class="btn green" id="mvOk" type="button">${kind === 'hand' ? 'استلمت' : 'سجّل'}</button><button class="btn line" id="mvX" type="button">إلغاء</button></div></div>`, true);
   $$('#modal [data-f=amt]').forEach(el => { bindMoney(el); el.addEventListener('input', () => { if ($('#mvT')) $('#mvT').textContent = fmtP($$('#modal [data-f=amt]').reduce((s, x) => s + toP(x.value), 0)); }); });

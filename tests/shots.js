@@ -119,20 +119,106 @@ function mktState() {
   return {u: 'https://script.google.com/macros/s/SHOT-MKT/exec', k: 'Shot-Key', dev: 'sh01', cursor: 1, ops, st, cust, newc: [], lastOk: NOW, cSort: 'owe'};
 }
 
-/* ====================== الشاشات ====================== */
-const MOB = {width: 390, height: 844}, LAP = {width: 1440, height: 900};
+/* ====================== بيانات الدفتر التجريبية ====================== */
+function cashState() {
+  const mk = (t, n, i) => ({id: 'c_' + t + i, type: t, name: n, ord: i, upd: 1, del: false, sy: 0});
+  const E = ['خامات', 'صبغة', 'كهربا', 'أجور', 'نقل', 'صيانة', 'إيجار', 'نثريات', 'أخرى'], I = ['تحصيل من عميل', 'مبيعات نقدي', 'أخرى'];
+  const at = (d, h, m) => NOW - d * 86400000 + ((h - 9) * 60 + m - 30) * 60000;
+  let n = 0;
+  const tx = (type, amt, d, h, m, x) => Object.assign({id: 'x_shot' + (++n), type, amt, ts: at(d, h, m), vault: 'v_main', note: '', upd: NOW, del: false, sy: 0}, x);
+  return {v: 1, sheetUrl: '', sheetKey: '', lastSync: 0, lastVault: 'v_main',
+    vaults: [{id: 'v_main', name: 'خزنة المصنع', open: 1500000 / 100, upd: 1, del: false, sy: 0}, {id: 'v_bank', name: 'البنك', open: 85000, upd: 1, del: false, sy: 0}],
+    cats: [...E.map((x, i) => mk('exp', x, i)), ...I.map((x, i) => mk('inc', x, i))],
+    tx: [tx('inc', 12500, 0, 9, 40, {cat: 'c_inc0', note: 'عميل تجربة واحد'}), tx('exp', 3200, 0, 10, 15, {cat: 'c_exp4', note: 'نقل طلبية'}), tx('exp', 18000, 0, 11, 0, {cat: 'c_exp0'}),
+      tx('inc', 4750, 0, 12, 30, {cat: 'c_inc1'}), tx('tr', 20000, 0, 13, 0, {to: 'v_bank'}), tx('exp', 950, 0, 14, 10, {cat: 'c_exp7', note: 'شاي وسكر'}),
+      tx('exp', 6400, 1, 10, 0, {cat: 'c_exp3', note: 'يومية العمال'}), tx('inc', 30000, 1, 12, 0, {cat: 'c_inc0', note: 'معرض تجربة الأمل'}), tx('exp', 2150, 2, 9, 45, {cat: 'c_exp2'})]};
+}
+
+/* ====================== الشاشات ======================
+   app: acc (الحسابات) / mkt (تطبيق الشريك) / cash (الدفتر). full = الصفحة كلها (موبايل بس). go = بيوصل للشاشة */
+const MOB = {width: 390, height: 844}, LAP = {width: 1440, height: 900}, LAP2 = {width: 1100, height: 760};
+const PNAME = 'مؤسسة تجربة';
+const accGo = h => async A => { await A.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); go(h); }, h); };
+const accEval = code => async A => { await A.evaluate(code => { if ($('#mask').classList.contains('on')) closeModal(); (0, eval)(code); }, code); };
+const party = `liveParties().find(p => p.name.startsWith('${PNAME}'))`;
+const mktGo = h => async M => { await M.evaluate(h => nav(h), h); };
+const cashGo = h => async C => { await C.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); go(h); }, h); };
+const ACC = (sfx, vp, extra = {}) => [
+  {name: 'acc-list-' + sfx, go: accEval("tab = 'mkt'; go('home'); renderHome()"), full: true},
+  {name: 'acc-site-' + sfx, go: accEval("tab = 'site'; go('home'); renderHome()")},
+  {name: 'acc-sup-' + sfx, go: accEval("go(isWide() ? 'home' : 'sup'); tab = 'sup'; renderHome()")},
+  {name: 'acc-party-' + sfx, go: accEval(`tab = 'mkt'; go('p/' + ${party}.id)`), full: true},
+  {name: 'acc-entry-' + sfx, go: accEval(`entryModal(${party}, E.get([...E.values()].filter(e => e.party === ${party}.id && e.kind === 'inv').pop().id))`)},
+  {name: 'acc-inv-' + sfx, go: accEval(`docModal(${party}, 'inv')`)},
+  {name: 'acc-pay-' + sfx, go: accEval(`payModal(${party}, 'pay')`)},
+  {name: 'acc-quick-' + sfx, go: accEval('quickModal()')},
+  {name: 'acc-cash-' + sfx, go: accGo('cash'), full: true},
+  {name: 'acc-part-' + sfx, go: accGo('part'), full: true},
+  {name: 'acc-mkt-' + sfx, go: accGo('mkt'), full: true},
+  {name: 'acc-rep-' + sfx, go: accGo('rep'), full: true},
+  {name: 'acc-set-' + sfx, go: accGo('set'), full: true},
+].map(x => Object.assign({app: 'acc', vp}, x, extra, vp.width > 999 ? {full: false} : {}));
 const SCREENS = [
-  {name: 'acc-list-m', app: 'acc', vp: MOB, full: true, go: async A => { await A.evaluate(() => { tab = 'mkt'; go('home'); }); }},
-  {name: 'acc-party-l', app: 'acc', vp: LAP, go: async A => { await A.evaluate(() => go('p/' + liveParties().find(p => p.name.startsWith('مؤسسة تجربة')).id)); }},
-  {name: 'mkt-home-m', app: 'mkt', vp: MOB, full: true, go: async () => {}},
-  {name: 'acc-list-m-dark', app: 'acc', vp: MOB, dark: true, go: async A => { await A.evaluate(() => { tab = 'mkt'; go('home'); }); }},
-  {name: 'acc-party-l-dark', app: 'acc', vp: LAP, dark: true, go: async A => { await A.evaluate(() => go('p/' + liveParties().find(p => p.name.startsWith('مؤسسة تجربة')).id)); }},
-  {name: 'mkt-home-m-dark', app: 'mkt', vp: MOB, dark: true, go: async () => {}},
+  ...ACC('m', MOB),
+  {name: 'acc-lock-m', app: 'acc', vp: MOB, go: accEval("$('#bLock').click()")},
+  ...ACC('l', LAP),
+  {name: 'acc-party-l1100', app: 'acc', vp: LAP2, go: accEval(`go('p/' + ${party}.id)`)},
+  {name: 'acc-cash-l1100', app: 'acc', vp: LAP2, go: accGo('cash')},
+  {name: 'acc-list-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval("tab = 'mkt'; go('home'); renderHome()")},
+  {name: 'acc-party-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval(`go('p/' + ${party}.id)`)},
+  {name: 'acc-inv-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval(`docModal(${party}, 'inv')`)},
+  {name: 'acc-cash-m-dark', app: 'acc', vp: MOB, dark: true, go: accGo('cash')},
+  {name: 'acc-party-l-dark', app: 'acc', vp: LAP, dark: true, go: accEval(`go('p/' + ${party}.id)`)},
+  {name: 'acc-mkt-l-dark', app: 'acc', vp: LAP, dark: true, go: accGo('mkt')},
+  {name: 'mkt-home-m', app: 'mkt', vp: MOB, full: true, go: mktGo('')},
+  {name: 'mkt-cust-m', app: 'mkt', vp: MOB, full: true, go: mktGo('c')},
+  {name: 'mkt-pay-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { nav('p/p2'); document.activeElement && document.activeElement.blur(); }); }},
+  {name: 'mkt-spend-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { nav('x'); document.activeElement && document.activeElement.blur(); }); }},
+  {name: 'mkt-sale-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav('b'); document.activeElement && document.activeElement.blur(); }); }},
+  {name: 'mkt-ok-m', app: 'mkt', vp: MOB, go: mktGo('ok/m_shot1')},
+  {name: 'mkt-arch-m', app: 'mkt', vp: MOB, full: true, go: mktGo('a')},
+  {name: 'mkt-day-m', app: 'mkt', vp: MOB, full: true, go: mktGo('a/' + iso(1))},
+  {name: 'mkt-mon-m', app: 'mkt', vp: MOB, full: true, go: mktGo('a/' + iso(0).slice(0, 7))},
+  {name: 'mkt-set-m', app: 'mkt', vp: MOB, full: true, go: mktGo('s')},
+  {name: 'mkt-edit-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); editSheet(S.ops.m_shot1); }); }},
+  {name: 'mkt-hand-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); handModal(); document.activeElement && document.activeElement.blur(); }); }},
+  {name: 'mkt-home-m-dark', app: 'mkt', vp: MOB, dark: true, full: true, go: mktGo('')},
+  {name: 'mkt-cust-m-dark', app: 'mkt', vp: MOB, dark: true, go: mktGo('c')},
+  {name: 'mkt-arch-m-dark', app: 'mkt', vp: MOB, dark: true, go: mktGo('a')},
+  {name: 'cash-home-m', app: 'cash', vp: MOB, full: true, go: cashGo('home')},
+  {name: 'cash-rep-m', app: 'cash', vp: MOB, full: true, go: cashGo('rep')},
+  {name: 'cash-set-m', app: 'cash', vp: MOB, full: true, go: cashGo('set')},
+  {name: 'cash-exp-m', app: 'cash', vp: MOB, go: async C => { await C.evaluate(() => { go('home'); $('#bExp').click(); document.activeElement && document.activeElement.blur(); }); }},
+  {name: 'cash-home-l', app: 'cash', vp: LAP, go: cashGo('home')},
+  {name: 'cash-home-m-dark', app: 'cash', vp: MOB, dark: true, full: true, go: cashGo('home')},
+  /* ورق الـ PDF (لازم ميتغيرش): بيتصور آخر حاجة في كل جهاز لأن الورقة بتتحط قدام الصفحة */
+  {name: 'pdf-stmt', app: 'acc', vp: LAP, el: '#render .pg', go: accEval(`go('p/' + ${party}.id); buildStmtPages(${party}, stmtData(${party}.id, '', '')); Object.assign($('#render').style, {left: '0', zIndex: 9999})`)},
+  {name: 'pdf-rep', app: 'acc', vp: LAP, el: '#render .pg', go: accEval(`go('rep'); buildReportPages(buildReport()); Object.assign($('#render').style, {left: '0', zIndex: 9999})`)},
+  {name: 'pdf-cash', app: 'cash', vp: LAP, el: '#render .pg', go: async C => { await C.evaluate(() => { go('rep'); buildPages(); Object.assign($('#render').style, {left: '0', zIndex: 9999}); }); }},
 ];
 
-async function accPage(browser, base, vp, dark) {
+const fixTime = t => { const D = Date, off = t - D.now(); class FD extends D { constructor(...a) { super(...(a.length ? a : [D.now() + off])); } static now() { return D.now() + off; } } window.Date = FD; };
+async function newCtx(browser, vp, dark) {
   const ctx = await browser.newContext({viewport: vp, deviceScaleFactor: 2, locale: 'ar-EG', colorScheme: dark ? 'dark' : 'light'});
-  await ctx.addInitScript(t => { const D = Date, off = t - D.now(); class FD extends D { constructor(...a) { super(...(a.length ? a : [D.now() + off])); } static now() { return D.now() + off; } } window.Date = FD; }, NOW);
+  await ctx.addInitScript(fixTime, NOW);
+  return ctx;
+}
+/* حركات تجريبية لخزنة الحسابات ووارد السوق (بعد النقل) */
+function accExtra(iso0, now) {
+  ensureVaults();
+  const v = defVault(), ce = catsL('exp'), ci = catsL('inc');
+  const d = n => new Date(now - n * 86400000).toISOString().slice(0, 10);
+  [['exp', 320000, 0, ce[0], 'نقل طلبية'], ['exp', 1800000, 0, ce[1] || ce[0], ''], ['inc', 475000, 0, ci[0], 'بيع نقدي'], ['exp', 95000, 1, ce[2] || ce[0], 'شاي وسكر'], ['inc', 1200000, 1, ci[0], ''], ['exp', 640000, 2, ce[3] || ce[0], 'يومية العمال']]
+    .forEach(([type, amt, n, c, note], i) => { const r = {id: 't_shot' + i, at: now, upd: now, del: false, hist: [], type, amt, date: d(n), note, vault: v, to: '', cat: c ? c.id : ''}; db.txs.push(r); IDX.tx.set(r.id, r); });
+  putSet('mktSheet', {u: 'https://script.google.com/macros/s/SHOT-MKT/exec', k: 'Shot-Key'});
+  mkDb().u = 'https://script.google.com/macros/s/SHOT-MKT/exec';
+  const P = n => liveParties().find(p => p.name === n), ops = mkDb().ops, ts = (n, h) => now - n * 86400000 + (h - 9) * 3600000;
+  [['pay', 'معرض تجربة الأمل', 250000, 'cash', 0, 9], ['pay', 'عميل تجربة خمسة', 150000, 'tr', 0, 10], ['inv', 'عميل تجربة واحد', 66000, '', 0, 10.5], ['exp', '', 30000, '', 0, 11], ['spay', '', 120000, '', 0, 12], ['hand', '', 900000, '', 1, 17]]
+    .forEach(([t, n, amt, m, dd, h], i) => { const p = n && P(n), id = 'mshot' + i; ops[id] = {id, t, amt, ts: ts(dd, h), cr: ts(dd, h), upd: ts(dd, h), cid: p ? p.id : '', cname: n, m, cat: t === 'exp' ? 'بنزين' : '', sname: t === 'spay' ? 'مورد تجربة الخامات' : '', del: false}; });
+  saveDB();
+}
+async function accPage(browser, base, vp, dark) {
+  const ctx = await newCtx(browser, vp, dark);
   await ctx.route('https://script.google.com/**', r => r.abort('failed'));
   const A = await ctx.newPage();
   await A.goto(base + 'accounts.html');
@@ -141,11 +227,11 @@ async function accPage(browser, base, vp, dark) {
   await A.evaluate(x => importModal(readImport(x)), accData());
   await A.click('#imGo'); await A.click('#cOk');
   await A.waitForFunction(() => db && db.parties.length >= 14);
+  await A.evaluate(`(${accExtra})(${JSON.stringify(iso(0))}, ${NOW})`);
   return A;
 }
 async function mktPage(browser, base, vp, dark) {
-  const ctx = await browser.newContext({viewport: vp, deviceScaleFactor: 2, locale: 'ar-EG', colorScheme: dark ? 'dark' : 'light'});
-  await ctx.addInitScript(t => { const D = Date, off = t - D.now(); class FD extends D { constructor(...a) { super(...(a.length ? a : [D.now() + off])); } static now() { return D.now() + off; } } window.Date = FD; }, NOW);
+  const ctx = await newCtx(browser, vp, dark);
   await ctx.addInitScript(s => { if (!localStorage.getItem('fo_mkt_v1')) localStorage.setItem('fo_mkt_v1', s); }, JSON.stringify(mktState()));
   await ctx.route('https://script.google.com/**', r => {
     const b = r.request().postData() || '';
@@ -157,29 +243,42 @@ async function mktPage(browser, base, vp, dark) {
   await M.goto(base + 'market.html');
   return M;
 }
+async function cashPage(browser, base, vp, dark) {
+  const ctx = await newCtx(browser, vp, dark);
+  await ctx.addInitScript(s => { if (!localStorage.getItem('fo_cash_v1')) localStorage.setItem('fo_cash_v1', s); }, JSON.stringify(cashState()));
+  await ctx.route('https://script.google.com/**', r => r.abort('failed'));
+  const C = await ctx.newPage();
+  await C.goto(base + 'cash.html');
+  return C;
+}
 
 (async () => {
+  if (args.includes('--list')) { SCREENS.forEach(s => console.log(s.name)); return; }
   fs.mkdirSync(OUT, {recursive: true});
   const srv = await serve(), base = `http://localhost:${srv.address().port}/`;
   const browser = await pw.chromium.launch(CHROME ? {executablePath: CHROME} : {});
   const pages = {};
   try {
     for (const s of SCREENS) {
-      if (ONLY && !ONLY.includes(s.name)) continue;
+      if (ONLY && !ONLY.some(o => s.name === o || (o.endsWith('*') && s.name.startsWith(o.slice(0, -1))))) continue;
       const key = s.app + s.vp.width + (s.dark ? 'd' : '');
-      if (!pages[key]) pages[key] = s.app === 'acc' ? await accPage(browser, base, s.vp, s.dark) : await mktPage(browser, base, s.vp, s.dark);
+      if (!pages[key]) pages[key] = await {acc: accPage, mkt: mktPage, cash: cashPage}[s.app](browser, base, s.vp, s.dark);
       const X = pages[key];
-      await s.go(X);
-      await X.evaluate(() => document.fonts.ready);
-      await X.addStyleTag({content: '#toast{display:none!important}'});
-      await X.waitForTimeout(1300);   // حركة الأرقام (العدّاد) بتخلص
-      if (process.env.SHOT_EVAL) console.log(s.name, await X.evaluate(process.env.SHOT_EVAL));   // للفحص: كود بيتشغل في الصفحة وبيطبع النتيجة
-      const f = path.join(OUT, s.name + '.png');
-      /* الصفحة كلها: الشاشة بتطول على قد الصفحة (علشان الشريط اللي تحت يفضل تحت) وبترجع زي ما كانت */
-      if (s.full) { const h = await X.evaluate(() => Math.max(document.documentElement.scrollHeight, innerHeight)); await X.setViewportSize({width: s.vp.width, height: Math.min(h, 6000)}); await X.waitForTimeout(300); }
-      await X.screenshot({path: f});
-      if (s.full) await X.setViewportSize(s.vp);
-      console.log('✔', s.name);
+      try {
+        await s.go(X);
+        await X.evaluate(() => document.fonts.ready);
+        await X.addStyleTag({content: '#toast{display:none!important}*{caret-color:transparent!important}'});
+        await X.waitForTimeout(1300);   // حركة الأرقام (العدّاد) بتخلص
+        await X.evaluate(() => window.scrollTo(0, 0));
+        if (process.env.SHOT_EVAL) console.log(s.name, await X.evaluate(process.env.SHOT_EVAL));   // للفحص: كود بيتشغل في الصفحة وبيطبع النتيجة
+        if (process.env.SHOT_DUMP) fs.writeFileSync(path.join(OUT, s.name + '.json'), await X.evaluate(fs.readFileSync(process.env.SHOT_DUMP, 'utf8')));   // للفحص: نتيجة كود (JSON) جنب كل صورة
+        const f = path.join(OUT, s.name + '.png');
+        /* الصفحة كلها: الشاشة بتطول على قد الصفحة (علشان الشريط اللي تحت يفضل تحت) وبترجع زي ما كانت */
+        if (s.full) { const h = await X.evaluate(() => Math.max(document.documentElement.scrollHeight, innerHeight)); await X.setViewportSize({width: s.vp.width, height: Math.min(h, 6000)}); await X.waitForTimeout(300); }
+        if (s.el) await X.locator(s.el).first().screenshot({path: f}); else await X.screenshot({path: f});
+        if (s.full) await X.setViewportSize(s.vp);
+        console.log('✔', s.name);
+      } catch (e) { console.log('✖', s.name, e.message.split('\n')[0]); }
     }
   } finally { await browser.close(); srv.close(); }
 })();

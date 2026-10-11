@@ -496,7 +496,7 @@ body{font-size:var(--f3)}
 .cm,.en{border-width:1px;border-right-width:4px;border-radius:10px}
 .cm .m b{font-size:var(--f2);font-weight:700}.cm .a{font-size:var(--f3)}
 /* جدول الحساب */
-.ldg th{background:var(--row);color:var(--gold);font-weight:700;font-size:var(--f1)}
+.ldg th{background:var(--bar);color:var(--gold);font-weight:700;font-size:var(--f1)}
 .ldg td{font-weight:500;border-color:var(--line)}
 .ldg td.n,.ldg td.b{text-align:right;padding-inline:7px}
 .ldg td.b{font-weight:700;background:var(--row)}
@@ -681,7 +681,7 @@ html main .srow #bNewParty{font-size:24px;font-weight:800}
 #hTots div:first-child{border-inline-start:0}
 #hTots .k{background:var(--gold-l);border-bottom:0}
 #hTots div span{font-size:var(--f1)}
-.pt.neg{background:var(--red-l)}
+.pt.neg{background:color-mix(in srgb,var(--red-l) 45%,var(--card))}
 html[data-theme=dark] :is(.page) .pt.neg{background:var(--red-l)}
 html[data-theme=dark] #hTots{background:var(--card);border-color:var(--line)}
 html[data-theme=dark] #hTots .k{background:var(--gold-l)}
@@ -1064,6 +1064,8 @@ html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
 #hTabs .hcash small{font-size:var(--f1)!important;color:var(--gold-d)!important}
 /* ============ نظام الشكل الموحد (lib/ui.css): 5 أحجام خط، ألوان النظام، وأرقام أكبر وأتقل ومتحاذية ============ */
 body{font-size:var(--f3);line-height:1.6}
+/* ورقة الـ PDF ثابتة زي ما هي (مالهاش دعوة بخط الشاشة) */
+#render{font-size:16px;line-height:1.5}
 .money,.num,.pt .a b,.phd .bal b,.tots b,.dash b,.stm b,.ldg td.n,.ldg td.b,.ldgf b,.cm .a,.en .money,.en .dl b,.bl b,.dtot b,.mini2 b,.cnet b,.mkvb b,.cmt td.am,.pst td.n,.ich .money,.il .money,.sg .sr b,table.lt td.n{font-weight:800;font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1;letter-spacing:.01em}
 /* قايمة الحسابات: سطور في صندوق واحد (مش كروت)، و"عليه" مرة واحدة فوق عمود الأرقام، والأرقام لازقة في الشمال تحت بعض (زي الأول) بس أكبر وأتقل */
 #hList .pt .a b{font-size:var(--f4);line-height:1.25}
@@ -1071,6 +1073,12 @@ body{font-size:var(--f3);line-height:1.6}
 #hList .pt .m b{font-weight:700}
 #hList .pt.zero .a b{color:var(--sub);font-weight:600}
 #hList .pt .a b.cr{color:var(--red)}
+/* الأرقام المهمة (الرصيد والإجماليات) بالحجم الكبير، وأرقام الجداول والصناديق أكبر من الكلام */
+.phd .bal b,.dtot b,.ldgf b,.stm .k b,.dash .k b,.tots .k b{font-size:var(--f5)}
+.mini2 b{font-size:var(--f2)}
+.mkbal .bl b,.cmt td.am{font-size:var(--f4)}
+.cth b{font-size:var(--f3)}
+.ldg td.n{font-weight:800}
 @media (max-width:999.98px){
   #hList{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
   #hList .pth{display:flex;justify-content:space-between;padding:5px 14px;font-size:var(--f1);font-weight:700;color:var(--sub);background:var(--row);border-bottom:1px solid var(--line)}
@@ -1079,7 +1087,6 @@ body{font-size:var(--f3);line-height:1.6}
   #hList .pt .m b{font-size:var(--f3);white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.35}
   #hList .pt.lim-y{background:var(--gold-l);box-shadow:inset -4px 0 0 var(--gold)}
   #hList .pt.lim-r{background:var(--red-l);box-shadow:inset -4px 0 0 var(--red)}
-  #hList .pt.neg:not(.lim-y):not(.lim-r){background:var(--card)}
   #hTots div span{font-size:var(--f1)}
   #hTots div b,#hTots .k b{font-size:var(--f4);font-weight:800;line-height:1.3}
 }
@@ -1087,10 +1094,10 @@ body{font-size:var(--f3);line-height:1.6}
   main.split #hList .pt .a b{font-size:var(--f3)}
   main.split #hList .pt .a{flex-direction:row-reverse}   /* "ليه" يمين الرقم، فالرقم يفضل لازق في الشمال تحت اللي فوقه */
   main.split #hList .pt .m b{font-size:var(--f3)}
-  main.split #hTots div b,main.split #hTots .k b{font-size:var(--f3)}
+  main.split #hTots div b,main.split #hTots .k b{font-size:var(--f4)}
   /* صفحة الحساب: الاسم والرصيد أوضح، والجدول بخط الكلام العادي وأرقامه تقيلة */
   #p-party .phd h2{font-size:var(--f4)}
-  #p-party .phd .mini2{font-size:var(--f2)}#p-party .phd .mini2 b{font-size:var(--f3)}
+  @media (min-width:1440px){#p-party .phd .mini2{font-size:var(--f2)}#p-party .phd .mini2 b{font-size:var(--f3)}}
   #p-party .phd .bal span{font-size:var(--f2)}
   #p-party .phd .bal b{font-size:var(--f5)}
   #p-party table.ldg{font-size:var(--f3)}
@@ -1098,11 +1105,20 @@ body{font-size:var(--f3);line-height:1.6}
   #p-party .ldg td{padding:6px 10px;line-height:1.45}
   #p-party .ldg tr:nth-child(even) td{background:color-mix(in srgb,var(--row) 45%,var(--card))}
   #p-party .ldg td.b{background:color-mix(in srgb,var(--row) 70%,var(--card))}
-  #p-party .ldg td.n{font-weight:700}
   #p-party .ldg td.b{font-weight:800}
   #p-party .ldg td.dt,#p-party .ldg td.q{font-size:var(--f2)}
   #p-party .ldg td.q small{font-size:var(--f1)}
   #p-party .ldgf span{font-size:var(--f3)}#p-party .ldgf b{font-size:var(--f4)}
+  /* الرقم عمره ما يتكسر على سطرين */
+  .ldg td.n,.ldg td.b{white-space:nowrap;overflow-wrap:normal}
+}
+/* اللاب الصغير (1000–1439): نفس الترتيب بالظبط، فالجدول والأزرار بمسافات أضيق شوية */
+@media (min-width:1000px) and (max-width:1439.98px){
+  #p-party table.ldg{font-size:var(--f2)}
+  #p-party .ldg td{padding:5px 6px}
+  #p-party .ldg td.dt,#p-party .ldg td.q{font-size:var(--f1)}
+  #p-party .acts .btn{padding:4px 10px}
+  #p-party .phd .limw{white-space:nowrap;padding:1px 8px}
 }
 </style>
 </head>
@@ -1111,7 +1127,7 @@ body{font-size:var(--f3);line-height:1.6}
 <div id="lock" class="on">
   <img src="icons/logo.jpg" alt="فلاش أون">
   <h2>الحسابات</h2>
-  <div style="color:#9C7420;font-weight:700">فلاش أون</div>
+  <div style="color:var(--gold-d);font-weight:700">فلاش أون</div>
   <div class="box" id="lockBox"><div class="empty">جاري الفتح…</div></div>
 </div>
 
@@ -1483,7 +1499,7 @@ async function showLock(msg) {
   let bio = null; try { bio = bioOk() && await idbGet('bio'); } catch (e) {}
   $('#lockBox').innerHTML = `
     <label for="lkP">كلمة السر</label>
-    <input class="inp" id="lkP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" autofocus style="text-align:center;font-size:22px">
+    <input class="inp" id="lkP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" autofocus style="text-align:center;font-size:var(--f4)">
     <div class="err" id="lkErr">${esc(msg || '')}</div>
     <button class="btn gold big" id="lkGo" type="button">فتح</button>
     ${bio ? '<button class="btn line" id="lkBio" type="button" style="margin-top:10px">🔓 فتح ببصمة الوجه</button>' : ''}
@@ -1543,11 +1559,11 @@ async function showLock(msg) {
 }
 function renderSetup() {
   $('#lockBox').innerHTML = `
-    <p style="font-weight:700;text-align:center;margin:0 0 12px">أول مرة على الجهاز ده. اعمل كلمة سر للبرنامج.<br><small style="color:#777">اكتبها في ورقة واحتفظ بيها في مكان آمن.</small></p>
-    <div class="fld"><label for="suP">كلمة السر (6 أرقام على الأقل)</label><input class="inp" id="suP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" style="text-align:center;font-size:20px"></div>
-    <div class="fld"><label for="suP2">اكتبها تاني للتأكيد</label><input class="inp" id="suP2" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" style="text-align:center;font-size:20px"></div>
-    <details class="fld" ${pendingJoin ? 'style="display:none"' : ''}><summary style="font-weight:700;color:#1F5FA8;cursor:pointer">عندك رابط ربط من جهاز تاني؟</summary>
-      <div style="margin-top:6px"><input class="inp" id="suJoin" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:14px" placeholder="الصق رابط الربط هنا"><p class="hint">لو فتحت البرنامج من أيقونة على الشاشة الرئيسية، الصق الرابط هنا وحساباتك هتنزل لوحدها.</p></div></details>
+    <p style="font-weight:700;text-align:center;margin:0 0 12px">أول مرة على الجهاز ده. اعمل كلمة سر للبرنامج.<br><small style="color:var(--sub)">اكتبها في ورقة واحتفظ بيها في مكان آمن.</small></p>
+    <div class="fld"><label for="suP">كلمة السر (6 أرقام على الأقل)</label><input class="inp" id="suP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" style="text-align:center;font-size:var(--f4)"></div>
+    <div class="fld"><label for="suP2">اكتبها تاني للتأكيد</label><input class="inp" id="suP2" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" style="text-align:center;font-size:var(--f4)"></div>
+    <details class="fld" ${pendingJoin ? 'style="display:none"' : ''}><summary style="font-weight:700;color:var(--tr);cursor:pointer">عندك رابط ربط من جهاز تاني؟</summary>
+      <div style="margin-top:6px"><input class="inp" id="suJoin" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:var(--f2)" placeholder="الصق رابط الربط هنا"><p class="hint">لو فتحت البرنامج من أيقونة على الشاشة الرئيسية، الصق الرابط هنا وحساباتك هتنزل لوحدها.</p></div></details>
     <div class="err" id="suErr"></div>
     <button class="btn gold big" id="suGo" type="button">ابدأ</button>`;
   $('#suGo').onclick = async () => {
@@ -1571,9 +1587,9 @@ async function forgotFlow() {
   let meta = null; try { meta = await idbGet('meta'); } catch (e) {}
   const pend = meta && meta.pending || 0;
   modal(`<h3>نسيت كلمة السر؟</h3>
-    <p style="font-size:16px">مفيش أي طريقة تفتح البيانات اللي على الجهاز ده من غير كلمة السر، وده اللي بيحميها.</p>
-    <p style="font-size:16px">بس كل حاجة متسجلة على Google Sheet بتاعك. تقدر تمسح البيانات من الجهاز ده بس، وتعمل كلمة سر جديدة، وتنزّل كل حاجة تاني من الشيت (محتاج لينك الشيت والمفتاح السري).</p>
-    ${pend ? `<p style="font-size:16px;color:#C62828">⚠️ فيه ${pend} سجل على الجهاز ده لسه متبعتش للشيت، ودول هيضيعوا.</p>` : ''}
+    <p style="font-size:var(--f3)">مفيش أي طريقة تفتح البيانات اللي على الجهاز ده من غير كلمة السر، وده اللي بيحميها.</p>
+    <p style="font-size:var(--f3)">بس كل حاجة متسجلة على Google Sheet بتاعك. تقدر تمسح البيانات من الجهاز ده بس، وتعمل كلمة سر جديدة، وتنزّل كل حاجة تاني من الشيت (محتاج لينك الشيت والمفتاح السري).</p>
+    ${pend ? `<p style="font-size:var(--f3);color:var(--red)">⚠️ فيه ${pend} سجل على الجهاز ده لسه متبعتش للشيت، ودول هيضيعوا.</p>` : ''}
     <div class="fld"><label>للتأكيد اكتب كلمة: امسح</label><input class="inp" id="fgW" style="text-align:center"></div>
     <div class="stack"><button class="btn red" id="fgGo" type="button">امسح من الجهاز ده وابدأ من جديد</button><button class="btn line" id="fgX" type="button">رجوع</button></div>`);
   $('#fgX').onclick = closeModal;
@@ -1623,7 +1639,7 @@ function renderHome() {
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
   const net = ly - al;
   $('#hTots').innerHTML = `<div><span>ليا (عند الناس)</span><b data-ck="h:ly" data-cnt="${ly}">${fmtP(ly)}</b></div><div class="cr"><span>عليا (للناس)</span><b data-ck="h:al" data-cnt="${al}">${fmtP(al)}</b></div>
-    <div class="k"><span>الصافي ${net >= 0 ? 'ليا' : 'عليا'}</span><b data-ck="h:net" data-cnt="${Math.abs(net)}">${fmtP(Math.abs(net))} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>`;
+    <div class="k"><span>الصافي ${net >= 0 ? 'ليا' : 'عليا'}</span><b data-ck="h:net" data-cnt="${Math.abs(net)}">${fmtP(Math.abs(net))} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>`;
   const ps = liveParties();
   const cnt = s => ps.filter(p => s === 'all' || p.sec === s).length;
   /* الموبايل: "العملاء" فيها السوق والمواقع بس + زرار الخزنة، و"الموردين" تبويب لوحده تحت (#sup) */
@@ -1868,7 +1884,7 @@ function renderParty(id) {
     <div class="sech ppbar" style="margin-top:0"><a id="ppBack">→ كل الحسابات</a><span class="jb"><button id="jUp" type="button">↑ فوق</button><button id="jDn" type="button">↓ آخر حركة</button></span><a id="ppEdit">تعديل البيانات</a></div>
     <div class="phd"><h2>${esc(p.name)}</h2><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}${p.noTot ? ' — <b style="color:var(--gold)">حساب فرعي خارج الإجماليات</b>' : ''}</small>
       ${limitClass(p, b) ? `<div class="limw ${limitClass(p, b)}">${limitClass(p, b) === 'lim-r' ? '🔴 رصيده فوق الحد الأحمر' : '🟡 رصيده فوق الحد الأصفر'} (${fmtP(limitClass(p, b) === 'lim-r' ? limitsOf(p).r : limitsOf(p).y)})</div>` : ''}
-      <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}" data-ck="pb:${esc(id)}" data-cnt="${Math.abs(b)}">${fmtP(Math.abs(b))} <small style="font-size:14px;color:var(--gold)">${CUR}</small></b></div>
+      <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}" data-ck="pb:${esc(id)}" data-cnt="${Math.abs(b)}">${fmtP(Math.abs(b))} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
     ${isFwdSrc(p) ? (fwAutoLink(p), fwBar(p)) : ''}
     ${nlAlert(id)}
@@ -1980,7 +1996,7 @@ function mkGrpModal(p, ids) {
   $$('#modal .pt[data-e]').forEach(el => el.onclick = () => openEntry(p, E.get(el.dataset.e)));
 }
 function cancelledModal(e) {
-  modal(`<h3>حركة ملغية</h3><p style="font-size:16px">${dispDate(e.date)} — ${esc(docDesc(e))}<br>${e.cr ? 'دائن' : 'مدين'} ${fmtP(e.dr || e.cr)} ${CUR}</p>
+  modal(`<h3>حركة ملغية</h3><p style="font-size:var(--f3)">${dispDate(e.date)} — ${esc(docDesc(e))}<br>${e.cr ? 'دائن' : 'مدين'} ${fmtP(e.dr || e.cr)} ${CUR}</p>
     ${histHtml(e)}
     <div class="stack"><button class="btn gold" id="emBack" type="button">رجّع الحركة دي</button><button class="btn line" id="emX" type="button">إغلاق</button></div>`);
   $('#emX').onclick = closeModal;
@@ -2276,7 +2292,7 @@ function entryModal(p, e) {
   const isNew = !e;
   let dir = e ? (e.cr ? 'cr' : 'dr') : 'dr';
   if (e && e.del) {
-    modal(`<h3>حركة ملغية</h3><p style="font-size:16px">${dispDate(e.date)} — ${esc(noRef(e.desc))}<br>${e.cr ? 'دائن' : 'مدين'} ${fmtP(e.dr || e.cr)} ${CUR}</p>
+    modal(`<h3>حركة ملغية</h3><p style="font-size:var(--f3)">${dispDate(e.date)} — ${esc(noRef(e.desc))}<br>${e.cr ? 'دائن' : 'مدين'} ${fmtP(e.dr || e.cr)} ${CUR}</p>
       ${histHtml(e)}
       <div class="stack"><button class="btn gold" id="emBack" type="button">رجّع الحركة دي</button><button class="btn line" id="emX" type="button">إغلاق</button></div>`);
     $('#emX').onclick = closeModal;
@@ -2337,7 +2353,7 @@ function ledgerTable(p) {
   const cut = s.rows.length > LDG_MAX && !ldgAll.has(p.id) ? s.rows.length - LDG_SHOW : 0;
   const fw = isFwdSrc(p), fwTag = r => !r.first ? '' : fw && r.e.kind === 'inv' ? `<small class="fwt ${fwState(r.e)}">${FW_SHORT[fwState(r.e)]}</small>` : r.e.fwFrom ? `<small class="fwt from">↩ من ${esc((P.get((E.get(r.e.fwFrom) || {}).party) || {}).name || 'الحساب الفرعي')}</small>` : '';
   let yPrev = matchMedia('(min-width:1000px)').matches ? '' : null;   // سطر السنة بيظهر بس لما السنة تتغير، على اللاب بس (في الموبايل مبيترسمش علشان ألوان الصفوف متتلخبطش)
-  if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده.<br><small style="color:#9a937f">ابدأ بفاتورة أو دفعة من الأزرار اللي فوق.</small></div>';
+  if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده.<br><small style="color:var(--sub)">ابدأ بفاتورة أو دفعة من الأزرار اللي فوق.</small></div>';
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
     ${cut ? `<tr class="more"><td colspan="7"><a id="ldgOld">↑ عرض الحركات الأقدم (${cut} سطر)</a></td></tr>` : ''}
@@ -2404,7 +2420,7 @@ function stmtModal(p) {
   const pm0 = new Date(+y, +t.slice(5, 7) - 2, 1), pmS = isoOf(new Date(pm0.getFullYear(), pm0.getMonth(), Math.min(+t.slice(8), new Date(pm0.getFullYear(), pm0.getMonth() + 1, 0).getDate())).getTime());
   modal(`<h3>كشف حساب — ${esc(p.name)}</h3>
     <div class="seg s4" id="smMode">${[['last', 'آخر فاتورة'], ['prev', 'آخر شهر'], ['all', 'الحساب كله'], ['range', 'من – إلى']].map(([k, l]) => `<button type="button" data-m="${k}" class="${k === mode ? 'on' : ''}"${k === 'last' && !lastInv ? ' disabled' : ''}>${l}</button>`).join('')}</div>
-    ${lastInv ? `<button type="button" class="btn line" id="smInv" style="min-height:40px;font-size:14.5px;margin:-2px 0 10px">🧾 ابعت آخر فاتورة بس (من غير الرصيد اللي قبلها)</button>` : ''}
+    ${lastInv ? `<button type="button" class="btn line" id="smInv" style="min-height:40px;font-size:var(--f2);margin:-2px 0 10px">🧾 ابعت آخر فاتورة بس (من غير الرصيد اللي قبلها)</button>` : ''}
     <div class="g2" id="smRange" style="display:none;margin-bottom:6px"><div><label>من</label><input class="inp" type="date" id="smFrom" value="${y}-01-01"></div><div><label>إلى</label><input class="inp" type="date" id="smTo" value="${t}"></div></div>
     <div id="smOut"></div>
     <div class="mfoot"><div class="mrow3"><button class="btn green" id="smShare" type="button">📲 واتساب</button>
@@ -2753,7 +2769,7 @@ function noteClash(list) {
 }
 function clashModal() {
   const L = db.cfg.clash || [];
-  modal(`<h3>⚠️ تعارض</h3><p style="font-size:15px">الحركات دي اتعدّلت على جهازين قبل ما الجهازين يتزامنوا. اتحفظ التعديل الأحدث، وده اللي اتلغى علشان تراجعه بنفسك:</p>
+  modal(`<h3>⚠️ تعارض</h3><p style="font-size:var(--f2)">الحركات دي اتعدّلت على جهازين قبل ما الجهازين يتزامنوا. اتحفظ التعديل الأحدث، وده اللي اتلغى علشان تراجعه بنفسك:</p>
     ${L.map(c => `<div class="hist"><b>${dispDate(isoOf(c.at))} ${dispTime(c.at)}</b><br>اتحفظ: ${esc(c.here ? c.mine : c.theirs)} (${c.here ? 'تعديل الجهاز ده' : 'تعديل الجهاز التاني'})<br>اتلغى: ${esc(c.here ? c.theirs : c.mine)}</div>`).join('')}
     <div class="stack"><button class="btn gold" id="clX" type="button">تمام، شفته</button></div>`);
   $('#clX').onclick = () => { L.forEach(c => c.seen = true); saveDB(); closeModal(); renderSyncBox(); };
@@ -2796,7 +2812,7 @@ function renderSettings() {
   $('#sLock').innerHTML = lk ? `<div class="sync ok">🔒 مقفول لحد ${dispDate(lk)}</div><div class="g2"><input class="inp" type="date" id="sLockD" value="${lk}"><button class="btn gold sm" id="sLockGo" type="button">غيّر يوم القفل</button></div><button class="btn line sm" id="sUnlock" type="button" style="margin-top:8px">افتح الفترة (محتاج كلمة السر)</button>`
     : `<div class="g2"><input class="inp" type="date" id="sLockD" value="${todayISO().slice(0, 8)}01"><button class="btn gold sm" id="sLockGo" type="button">اقفل لحد اليوم ده</button></div>`;
   const askPass = () => new Promise(res => {
-    modal(`<h3>كلمة السر</h3><div class="fld"><input class="inp" id="apP" type="password" inputmode="numeric" pattern="[0-9]*" style="text-align:center;font-size:20px"></div><div class="g2"><button class="btn gold" id="apOk" type="button">تمام</button><button class="btn line" id="apX" type="button">رجوع</button></div>`);
+    modal(`<h3>كلمة السر</h3><div class="fld"><input class="inp" id="apP" type="password" inputmode="numeric" pattern="[0-9]*" style="text-align:center;font-size:var(--f4)"></div><div class="g2"><button class="btn gold" id="apOk" type="button">تمام</button><button class="btn line" id="apX" type="button">رجوع</button></div>`);
     $('#apX').onclick = () => { closeModal(); res(false); };
     $('#apOk').onclick = async () => { try { await unseal(await deriveKey($('#apP').value, saltU8), await idbGet('vault')); closeModal(); res(true); } catch (e) { toast('كلمة السر غلط'); } };
   });
@@ -2819,11 +2835,11 @@ function renderSettings() {
       <button class="btn green big" id="shJoin" type="button" style="margin-bottom:10px">🔗 ابعت رابط الربط لجهاز تاني</button>
       <p class="hint" style="margin:-4px 0 12px">ابعته لنفسك واتساب واحفظه. افتحه مرة واحدة على أي جهاز (لاب توب أو موبايل)، وهيتربط لوحده وتنزل عليه كل حساباتك. متبعتوش لحد تاني.</p>`
     : `<p class="hint" style="margin:0 0 10px">اربط البرنامج بجدول Google بتاعك مرة واحدة، فحساباتك تتحفظ عليه أول بأول، وبعد كده أي جهاز تفتحه برابط الربط تظهر عليه حساباتك كلها.</p>
-      <div class="fld"><label>عندك رابط ربط من جهاز تاني؟ الصقه هنا</label><div class="krow" style="grid-template-columns:1fr auto"><input class="inp" id="shJoinIn" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:14px" placeholder="https://…#join=…">
+      <div class="fld"><label>عندك رابط ربط من جهاز تاني؟ الصقه هنا</label><div class="krow" style="grid-template-columns:1fr auto"><input class="inp" id="shJoinIn" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:var(--f2)" placeholder="https://…#join=…">
       <button class="btn green" id="shJoinGo" type="button" style="width:auto;padding:0 16px">اربط</button></div></div>`}
-    <div class="fld"><label>لينك الشيت (Web app URL)</label><input class="inp" id="shUrl" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" value="${esc(c.sheetUrl)}"></div>
-    <details class="fld"><summary style="font-weight:700;color:#777;cursor:pointer">المفتاح السري (بيتعمل لوحده — مش محتاج تلمسه)</summary>
-      <div class="krow" style="margin-top:6px"><input class="inp" id="shKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:16px" value="${esc(c.sheetKey)}">
+    <div class="fld"><label>لينك الشيت (Web app URL)</label><input class="inp" id="shUrl" style="direction:ltr;font-size:var(--f2)" placeholder="https://script.google.com/macros/s/..../exec" value="${esc(c.sheetUrl)}"></div>
+    <details class="fld"><summary style="font-weight:700;color:var(--sub);cursor:pointer">المفتاح السري (بيتعمل لوحده — مش محتاج تلمسه)</summary>
+      <div class="krow" style="margin-top:6px"><input class="inp" id="shKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:var(--f3)" value="${esc(c.sheetKey)}">
       <button class="ibtn" id="shEye" type="button" title="إظهار">👁</button></div>
       <p class="hint">ده اللي بيقفل الشيت، فمحدش يقدر يقرا حاجة حتى لو معاه لينك الشيت. رابط الربط بيشيله جواه، فمش محتاج تكتبه في حتة.</p>
     </details>
@@ -2906,7 +2922,7 @@ async function shareJoin() {
   const url = joinLink(), text = 'رابط ربط حسابات فلاش أون (متبعتوش لحد):';
   try { if (navigator.share) { await navigator.share({title: 'ربط حسابات فلاش أون', text, url}); return; } } catch (e) { if (e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(url); toast('اتنسخ رابط الربط ✔ الصقه لنفسك في واتساب واحفظه', 6000); }
-  catch (e) { modal(`<h3>رابط الربط</h3><p style="font-size:15px">انسخ الرابط ده وابعته لنفسك:</p><pre class="code">${esc(url)}</pre><button class="btn line" id="jlX" type="button">تمام</button>`); $('#jlX').onclick = closeModal; }
+  catch (e) { modal(`<h3>رابط الربط</h3><p style="font-size:var(--f2)">انسخ الرابط ده وابعته لنفسك:</p><pre class="code">${esc(url)}</pre><button class="btn line" id="jlX" type="button">تمام</button>`); $('#jlX').onclick = closeModal; }
 }
 let pendingJoin = null;
 /* بياخد رابط الربط كامل (أو اللي بعد join=) ويرجّع بياناته، أو null لو الرابط مش سليم */
@@ -2932,7 +2948,7 @@ async function finishJoin(visible) {
   if (joining || !db) return false;
   joining = true;
   const c = db.cfg;
-  if (visible) modal('<p style="text-align:center">⏳ بربط الجهاز وبنزّل حساباتك…<br><small style="color:#777">ممكن ياخد لحد دقيقة أول مرة</small></p>');
+  if (visible) modal('<p style="text-align:center">⏳ بربط الجهاز وبنزّل حساباتك…<br><small style="color:var(--sub)">ممكن ياخد لحد دقيقة أول مرة</small></p>');
   let j = null, err = null;
   for (let i = 0; i < 3 && !(j && j.ok); i++) {
     try { j = await callSheet({action: 'ping'}, c.sheetUrl, c.sheetKey, 40000); err = null; } catch (e) { j = null; err = e; }
@@ -2997,7 +3013,7 @@ function bkpSetup() {
 function backupHelp() {
   const code = backupScript();
   modal(`<h3>💾 نسخة احتياطية يومية على Google Drive</h3>
-    <p style="font-size:15px">اختياري. كل يوم بالليل نسخة من جدول الحسابات بتتحفظ في فولدر <b>نسخ حسابات فلاش أون</b> على Drive (بيفضل آخر 30). <b>الشيت بيشتغل عادي حتى لو مضفتهاش.</b></p>
+    <p style="font-size:var(--f2)">اختياري. كل يوم بالليل نسخة من جدول الحسابات بتتحفظ في فولدر <b>نسخ حسابات فلاش أون</b> على Drive (بيفضل آخر 30). <b>الشيت بيشتغل عادي حتى لو مضفتهاش.</b></p>
     <ol class="steps">
       <li>في Apps Script (اللي فيه كود الشيت) اضغط <b>+</b> جنب كلمة <b>الملفات (Files)</b> ← <b>Script</b>، وسمّيه <b>Backup</b>. <b>متلصقش الكود ده جوه ملف Code الأساسي.</b></li>
       <li>اضغط <b>"انسخ كود النسخة الاحتياطية"</b> تحت، والصقه في ملف <b>Backup</b>، واضغط الحفظ 💾.</li>
@@ -3023,8 +3039,8 @@ function showHelp() {
     <li>اضغط <b>نشر (Deploy)</b> ← <b>Authorize access</b> ← اختار حسابك ← <b>Advanced</b> ← <b>Go to ... (unsafe)</b> ← <b>Allow</b>. (التحذير عادي لأن الكود بتاعك إنت.)</li>
     <li>انسخ <b>Web app URL</b> (بيخلص بـ /exec)، والصقه هنا في خانة اللينك، واضغط <b>حفظ واختبار الاتصال</b>.</li>
   </ol>
-  <p style="font-size:14px;margin:10px 0 0;color:#555"><b>لو كنت حاطط كود قبل كده:</b> امسحه والصق الجديد، واحفظ 💾، وبعدين <b>نشر ← إدارة عمليات النشر ← ✏️ ← الإصدار: إصدار جديد ← نشر</b>. اللينك بيفضل زي ما هو.</p>
-  <p style="font-size:14px;margin:6px 0 0;color:#555">على أي جهاز تاني: افتح "رابط الربط" اللي هيظهرلك بعد ما الربط ينجح. متعدّلش في الجدول بإيدك.</p>
+  <p style="font-size:var(--f2);margin:10px 0 0;color:var(--sub)"><b>لو كنت حاطط كود قبل كده:</b> امسحه والصق الجديد، واحفظ 💾، وبعدين <b>نشر ← إدارة عمليات النشر ← ✏️ ← الإصدار: إصدار جديد ← نشر</b>. اللينك بيفضل زي ما هو.</p>
+  <p style="font-size:var(--f2);margin:6px 0 0;color:var(--sub)">على أي جهاز تاني: افتح "رابط الربط" اللي هيظهرلك بعد ما الربط ينجح. متعدّلش في الجدول بإيدك.</p>
   <div class="stack" style="margin-top:12px"><button class="btn green" id="hpCopy" type="button">انسخ الكود</button><button class="btn line" id="hpShow" type="button">اعرض الكود</button><button class="btn line" id="hpX" type="button">إغلاق</button></div>`, true);
   $('#hpX').onclick = closeModal;
   $('#hpShow').onclick = () => { if (!$('#hpCode')) $('#hpShow').insertAdjacentHTML('afterend', `<pre class="code" id="hpCode">${esc(code)}</pre>`); };
@@ -3043,8 +3059,8 @@ async function refreshBio() {
   let on = false; try { on = !!(await idbGet('bio')); } catch (e) {}
   b.style.display = ''; b.textContent = on ? '🔓 البصمة شغالة — اضغط لإيقافها' : '🔓 فعّل الفتح ببصمة الوجه';
   b.onclick = on ? async () => { await idbDel('bio'); toast('اتوقفت البصمة'); refreshBio(); } : () => {
-    modal(`<h3>🔓 فتح ببصمة الوجه</h3><p style="font-size:15px">اكتب كلمة السر مرة علشان البصمة تحفظها بأمان، وبعدين الموبايل هيطلب بصمة الوجه.</p>
-      <div class="fld"><input class="inp" id="bioP" type="password" inputmode="numeric" autocomplete="current-password" style="text-align:center;font-size:20px"></div>
+    modal(`<h3>🔓 فتح ببصمة الوجه</h3><p style="font-size:var(--f2)">اكتب كلمة السر مرة علشان البصمة تحفظها بأمان، وبعدين الموبايل هيطلب بصمة الوجه.</p>
+      <div class="fld"><input class="inp" id="bioP" type="password" inputmode="numeric" autocomplete="current-password" style="text-align:center;font-size:var(--f4)"></div>
       <div class="err" id="bioE"></div>
       <div class="stack"><button class="btn gold" id="bioOk" type="button">تفعيل</button><button class="btn line" id="bioX" type="button">إلغاء</button></div>`);
     $('#bioX').onclick = closeModal;
@@ -3219,7 +3235,7 @@ $('#fRestore').addEventListener('change', async ev => {
   if (b64(saltU8) === box.salt) try { d = await unseal(cryptoKey, box); } catch (e) {}
   if (!d) {
     const pw = await new Promise(res => {
-      modal(`<h3>كلمة سر الملف</h3><p style="font-size:16px">الملف ده اتعمل بكلمة سر تانية. اكتب كلمة السر اللي كانت وقت ما اتعمل.</p>
+      modal(`<h3>كلمة سر الملف</h3><p style="font-size:var(--f3)">الملف ده اتعمل بكلمة سر تانية. اكتب كلمة السر اللي كانت وقت ما اتعمل.</p>
         <div class="fld"><input class="inp" id="rpP" type="password" inputmode="numeric" pattern="[0-9]*"></div><div class="g2"><button class="btn gold" id="rpOk">فتح</button><button class="btn line" id="rpX">إلغاء</button></div>`);
       $('#rpOk').onclick = () => { const v = $('#rpP').value; closeModal(); res(v); }; $('#rpX').onclick = () => { closeModal(); res(null); };
     });
@@ -3358,7 +3374,7 @@ function renderCash() {
       <button class="btn redf" id="cExp" type="button">− مصروف</button>
       <button class="btn gold" id="cInc" type="button">+ إيراد</button>
     </div>
-    <div class="tots"><div class="k"><span>رصيد كل الخزن</span><b class="${total < 0 ? 'cr' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)} <small style="font-size:15px;color:var(--gold)">${CUR}</small></b></div>
+    <div class="tots"><div class="k"><span>رصيد كل الخزن</span><b class="${total < 0 ? 'cr' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
       ${vs.length < 2 ? '' : vs.map(v => { const b = vaultBal(v.id); return `<div class="vt ${cashVault === v.id ? 'on' : ''}" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="${b < 0 ? 'cr2' : ''}" data-ck="c:v:${esc(v.id)}" data-cnt="${b}">${fmtP(b)}</b></div>`; }).join('')}</div>
     <div class="ctools">
       <button class="btn line sm" id="cOpen2" type="button">✎ الفلوس اللي معايا</button>
@@ -3413,8 +3429,8 @@ function openingModal() {
   const vs = vaultsL();
   const moved = v => db.txs.some(t => !t.del && (t.vault === v.id || t.to === v.id)) || db.entries.some(e => !e.del && e.vault === v.id);
   modal(`<h3>الفلوس اللي معايا دلوقتي</h3>
-    <p style="font-size:16px">اكتب الفلوس اللي موجودة فعلاً في كل خزنة دلوقتي، والبرنامج يظبط الرصيد عليها.</p>
-    ${vs.map(v => `<div class="fld"><label>${esc(v.name)} <small style="color:#777">(البرنامج شايف ${fmtP(vaultBal(v.id))})</small></label><input class="inp num amt" data-v="${esc(v.id)}" placeholder="0" value="${fmtP(vaultBal(v.id))}"></div>`).join('')}
+    <p style="font-size:var(--f3)">اكتب الفلوس اللي موجودة فعلاً في كل خزنة دلوقتي، والبرنامج يظبط الرصيد عليها.</p>
+    ${vs.map(v => `<div class="fld"><label>${esc(v.name)} <small style="color:var(--sub)">(البرنامج شايف ${fmtP(vaultBal(v.id))})</small></label><input class="inp num amt" data-v="${esc(v.id)}" placeholder="0" value="${fmtP(vaultBal(v.id))}"></div>`).join('')}
     <p class="hint">${vs.some(moved) ? 'الخزنة اللي فيها حركات: الفرق هيتسجل النهارده "تسوية جرد"، والحركات القديمة مش هتتغير.' : 'الرقم ده هيبقى رصيد البداية، وكل حاجة بعد كده هتتحسب عليه.'}</p>
     <div class="stack"><button class="btn gold" id="opOk" type="button">حفظ</button><button class="btn line sm" id="opAdd" type="button">+ خزنة تانية (بنك، محفظة…)</button><button class="btn line" id="opX" type="button">رجوع</button></div>`);
   $$('#modal [data-v]').forEach(bindMoney);
@@ -3697,7 +3713,7 @@ function partRange() {
 function renderPartners() {
   const pg = $('#p-part'), s = partners();
   /* على الموبايل الشركاء مالهاش زرار تحت (مكانها بقى حركة السوق)، فبنفتحها من الخزنة وبنرجعلها */
-  const back = isWide() ? '' : '<div class="sech ppbar" style="margin-top:0"><a id="ptBack">→ الخزنة</a><b style="font-size:17px;color:var(--ink)">👥 الشركاء</b><span></span></div>';
+  const back = isWide() ? '' : '<div class="sech ppbar" style="margin-top:0"><a id="ptBack">→ الخزنة</a><b style="font-size:var(--f3);color:var(--ink)">👥 الشركاء</b><span></span></div>';
   const bindBack = () => { if ($('#ptBack')) $('#ptBack').onclick = () => go('cash'); };
   if (!s || !s.on) {
     pg.innerHTML = back + `<div class="card"><h2>👥 الشركاء</h2>
@@ -3918,10 +3934,10 @@ function renderCashLink() {
       <button class="btn line sm" id="scNow" type="button">زامن الخزنة دلوقتي</button>
       <button class="btn line sm" id="scShare" type="button" style="margin-top:8px">🔗 ابعت رابط الدفتر لجهاز تاني</button>`
     : `<p class="hint" style="margin:0 0 8px">علشان الخزنة هنا والدفتر يبقوا حاجة واحدة: افتح <b>دفتر الخزنة</b> من الأدوات ← <b>الإعدادات</b> ← اضغط <b>"انسخ رابط الربط لبرنامج الحسابات"</b>، وارجع هنا والصقه.</p>
-      <div class="fld"><input class="inp" id="scL" style="direction:ltr;font-size:14px" placeholder="الصق رابط الربط هنا" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-      <details class="fld"><summary style="font-weight:700;color:#777;cursor:pointer">أو اكتب لينك الشيت والمفتاح بإيدك</summary>
-        <div class="fld" style="margin-top:6px"><label>لينك شيت الدفتر</label><input class="inp" id="scU" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" autocomplete="off"></div>
-        <div class="fld"><label>المفتاح السري بتاع الدفتر (مش كلمة سر الحسابات)</label><input class="inp" id="scK" style="direction:ltr;font-size:16px" autocomplete="off" autocapitalize="off" spellcheck="false"></div></details>
+      <div class="fld"><input class="inp" id="scL" style="direction:ltr;font-size:var(--f2)" placeholder="الصق رابط الربط هنا" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <details class="fld"><summary style="font-weight:700;color:var(--sub);cursor:pointer">أو اكتب لينك الشيت والمفتاح بإيدك</summary>
+        <div class="fld" style="margin-top:6px"><label>لينك شيت الدفتر</label><input class="inp" id="scU" style="direction:ltr;font-size:var(--f2)" placeholder="https://script.google.com/macros/s/..../exec" autocomplete="off"></div>
+        <div class="fld"><label>المفتاح السري بتاع الدفتر (مش كلمة سر الحسابات)</label><input class="inp" id="scK" style="direction:ltr;font-size:var(--f3)" autocomplete="off" autocapitalize="off" spellcheck="false"></div></details>
       <div class="err" id="scE"></div>
       <button class="btn gold" id="scGo" type="button">اربط</button>`}`;
   if ($('#scShare')) $('#scShare').onclick = async () => {
@@ -3957,7 +3973,7 @@ const lockDate = () => getSet('lock', '');
 const isLocked = d => { const l = lockDate(); return !!(l && d && d <= l); };
 const lockToast = () => toast(`الفترة لحد ${dispDate(lockDate())} مقفولة. افتحها من الإعدادات لو محتاج تعدّل فيها.`, 5000);
 function lockedView(p, e) {
-  modal(`<h3>🔒 ${esc(docTitle(e))}</h3><p style="font-size:16px">${dispDate(e.date)} — ${fmtP(e.dr || e.cr)} ${CUR}</p>
+  modal(`<h3>🔒 ${esc(docTitle(e))}</h3><p style="font-size:var(--f3)">${dispDate(e.date)} — ${fmtP(e.dr || e.cr)} ${CUR}</p>
     <div class="sync">الحركة دي في فترة مقفولة (لحد ${dispDate(lockDate())})، فمينفعش تتعدل أو تتلغي. لو محتاج، افتح الفترة من الإعدادات.</div>
     ${histHtml(e)}<button class="btn line" id="lvX" type="button">رجوع</button>`);
   $('#lvX').onclick = closeModal;
@@ -4049,7 +4065,7 @@ function cashCheck(e) {
   if (isLocked(e.date)) return lockToast();
   const inc = e.kind === 'pay';
   ensureVaults();
-  modal(`<h3>✔ الشيك اتصرف</h3><p style="font-size:16px">${esc(docTitle(e))}<br>${fmtP(e.amt)} ${CUR}</p>
+  modal(`<h3>✔ الشيك اتصرف</h3><p style="font-size:var(--f3)">${esc(docTitle(e))}<br>${fmtP(e.amt)} ${CUR}</p>
     <div class="fld"><label>${inc ? 'الفلوس دخلت أنهي خزنة' : 'الفلوس طلعت من أنهي خزنة'}</label><select class="inp" id="ccV">${vaultOpts(defVault('تحويل'))}</select></div>
     <div class="fld"><label>يوم الصرف</label><input class="inp" id="ccD" type="date" value="${todayISO()}"></div>
     <div class="stack"><button class="btn green" id="ccOk" type="button">حفظ</button><button class="btn line" id="ccX" type="button">رجوع</button></div>`);
@@ -4066,7 +4082,7 @@ function cashCheck(e) {
 function bounceCheck(e) {
   if (isLocked(e.date)) return lockToast();
   const p = P.get(e.party);
-  modal(`<h3>✖ الشيك رجع</h3><p style="font-size:16px">${esc(docTitle(e))}<br>${fmtP(e.amt)} ${CUR} — ${esc(p ? p.name : '')}</p>
+  modal(`<h3>✖ الشيك رجع</h3><p style="font-size:var(--f3)">${esc(docTitle(e))}<br>${fmtP(e.amt)} ${CUR} — ${esc(p ? p.name : '')}</p>
     <div class="sync warn">قيمة الشيك هترجع على ${e.kind === 'pay' ? 'حساب العميل (يزيد اللي عليه)' : 'حساب المورد (يزيد اللي ليه)'}، وهيظهر في الكشف "شيك مرتجع".</div>
     <div class="fld"><label>يوم الرجوع</label><input class="inp" id="bcD" type="date" value="${todayISO()}"></div>
     <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="bcN" placeholder="مثلاً: رصيد غير كافي"></div>
@@ -4092,7 +4108,7 @@ async function undoCheck(e) {
 }
 function bounceInfo(p, e) {
   const o = E.get(e.ref);
-  modal(`<h3>✖ ${esc(docTitle(e))}</h3><p style="font-size:16px">${dispDate(e.date)} — ${fmtP(e.amt)} ${CUR}${e.note ? '<br>' + esc(e.note) : ''}</p>
+  modal(`<h3>✖ ${esc(docTitle(e))}</h3><p style="font-size:var(--f3)">${dispDate(e.date)} — ${fmtP(e.amt)} ${CUR}${e.note ? '<br>' + esc(e.note) : ''}</p>
     ${o ? `<p class="hint">الشيك الأصلي: ${esc(docTitle(o))} — اتسجل يوم ${dispDate(o.date)}</p>` : ''}
     <div class="stack"><button class="btn line" id="biUndo" type="button">↶ الشيك مرجعش (الغي الشيك المرتجع)</button><button class="btn line" id="biX" type="button">رجوع</button></div>`);
   $('#biX').onclick = closeModal;
@@ -4412,7 +4428,7 @@ async function sheetAudit(manual) {
   if (!ok) { toPush.forEach(r => delete r.sy); db.cfg.cursor = 0; }
   if (manual) {
     modal(`<h3>مراجعة الجهاز مع الشيت</h3><div class="sync ${ok ? 'ok' : 'warn'}">${esc(msg)}</div>
-      ${ok ? '' : '<p style="font-size:16px">اضغط "صلّح" والبرنامج هيبعت اللي ناقص الشيت وينزّل اللي ناقص الجهاز.</p>'}
+      ${ok ? '' : '<p style="font-size:var(--f3)">اضغط "صلّح" والبرنامج هيبعت اللي ناقص الشيت وينزّل اللي ناقص الجهاز.</p>'}
       <div class="stack">${ok ? '' : '<button class="btn gold" id="saFix" type="button">صلّح دلوقتي</button>'}<button class="btn line" id="saX" type="button">تمام</button></div>`);
     $('#saX').onclick = closeModal;
     if ($('#saFix')) $('#saFix').onclick = async () => { closeModal(); await syncNow(true); sheetAudit(true); };
@@ -4466,7 +4482,7 @@ function route() {
       let t = ''; try { t = sessionStorage.getItem('fo_lastp') || ''; } catch (e) {}
       if (!(P.get(t) && !P.get(t).del)) { const f = liveParties().filter(x => x.sec === tab).sort((a, b) => a.name.localeCompare(b.name, 'ar'))[0] || liveParties()[0]; t = f ? f.id : ''; }
       if (t) { go('p/' + t); return; }
-      $('#p-party').innerHTML = '<div class="card empty" style="padding:60px 20px;font-size:18px">لسه مفيش حسابات. اضغط "+ حساب جديد".</div>';
+      $('#p-party').innerHTML = '<div class="card empty" style="padding:60px 20px;font-size:var(--f3)">لسه مفيش حسابات. اضغط "+ حساب جديد".</div>';
     }
   }
   if (pg === 'mkt') { $('#mkBar').classList.remove('on'); renderMkt(); } else if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
@@ -4765,7 +4781,7 @@ function mkEditAlert(msgs) {
 function mkIgnore(o) {
   if (!o || o.t !== 'exp') return;
   const rec = IDX.tx.get('t_mk_' + o.id), reg = rec && !rec.del;
-  modal(`<h3>تجاهل المصروف ده؟</h3><p>${esc(mkWhat(o))} — <b class="money">${fmtP(o.amt)}</b><br><small style="color:#777">${reg ? 'هتتشال من تقرير الأرباح. ' : ''}الشريك مش هيشوف أي تغيير.</small></p>
+  modal(`<h3>تجاهل المصروف ده؟</h3><p>${esc(mkWhat(o))} — <b class="money">${fmtP(o.amt)}</b><br><small style="color:var(--sub)">${reg ? 'هتتشال من تقرير الأرباح. ' : ''}الشريك مش هيشوف أي تغيير.</small></p>
     <div class="g2"><button class="btn red" id="igOk" type="button">تجاهل</button><button class="btn line" id="igX" type="button">رجوع</button></div>`);
   $('#igX').onclick = closeModal;
   $('#igOk').onclick = () => {
@@ -5091,7 +5107,7 @@ function renderMkt() {
   const box = $('#p-mkt'); if (!box || !db) return;
   if (!mkCreds()) { box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a></div><div class="card empty">حركة السوق لسه متربطتش.<br><a class="lnk" id="mkSet">اربطها من الإعدادات</a></div>`; $('#mkBack').onclick = () => go('home'); $('#mkSet').onclick = mkGoSettings; return; }
   const n = mkPending().length;
-  box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a><b style="font-size:17px;color:var(--ink)">📥 وارد السوق</b><span class="mkdot ${mkErr ? 'w' : ''}"><i></i>${mkErr === 'key' ? 'الشيت رفض المفتاح' : mkErr ? 'مش قادر يوصل للشيت' : mkLastOk ? 'متصل' : '…'}</span></div>
+  box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a><b style="font-size:var(--f3);color:var(--ink)">📥 وارد السوق</b><span class="mkdot ${mkErr ? 'w' : ''}"><i></i>${mkErr === 'key' ? 'الشيت رفض المفتاح' : mkErr ? 'مش قادر يوصل للشيت' : mkLastOk ? 'متصل' : '…'}</span></div>
     <div class="mkvb"><span>🗄️ رصيد خزنة السوق</span><b>${fmtP(mkLive().reduce((s, o) => s + mkSign(o) * o.amt, 0))} <small>${CUR}</small></b><i>من تطبيق حركة السوق — للعرض بس ومبيتعدلش من هنا</i></div>
     <div class="seg s2" id="mkTabs"><button type="button" data-v="in" class="${mkView === 'in' ? 'on' : ''}">الوارد${n ? ` (${n})` : ''}</button><button type="button" data-v="arch" class="${mkView === 'arch' ? 'on' : ''}">الأرشيف</button></div>
     <div id="mkBody"></div>`;
@@ -5171,7 +5187,7 @@ function mkCard(g) {
 }
 function mkArrive(o) {
   if (!o) return;
-  modal(`<h3>🔔 التحويل ده وصلك؟</h3><p>${esc(o.cname)} — <b class="money">${fmtP(o.amt)}</b> ${MK_M[o.m]}<br><small style="color:#777">اتأكد من رسالة التحويل عندك (${MK_M[o.m]}) قبل ما تدوس "وصل".</small></p>
+  modal(`<h3>🔔 التحويل ده وصلك؟</h3><p>${esc(o.cname)} — <b class="money">${fmtP(o.amt)}</b> ${MK_M[o.m]}<br><small style="color:var(--sub)">اتأكد من رسالة التحويل عندك (${MK_M[o.m]}) قبل ما تدوس "وصل".</small></p>
     <div class="g2"><button class="btn green" id="arOk" type="button">✓ وصل</button><button class="btn line" id="arX" type="button">لسه</button></div>`);
   $('#arX').onclick = closeModal;
   $('#arOk').onclick = () => { mkSetSt(o.id, {ok: true, ov: o.upd}); flushSave(); closeModal(); renderMkt(); mkSync(); };
@@ -5181,7 +5197,7 @@ function mkOpMenu(o) {
   const st = mkState(o), al = mkAlias(), pid = mkPid(o, al), amt = fmtP(o.amt);
   if (st === 'done') {
     const e = mkRec(o), pe = e && e.party && P.get(e.party);
-    modal(`<h3>✓ اتنقلت</h3><p>${esc(mkWhat(o))} — <b class="money">${amt}</b><br><small style="color:#777">اتسجلت عند الشريك ${dispDate(isoOf(o.ts))} ${dispTime(o.ts)}. أي تصحيح من ${pe ? 'الحساب' : 'الخزنة'} نفسها.</small></p>
+    modal(`<h3>✓ اتنقلت</h3><p>${esc(mkWhat(o))} — <b class="money">${amt}</b><br><small style="color:var(--sub)">اتسجلت عند الشريك ${dispDate(isoOf(o.ts))} ${dispTime(o.ts)}. أي تصحيح من ${pe ? 'الحساب' : 'الخزنة'} نفسها.</small></p>
       <div class="stack">${pe ? '<button class="btn gold" id="omP" type="button">افتح الحساب</button>' : ''}<button class="btn line" id="omX" type="button">إغلاق</button></div>`);
     $('#omX').onclick = closeModal; if ($('#omP')) $('#omP').onclick = () => { closeModal(); go('p/' + e.party); };
     return;
@@ -5201,7 +5217,7 @@ function mkOpMenu(o) {
 }
 function mkReturn(ops, name) {
   if (!ops.length) return;
-  modal(`<h3>رجّعها لشريكك</h3><p style="font-size:15.5px">${esc(name)}: ${ops.map(o => fmtP(o.amt) + ' ' + (o.t === 'pay' ? MK_M[o.m] : o.t === 'inv' ? 'فاتورة' : o.t === 'rt' ? 'مرتجع/شغل' : o.t === 'exp' ? o.cat : o.t === 'spay' ? 'دفعة مورد' : 'تسليم')).join(' + ')}</p>
+  modal(`<h3>رجّعها لشريكك</h3><p style="font-size:var(--f2)">${esc(name)}: ${ops.map(o => fmtP(o.amt) + ' ' + (o.t === 'pay' ? MK_M[o.m] : o.t === 'inv' ? 'فاتورة' : o.t === 'rt' ? 'مرتجع/شغل' : o.t === 'exp' ? o.cat : o.t === 'spay' ? 'دفعة مورد' : 'تسليم')).join(' + ')}</p>
     <div class="fld"><label>اكتبله إيه الغلط (هيظهرله عنده)</label><input class="inp" id="rtN" autocomplete="off" placeholder="مثلاً: المبلغ 4,500 مش 5,000"></div>
     <div class="g2"><button class="btn red" id="rtOk" type="button">رجّعها</button><button class="btn line" id="rtX" type="button">إلغاء</button></div>`);
   $('#rtX').onclick = closeModal;
@@ -5268,7 +5284,7 @@ function mkInvQuick(o) {
   if (!o || mkState(o) !== 'new') return;
   const pid = mkPid(o), d = isoOf(o.ts);
   modal(`<h3>🧾 فاتورة ${esc(o.cname)} — <span class="money">${fmtP(o.amt)}</span></h3>
-    <p style="margin:-4px 0 12px;font-size:15px">بتاريخ ${dispDate(d)}${pid ? '' : ' — <span class="nwt">عميل جديد</span>'}</p>
+    <p style="margin:-4px 0 12px;font-size:var(--f2)">بتاريخ ${dispDate(d)}${pid ? '' : ' — <span class="nwt">عميل جديد</span>'}</p>
     <div class="stack"><button class="btn gold big" id="iqGo" type="button">📥 انقلها بالإجمالي، والبنود بعدين</button>
       <p class="hint" style="margin:-4px 2px 4px">الفاتورة هتدخل حساب العميل دلوقتي بإجماليها، وهيفضل عليها تنبيه "📝 البنود لسه" لحد ما تكتبها من حسابه.</p>
       <button class="btn line" id="iqItems" type="button">📝 هكتب البنود دلوقتي</button>
@@ -5475,15 +5491,15 @@ function renderMktSettings() {
       <details class="fld" id="tgHow"><summary style="font-weight:700;color:var(--gold-d);cursor:pointer">إزاي أعمل البوت؟ (من الموبايل، 3 دقايق)</summary>
         <ol class="steps"><li>افتح تليجرام ودوّر على <b>@BotFather</b> وافتحه.</li><li>ابعتله <b>/newbot</b>، واكتب أي اسم (مثلاً: تنبيهات السوق)، وبعدين اسم بيخلص بـ <b>bot</b> (مثلاً: flashon_souq_bot).</li>
         <li>هيبعتلك رسالة فيها <b>التوكن</b> (رقم وبعده : وحروف). انسخه والصقه هنا تحت، واضغط <b>حفظ التوكن</b>.</li><li>افتح البوت بتاعك (اللينك اللي في رسالة BotFather) واضغط <b>Start</b> أو ابعتله <b>ابدأ</b>.</li><li>ارجع هنا واضغط <b>جرّب التنبيه</b>.</li></ol></details>
-      <div class="krow" style="grid-template-columns:1fr auto"><textarea class="inp" id="tgTok" rows="2" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:14px;min-height:54px;resize:none" placeholder="الصق توكن البوت هنا"></textarea><button class="btn gold" id="tgSave" type="button" style="width:auto;padding:0 14px">حفظ التوكن</button></div>
+      <div class="krow" style="grid-template-columns:1fr auto"><textarea class="inp" id="tgTok" rows="2" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:var(--f2);min-height:54px;resize:none" placeholder="الصق توكن البوت هنا"></textarea><button class="btn gold" id="tgSave" type="button" style="width:auto;padding:0 14px">حفظ التوكن</button></div>
       <button class="btn line sm" id="tgTest" type="button" style="margin-top:8px">جرّب التنبيه</button>
       <p class="hint">التوكن بيتحفظ جوه شيت السوق بس (مش في البرنامج ولا على الجهاز). شريكك ملوش دعوة بتليجرام.</p>
-      <details class="fld" style="margin-top:8px"><summary style="font-weight:700;color:#777;cursor:pointer">لينك شيت السوق</summary>
-        <div class="fld" style="margin-top:6px"><input class="inp" id="smUrl" style="direction:ltr;font-size:14px" value="${esc(c.u)}"></div>
+      <details class="fld" style="margin-top:8px"><summary style="font-weight:700;color:var(--sub);cursor:pointer">لينك شيت السوق</summary>
+        <div class="fld" style="margin-top:6px"><input class="inp" id="smUrl" style="direction:ltr;font-size:var(--f2)" value="${esc(c.u)}"></div>
         <div class="stack"><button class="btn line sm" id="smGo" type="button">حفظ واختبار</button><button class="btn line sm" id="smHelp" type="button">كود شيت السوق والخطوات</button></div></details>`
     : `<p class="hint" style="margin:0 0 10px">تطبيق لشريكك يسجل فيه اللي حصّله من عملاء السوق، ويوصلك هنا في "وارد السوق" تنقله بإيدك. محتاج شيت جوجل جديد لوحده (مرة واحدة من الكمبيوتر).</p>
       <button class="btn line" id="smHelp" type="button" style="margin-bottom:10px">إزاي أعمل شيت حركة السوق؟ (خطوة بخطوة)</button>
-      <div class="fld"><label>لينك شيت حركة السوق (Web app URL)</label><input class="inp" id="smUrl" style="direction:ltr;font-size:14px" placeholder="https://script.google.com/macros/s/..../exec" autocomplete="off"></div>
+      <div class="fld"><label>لينك شيت حركة السوق (Web app URL)</label><input class="inp" id="smUrl" style="direction:ltr;font-size:var(--f2)" placeholder="https://script.google.com/macros/s/..../exec" autocomplete="off"></div>
       <button class="btn gold" id="smGo" type="button">اربط</button>`}
     <div class="err" id="smE" style="color:var(--red);font-weight:800;margin-top:6px"></div>`;
   $('#smHelp').onclick = mktHelp;

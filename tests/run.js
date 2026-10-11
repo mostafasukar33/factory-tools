@@ -1153,7 +1153,10 @@ const T0 = Date.now();
     /* المطلوب منك النهارده + الألوان */
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('الرئيسية: فاضل تنبيه الفواتير اللي بنودها لسه بس (مفيش وارد السوق ولا الحد الأحمر ولا النسخة)', await A.evaluate(() => [!!$('#nlRem'), $('#mkRem').textContent.trim(), !!$('#bkRem'), !!$('#tkRows')]), [true, '', false, false]);
-    eq('الألوان واحدة في التطبيقين: الكاش أخضر والتحويل أزرق والمصروف أحمر', await M.evaluate(() => { nav('', true); const c = k => { const r = document.querySelector('.row.' + k + ' .a .money'); return r ? getComputedStyle(r).color : null; }; return [c('d-in'), c('d-to')]; }), ['rgb(30, 138, 70)', 'rgb(47, 102, 144)']);
+    /* الألوان من نظام الشكل الموحد (lib/ui.css): نفس الأخضر والأزرق والأحمر في التطبيقين */
+    const tokC = X => X.evaluate(() => { const d = document.createElement('i'); document.body.appendChild(d); const g = v => (d.style.color = `var(${v})`, getComputedStyle(d).color); const r = [g('--green'), g('--tr'), g('--red')]; d.remove(); return r; });
+    const mTok = await tokC(M);
+    eq('الألوان واحدة في التطبيقين: الكاش أخضر والتحويل أزرق والمصروف أحمر', [await M.evaluate(() => { nav('', true); const c = k => { const r = document.querySelector('.row.' + k + ' .a .money'); return r ? getComputedStyle(r).color : null; }; return [c('d-in'), c('d-to')]; }), await tokC(A)], [mTok.slice(0, 2), mTok]);
 
     }   // نهاية أقسام السوق
     }   // نهاية RUN.sync
@@ -1168,6 +1171,28 @@ const T0 = Date.now();
       await A.setViewportSize({width: 400, height: 860});
       for (const f of ['index.html', 'cash.html', 'market.html', 'quote.html', 'delivery.html', 'cost.html', 'calculator/index.html', 'payroll.html']) { const X = await D1.page(f); await X.settle(800); await X.close(); }
     }
+    sec('الشكل الموحد (lib/ui.css): 5 أحجام خط بس');
+    /* كل كلام وأرقام الشاشة بأحجام النظام الخمسة بس (--f1..--f5)، ماعدا الأيقونات والأسهم وورقة الـ PDF */
+    const fs5 = X => X.evaluate(() => {
+      const tok = ['--f1', '--f2', '--f3', '--f4', '--f5'].map(v => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(v)));
+      const ICON = '#bSearch,#bNewParty,.dnav button,.dpk button,.dph button,.chk,.qkm .btn,#lkPad .pk,.qa2 .qb i,.fabn';
+      const bad = new Set();
+      for (const el of document.querySelectorAll('body *')) {
+        if (el.closest('#render,svg') || el.closest(ICON)) continue;
+        if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue;
+        const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+        const f = parseFloat(getComputedStyle(el).fontSize);
+        if (!tok.some(t => Math.abs(t - f) < 0.1)) bad.add(f + 'px ' + el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + '.' + String(el.className).trim().replace(/\s+/g, '.'));
+      }
+      return [tok.every(t => t > 0), [...bad].slice(0, 6)];
+    });
+    if (await A.$('#mask.on')) await A.evaluate(() => closeModal());
+    await A.evaluate(() => go('home')); await A.settle(300);
+    eq('الحسابات (الرئيسية): الخط بالخمس أحجام بس', await fs5(A), [true, []]);
+    await A.evaluate(n => go('p/' + liveParties().find(x => x.name === n).id), 'عميل تجربة واحد'); await A.settle(300);
+    eq('الحسابات (صفحة الحساب): الخط بالخمس أحجام بس', await fs5(A), [true, []]);
+    for (const f of ['cash.html', 'market.html']) { const X = await D1.page(f); await X.settle(800); eq(`${f}: الخط بالخمس أحجام بس`, await fs5(X), [true, []]); await X.close(); }
+
     sec('١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2 ? D2.errs : [], DM ? DM.errs : []), []);

@@ -297,6 +297,7 @@ body{font-size:var(--f3);line-height:1.6}
 /* الأرقام في القوايم لازقة في الشمال تحت بعض (زي الأول)، بس أكبر وأتقل */
 .row .a .money,.want .wr .a b{font-size:var(--f4);line-height:1.3}
 .ctb td.bl{font-size:var(--f4)}
+.wkh .tc .money{font-size:var(--f5)}
 </style>
 </head>
 <body>
@@ -581,7 +582,7 @@ function dotHtml() {
 function drawTop() {
   const t = $('#top'), sub = scr.v === 'pay' || scr.v === 'spend' || scr.v === 'sale' || scr.v === 'ok';
   drawStuck();
-  t.innerHTML = sub ? `<button class="back" id="bBack" type="button">→ رجوع</button>${TITLE[scr.v] ? `<b style="font-size:16px">${TITLE[scr.v]}</b>` : ''}${dotHtml()}`
+  t.innerHTML = sub ? `<button class="back" id="bBack" type="button">→ رجوع</button>${TITLE[scr.v] ? `<b style="font-size:var(--f3)">${TITLE[scr.v]}</b>` : ''}${dotHtml()}`
     : `${LOGO}<h1>${TITLE[scr.v] || 'حركة السوق'}${scr.v === 'home' ? '<small>فلاش أون</small>' : ''}</h1>${dotHtml()}`;
   if ($('#bBack')) $('#bBack').onclick = () => nav(scr.v === 'pay' ? 'c' : '');
 }
@@ -762,7 +763,7 @@ function groupModal(G) {
   };
 }
 function newCustomer() {
-  modal(`<h3>عميل جديد</h3><p style="font-size:14px;color:var(--sub);font-weight:600">اكتب اسمه بس، ومصطفى هيظبط الباقي.</p>
+  modal(`<h3>عميل جديد</h3><p style="font-size:var(--f2);color:var(--sub);font-weight:600">اكتب اسمه بس، ومصطفى هيظبط الباقي.</p>
     <input class="inp" id="ncN" autocomplete="off" placeholder="اسم العميل">
     <button class="big b-cash" id="ncOk" type="button">كمّل</button><button class="big b-home" id="ncX" type="button">رجوع</button>`);
   setTimeout(() => $('#ncN') && $('#ncN').focus(), 60);
@@ -893,8 +894,8 @@ function editSheet(o) {
   modal(`<h3>${EDIT_TITLE[o.t]}${isCustOp(o) ? ' — ' + esc(o.cname) : ''}<small>${dispDate(dayOf(o.ts))} ${timeOf(o.ts)}</small></h3>
     ${bs ? `<div class="note" style="margin:0 0 6px">🔴 مصطفى رجّعها: ${esc(bs.back)}</div>` : ''}
     ${s === 'done' ? `<div class="note dn" style="margin:0 0 6px">✓ ${o.t === 'hand' ? 'مصطفى استلمها' : 'اتنقلت لحسابات مصطفى'}. لو عدّلتها أو مسحتها هتتغير عنده لوحدها ويوصله إشعار.</div>` : ''}
-    ${o.t === 'spay' ? `<label style="font-size:12.5px;font-weight:700;color:var(--sub)">اسم المورد</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.sname)}">` : ''}
-    ${o.t === 'cs' ? `<label style="font-size:12.5px;font-weight:700;color:var(--sub)">اسم المشتري</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.buyer)}">` : ''}
+    ${o.t === 'spay' ? `<label style="font-size:var(--f1);font-weight:700;color:var(--sub)">اسم المورد</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.sname)}">` : ''}
+    ${o.t === 'cs' ? `<label style="font-size:var(--f1);font-weight:700;color:var(--sub)">اسم المشتري</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.buyer)}">` : ''}
     <label class="amt sm" for="eA" style="margin-top:6px"><input id="eA" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${fmt(o.amt)}"><em>جنيه</em></label>
     ${isCustOp(o) || o.t === 'cs' ? datePick('eD', dayOf(o.ts)) : ''}
     ${o.t === 'rt' ? `<input class="inp2 rt" id="eRt" autocomplete="off" placeholder="ملاحظة: مرتجع إيه أو شغل إيه" value="${esc(o.note || '')}">` : ''}
@@ -1055,7 +1056,7 @@ async function saveSale() {
 function handModal() {
   const cn = cashNow();
   modal(`<h3>سلمت لمصطفى كاش</h3>
-    <p style="font-size:14px;color:var(--sub);font-weight:600">اكتب الفلوس اللي سلمتها له. مصطفى هيأكد "استلمت" من عنده.</p>
+    <p style="font-size:var(--f2);color:var(--sub);font-weight:600">اكتب الفلوس اللي سلمتها له. مصطفى هيأكد "استلمت" من عنده.</p>
     <label class="amt sm" for="hAmt" style="margin-top:0"><input id="hAmt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>
     ${cn > 0 ? `<button class="sbtn" id="hAll" type="button" style="width:100%;margin-top:8px;height:42px">كل اللي معايا (${fmt(cn)})</button>` : ''}
     <button class="big b-cash" id="hOk" type="button">سلمت</button><button class="big b-home" id="hX" type="button">رجوع</button>`);
@@ -1193,7 +1194,7 @@ function drawSettings() {
       <div class="kv"><span>حركات مستنية تتبعت</span><b class="${n ? 'wt' : ''}">${n}</b></div>
       <button class="big b-home" id="sSync" type="button">🔄 حدّث دلوقتي</button>
       <p class="hint" style="text-align:right">الحركات بتتبعت وبتتحدث لوحدها كل كام ثانية. ولو مفيش نت بتتحفظ على الموبايل وتتبعت أول ما يرجع.</p></div>
-    <div class="card"><h2>معنى الألوان</h2><p class="hint" style="text-align:right;margin:0"><b class="ok">أخضر</b> = فلوس دخلت معاك · <b class="bk">أحمر</b> = فلوس طلعت منك · <b style="color:#2F6690">أزرق</b> = راحت لمصطفى · <b style="color:var(--gold-d)">دهبي</b> = فاتورة أو حاجة مستنية مصطفى</p></div>
+    <div class="card"><h2>معنى الألوان</h2><p class="hint" style="text-align:right;margin:0"><b class="ok">أخضر</b> = فلوس دخلت معاك · <b class="bk">أحمر</b> = فلوس طلعت منك · <b style="color:var(--tr)">أزرق</b> = راحت لمصطفى · <b style="color:var(--gold-d)">دهبي</b> = فاتورة أو حاجة مستنية مصطفى</p></div>
     <div class="card"><h2>عن التطبيق</h2><div class="kv"><span>التطبيق</span><b>حركة السوق — فلاش أون</b></div><p class="hint" style="text-align:right;margin-top:6px">مفيش كلمة سر ولا حاجة تتظبط. أي غلطة تقدر تعدّلها أو تمسحها من الرئيسية أو الأرشيف، طول ما مصطفى لسه منقلهاش لحساباته.</p></div>`;
   $$('#uiTheme button').forEach(b => b.onclick = () => { uiSet({theme: b.dataset.v}); drawSettings(); });
   $$('#uiFs button').forEach(b => b.onclick = () => { uiSet({fs: b.dataset.v}); drawSettings(); });

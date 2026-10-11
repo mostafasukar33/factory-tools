@@ -196,6 +196,11 @@ html[data-theme=dark] .chk{color:#0b1a10}
 .tbl td small{display:block;color:var(--sub);font-size:12.5px;font-weight:600;margin-top:1px}
 .tbl tr[data-d]{cursor:pointer}.tbl tr[data-d]:active td{background:var(--gold-l)}
 .tbl .neg{color:var(--red)}.tbl .z{color:var(--sub);font-weight:500}
+.tbl th:nth-child(2),.tbl td:nth-child(2){color:var(--green)}.tbl th:nth-child(3),.tbl td:nth-child(3){color:var(--red)}.tbl th:nth-child(4),.tbl td:nth-child(4){color:#2F6690}
+html[data-theme=dark] .tbl th:nth-child(4),html[data-theme=dark] .tbl td:nth-child(4){color:#7DB4E0}
+.tbl tbody td:nth-child(2){background:var(--green-l)}.tbl tbody td:nth-child(3){background:var(--red-l)}
+.tbl tfoot td{font-size:17.5px;font-weight:900}.tbl tfoot td:nth-child(5){color:var(--ink)}.tbl tfoot td:nth-child(5).neg{color:var(--red)}
+.tbl td:nth-child(5),.tbl th:nth-child(5){border-inline-start:2px solid var(--line)}
 .wkh{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-bottom:0;border-radius:14px 14px 0 0;padding:12px 14px;box-shadow:var(--shadow)}
 .wkh b{font-size:18px;font-weight:800;display:block}.wkh span{font-size:13.5px;color:var(--sub);font-weight:700}.wkh .tc{text-align:left;flex:none;line-height:1.2}.wkh .tc span{display:block;font-size:12.5px}.wkh .tc .money{font-size:24px;color:var(--green)}
 .wk .tbl{border-radius:0 0 14px 14px}.tbl tfoot td:first-child{font-weight:800;color:var(--gold-d)}
@@ -1109,9 +1114,9 @@ function drawArchive() {
   const ws = [...weeks.keys()].sort().reverse(), shown = ws.slice(0, archWeeks);
   $('#main').innerHTML = `${archHead(t)}
     ${shown.map(w => {
-      const days = weeks.get(w).sort().reverse(), ops = days.flatMap(d => byDay.get(d)), s = sums(ops), cur = w === weekStart(t);
+      const days = weeks.get(w).sort(), ops = days.flatMap(d => byDay.get(d)), s = sums(ops), cur = w === weekStart(t);
       return `<section class="wk"><div class="wkh"><div><b>${cur ? 'الأسبوع ده' : 'أسبوع'}</b><span>من ${shortD(w)} إلى ${shortD(addDays(w, 6))}</span></div><div class="tc"><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div></div>
-        ${days.length ? tblHtml('اليوم', days.map(d => `<tr data-d="${d}"><td>${dayLabel(d)}</td>${sumRow(sums(byDay.get(d)))}</tr>`).join(''), s, 'الإجمالي') : '<div class="list" style="border-radius:0 0 14px 14px"><div class="empty">لسه مفيش حركات الأسبوع ده</div></div>'}</section>`;
+        ${days.length ? tblHtml('اليوم', days.map(d => `<tr data-d="${d}"><td>${dayLabel(d)}</td>${sumRow(sums(byDay.get(d)))}</tr>`).join(''), s, 'الإجمالي ←') : '<div class="list" style="border-radius:0 0 14px 14px"><div class="empty">لسه مفيش حركات الأسبوع ده</div></div>'}</section>`;
     }).join('')}
     ${ws.length > shown.length ? '<button class="more" id="aMore" type="button">اعرض أسابيع أقدم</button>' : ''}
     <p class="hint">"سلّمت" = التحويلات (إنستا/فودافون) + الكاش اللي سلمته لمصطفى.<br>"معايا" = اللي فضل معاك كاش من اليوم ده.</p>`;

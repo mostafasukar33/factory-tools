@@ -1381,7 +1381,18 @@ function runCounters(root) {
   });
 }
 const isoOf = ms => { const d = new Date(ms); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
-const todayISO = () => isoOf(Date.now());
+/* ساعة الشيت: الوقت اللي بيتسجل بيتاخد من الشيت مش من ساعة الجهاز. كل رد من الشيت فيه وقته (t)، وبنحفظ الفرق بينه وبين الجهاز (srvOff) ونطبّقه على أي وقت بيتسجل، حتى والنت مقطوع. لو الشيت قديم (من غير t) بنكمّل على آخر فرق محفوظ */
+let srvOff = 0; try { srvOff = +localStorage.getItem('fo_srvoff') || 0; } catch (e) {}
+const nowS = () => Date.now() + srvOff;
+function srvClock(j, t0) {
+  if (!j || typeof j.t !== 'number' || j.t < 1e12) return;
+  const t1 = Date.now(); if (t1 - t0 > 10000) return;   // رد بطيء = الفرق مش دقيق، نسيبه
+  const off = Math.round(j.t - (t0 + t1) / 2);
+  if (Math.abs(off - srvOff) < 2000) return;   // فرق ملّي ثانية من سرعة النت: منغيّرش الفرق علشان ترتيب التعديلات المتقاربة ميتهزّش
+  srvOff = off;
+  try { localStorage.setItem('fo_srvoff', String(srvOff)); } catch (e) {}
+}
+const todayISO = () => isoOf(nowS());
 /* يوم/شهر/سنة واليوم على اليمين: علامة الاتجاه (RLM) بتفصل الأرقام فتترتب من اليمين لليسار */
 const RLM = '\u200F';
 const dispDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `${d}${RLM}/${RLM}${m}${RLM}/${RLM}${y}` : ''; };
@@ -1484,7 +1495,7 @@ function flushSave() {
   saveChain = saveChain.then(async () => {
     try {
       await idbPut('vault', await seal(key, salt, snap));
-      await idbPut('meta', {pending: pendingRecs().length, at: Date.now()});
+      await idbPut('meta', {pending: pendingRecs().length, at: nowS()});
       saveFailed = false;
       if (snap === db) try { bridgeOut(); } catch (x) { console.error(x); }
     } catch (e) {
@@ -1495,8 +1506,8 @@ function flushSave() {
   });
   return saveChain;
 }
-const newId = p => p + Date.now().toString(36) + db.cfg.dev + Math.random().toString(36).slice(2, 7);
-function touch(r) { r.upd = Math.max(Date.now(), (r.upd || 0) + 1); }
+const newId = p => p + nowS().toString(36) + db.cfg.dev + Math.random().toString(36).slice(2, 7);
+function touch(r) { r.upd = Math.max(nowS(), (r.upd || 0) + 1); }
 
 /* ====================== الحسابات والأرصدة ====================== */
 const liveParties = () => db.parties.filter(p => !p.del);
@@ -1718,7 +1729,7 @@ function renderHome() {
   const probs = selfCheck();
   const au = db.cfg.audit;
   if (au && !au.ok) probs.unshift(au.msg);
-  const lb = db.cfg.lastBackup || 0, every = db.cfg.sheetOk ? 30 : 7, days = Math.floor((Date.now() - lb) / 86400000);
+  const lb = db.cfg.lastBackup || 0, every = db.cfg.sheetOk ? 30 : 7, days = Math.floor((nowS() - lb) / 86400000);
   $('#nlRem').innerHTML = nlAlert(); if ($('#nlRem [data-nl]')) $('#nlRem [data-nl]').onclick = nlModal;
   $('#chk').innerHTML = chkAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '');
   const bal = allBalances();
@@ -1817,7 +1828,7 @@ function partyModal(p) {
     const phone = normDigits($('#pmPh') ? $('#pmPh').value : '').trim(), note = ($('#pmNote') ? $('#pmNote').value : '').trim(), noTot = $('#pmNoTot').checked;
     if (isNew) {
       const amt = toP($('#pmAmt').value), date = $('#pmDate').value || todayISO();
-      const now = Date.now();
+      const now = nowS();
       const np = {id: newId('p_'), sec, name, phone, note, noTot, at: now, upd: now, del: false};
       db.parties.push(np); P.set(np.id, np);
       if (amt > 0) addEntry({party: np.id, kind: 'open', date, desc: 'رصيد أول المدة', dr: dir === 'dr' ? amt : 0, cr: dir === 'cr' ? amt : 0});
@@ -1950,7 +1961,7 @@ function fwBind(p) {
 
 let showX = false;
 function addEntry(o) {
-  const now = Date.now();
+  const now = nowS();
   const e = Object.assign({id: newId('e_'), kind: 'man', at: now, upd: now, del: false, hist: []}, o);
   db.entries.push(e); E.set(e.id, e); return e;
 }
@@ -2112,7 +2123,7 @@ function cancelledModal(e) {
   $('#emBack').onclick = () => { e.del = false; delete e.delAt; touch(e); saveDB(); closeModal(); route(); toast('رجعت الحركة ✔'); };
 }
 /* حفظ التعديل: النسخة القديمة بتتحفظ في hist */
-function snapshot(e) { const s = {t: Date.now(), kind: e.kind, date: e.date, desc: e.desc, dr: e.dr || 0, cr: e.cr || 0}; ['no', 'lines', 'disc', 'amt', 'method', 'note', 'vault', 'chk', 'dir'].forEach(k => { if (e[k] !== undefined) s[k] = JSON.parse(JSON.stringify(e[k])); }); return s; }
+function snapshot(e) { const s = {t: nowS(), kind: e.kind, date: e.date, desc: e.desc, dr: e.dr || 0, cr: e.cr || 0}; ['no', 'lines', 'disc', 'amt', 'method', 'note', 'vault', 'chk', 'dir'].forEach(k => { if (e[k] !== undefined) s[k] = JSON.parse(JSON.stringify(e[k])); }); return s; }
 async function cancelEntry(e) {
   if (isLocked(e.date)) return lockToast();
   /* الهاشمية قنا: مسح فاتورة اتنقلت عادي من غير أي تحذير (اللي في الأساسي بيفضل). التحذير مرة واحدة بس لو لسه متنقلتش */
@@ -2122,9 +2133,9 @@ async function cancelEntry(e) {
   if (e.chk && e.chk.bnc) { const b = E.get(e.chk.bnc); if (b && !b.del) aff.push(b); }
   if (e.kind === 'bnc') { const o = E.get(e.ref); if (o && o.chk && o.chk.st === 'b') aff.push(o); }
   const snap = aff.map(x => ({x, del: x.del, delAt: x.delAt, chk: x.chk ? JSON.parse(JSON.stringify(x.chk)) : undefined}));
-  e.del = true; e.delAt = Date.now(); touch(e);
+  e.del = true; e.delAt = nowS(); touch(e);
   /* الدفعة اللي بشيك مرتجع: الشيك المرتجع بيتلغي معاها. والشيك المرتجع لو اتلغى، الشيك بيرجع "لسه" */
-  if (e.chk && e.chk.bnc) { const b = E.get(e.chk.bnc); if (b && !b.del) { b.del = true; b.delAt = Date.now(); touch(b); } }
+  if (e.chk && e.chk.bnc) { const b = E.get(e.chk.bnc); if (b && !b.del) { b.del = true; b.delAt = nowS(); touch(b); } }
   if (e.kind === 'bnc') { const o = E.get(e.ref); if (o && o.chk && o.chk.st === 'b') { o.chk = Object.assign({}, o.chk, {st: 'p', bnc: ''}); touch(o); } }
   saveDB(); closeModal(); route();
   toastUndo('اتلغت "' + docDesc(e) + '"', () => {
@@ -2430,14 +2441,14 @@ function entryModal(p, e) {
     if (isNew) { addEntry({party: p.id, kind, date, desc, dr, cr}); toast('اتسجلت الحركة ✔'); }
     else {
       if (e.date === date && e.desc === desc && (e.dr || 0) === dr && (e.cr || 0) === cr && e.kind === kind) return closeModal();
-      (e.hist = e.hist || []).push({t: Date.now(), date: e.date, desc: e.desc, dr: e.dr || 0, cr: e.cr || 0, kind: e.kind});
+      (e.hist = e.hist || []).push({t: nowS(), date: e.date, desc: e.desc, dr: e.dr || 0, cr: e.cr || 0, kind: e.kind});
       Object.assign(e, {date, desc, dr, cr, kind}); touch(e); toast('اتعدّلت الحركة ✔ (والنسخة القديمة محفوظة)');
     }
     saveDB(); closeModal(); route();
   };
   if (!isNew) $('#emDel').onclick = async () => {
     if (isLocked(e.date)) return lockToast();
-    e.del = true; e.delAt = Date.now(); touch(e); saveDB(); closeModal(); route();
+    e.del = true; e.delAt = nowS(); touch(e); saveDB(); closeModal(); route();
     toastUndo('اتلغت الحركة', () => { e.del = false; delete e.delAt; touch(e); saveDB(); route(); toast('رجعت الحركة ✔'); });
   };
 }
@@ -2573,7 +2584,7 @@ function invOnlyModal(p, e) {
 }
 function buildStmtPages(p, s) {
   const box = $('#render'); box.innerHTML = '';
-  const phone = db.cfg.phone, issued = Date.now();
+  const phone = db.cfg.phone, issued = nowS();
   const shell = first => {
     const pg = document.createElement('div'); pg.className = 'pg';
     pg.innerHTML = `<div class="strip"></div><div class="in">` + (first
@@ -2667,7 +2678,7 @@ const scriptFor = () => `// حسابات فلاش أون (مقفول بمفتا�
 const SHEET = 'السجلات';
 const HEAD = ['id','النوع','آخر تعديل','رقم المزامنة','ملغي','التاريخ','الحساب','القسم','البيان','مدين','دائن','البيانات (لا تعدّلها)'];
 const W = HEAD.length;
-const VER = 2;   /* 2 = السحب بيرد على طول لو مفيش جديد، وبيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس */
+const VER = 3;   /* 3 = كل رد فيه وقت الشيت t. 2 = السحب بيرد على طول لو مفيش جديد، وبيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس */
 const PAGE = 1500;
 function sh_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -2751,10 +2762,10 @@ function pull_(since) {
   const rows = page.map(x => { const r = got[x[1]]; try { return {id: String(r[0]), kind: String(r[1]), upd: Number(r[2]), del: r[4] === 'نعم', data: JSON.parse(r[W - 1])}; } catch (e) { return null; } }).filter(Boolean);
   return {ok: true, rows: rows, next: page.length ? page[page.length - 1][0] : since, more: v.length > page.length, v: VER};
 }
-function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }`;
+function out_(o) { o.t = Date.now(); return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }   // t = وقت الشيت، التطبيق بيستخدمه بدل ساعة الجهاز`;
 /* نسخة كود شيت الحسابات اللي البرنامج مستنيها. القديم (1) بيفضل شغال عادي بس أبطأ مع كتر الحركات، فبيظهر تحذير أصفر بس.
    النسخة بتيجي من رد السحب (v) ومن ping (ومعاه لينك الجدول نفسه url علشان زرار التحديث يفتحه على طول) */
-const ACC_VER = 2;
+const ACC_VER = 3;
 function accNote(j) {
   if (!db || !j || j.ok !== true) return;
   const v = Number(j.v) || 1, c = db.cfg;
@@ -2766,9 +2777,11 @@ const accOld = () => !!(db && db.cfg.sheetOk && db.cfg.accV && db.cfg.accV < ACC
 async function callSheet(body, url = db.cfg.sheetUrl, key = db.cfg.sheetKey, ms = 45000) {
   const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
   try {
+    const t0 = Date.now();
     const resp = await fetch(url, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify(Object.assign({key}, body)), signal: ctl.signal});
     const txt = await resp.text();
-    try { return JSON.parse(txt); } catch (e) { const x = new Error('page'); x.code = 'page'; throw x; }
+    let j; try { j = JSON.parse(txt); } catch (e) { const x = new Error('page'); x.code = 'page'; throw x; }
+    srvClock(j, t0); return j;
   } finally { clearTimeout(tm); }
 }
 const pendingRecs = () => db ? Object.entries(STORE).flatMap(([k, a]) => db[a].filter(r => r.sy !== r.upd && r.big !== r.upd).map(r => [k, r])) : [];
@@ -2854,7 +2867,7 @@ async function syncNow(manual) {
         const c = cur && cur.sy !== undefined && cur.sy !== cur.upd && r.upd !== cur.sy && r.upd !== cur.upd
           && !sameData(cur, Object.assign({}, r.data, {del: !!r.del})) ? {mine: recSum(r.kind, cur), mu: cur.upd} : null;
         if (mergeRow(r)) got++;
-        if (c) clash.push({at: Date.now(), id: r.id, kind: r.kind, here: c.mu > r.upd, mine: c.mine, theirs: recSum(r.kind, Object.assign({}, r.data, {del: !!r.del}))});
+        if (c) clash.push({at: nowS(), id: r.id, kind: r.kind, here: c.mu > r.upd, mine: c.mine, theirs: recSum(r.kind, Object.assign({}, r.data, {del: !!r.del}))});
       });
       db.cfg.cursor = j.next; more = !!j.more;
     }
@@ -2887,12 +2900,12 @@ async function syncNow(manual) {
       if (v && v.app === 'fo-acc') accNote(v);
       const total = Object.values(STORE).reduce((n, a) => n + db[a].length, 0) - bigRecs().filter(r => r.sy === undefined).length;
       if (!v || v.ok !== true || !(v.n >= total)) {
-        const retry = Date.now() - (db.cfg.vfAt || 0) > 180000;
-        if (retry) { db.cfg.vfAt = Date.now(); Object.values(STORE).forEach(a => db[a].forEach(r => { delete r.sy; })); }
+        const retry = nowS() - (db.cfg.vfAt || 0) > 180000;
+        if (retry) { db.cfg.vfAt = nowS(); Object.values(STORE).forEach(a => db[a].forEach(r => { delete r.sy; })); }
         const x = new Error(`الشيت فيه ${v && v.n !== undefined ? v.n : '؟'} سجل بس والجهاز فيه ${total}${retry ? '، هعيد الإرسال' : ''}`); x.srv = true; throw x;
       }
     }
-    db.cfg.lastSync = lastPullAt = Date.now();
+    db.cfg.lastSync = nowS(); lastPullAt = Date.now();
     await flushSave();
     if (got) bridgeOut();
     if (manual) toast(got ? `اتبعت كل حاجة، ونزل ${got} سجل جديد ✔` : 'كل حاجة متسجلة على الشيت ✔');
@@ -3295,7 +3308,7 @@ const IMP_KINDS = ['inv', 'pay', 'pur', 'ppay', 'open', 'man'];
 function readImport(d) {
   const errs = [];
   if (!d || d.app !== 'flash-on-accounts-import' || !Array.isArray(d.parties) || !Array.isArray(d.entries) || !d.batch) return {errs: ['الملف ده مش ملف نقل بتاع الحسابات']};
-  const bt = String(d.batch).replace(/[^\w]/g, ''), upd = +d.made || Date.now();
+  const bt = String(d.batch).replace(/[^\w]/g, ''), upd = +d.made || nowS();
   const isInt = (n, min = 0) => Number.isInteger(n) && n >= min;
   const parties = [], byRef = new Map();
   d.parties.forEach((x, i) => {
@@ -3367,7 +3380,7 @@ function importModal(r) {
 /* ملف النسخة الاحتياطية (متقفل بكلمة السر): نفسه بيتنزل من الإعدادات وبيتبعت على تليجرام كل يوم (tgAfterSync) */
 async function backupData() {
   const box = await seal(cryptoKey, saltU8, Object.fromEntries(Object.values(STORE).map(a => [a, db[a].map(stripLocal)])));
-  return Object.assign({app: 'flash-on-accounts-backup', exportedAt: new Date().toISOString(), parties: liveParties().length, entries: liveEntries().length}, box);
+  return Object.assign({app: 'flash-on-accounts-backup', exportedAt: new Date(nowS()).toISOString(), parties: liveParties().length, entries: liveEntries().length}, box);
 }
 async function backupNow() {
   const name = `flash-on-accounts-${todayISO()}.json`;
@@ -3382,7 +3395,7 @@ async function backupNow() {
     try { const w = await fh.createWritable(); await w.write(blob); await w.close(); }
     catch (e) { console.error(e); return toast('معرفتش أحفظ في المكان ده. جرّب مكان تاني.'); }
   } else downloadBlob(blob, name);
-  db.cfg.lastBackup = Date.now(); saveDB(); renderHome();
+  db.cfg.lastBackup = nowS(); saveDB(); renderHome();
   toast(`✔ اتحفظت نسخة من كل الحسابات (${liveParties().length} حساب، ${liveEntries().length} حركة)${fh ? ' في المكان اللي اخترته' : ''}. متقفلة بكلمة السر، فاحتفظ بيها في مكان آمن.`, 6000);
 }
 $('#bBackup').onclick = backupNow;
@@ -3658,7 +3671,7 @@ function renderCash() {
 const ADJ = {inc: ['c_adj_in', 'تسوية جرد — زيادة'], exp: ['c_adj_out', 'تسوية جرد — عجز']};
 function ensureAdjCat(type) {
   const [id, name] = ADJ[type];
-  if (!IDX.cat.get(id)) { const now = Date.now(); const r = {id, type, name, ord: 98, upd: now, del: false}; db.cats.push(r); IDX.cat.set(id, r); }
+  if (!IDX.cat.get(id)) { const now = nowS(); const r = {id, type, name, ord: 98, upd: now, del: false}; db.cats.push(r); IDX.cat.set(id, r); }
   return id;
 }
 function openingModal() {
@@ -3679,7 +3692,7 @@ function openingModal() {
       const d = toP(el.value) - vaultBal(v.id); if (!d) return;
       if (!moved(v)) { v.open = (v.open || 0) + d; touch(v); }
       else {
-        const type = d > 0 ? 'inc' : 'exp', now = Date.now();
+        const type = d > 0 ? 'inc' : 'exp', now = nowS();
         const r = {id: newId('t_'), type, amt: Math.abs(d), vault: v.id, to: '', cat: ensureAdjCat(type), date: todayISO(), note: `جرد: الموجود فعلاً ${fmtP(toP(el.value))}`, at: now, upd: now, del: false, hist: []};
         db.txs.push(r); IDX.tx.set(r.id, r);
       }
@@ -3741,17 +3754,17 @@ function txModal(type, t) {
     if (type === 'tr' && o.to === vault) return toast('اختار خزنتين مختلفتين');
     if (type !== 'tr' && !o.cat) return toast('اختار البند');
     if (isLocked(date)) return lockToast();
-    if (isNew) { const now = Date.now(); const r = Object.assign({id: newId('t_'), at: now, upd: now, del: false, hist: []}, o); db.txs.push(r); IDX.tx.set(r.id, r); toast('اتسجلت ✔'); }
+    if (isNew) { const now = nowS(); const r = Object.assign({id: newId('t_'), at: now, upd: now, del: false, hist: []}, o); db.txs.push(r); IDX.tx.set(r.id, r); toast('اتسجلت ✔'); }
     else {
       if (['amt', 'date', 'note', 'vault', 'to', 'cat'].every(k => (t[k] || '') === (o[k] || ''))) return closeModal();
-      (t.hist = t.hist || []).push({t: Date.now(), date: t.date, desc: `${TXT[t.type]} ${t.type === 'tr' ? vName(t.vault) + ' ← ' + vName(t.to) : cName(t.cat) + ' — ' + vName(t.vault)}`, dr: t.amt, cr: 0});
+      (t.hist = t.hist || []).push({t: nowS(), date: t.date, desc: `${TXT[t.type]} ${t.type === 'tr' ? vName(t.vault) + ' ← ' + vName(t.to) : cName(t.cat) + ' — ' + vName(t.vault)}`, dr: t.amt, cr: 0});
       Object.assign(t, o); touch(t); toast('اتعدّلت ✔');
     }
     if (type !== 'tr') rememberVault('نقدي', vault); saveDB(); closeModal(); route();
   };
   if (!isNew) $('#txDel').onclick = async () => {
     if (!(await confirmBox(`تلغي ${TXT[t.type]} ${fmtP(t.amt)}؟ هتفضل محفوظة كـ "ملغية".`, 'ألغيها', true))) return;
-    t.del = true; t.delAt = Date.now(); touch(t); saveDB(); closeModal(); route(); toast('اتلغت');
+    t.del = true; t.delAt = nowS(); touch(t); saveDB(); closeModal(); route(); toast('اتلغت');
   };
 }
 /* إدارة الخزن والبنود */
@@ -3784,7 +3797,7 @@ function editVault(v) {
     const name = $('#evN').value.trim(), open = toP($('#evO').value);
     if (!name) return toast('اكتب اسم الخزنة');
     if (v) { Object.assign(v, {name, open}); touch(v); }
-    else { const now = Date.now(); const r = {id: newId('v_'), name, open, ord: vaultsL().length, at: now, upd: now, del: false}; db.vaults.push(r); IDX.vault.set(r.id, r); }
+    else { const now = nowS(); const r = {id: newId('v_'), name, open, ord: vaultsL().length, at: now, upd: now, del: false}; db.vaults.push(r); IDX.vault.set(r.id, r); }
     saveDB(); vaultSettings();
   };
   if ($('#evDel')) $('#evDel').onclick = () => { v.del = true; touch(v); saveDB(); vaultSettings(); };
@@ -3798,7 +3811,7 @@ function editCat(type, c) {
   $('#ecOk').onclick = () => {
     const name = $('#ecN').value.trim(); if (!name) return toast('اكتب اسم البند');
     if (c) { c.name = name; touch(c); }
-    else { const now = Date.now(); const r = {id: newId('c_'), type, name, ord: Math.max(-1, ...db.cats.filter(x => x.type === type).map(x => x.ord || 0)) + 1, upd: now, del: false}; db.cats.push(r); IDX.cat.set(r.id, r); }
+    else { const now = nowS(); const r = {id: newId('c_'), type, name, ord: Math.max(-1, ...db.cats.filter(x => x.type === type).map(x => x.ord || 0)) + 1, upd: now, del: false}; db.cats.push(r); IDX.cat.set(r.id, r); }
     saveDB(); vaultSettings();
   };
   if (c) $('#ecDel').onclick = () => { c.del = true; touch(c); saveDB(); vaultSettings(); toast('اتشال البند (الحركات القديمة بتفضل باسمه)'); };
@@ -3837,8 +3850,8 @@ const partName = id => { const s = partners(), p = s && s.list.find(x => x.id ==
 const ptKind = t => t.cat === 'c_pdraw' ? 'draw' : 'sal';
 let apAt = 0;
 function autoPartners(force) {
-  if (!db || (!force && Date.now() - apAt < 30000)) return 0;
-  apAt = Date.now();
+  if (!db || (!force && nowS() - apAt < 30000)) return 0;
+  apAt = nowS();
   const s = partners(); if (!s || !s.on || !(s.amt > 0) || !s.start) return 0;
   ensureVaults(); ensurePartCats();
   const v = IDX.vault.get(s.vault), vault = v && !v.del ? s.vault : defVault();
@@ -3889,7 +3902,7 @@ function partnerSettings() {
       const name = el.value.trim(); if (!name) return;
       const cur = list.find(p => p.id === el.dataset.p && el.dataset.p);
       if (cur) cur.name = name;
-      else { let id; do { id = 'p' + Date.now().toString(36) + (k++); } while (list.some(p => p.id === id)); list.push({id, name, from: t}); }
+      else { let id; do { id = 'p' + nowS().toString(36) + (k++); } while (list.some(p => p.id === id)); list.push({id, name, from: t}); }
     });
     if (!list.some(p => !p.to)) return toast('اكتب اسم شريك واحد على الأقل');
     putSet('partners', {on: true, amt, vault: $('#psV').value, start, list});
@@ -3926,17 +3939,17 @@ function partnerTxModal(t, kind = 'draw', ptId = '') {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');
     if (isLocked(date)) return lockToast();
     const o = {type: 'exp', amt, date, vault, to: '', cat: PART_CATS[kind][0], pt, pnote, note: `${PK[kind]} ${partName(pt)}${pnote ? ' — ' + pnote : ''}`};
-    if (isNew) { const now = Date.now(); const r = Object.assign({id: newId('t_'), at: now, upd: now, del: false, hist: []}, o); db.txs.push(r); IDX.tx.set(r.id, r); toast('اتسجلت ✔'); }
+    if (isNew) { const now = nowS(); const r = Object.assign({id: newId('t_'), at: now, upd: now, del: false, hist: []}, o); db.txs.push(r); IDX.tx.set(r.id, r); toast('اتسجلت ✔'); }
     else {
       if (['amt', 'date', 'vault', 'cat', 'pt', 'pnote'].every(k => (t[k] || '') === (o[k] || ''))) return closeModal();
-      (t.hist = t.hist || []).push({t: Date.now(), date: t.date, desc: `${PK[ptKind(t)]} ${partName(t.pt)} — ${vName(t.vault)}`, dr: t.amt, cr: 0});
+      (t.hist = t.hist || []).push({t: nowS(), date: t.date, desc: `${PK[ptKind(t)]} ${partName(t.pt)} — ${vName(t.vault)}`, dr: t.amt, cr: 0});
       Object.assign(t, o); touch(t); toast('اتعدّلت ✔');
     }
     saveDB(); closeModal(); route();
   };
   if (!isNew) $('#ptDel').onclick = async () => {
     if (!(await confirmBox(`تلغي ${PK[kind]} ${partName(t.pt)} ${fmtP(t.amt)}؟ هتفضل محفوظة كـ "ملغية"${t.auto ? '، ومش هتتسجل تاني' : ''}.`, 'ألغيها', true))) return;
-    t.del = true; t.delAt = Date.now(); touch(t); saveDB(); closeModal(); route(); toast('اتلغت');
+    t.del = true; t.delAt = nowS(); touch(t); saveDB(); closeModal(); route(); toast('اتلغت');
   };
 }
 let partMode = 'month', partMonth = '', partYear = '';
@@ -3986,7 +3999,7 @@ function renderPartners() {
   if ($('#ptYear')) $('#ptYear').onchange = () => { partYear = normDigits($('#ptYear').value).replace(/\D/g, '').slice(0, 4); renderPartners(); };
   $$('#p-part tr[data-i]').forEach(el => el.onclick = () => partnerTxModal(mv[+el.dataset.i]));
 }
-const tsOfDate = (date, at) => { const [y, m, d] = date.split('-').map(Number), t = new Date(at || Date.now()); return new Date(y, m - 1, d, t.getHours(), t.getMinutes()).getTime(); };
+const tsOfDate = (date, at) => { const [y, m, d] = date.split('-').map(Number), t = new Date(at || nowS()); return new Date(y, m - 1, d, t.getHours(), t.getMinutes()).getTime(); };
 function payName(e) { const p = P.get(e.party); return (p ? p.name : '') + (e.note ? ' — ' + e.note : ''); }
 let bridgeBusy = false, lockedFromCash = 0;
 function bridgeOut() {
@@ -4107,9 +4120,9 @@ let cashSyncing = false, cashSyncAt = 0, cashSyncErr = '';
 const FIXED_CASH_CATS = new Set(['c_payout', 'c_mkexp', 'c_psal', 'c_pdraw']);
 async function cashSync(force) {
   if (!db || cashSyncing) return false;
-  if (!force && Date.now() - cashSyncAt < 60000) return false;
+  if (!force && nowS() - cashSyncAt < 60000) return false;
   const cr = cashCreds(); if (!cr) return false;
-  cashSyncing = true; cashSyncAt = Date.now();
+  cashSyncing = true; cashSyncAt = nowS();
   try {
     bridgeOut();
     const call = body => callSheet(body, cr.u, cr.k);
@@ -4128,7 +4141,7 @@ async function cashSync(force) {
       batch.forEach(([kk, r], i) => { if (r.upd === rows[i].upd) r.sy = rows[i].upd; });
       p = pend();
     }
-    c.lastSync = Date.now(); writeCash(c);
+    c.lastSync = nowS(); writeCash(c);
     cashSyncErr = '';
     const n = bridgeIn(); bridgeOut();
     if ((got || n) && !$('#mask').classList.contains('on')) route();
@@ -4358,7 +4371,7 @@ async function undoCheck(e) {
   const st = e.chk.st;
   if (!(await confirmBox(st === 'c' ? 'ترجّع الشيك "لسه متصرفش"؟ الفلوس هتطلع من الخزنة تاني.' : 'ترجّع الشيك "لسه"؟ "الشيك المرتجع" هيتلغي والرصيد يرجع زي ما كان.', 'أيوه'))) return;
   (e.hist = e.hist || []).push(snapshot(e));
-  if (st === 'b') { const b = E.get(e.chk.bnc); if (b && !b.del) { if (isLocked(b.date)) return lockToast(); b.del = true; b.delAt = Date.now(); touch(b); } }
+  if (st === 'b') { const b = E.get(e.chk.bnc); if (b && !b.del) { if (isLocked(b.date)) return lockToast(); b.del = true; b.delAt = nowS(); touch(b); } }
   e.chk = Object.assign({}, e.chk, {st: 'p', cdate: '', bnc: ''}); e.vault = ''; touch(e);
   saveDB(); route(); toast('رجع "لسه" ✔');
 }
@@ -4862,7 +4875,7 @@ function renderJrd() {
     const st = toP(sIn.value);
     if (st < 0) return toast('لا يجوز أن تكون قيمة المخزون بالسالب');
     if (!st && !(await confirmBox('لم تُدخل قيمة المخزون (صفر). هل تريد حفظ الجرد بهذه القيمة؟', 'حفظ'))) return;
-    const now = Date.now(), cur = jrdSaved().find(s => s.date === d), o = {date: d, stock: st, n: JSON.parse(JSON.stringify(n))};
+    const now = nowS(), cur = jrdSaved().find(s => s.date === d), o = {date: d, stock: st, n: JSON.parse(JSON.stringify(n))};
     if (cur) { (cur.hist = cur.hist || []).push({t: now, date: cur.date, desc: `جرد — المخزون ${fmtP(cur.stock)}، صافي ${fmtP(jrdTot(cur.n, cur.stock).net)}`, dr: 0, cr: 0}); Object.assign(cur, o); touch(cur); }
     else { const r = Object.assign({id: newId('jr_'), at: now, upd: now, del: false, hist: []}, o); db.stks.push(r); IDX.stk.set(r.id, r); }
     jrStock = null; saveDB(); renderJrd(); toast('تم حفظ الجرد ✔');
@@ -4883,7 +4896,7 @@ function renderJrdSaved(id) {
   $$('#p-jrd tr[data-iv]').forEach(el => el.onclick = () => go('jrd/iv/' + el.dataset.iv));
   $('#jsDel').onclick = async () => {
     if (!(await confirmBox(`هل تريد إلغاء جرد ${dispDate(s.date)}؟ سيبقى محفوظاً بحالة «ملغي».`, 'إلغاء', true))) return;
-    s.del = true; s.delAt = Date.now(); touch(s); saveDB(); go('jrd'); toast('تم الإلغاء');
+    s.del = true; s.delAt = nowS(); touch(s); saveDB(); go('jrd'); toast('تم الإلغاء');
   };
 }
 function renderIvList() {
@@ -5024,7 +5037,7 @@ function ivMoveModal(v, kind, m, month) {
     if (kind === 'exp' && !note) return toast('أدخل بيان المصروف');
     if (isLocked(date)) return lockToast();
     if (kind === 'prof' && db.ivrs.some(x => !x.del && x !== r && x.iv === v.id && x.k === 'prof' && x.m === mo)) return toast(`ربح شهر ${monthName(mo)} مسجَّل بالفعل. افتحه من الكشف إن أردت تعديله.`, 5000);
-    const now = Date.now(), wantTx = !!vault;
+    const now = nowS(), wantTx = !!vault;
     const desc = x => `${IVM[kind]} ${v.name} ${fmtP(x.amt)}${x.vault ? ' — ' + vName(x.vault) : ''}`;
     if (r && wantTx === !!isTx) {
       const same = isTx ? r.amt === amt && r.date === date && r.vault === vault && (r.pnote || '') === note : r.amt === amt && r.date === date && (r.note || '') === note && (r.m || '') === mo;
@@ -5049,7 +5062,7 @@ function ivMoveModal(v, kind, m, month) {
   };
   if (!isNew) $('#imDel').onclick = async () => {
     if (!(await confirmBox(`هل تريد إلغاء ${IVM[kind]} ${v.name} ${fmtP(r.amt)}؟ ستبقى محفوظة بحالة «ملغاة».`, 'إلغاء', true))) return;
-    r.del = true; r.delAt = Date.now(); touch(r); saveDB(); closeModal(); route(); toast('تم الإلغاء');
+    r.del = true; r.delAt = nowS(); touch(r); saveDB(); closeModal(); route(); toast('تم الإلغاء');
   };
 }
 /* شحنة المساهم المربوط بعميل: الأصناف والأعداد من الفاتورة، وانت بتكتب ربح الواحدة والنقل. تقدر تمسح سطر أو تضيف */
@@ -5090,7 +5103,7 @@ function ivShipModal(v, r, e) {
     if (ls.some(l => l.u === null)) return toast('أدخل ربح الوحدة لكل صنف (أو 0 إن لم يكن له ربح)', 4500);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختر التاريخ');
     if (isLocked(date)) return lockToast();
-    const now = Date.now(), o = {date, lines: ls, fr, site};
+    const now = nowS(), o = {date, lines: ls, fr, site};
     if (r) {
       if (JSON.stringify([r.date, r.lines, r.fr || 0, r.site || '']) === JSON.stringify([date, ls, fr, site]) && !$('#shRe')) return closeModal();
       (r.hist = r.hist || []).push({t: now, date: r.date, desc: `شحنة ${v.name}: ${(r.lines || []).length} صنف، صافي ${fmtP(ivShipNet(r))}`, dr: Math.max(0, ivShipNet(r)), cr: 0});
@@ -5103,7 +5116,7 @@ function ivShipModal(v, r, e) {
   };
   if (!isNew) $('#shDel').onclick = async () => {
     if (!(await confirmBox(`هل تريد إلغاء شحنة ${dispDate(r.date)}؟ ${r.src && src && !src.del ? 'ستعود الفاتورة إلى حالة «بانتظار الربح». ' : ''}ستبقى محفوظة بحالة «ملغاة».`, 'إلغاء', true))) return;
-    r.del = true; r.delAt = Date.now(); touch(r); saveDB(); closeModal(); route(); toast('تم الإلغاء');
+    r.del = true; r.delAt = nowS(); touch(r); saveDB(); closeModal(); route(); toast('تم الإلغاء');
   };
 }
 const ivCustOpts = sel => liveParties().filter(p => p.sec !== 'sup').sort((a, b) => a.name.localeCompare(b.name, 'ar'))
@@ -5128,7 +5141,7 @@ function ivpModal(v) {
     if (!name) return toast('أدخل الاسم');
     if (mode === 'c' && !party) return toast('اختر حساب العميل');
     if (ivList().some(x => x !== v && norm(x.name) === norm(name))) return toast('يوجد مساهم بنفس الاسم');
-    const now = Date.now(), o = {name, mode, party, from};
+    const now = nowS(), o = {name, mode, party, from};
     if (v) { if (['name', 'mode', 'party', 'from'].every(k => (v[k] || '') === (o[k] || ''))) return closeModal(); Object.assign(v, o); touch(v); }
     else {
       const amt = toP($('#ipA').value), date = $('#ipD').value;
@@ -5206,7 +5219,7 @@ async function sheetAudit(manual) {
   }));
   const onlySheet = srv.size, ok = !missing && !behind && !ahead && !onlySheet;
   const msg = ok ? `✔ الجهاز والشيت متطابقين (${same} سجل)` : `الجهاز والشيت مش متطابقين: ${missing + ahead} سجل لسه موصلش الشيت، و${behind + onlySheet} سجل في الشيت لسه منزلش الجهاز`;
-  db.cfg.audit = {at: Date.now(), ok, msg}; flushSave();
+  db.cfg.audit = {at: nowS(), ok, msg}; flushSave();
   /* اللي ناقص الشيت يتعلّم إنه لسه متبعتش، واللي ناقص الجهاز ينزل من الأول */
   if (!ok) { toPush.forEach(r => delete r.sy); db.cfg.cursor = 0; }
   if (manual) {
@@ -5218,7 +5231,7 @@ async function sheetAudit(manual) {
   } else if (!ok) syncNow();
   if (!$('#mask').classList.contains('on')) route();
 }
-setInterval(() => { if (db && db.cfg.sheetOk && Date.now() - ((db.cfg.audit || {}).at || 0) > 86400000) sheetAudit(false); }, 60000);
+setInterval(() => { if (db && db.cfg.sheetOk && nowS() - ((db.cfg.audit || {}).at || 0) > 86400000) sheetAudit(false); }, 60000);
 
 /* ====================== سجل التعديلات ====================== */
 function auditModal() {
@@ -5340,7 +5353,7 @@ const SHEET = 'الحركات';
 const HEAD = ['id','النوع','آخر تعديل','رقم المزامنة','ملغي','الوقت','الاسم','المبلغ','الطريقة','الحالة','البيانات (لا تعدّلها)'];
 const W = HEAD.length;
 const TG = 'https://api.telegram.org/bot';
-const VER = 4;   /* 2 = نص تليجرام بييجي جاهز من تطبيق الشريك (data.tg). 3 = رسايل من الحسابات لمصطفى (نسخة احتياطية وملخص وتنبيه: tgmsg/tgdoc). 4 = السحب بيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس، والإرسال بيقرا عمود الـ id بس */
+const VER = 5;   /* 5 = كل رد فيه وقت الشيت t. 2 = نص تليجرام بييجي جاهز من تطبيق الشريك (data.tg). 3 = رسايل من الحسابات لمصطفى (نسخة احتياطية وملخص وتنبيه: tgmsg/tgdoc). 4 = السحب بيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس، والإرسال بيقرا عمود الـ id بس */
 const MW = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون كاش'};
 function sh_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -5522,7 +5535,7 @@ function tgTest_() {
   if (!st.token || !st.chat) return Object.assign(st, {sent: false});
   return Object.assign(st, {sent: tgSend_('✅ تنبيهات حركة السوق شغالة. أي حاجة شريكك يسجلها هتوصلك هنا.')});
 }
-function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }`;
+function out_(o) { o.t = Date.now(); return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }   // t = وقت الشيت، التطبيق بيستخدمه بدل ساعة الجهاز`;
 
 const MK_M = {cash: 'كاش', tr: 'تحويل', insta: 'إنستا', voda: 'فودافون'};   // tr = "تحويل لمصطفى" (الشريك بقى عنده كاش أو تحويل بس)
 const mkCreds = () => { const s = db && getSet('mktSheet', null); return s && s.u && s.k ? s : null; };
@@ -5554,7 +5567,7 @@ const mkPending = () => mkLive().filter(o => mkState(o) === 'new');
 function mkSetSt(opId, ch) {
   const d = mkDb(), id = 'st_' + opId;
   const s = d.st[id] = d.st[id] || {id, op: opId, ok: false, ov: 0, done: false, dv: 0, back: '', bv: 0, pid: '', upd: 0};
-  Object.assign(s, ch); s.upd = Math.max(Date.now(), (s.upd || 0) + 1); s.sy = 0;
+  Object.assign(s, ch); s.upd = Math.max(nowS(), (s.upd || 0) + 1); s.sy = 0;
 }
 /* المصروف بيوصل مصطفى كإشعار في الوارد، وهو بيختار: "سجّلها مصروف" (بند "مصاريف السوق" من خزنة السوق) أو "تجاهل" (mkIgnore). الشريك مبيشوفش أي حالة للمصروف ولا بيتقفل عليه.
    الشريك بيعدّل ويمسح أي حركة في أي وقت (بطلب صاحب المشروع)، حتى بعد ما مصطفى ينقلها: الحركة في الحسابات/الخزنة بتتعدل أو بتتمسح
@@ -5574,7 +5587,7 @@ function mkFollow() {
     }
     if (isE) (rec.hist = rec.hist || []).push(snapshot(rec));
     if (o.del) {
-      rec.del = true; rec.delAt = Date.now(); touch(rec);
+      rec.del = true; rec.delAt = nowS(); touch(rec);
       mkSetSt(o.id, {done: false, dv: 0}); n++;
       msgs.push(`🗑 شريكك مسح: ${mkLine(o)} — واتشالت من الحسابات`);
       return;
@@ -5611,7 +5624,7 @@ function mkIgnore(o) {
     <div class="g2"><button class="btn red" id="igOk" type="button">تجاهل</button><button class="btn line" id="igX" type="button">رجوع</button></div>`);
   $('#igX').onclick = closeModal;
   $('#igOk').onclick = () => {
-    if (rec && !rec.del) { rec.del = true; rec.delAt = Date.now(); touch(rec); }
+    if (rec && !rec.del) { rec.del = true; rec.delAt = nowS(); touch(rec); }
     mkSetSt(o.id, {ign: true, done: false, dv: 0, back: '', bv: 0});
     saveDB(); closeModal(); renderMkt(); renderMkHome(); mkSync(); toast('اتجاهلت المصروف');
   };
@@ -5640,7 +5653,7 @@ function mkAsSpay(o) {
   const old = IDX.tx.get('t_mk_' + o.id), live = old && !old.del, date = live ? old.date : isoOf(o.ts);
   if (isLocked(date)) return lockToast();
   mkSupPick(o, to => {
-    const pid = mkEnsureParty('sup', to), now = Date.now();
+    const pid = mkEnsureParty('sup', to), now = nowS();
     if (live) { old.del = true; old.delAt = now; touch(old); }
     mkMove(Object.assign({}, o, {t: 'spay'}), {pid, amt: o.amt, date, vault: live ? old.vault : MKV});
     const e = E.get('e_mk_' + o.id);
@@ -5657,7 +5670,7 @@ function mkAsExp(o) {
   $('#aeX').onclick = closeModal;
   $('#aeOk').onclick = () => {
     const date = e.date, vault = e.vault || MKV;
-    (e.hist = e.hist || []).push(snapshot(e)); e.del = true; e.delAt = Date.now(); touch(e);
+    (e.hist = e.hist || []).push(snapshot(e)); e.del = true; e.delAt = nowS(); touch(e);
     mkMove(o, {amt: o.amt, date, vault});
     flushSave(); closeModal(); route(); mkSync(); toast('رجعت مصروف ✔');
   };
@@ -5667,7 +5680,7 @@ function ensureMktVault() {
   ensureVaults();
   let ch = false;
   if (!IDX.cat.get('c_mkexp')) { const r = {id: 'c_mkexp', type: 'exp', name: 'مصاريف السوق', ord: 96, upd: 1, del: false}; db.cats.push(r); IDX.cat.set(r.id, r); ch = true; }
-  if (!IDX.vault.get('v_mkt')) { const r = {id: 'v_mkt', name: 'خزنة السوق', open: 0, ord: vaultsL().length, at: Date.now(), upd: 2, del: false}; db.vaults.push(r); IDX.vault.set(r.id, r); ch = true; }
+  if (!IDX.vault.get('v_mkt')) { const r = {id: 'v_mkt', name: 'خزنة السوق', open: 0, ord: vaultsL().length, at: nowS(), upd: 2, del: false}; db.vaults.push(r); IDX.vault.set(r.id, r); ch = true; }
   if (ch) saveDB();
 }
 /* الاقتراح الجاهز (مصطفى بيغيّره براحته): الكاش والمصروف ودفعة المورد ← خزنة السوق، الإنستا ← خزنة إنستا، الفودافون ← خزنة فودافون (أو آخر اختيار) */
@@ -5685,7 +5698,7 @@ const mkHandTo = () => { const r = (db.cfg.mkv || {}).handTo; return r && IDX.va
 function mkMove(o, f) {
   const rec = mkRec(o);
   if (rec && !rec.del) return false;
-  const now = Date.now();
+  const now = nowS();
   if (o.t === 'pay' || o.t === 'spay') {
     const x = {party: f.pid, kind: o.t === 'pay' ? 'pay' : 'ppay', date: f.date, amt: f.amt, method: o.t === 'pay' && o.m !== 'cash' ? 'تحويل' : 'نقدي', vault: f.vault,
       note: 'حركة السوق' + (o.t === 'spay' ? ' — دفعة مورد' : o.m === 'cash' ? '' : ' — ' + MK_M[o.m])};
@@ -5761,7 +5774,7 @@ function mkWantModal(p, back) {
   $('#wqOk').onclick = () => {
     const amt = toP($('#wqA').value); if (!(amt > 0)) return toast('اكتب المبلغ');
     const note = $('#wqN').value.trim().replace(/\s+/g, ' ');
-    mkWantPut(p.id, {amt, note, at: w && w.amt === amt && !mkWantGot(p.id, w).paid ? w.at : Date.now()});
+    mkWantPut(p.id, {amt, note, at: w && w.amt === amt && !mkWantGot(p.id, w).paid ? w.at : nowS()});
     done('✔ اتبعتت لشريكك');
   };
   if ($('#wqDel')) $('#wqDel').onclick = () => { mkWantPut(p.id, null); done('اتشال من قايمة التحصيل'); };
@@ -5852,7 +5865,7 @@ async function mkSyncOnce() {
     }
     if (mkReconcile()) ch = true;
     const fl = mkFollow(); if (fl.n) { ch = true; if (!first) edits = fl.msgs; }
-    mkErr = ''; mkLastOk = Date.now();
+    mkErr = ''; mkLastOk = nowS();
   } catch (e) { mkErr = String(e.message || e); }
   finally {
     mkBusy = false;
@@ -6171,7 +6184,7 @@ function mkEnsureParty(sec, to) {
   if (to.pid) return to.pid;
   const ex = liveParties().find(p => p.sec === sec && norm(p.name) === norm(to.newName));
   if (ex) return ex.id;
-  const now = Date.now(), np = {id: newId('p_'), sec, name: to.newName, phone: '', note: 'من حركة السوق', noTot: false, at: now, upd: now, del: false};
+  const now = nowS(), np = {id: newId('p_'), sec, name: to.newName, phone: '', note: 'من حركة السوق', noTot: false, at: now, upd: now, del: false};
   db.parties.push(np); P.set(np.id, np);
   return np.id;
 }
@@ -6221,7 +6234,7 @@ function mkInvQuick(o) {
     doc.desc = docDesc(doc);
     if (rec) { (rec.hist = rec.hist || []).push(snapshot(rec)); rec.del = false; delete rec.delAt; Object.assign(rec, doc, {party: p.id}); applyAmounts(rec); touch(rec); }   // كانت اتسجلت واتمسحت: بترجع نفس الفاتورة
     else { rec = addEntry(Object.assign({party: p.id, id: 'e_mk_' + o.id}, doc)); applyAmounts(rec); }
-    mkSetSt(o.id, {done: true, dv: o.upd, back: '', bv: 0, pid: p.id, mvAt: Date.now()});
+    mkSetSt(o.id, {done: true, dv: o.upd, back: '', bv: 0, pid: p.id, mvAt: nowS()});
     saveDB(); closeModal(); route(); renderMkHome(); mkSync();
     toast(`✔ اتنقلت على حساب ${p.name}. البنود اكتبها بعدين`, 3500);
   };
@@ -6357,7 +6370,7 @@ function mktHelp() {
     catch (e) { $('#mhShow').click(); const r = document.createRange(); r.selectNodeContents($('#mhCode')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('اضغط مطوّل على الكود واختار نسخ (Copy)', 6000); }
   };
 }
-const MK_VER = 4;
+const MK_VER = 5;
 /* تحديث كود شيت السوق (من الموبايل أو اللاب). بيتطلب بس لما VER يزيد: نص تنبيهات الشريك بييجي من التطبيق فمش محتاج تحديث */
 function mktUpdateHelp() {
   const code = marketScript(), wide = isWide(), su = db && db.cfg.mkSheetUrl;
@@ -6415,14 +6428,14 @@ async function tgBackup(once, t = todayISO()) {
   const data = await backupData();
   const j = await tgCall('tgdoc', {name: `flash-on-accounts-${t}.json`, text: JSON.stringify(data),
     caption: `💾 نسخة الحسابات ${dispDate(t)} (${data.parties} حساب، ${data.entries} حركة).\nمتقفلة بكلمة السر. علشان ترجّعها: الإعدادات ← استرجاع نسخة احتياطية.`, once: once ? {k: 'bk', v: t} : undefined});
-  if (j && j.sent && db) { db.cfg.lastBackup = Date.now(); flushSave(); }
+  if (j && j.sent && db) { db.cfg.lastBackup = nowS(); flushSave(); }
   return j;
 }
 let tgBusy = false;
-async function tgAfterSync(now = new Date()) {
+async function tgAfterSync(now = new Date(nowS())) {
   if (!db) return;
   const c = tgCfg(); if (c.fail0) { c.fail0 = 0; flushSave(); }
-  if (tgBusy || !mkCreds() || Date.now() - (c.old || 0) < 6 * 3600000) return;
+  if (tgBusy || !mkCreds() || nowS() - (c.old || 0) < 6 * 3600000) return;
   const o = tgOpts(), t = isoOf(now.getTime()), day = now.getHours() >= 20 ? t : dayBefore(t), d0 = db;
   const needBk = o.bk && c.bk !== t, needSum = o.sum && (c.sum || '') < day;
   if (!needBk && !needSum) return;
@@ -6431,7 +6444,7 @@ async function tgAfterSync(now = new Date()) {
     /* الأول نسأل الشيت (سؤال صغير): الكود جديد؟ والبوت شغال؟ علشان منبعتش ملف النسخة على الفاضي */
     const st = await tgCall('tgstate');
     if (!st || db !== d0) return;
-    if (!st.v || st.v < 3) { c.old = Date.now(); return; }
+    if (!st.v || st.v < 3) { c.old = nowS(); return; }
     if (!st.chat) { c.bk = t; c.sum = day; return; }   // مفيش بوت شغال: نجرب بكره
     if (needBk) {
       const j = await tgBackup(true, t);
@@ -6450,13 +6463,13 @@ async function tgAfterSync(now = new Date()) {
 async function tgAlarm(k, text, every = 6 * 3600000) {
   if (!db || !mkCreds() || !tgOpts().al) return;
   const a = tgCfg().al = tgCfg().al || {};
-  if (Date.now() - (a[k] || 0) < every) return;
-  a[k] = Date.now(); flushSave();
+  if (nowS() - (a[k] || 0) < every) return;
+  a[k] = nowS(); flushSave();
   const j = await tgCall('tgmsg', {text});
   if (!j && db) { a[k] = 0; flushSave(); }   // الشيت مردش (النت): نجرب المرة الجاية
 }
 function tgSyncFail() {
-  const c = tgCfg(), now = Date.now();
+  const c = tgCfg(), now = nowS();
   if (!c.fail0) { c.fail0 = now; return; }
   if (now - c.fail0 < TG_FAIL_MS) return;
   const n = pendingRecs().length;

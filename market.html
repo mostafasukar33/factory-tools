@@ -334,7 +334,18 @@ const norm = s => normDigits(s).toLowerCase().replace(/[أإآ]/g, 'ا').replace
 const fmt = p => { const a = Math.round(Math.abs(+p || 0)); return (a / 100).toLocaleString('en-US', {maximumFractionDigits: 2}); };
 const pad2 = n => String(n).padStart(2, '0');
 const dayOf = ms => { const d = new Date(ms); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
-const today = () => dayOf(Date.now());
+/* ساعة الشيت: الوقت اللي بيتسجل بيتاخد من الشيت مش من ساعة الجهاز. كل رد من الشيت فيه وقته (t)، وبنحفظ الفرق بينه وبين الجهاز (srvOff) ونطبّقه على أي وقت بيتسجل، حتى والنت مقطوع. لو الشيت قديم (من غير t) بنكمّل على آخر فرق محفوظ */
+let srvOff = 0; try { srvOff = +localStorage.getItem('fo_srvoff') || 0; } catch (e) {}
+const nowS = () => Date.now() + srvOff;
+function srvClock(j, t0) {
+  if (!j || typeof j.t !== 'number' || j.t < 1e12) return;
+  const t1 = Date.now(); if (t1 - t0 > 10000) return;   // رد بطيء = الفرق مش دقيق، نسيبه
+  const off = Math.round(j.t - (t0 + t1) / 2);
+  if (Math.abs(off - srvOff) < 2000) return;   // فرق ملّي ثانية من سرعة النت: منغيّرش الفرق علشان ترتيب التعديلات المتقاربة ميتهزّش
+  srvOff = off;
+  try { localStorage.setItem('fo_srvoff', String(srvOff)); } catch (e) {}
+}
+const today = () => dayOf(nowS());
 const timeOf = ms => { const d = new Date(ms), h = d.getHours(); return `${h % 12 || 12}:${pad2(d.getMinutes())} ${h < 12 ? 'ص' : 'م'}`; };
 /* طريقتين بس للدفعة الجديدة: فلوس معايا أو تحويل لمصطفى (إنستا/فودافون القديمة بتفضل تتعرض زي ما هي) */
 const M_BTN = {cash: '💵 فلوس معايا', tr: '📲 تحويل لمصطفى'};
@@ -349,7 +360,7 @@ const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'ماي�
 const shortD = iso => { const [, m, d] = iso.split('-'); return `${+d}${RLM}/${RLM}${+m}`; };      // يوم/شهر
 const monLabel = ym => `${MONTHS[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
 /* التاريخ المختار: نفس ساعة الحركة (أو دلوقتي) على اليوم ده */
-const tsOnDay = (iso, base) => { if (iso === today() && !base) return Date.now(); const [y, m, d] = iso.split('-').map(Number), b = new Date(base || Date.now()); return new Date(y, m - 1, d, b.getHours(), b.getMinutes(), b.getSeconds()).getTime(); };
+const tsOnDay = (iso, base) => { if (iso === today() && !base) return nowS(); const [y, m, d] = iso.split('-').map(Number), b = new Date(base || nowS()); return new Date(y, m - 1, d, b.getHours(), b.getMinutes(), b.getSeconds()).getTime(); };
 const datePick = (id, iso) => `<div class="dpk"><button type="button" data-st="-1" aria-label="اليوم اللي قبله">›</button><label class="pick dt" for="${id}">📅 <b id="${id}T"></b><input type="date" id="${id}" value="${iso}" max="${today()}"></label><button type="button" data-st="1" aria-label="اليوم اللي بعده">‹</button></div>`;
 const bindDate = id => {
   const i = $('#' + id), box = i.closest('.dpk'), nx = box.querySelector('[data-st="1"]');
@@ -374,8 +385,8 @@ load();
 /* تخزين دائم: من غيره المتصفح ممكن يمسح بيانات التطبيق لوحده لو مساحة الموبايل قلّت (والحركات اللي لسه متبعتتش تضيع) */
 let stoP = null;
 (async () => { try { const st = navigator.storage; if (st && st.persist) stoP = (st.persisted && await st.persisted()) || await st.persist(); } catch (e) { stoP = false; } })();
-const newId = () => 'm_' + Date.now().toString(36) + S.dev + Math.random().toString(36).slice(2, 6);
-const bump = o => { o.upd = Math.max(Date.now(), (o.upd || 0) + 1); };
+const newId = () => 'm_' + nowS().toString(36) + S.dev + Math.random().toString(36).slice(2, 6);
+const bump = o => { o.upd = Math.max(nowS(), (o.upd || 0) + 1); };
 
 /* رابط الربط: فيه لينك شيت السوق ومفتاحه بعد علامة # (مبيتبعتش لأي سيرفر) */
 const unb64u = str => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
@@ -457,7 +468,7 @@ const opHow = o => o.t === 'rt' ? 'مرتجع/شغل' + (o.note ? ' — ' + o.no
 const pending = () => Object.values(S.ops).filter(o => o.sy !== o.upd);
 /* حركة مستنية تتبعت من أكتر من ساعة (من آخر مرة اتسجلت أو اتعدّلت) = تنبيه أحمر فوق في كل الشاشات */
 const STUCK_MS = 3600000;
-const stuckOps = () => pending().filter(o => Date.now() - (o.upd || 0) > STUCK_MS);
+const stuckOps = () => pending().filter(o => nowS() - (o.upd || 0) > STUCK_MS);
 function drawStuck() {
   const b = $('#stuck'); if (!b) return;
   const n = S.u ? stuckOps().length : 0;
@@ -473,8 +484,9 @@ let online = null, syncing = false, again = false;
 async function callSheet(body, ms = 25000) {
   const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
   try {
+    const t0 = Date.now();
     const r = await fetch(S.u, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify(Object.assign({key: S.k}, body)), signal: ctl.signal});
-    return JSON.parse(await r.text());
+    const j = JSON.parse(await r.text()); srvClock(j, t0); return j;
   } finally { clearTimeout(tm); }
 }
 function merge(r) {
@@ -519,7 +531,7 @@ async function sync() {
       j.rows.forEach(r => { if (merge(r)) { changed = true; lastNew = Date.now(); } });
       S.cursor = j.next || S.cursor; more = !!j.more;
     }
-    online = true; S.lastOk = Date.now();
+    online = true; S.lastOk = nowS();
   } catch (e) { online = false; }
   finally {
     syncing = false; save(); drawTop();
@@ -757,7 +769,7 @@ function groupModal(G) {
     if (!name) { toast('اكتب اسم القسم'); return $('#gN').focus(); }
     if (groups().some(g => g !== G && norm(g.name) === norm(name))) return toast('فيه قسم بنفس الاسم');
     if (G) Object.assign(G, {name, ids: [...sel]});
-    else { G = {id: 'g' + Date.now().toString(36), name, ids: [...sel]}; groups().push(G); }
+    else { G = {id: 'g' + nowS().toString(36), name, ids: [...sel]}; groups().push(G); }
     S.cGrp = G.id; save(); closeModal(); drawCustomers(''); toast('✔ اتحفظ القسم');
   };
   if ($('#gDel')) $('#gDel').onclick = async () => {
@@ -776,7 +788,7 @@ function newCustomer() {
     if (!name) return toast('اكتب اسم العميل');
     const ex = [...customers().values()].find(c => norm(c.name) === norm(name));
     if (ex) { closeModal(); toast('العميل ده موجود في القايمة'); return nav('p/' + ex.id); }
-    const c = {id: 'n_' + newId().slice(2), name, ts: Date.now()};
+    const c = {id: 'n_' + newId().slice(2), name, ts: nowS()};
     S.newc.push(c); save(); closeModal(); pyTab = 'pay'; nav('p/' + c.id);
   };
 }
@@ -848,9 +860,9 @@ async function savePay(c, m) {
   if (!(amt > 0)) { toast('اكتب المبلغ الأول'); $('#amt').focus(); return; }
   lastSave = Date.now();
   /* حماية من التكرار: نفس المبلغ لنفس العميل في خلال دقيقتين */
-  const al = aliases(), dup = custOps(c.id, al).find(o => o.t === 'pay' && o.amt === amt && Date.now() - (o.cr || o.ts) < 120000);
+  const al = aliases(), dup = custOps(c.id, al).find(o => o.t === 'pay' && o.amt === amt && nowS() - (o.cr || o.ts) < 120000);
   if (dup && !(await ask(`سجلت ${fmt(amt)} للعميل ده من شوية. دي دفعة تانية؟`, 'أيوه، دفعة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
-  const now = Date.now();
+  const now = nowS();
   const o = {id: newId(), t: 'pay', cid: c.id, cname: c.name, newc: !!c.nw, amt, m, ts: tsOnDay(dateOf('pyD')), cr: now, upd: now, del: false};
   S.ops[o.id] = o;
   save(); sync();
@@ -863,9 +875,9 @@ async function saveRt(c) {
   if (!(amt > 0)) { toast('اكتب المبلغ الأول'); $('#amt').focus(); return; }
   if (!note) { toast('اكتب ملاحظة: مرتجع إيه أو شغل إيه'); $('#rtN').focus(); return; }
   lastSave = Date.now();
-  const al = aliases(), dup = custOps(c.id, al).find(o => o.t === 'rt' && o.amt === amt && Date.now() - (o.cr || o.ts) < 120000);
+  const al = aliases(), dup = custOps(c.id, al).find(o => o.t === 'rt' && o.amt === amt && nowS() - (o.cr || o.ts) < 120000);
   if (dup && !(await ask(`سجلت مرتجع/شغل ${fmt(amt)} للعميل ده من شوية. دي مرة تانية؟`, 'أيوه، مرة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
-  const now = Date.now();
+  const now = nowS();
   const o = {id: newId(), t: 'rt', cid: c.id, cname: c.name, newc: !!c.nw, amt, note, ts: tsOnDay(dateOf('pyD')), cr: now, upd: now, del: false};
   S.ops[o.id] = o;
   save(); sync();
@@ -877,9 +889,9 @@ async function saveInv(c) {
   const amt = amtOf($('#amt'));
   if (!(amt > 0)) { toast('اكتب إجمالي الفاتورة الأول'); $('#amt').focus(); return; }
   lastSave = Date.now();
-  const al = aliases(), dup = custOps(c.id, al).find(o => o.t === 'inv' && o.amt === amt && Date.now() - (o.cr || o.ts) < 120000);
+  const al = aliases(), dup = custOps(c.id, al).find(o => o.t === 'inv' && o.amt === amt && nowS() - (o.cr || o.ts) < 120000);
   if (dup && !(await ask(`سجلت فاتورة ${fmt(amt)} للعميل ده من شوية. دي فاتورة تانية؟`, 'أيوه، فاتورة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
-  const now = Date.now();
+  const now = nowS();
   const o = {id: newId(), t: 'inv', cid: c.id, cname: c.name, newc: !!c.nw, amt, ts: tsOnDay(dateOf('pyD')), cr: now, upd: now, del: false};
   S.ops[o.id] = o;
   save(); sync();
@@ -1012,9 +1024,9 @@ async function saveSpend(t, x) {
   if (t === 'spay' && !x.sname) { toast('اكتب اسم المورد'); $('#sn').focus(); return; }
   lastSave = Date.now();
   /* حماية من التكرار: نفس المبلغ لنفس النوع في خلال دقيقتين */
-  const dup = liveOps().find(o => o.t === t && o.amt === amt && (t === 'exp' ? o.cat === x.cat : norm(o.sname) === norm(x.sname)) && Date.now() - o.ts < 120000);
+  const dup = liveOps().find(o => o.t === t && o.amt === amt && (t === 'exp' ? o.cat === x.cat : norm(o.sname) === norm(x.sname)) && nowS() - o.ts < 120000);
   if (dup && !(await ask(`سجلت ${fmt(amt)} (${t === 'exp' ? x.cat : x.sname}) من شوية. دي مرة تانية؟`, 'أيوه، مرة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
-  const now = Date.now();
+  const now = nowS();
   const o = Object.assign({id: newId(), t, amt, ts: now, upd: now, del: false}, x);
   S.ops[o.id] = o; save(); sync();
   try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
@@ -1048,9 +1060,9 @@ async function saveSale() {
   if (!buyer) { toast('اكتب اسم المشتري'); $('#bn').focus(); return; }
   if (!(amt > 0)) { toast('اكتب المبلغ'); $('#amt').focus(); return; }
   lastSave = Date.now();
-  const dup = liveOps().find(o => o.t === 'cs' && o.amt === amt && norm(o.buyer) === norm(buyer) && Date.now() - (o.cr || o.ts) < 120000);
+  const dup = liveOps().find(o => o.t === 'cs' && o.amt === amt && norm(o.buyer) === norm(buyer) && nowS() - (o.cr || o.ts) < 120000);
   if (dup && !(await ask(`سجلت بيع ${fmt(amt)} لـ ${buyer} من شوية. دي مرة تانية؟`, 'أيوه، مرة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
-  const now = Date.now(), o = {id: newId(), t: 'cs', buyer, amt, ts: tsOnDay(dateOf('bD')), cr: now, upd: now, del: false};
+  const now = nowS(), o = {id: newId(), t: 'cs', buyer, amt, ts: tsOnDay(dateOf('bD')), cr: now, upd: now, del: false};
   S.ops[o.id] = o; save(); sync();
   drawSale(); savedHere(`✔ اتسجل بيع ${fmt(amt)} — ${buyer}`);
 }
@@ -1070,9 +1082,9 @@ function handModal() {
   $('#hOk').onclick = async () => {
     const amt = amtOf($('#hAmt'));
     if (!(amt > 0)) return toast('اكتب المبلغ');
-    const dup = liveOps().find(o => o.t === 'hand' && o.amt === amt && Date.now() - o.ts < 120000);
+    const dup = liveOps().find(o => o.t === 'hand' && o.amt === amt && nowS() - o.ts < 120000);
     if (dup && !(await ask(`سجلت تسليم ${fmt(amt)} من شوية. دي مرة تانية؟`, 'أيوه، مرة تانية', 'لأ، دي نفسها'))) return;
-    const now = Date.now(), o = {id: newId(), t: 'hand', amt, ts: now, upd: now, del: false};
+    const now = nowS(), o = {id: newId(), t: 'hand', amt, ts: now, upd: now, del: false};
     S.ops[o.id] = o; save(); sync(); closeModal();
     savedHere(`✔ اتسجل: سلمت لمصطفى ${fmt(amt)}`);
   };
@@ -1102,7 +1114,7 @@ function closeDay() {
   $('#kOk').onclick = () => {
     const a = amtOf(inp);
     if (a !== cn && !warned) { warned = true; res(); return; }
-    const now = Date.now(), id = 'k_' + t + '_' + S.dev, o = S.ops[id] || {id, t: 'cnt', day: t, del: false};
+    const now = nowS(), id = 'k_' + t + '_' + S.dev, o = S.ops[id] || {id, t: 'cnt', day: t, del: false};
     Object.assign(o, {amt: a, sys: cn, ts: now, del: false}); bump(o); S.ops[id] = o;
     save(); sync(); closeModal(); refresh();
     toast(a === cn ? '✔ قفلت يومك — مظبوط' : `✔ قفلت يومك — الفرق ${fmtN(a - cn)} وصل لمصطفى`, 3500, true);

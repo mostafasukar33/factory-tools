@@ -488,8 +488,9 @@ const T0 = Date.now();
     const both = (tag, o) => {
       const b = JSON.stringify(Object.assign({key: 'Bench-Key-1234'}, o)), c0 = GO.reads.cells, c1 = GN.reads.cells;
       const a = JSON.parse(GO.post(b)), n = JSON.parse(GN.post(b));
+      if (typeof n.t !== 'number' || n.t < 1e12) diff.push(tag + ': مفيش وقت الشيت t'); delete n.t; delete a.t;   // وقت الشيت (t) جديد في النسخة 3
       cost.old[tag] = (cost.old[tag] || 0) + GO.reads.cells - c0; cost.neu[tag] = (cost.neu[tag] || 0) + GN.reads.cells - c1;
-      const nv = Object.assign({}, n); if (o.action === 'pull') { if (nv.v !== 2) diff.push(tag + ': مفيش v'); delete nv.v; }
+      const nv = Object.assign({}, n); if (o.action === 'pull') { if (nv.v !== 3) diff.push(tag + ': مفيش v'); delete nv.v; }
       if (o.action === 'ping') { delete a.v; ['v', 'seq', 'url'].forEach(k => delete nv[k]); }   // ping الجديد بيزود النسخة ولينك الجدول بس
       if (JSON.stringify(a) !== JSON.stringify(nv)) diff.push(tag);
       return n;
@@ -514,7 +515,7 @@ const T0 = Date.now();
     eq('كود الشيت الجديد: بآلاف السطور نفس الردود بالظبط زي القديم، ونفس الشيت خانة بخانة، ونفس الرقم', [diff, shOf(GN) === shOf(GO), GN.props.SEQ === GO.props.SEQ, full.out.length, full.pages, inc.out.length, new Set(inc.out.map(r => r.id)).size],
       [[], true, true, N, 4, 25 - 5 + 30, 25 - 5 + 30]);
     const pp = JSON.parse(GN.post(JSON.stringify({key: 'Bench-Key-1234', action: 'ping'})));
-    eq('ping الجديد بيقول النسخة 2 ولينك الجدول نفسه، والقديم نسخة 1', [pp.v, pp.url, pp.n, JSON.parse(GO.post(JSON.stringify({key: 'Bench-Key-1234', action: 'ping'}))).v], [2, 'https://docs.google.com/spreadsheets/d/ss1/edit', N + 30, 1]);
+    eq('ping الجديد بيقول النسخة 3 ولينك الجدول نفسه، والقديم نسخة 1', [pp.v, pp.url, pp.n, JSON.parse(GO.post(JSON.stringify({key: 'Bench-Key-1234', action: 'ping'}))).v], [3, 'https://docs.google.com/spreadsheets/d/ss1/edit', N + 30, 1]);
     console.log('     خانات اتقرت من الشيت (القديم ← الجديد):', Object.keys(cost.old).map(k => `${k}: ${cost.old[k]} ← ${cost.neu[k]}`).join(' | '));
     eq('السحب لو مفيش جديد مبيقراش ولا خانة، والسحب العادي والكامل والإرسال أخف بكتير', [cost.neu.idle, cost.neu.pull1 * 8 < cost.old.pull1, cost.neu.pull0 * 2 < cost.old.pull0, cost.neu.push * 2 < cost.old.push, cost.neu.push2 * 2 < cost.old.push2], [0, true, true, true, true]);
 
@@ -534,7 +535,7 @@ const T0 = Date.now();
     eq('زرار "انسخ الكود" بينسخ الكود الجديد نفسه (من غير أي إذن زيادة)', [updCode === mainCode, /DriveApp|ScriptApp|UrlFetchApp/.test(updCode)], [true, false]);
     accNew.sheets['السجلات'] = GOLD.sheets['السجلات']; Object.assign(accNew.props, GOLD.props); sheets.acc = accNew;   // "حدّث" الكود
     await bg(A, 'syncNow()'); await A.evaluate(() => renderSettings()); await A.settle(800);
-    eq('بعد التحديث: التحذير بيختفي من الرئيسية والإعدادات', await A.evaluate(() => [db.cfg.accV, $('#syncBox').classList.contains('warn'), !!$('#accOld')]), [2, false, false]);
+    eq('بعد التحديث: التحذير بيختفي من الرئيسية والإعدادات', await A.evaluate(() => [db.cfg.accV, $('#syncBox').classList.contains('warn'), !!$('#accOld')]), [3, false, false]);
 
     const posts = [], origPost = sheets.acc.post.bind(sheets.acc);
     sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push') posts.push(q.rows.length); return origPost(body); };
@@ -581,7 +582,7 @@ const T0 = Date.now();
 
     /* التعارض: نفس الحركة اتعدلت على الجهازين قبل ما يتزامنوا */
     await mkTx(A, 't_cf', {amt: 100}); await bg(A, 'syncNow()'); await bg(B, 'syncNow()');
-    const setAmt = (X, a) => X.evaluate(a => { const t = IDX.tx.get('t_cf'); t.amt = a; touch(t); saveDB(); }, a);
+    const setAmt = (X, a) => X.evaluate(a => { srvOff = 0; const t = IDX.tx.get('t_cf'); t.amt = a; touch(t); saveDB(); }, a);   // الصفحتين على نفس الجهاز: نثبّت فرق الساعة علشان الترتيب بين تعديلين متقاربين ميتهزّش بفروق ملّي ثانية
     await B.evaluate(() => { closeModal(); go('home'); }); await A.evaluate(() => { closeModal(); go('home'); });
     await setAmt(A, 11100); await bg(A, 'syncNow()');
     await setAmt(B, 22200); await bg(B, 'syncNow()');
@@ -931,7 +932,7 @@ const T0 = Date.now();
     /* تليجرام من الحسابات لمصطفى: نسخة يومية وملخص وتنبيه. على نفس البوت، ومن غير ما يتكتب أي حاجة في شيت الحركات (الشريك مبيشوفهاش) */
     const tgDocs = () => sheets.mkt.tg.calls.filter(c => c.url.endsWith('/sendDocument'));
     const mkRows0 = sheets.mkt.sheets['الحركات'].rows.length;
-    eq('كود شيت السوق نسخة 4، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [4, null]);
+    eq('كود شيت السوق نسخة 5، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [5, null]);
     {
       /* كود شيت السوق نسخة 4 قدام نسخة 3 القديمة بآلاف السطور: نفس الردود ونفس الشيت بالظبط، والقراية أقل بكتير */
       const oldMk = fs.readFileSync(path.join(__dirname, 'fixtures/mkt-sheet-v3.gs'), 'utf8'), newMk = await A.evaluate(() => marketScript());
@@ -939,9 +940,9 @@ const T0 = Date.now();
       const cost = {old: {}, neu: {}}, diff = [];
       const both = (tag, o) => {
         const b = JSON.stringify(Object.assign({key: 'Bench-Key-1234'}, o)), c0 = GO.reads.cells, c1 = GN.reads.cells;
-        const a = GO.post(b), n = GN.post(b);
+        const a = GO.post(b), n0 = GN.post(b), nj = JSON.parse(n0); if (typeof nj.t !== 'number' || nj.t < 1e12) diff.push(tag + ': مفيش وقت الشيت t'); delete nj.t; const aj = JSON.parse(a); delete aj.t; const n = JSON.stringify(nj), a2 = JSON.stringify(aj);
         cost.old[tag] = (cost.old[tag] || 0) + GO.reads.cells - c0; cost.neu[tag] = (cost.neu[tag] || 0) + GN.reads.cells - c1;
-        if (a !== n) diff.push(tag);
+        if (a2 !== n) diff.push(tag);
         return JSON.parse(n);
       };
       const mr = (i, upd, del) => ({id: (i % 3 ? 'op_b' : 'cust_b') + i, kind: i % 3 ? 'op' : 'cust', upd, del: !!del, view: ['2026-01-01', 'عميل تجربة ' + (i % 40), 'دفعة', String(i * 50), ''], data: {cid: 'p_b' + (i % 40), amt: i * 5000, m: 'cash', note: 'تجربة '.repeat(1 + i % 5)}});
@@ -1062,6 +1063,7 @@ const T0 = Date.now();
     eq('الموبايل: زراير التقارير والجرد جنب بعض فوق في العملاء', await A.evaluate(() => { const r = $('#hRep').getBoundingClientRect(), j = $('#hJrd').getBoundingClientRect(); return [Math.abs(r.top - j.top) < 4, r.left !== j.left]; }), [true, true]);
     await A.click('#hJrd'); await A.settle(200);
     eq('زرار الجرد فوق بيفتح الجرد', await A.evaluate(() => location.hash), '#jrd');
+    eq('ساعة الشيت: الوقت المتسجل بيتاخد من وقت الشيت مش من ساعة الجهاز', await A.evaluate(() => { const t0 = Date.now(); srvClock({t: t0 + 5 * 36e5}, t0); const r = {}; touch(r); const d = r.upd - Date.now(); const ok = [Math.abs(d - 5 * 36e5) < 3000, Math.abs(nowS() - Date.now() - 5 * 36e5) < 3000, localStorage.getItem('fo_srvoff') !== null]; srvClock({t: Date.now()}, Date.now()); return ok.concat(Math.abs(nowS() - Date.now()) < 3000); }), [true, true, true, true]);
     await A.click('#bSet'); await A.settle(200);
     eq('ترس الإعدادات فوق بيفتح الإعدادات', await A.evaluate(() => location.hash), '#set');
     await A.click('nav button[data-go=mkt]'); await A.settle(300);
@@ -1377,7 +1379,7 @@ const T0 = Date.now();
     eq('صفحة العملاء: إجمالي اللي على العملاء ظاهر', await M.evaluate(() => { const t = [...customers().values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0); return $('#main .panel .money').textContent === fmt(t); }), true);
     await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(500);
     eq('وصل لمصطفى في الوارد', await A.evaluate(() => mkPending().filter(o => o.t === 'cs').map(o => [o.buyer, o.amt])), [['مشتري تجربة', 450000]]);
-    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 4', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 4]);
+    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 5', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 5]);
     const csV0 = await A.evaluate(() => vaultBal('v_mkt'));
     await A.evaluate(() => { const o = mkPending().find(x => x.t === 'cs'); mkMove(o, {amt: o.amt, date: todayISO(), vault: 'v_mkt', to: ''}); saveDB(); });
     eq('اتنقل إيراد في خزنة السوق (مبيعات نقدي) من غير ما يتعمل عميل', await A.evaluate(([v0, p0]) => [vaultBal('v_mkt') - v0, db.txs.filter(t => t.id.startsWith('t_mk_') && t.type === 'inc' && t.cat === 'c_inc1' && !t.del).length > 0, db.parties.length], [csV0, csP0]), [450000, true, csP0]);

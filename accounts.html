@@ -388,6 +388,13 @@ nav svg{width:26px;height:26px}
 .pg .sum .l span:last-child{direction:ltr;font-weight:700}
 .pg .sum .f{display:flex;justify-content:space-between;align-items:center;background:#111;color:#DAAE57;padding:10px 14px;border-radius:8px;margin-top:8px;font-size:18px;font-weight:800}
 .pg .sum .f b{font-size:26px;color:#fff;direction:ltr;font-weight:800}
+.pg tr.sub td{background:#F7F2E4 !important;font-weight:800}
+.pg table.ivc td{font-size:16px}.pg table.ivc td:first-child{white-space:normal}.pg table.ivc tr:nth-child(even) td{background:#fff}
+.pg tr.grp td{background:#111 !important;color:#DAAE57;text-align:right;font-weight:800;font-size:17px;padding:6px 12px;border-color:#111}
+.pg tr.grp.sub td{background:#EFE6CF !important;color:#111;border-color:#CBBE9B;border-top:2px solid #9C7420}
+.pg tr.fr td{color:#B3261E;font-weight:700}
+.pg tr.nt td{background:#F7F2E4 !important;font-weight:800;border-bottom:2px solid #9C7420}
+.pg .sum .l.sub{font-weight:800;border-top:2px solid #111;background:#FBF5E6}
 .pg .note{margin-top:14px;font-size:13.5px;font-weight:600;color:#555;flex:none}
 .pg .ft{flex:none;background:#111;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 44px;height:44px;font-size:13.5px;font-weight:600;border-top:4px solid #DAAE57}
 .pg .ft span:first-child{color:#DAAE57;font-size:16px;font-weight:700}
@@ -693,6 +700,13 @@ html[data-theme=dark] #hTots .k{background:var(--gold-l)}
 .pst th{font-size:var(--f1);font-weight:700;color:var(--sub);padding:6px 8px;text-align:right;background:var(--row);border-bottom:1px solid var(--line)}
 .pst td.n{width:1%;white-space:nowrap;direction:ltr;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;font-size:var(--f2)}.pst td.t{font-weight:800}
 .cmt tr.nohov{cursor:default}.cmt tr.nohov:hover td{background:transparent}
+.cmt tr.jsub td{background:var(--row);border-top:2px solid var(--line)}.cmt tr.jsub td.w b{font-weight:800}
+.cmt tr.jfin td{background:var(--gold-l);border-top:2px solid var(--gold)}.cmt tr.jfin td.w b{font-weight:800}
+.cmt tr.nohov.jsub:hover td{background:var(--row)}.cmt tr.nohov.jfin:hover td{background:var(--gold-l)}
+.cmt td.am.neg{color:var(--red)}
+.bl.sub{font-weight:800;border-top:2px solid var(--line);margin-top:2px}
+.tots .k em{display:block;margin-top:4px;font-style:normal;font-size:var(--f2);font-weight:700;color:var(--sub)}
+.tots .k em.up{color:var(--green)}.tots .k em.dn{color:var(--red)}
 a.lnk{color:var(--gold-d);text-decoration:underline;cursor:pointer;font-weight:700}
 html[data-theme=dark] .pst th{background:var(--row);color:var(--sub)}
 .card.fold>h2{cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
@@ -4590,17 +4604,23 @@ function buildReportPages(R) {
     box.appendChild(pg); return {pg, inn: pg.querySelector('.in')};
   };
   const over = (inn, el) => el.getBoundingClientRect().bottom > inn.getBoundingClientRect().bottom - 16;
-  const mkTable = () => { const t = document.createElement('table'); t.innerHTML = `<colgroup>${R.cols.map(c => `<col style="width:${c.w}%">`).join('')}</colgroup><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody></tbody>`; return t; };
+  const mkTable = () => { const t = document.createElement('table'); if (R.ivc) t.className = 'ivc'; t.innerHTML = `<colgroup>${R.cols.map(c => `<col style="width:${c.w}%">`).join('')}</colgroup><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody></tbody>`; return t; };
   let pg = shell(true), tbl = mkTable(); pg.inn.appendChild(tbl);
+  const N = R.cols.length;
   R.rows.forEach(r => {
     const tr = document.createElement('tr'); tr.className = r.cls || '';
-    tr.innerHTML = r.cells.map((x, i) => `<td class="${R.cols[i].c === 'b' ? 'b' : R.cols[i].c}">${esc(x)}</td>`).join('');
+    if (r.grp !== undefined) { tr.className = 'grp' + (r.sub ? ' sub' : ''); tr.innerHTML = `<td colspan="${N}">${esc(r.grp)}</td>`; }   // عنوان قسم أو شحنة
+    else if (r.foot) tr.innerHTML = `<td class="l" colspan="${N - 1}">${esc(r.foot[0])}</td><td class="n">${esc(r.foot[1])}</td>`;   // بيان ومبلغ
+    else tr.innerHTML = r.cells.map((x, i) => `<td class="${R.cols[i].c === 'b' ? 'b' : R.cols[i].c}">${esc(x)}</td>`).join('');
     tbl.tBodies[0].appendChild(tr);
-    if (over(pg.inn, tr) && tbl.tBodies[0].rows.length > 1) { tr.remove(); pg = shell(false); tbl = mkTable(); pg.inn.appendChild(tbl); tbl.tBodies[0].appendChild(tr); }
+    if (over(pg.inn, tr) && tbl.tBodies[0].rows.length > 1) {
+      const prev = tr.previousElementSibling, mv = prev && prev.classList.contains('grp') ? [prev, tr] : [tr];   // العنوان ميفضلش لوحده آخر الصفحة
+      mv.forEach(x => x.remove()); pg = shell(false); tbl = mkTable(); pg.inn.appendChild(tbl); mv.forEach(x => tbl.tBodies[0].appendChild(x));
+    }
   });
   if (!R.rows.length) { const tr = document.createElement('tr'); tr.innerHTML = `<td colspan="${R.cols.length}">مفيش حاجة في التقرير ده</td>`; tbl.tBodies[0].appendChild(tr); }
   const sum = document.createElement('div'); sum.className = 'sum';
-  sum.innerHTML = R.sum.map(([a, b]) => `<div class="l"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('') + `<div class="f"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div>`;
+  sum.innerHTML = R.sum.map(([a, b, st]) => `<div class="l ${st || ''}"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('') + `<div class="f"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div>`;
   pg.inn.appendChild(sum); if (over(pg.inn, sum)) { sum.remove(); pg = shell(false); pg.inn.appendChild(sum); }
   const pages = [...box.children];
   pages.forEach((x, i) => x.querySelector('.pn').textContent = `صفحة ${i + 1} من ${pages.length}`);
@@ -4733,30 +4753,34 @@ function jrdTot(n, stock) {
 const jrdSaved = () => db.stks.filter(s => !s.del).sort((a, b) => b.date.localeCompare(a.date) || (b.at || 0) - (a.at || 0));
 const jrdBefore = d => jrdSaved().find(s => s.date < d) || null;
 let jrDate = '', jrStock = null;
+/* الجرد بالترتيب اللي بيتحسب بيه: اللي ليك ← − الموردين = قيمة الشغل ← − المساهمين = صافي حقك. نفس السطور في الشاشة والـ PDF */
+function jrdLines(n, stock) {
+  const T = jrdTot(n, stock), cnt = k => n.cnt[k] ? `${n.cnt[k]} حساب` : '', L = [
+    {t: 'r', n: 'عملاء السوق', s: cnt('mkt'), a: n.mkt}, {t: 'r', n: 'عملاء المواقع', s: cnt('site'), a: n.site},
+    {t: 'r', n: 'رصيد الخزن', s: '', a: n.vault}, {t: 'r', n: 'المخزون', s: 'اللي في المصنع', a: stock, id: 'jrStockV'},
+    {t: 's', n: '= إجمالي اللي ليك', a: T.own}, {t: 'r', n: '− الموردين', s: cnt('sup'), a: n.sup, neg: 1}];
+  if (n.ivs.length) {
+    L.push({t: 's', n: '= قيمة الشغل', a: T.work});
+    n.ivs.forEach(x => L.push({t: 'r', n: '− ' + x.name, s: 'مساهم (رأس ماله وأرباحه)', a: x.amt, neg: 1, iv: x.id}));
+  }
+  L.push({t: 'f', n: '= صافي حقك في الشغل', a: T.net});
+  return L;
+}
 function jrdBlock(n, stock, prev, live) {
   const T = jrdTot(n, stock), diff = prev ? T.net - jrdTot(prev.n, prev.stock).net : null;
-  const row = (name, sub, amt, attr = '') => `<tr class="${attr ? '' : 'nohov'}" ${attr}><td class="w"><b>${esc(name)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</td><td class="am">${fmtP(amt)}</td></tr>`;
-  const cnt = k => n.cnt[k] ? `${n.cnt[k]} حساب` : '';
-  return `<div class="tots"><div class="k"><span>صافي حقك في الشغل</span><b id="jrNet" class="${T.net < 0 ? 'cr' : ''}">${fmtP(T.net)} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
-      <div><span>قيمة الشغل قبل المساهمين</span><b id="jrWork">${fmtP(T.work)}</b></div>
-      <div class="${diff !== null && diff < 0 ? 'cr' : ''}" id="jrDiffB"><span>${prev ? 'عن جرد ' + dispDate(prev.date) : 'عن آخر جرد'}</span><b id="jrDiff">${diff === null ? '—' : (diff > 0 ? '+' : '') + fmtP(diff)}</b></div></div>
-    <div class="cwrap">
-      <section class="ctab inc"><div class="cth"><span>ليك</span><b id="jrOwn">${fmtP(T.own)}</b></div><table class="cmt"><tbody>
-        ${row('عملاء السوق', cnt('mkt'), n.mkt)}${row('عملاء المواقع', cnt('site'), n.site)}${row('الخزن', 'رصيد كل الخزن', n.vault)}
-        <tr class="nohov"><td class="w"><b>المخزون</b><small>${live ? 'اللي كتبته فوق' : 'اللي اتكتب يوم الجرد'}</small></td><td class="am" id="jrStockV">${fmtP(stock)}</td></tr></tbody></table></section>
-      <section class="ctab exp"><div class="cth"><span>عليك</span><b id="jrOwe">${fmtP(T.owe)}</b></div><table class="cmt"><tbody>
-        ${row('الموردين', cnt('sup'), n.sup)}${n.ivs.map(x => row(x.name, 'مساهم: رأس ماله وأرباحه اللي مسحبهاش', x.amt, ivGet(x.id) ? `data-iv="${esc(x.id)}"` : '')).join('')}</tbody></table></section>
-    </div>`;
+  const row = x => x.t === 'r' ? `<tr class="${x.iv ? '' : 'nohov'}" ${x.iv && ivGet(x.iv) ? `data-iv="${esc(x.iv)}"` : ''}><td class="w"><b>${esc(x.n)}</b>${x.s ? `<small>${esc(x.s)}</small>` : ''}</td><td class="am ${x.neg ? 'neg' : ''}" ${x.id ? `id="${x.id}"` : ''}>${fmtP(x.a)}</td></tr>`
+    : `<tr class="nohov ${x.t === 'f' ? 'jfin' : 'jsub'}"><td class="w"><b>${esc(x.n)}</b></td><td class="am">${fmtP(x.a)}</td></tr>`;
+  return `<div class="tots"><div class="k"><span>صافي حقك في الشغل</span><b id="jrNet" class="${T.net < 0 ? 'cr' : ''}">${fmtP(T.net)} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b>
+      <em class="df ${diff === null ? '' : diff >= 0 ? 'up' : 'dn'}">${diff === null ? 'ده أول جرد، مفيش جرد قبله للمقارنة' : diff === 0 ? 'زي جرد ' + dispDate(prev.date) + ' بالظبط' : (diff > 0 ? 'زاد ' : 'نقص ') + fmtP(Math.abs(diff)) + ' عن جرد ' + dispDate(prev.date)}</em></div></div>
+    <section class="ctab"><div class="cth"><span>الحسبة من أولها</span><span></span></div><table class="cmt"><tbody>${jrdLines(n, stock).map(row).join('')}</tbody></table></section>
+    <div style="height:12px"></div>`;
 }
 function jrdReport(d, n, stock, prev) {
-  const T = jrdTot(n, stock), rows = [['ليك', 'عملاء السوق', n.mkt], ['', 'عملاء المواقع', n.site], ['', 'رصيد الخزن', n.vault], ['', 'المخزون', stock], ['عليك', 'الموردين', n.sup], ...n.ivs.map(x => ['', 'المساهم: ' + x.name, x.amt])];
-  const sum = [['إجمالي اللي ليك', fmtP(T.own)], ['إجمالي اللي عليك', fmtP(T.owe)], ['قيمة الشغل قبل المساهمين', fmtP(T.work)]];
-  if (prev) { const pn = jrdTot(prev.n, prev.stock).net; sum.push([`صافي جرد ${dispDate(prev.date)}`, fmtP(pn)], ['الفرق', fmtP(T.net - pn)]); }
-  return {title: 'الجرد', period: dispDate(d), cols: [{h: '', w: 14, c: 'l'}, {h: 'البند', w: 54, c: 'l'}, {h: 'المبلغ', w: 32, c: 'n'}],
-    rows: rows.map(([a, b, c]) => ({cells: [a, b, fmtP(c)], cls: c < 0 ? 'ret' : ''})), sum, fin: ['صافي حقك في الشغل', fmtP(T.net)]};
+  const T = jrdTot(n, stock), L = jrdLines(n, stock).filter(x => x.t !== 'f'), sum = [];
+  if (prev) { const pn = jrdTot(prev.n, prev.stock).net; sum.push([`صافي جرد ${dispDate(prev.date)}`, fmtP(pn)], [T.net - pn >= 0 ? 'زاد' : 'نقص', fmtP(Math.abs(T.net - pn))]); }
+  return {title: 'الجرد', period: dispDate(d), cols: [{h: 'البند', w: 72, c: 'l'}, {h: 'المبلغ', w: 28, c: 'n'}],
+    rows: L.map(x => ({cells: [x.n + (x.s ? ' — ' + x.s : ''), fmtP(x.a)], cls: x.t === 's' ? 'sub' : ''})), sum, fin: ['صافي حقك في الشغل', fmtP(T.net)]};
 }
-
-/* ---------- الصفحة: #jrd (الجرد)، #jrd/iv (المساهمين)، #jrd/iv/<id> (كشف مساهم)، #jrd/s/<id> (جرد محفوظ) ---------- */
 function jrdHead(tab) {
   const w = ivWaiting();
   return (isWide() ? '' : '<div class="sech ppbar" style="margin-top:0"><a id="jrBack">→ التقارير</a><b style="font-size:var(--f3);color:var(--ink)">📦 الجرد والمساهمين</b><span></span></div>') +
@@ -4778,9 +4802,9 @@ function renderJrd() {
     <div class="card">
       <div class="g2"><div class="fld"><label>تاريخ الجرد</label><input class="inp" type="date" id="jrD" value="${d}"></div>
       <div class="fld"><label>المخزون اللي في المصنع</label><input class="inp num amt" id="jrS" placeholder="0" value="${stock ? fmtP(stock) : ''}"></div></div>
-      <p class="hint">العملا والموردين والخزن وفلوس المساهمين بيتحسبوا لوحدهم لحد آخر اليوم ده. المخزون بس اللي بتكتبه${last ? ` (آخر جرد ${dispDate(last.date)}: ${fmtP(last.stock)})` : ''}.</p>
+      <p class="hint">اكتب المخزون بس. العملا والموردين والخزن وفلوس المساهمين بيتحسبوا لوحدهم لحد آخر اليوم المختار.${last ? ` آخر جرد كان يوم ${dispDate(last.date)} والمخزون فيه ${fmtP(last.stock)}.` : ''}</p>
     </div>
-    ${jrdBlock(n, stock, prev, true)}
+    <div id="jrBlk">${jrdBlock(n, stock, prev, true)}</div>
     <div class="mrow3" style="grid-template-columns:1fr 1fr"><button class="btn gold" id="jrSave" type="button">💾 ${same ? 'حدّث جرد اليوم ده' : 'احفظ الجرد'}</button><button class="btn line" id="jrPdf" type="button">📄 PDF</button></div>
     <div style="height:12px"></div>
     <section class="ctab"><div class="cth"><span>الجرود المحفوظة (${saved.length})</span><span></span></div><table class="cmt"><tbody>
@@ -4789,15 +4813,10 @@ function renderJrd() {
         : '<tr><td class="e" colspan="3">لسه مفيش جرد محفوظ. اكتب المخزون واضغط "احفظ الجرد".</td></tr>'}</tbody></table></section>`;
   jrdBindHead();
   const sIn = $('#jrS'); bindMoney(sIn);
-  sIn.addEventListener('input', () => {
-    jrStock = toP(sIn.value);
-    const T = jrdTot(n, jrStock), pn = prev ? jrdTot(prev.n, prev.stock).net : null;
-    $('#jrNet').firstChild.textContent = fmtP(T.net) + ' '; $('#jrNet').classList.toggle('cr', T.net < 0);
-    $('#jrWork').textContent = fmtP(T.work); $('#jrOwn').textContent = fmtP(T.own); $('#jrStockV').textContent = fmtP(jrStock);
-    if (pn !== null) { $('#jrDiff').textContent = (T.net - pn > 0 ? '+' : '') + fmtP(T.net - pn); $('#jrDiffB').classList.toggle('cr', T.net - pn < 0); }
-  });
+  const bindBlk = () => $$('#p-jrd tr[data-iv]').forEach(el => el.onclick = () => go('jrd/iv/' + el.dataset.iv));
+  sIn.addEventListener('input', () => { jrStock = toP(sIn.value); $('#jrBlk').innerHTML = jrdBlock(n, jrStock, prev, true); bindBlk(); });
   $('#jrD').onchange = () => { const v = $('#jrD').value; if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { jrDate = v > t ? t : v; jrStock = null; renderJrd(); } };
-  $$('#p-jrd tr[data-iv]').forEach(el => el.onclick = () => go('jrd/iv/' + el.dataset.iv));
+  bindBlk();
   $$('#p-jrd tr[data-s]').forEach(el => el.onclick = () => go('jrd/s/' + el.dataset.s));
   $('#jrPdf').onclick = () => exportReport(jrdReport(d, n, toP(sIn.value), prev), 'preview', `الجرد ${d.split('-').reverse().join('-')}`);
   $('#jrSave').onclick = async () => {
@@ -4844,34 +4863,60 @@ function renderIvList() {
   $('#ivImp').onclick = () => $('#ivFile').click();
   $('#ivFile').onchange = async ev => { const f = ev.target.files[0]; ev.target.value = ''; if (f) ivImport(await f.text()); };
 }
-/* كشف المساهم (شاشة و PDF): المربوط بعميل بنفس شكل ملف الإكسيل بتاعه، والشهري حركات ورصيد */
+/* كشف المساهم (PDF وشاشة الشهري). المربوط بعميل: رأس المال ← كل شحنة (أصنافها، النقل، الصافي) ← المصاريف ← المسحوبات ← الملخص.
+   سطر grp = عنوان قسم أو شحنة، وسطر foot = بيان ومبلغ (كلهم بيترسموا في الـ PDF بـ buildReportPages) */
 function ivReport(v) {
   const ms = ivMoves(v.id), s = ivSums(v.id), rows = [];
   const vtx = m => m.src === 'tx' ? (m.k === 'cap' ? ' — دخل ' : ' — من ') + vName(m.r.vault) : '';
+  const noteOf = m => m.src === 'tx' ? m.r.pnote || '' : m.k === 'exp' ? '' : m.r.note || '';
   if (v.mode === 'c') {
-    ms.forEach((m, i) => {
-      const r = m.r;
-      if (m.k === 'ship') {
-        const ls = r.lines && r.lines.length ? r.lines : [{n: 'شحنة', q: 0, u: 0}], sg = r.ret ? -1 : 1;
-        ls.forEach((l, j) => rows.push({i, cls: r.ret ? 'ret' : '', cells: [j ? '' : dispDate(r.date), (r.ret ? 'مرتجع: ' : '') + (l.n || ''), fmtQ(l.q), l.w ? fmtQ(l.w) : '', fmtP(l.u || 0), !j && r.fr ? fmtP(r.fr) : '', fmtP(sg * Math.round((+l.q || 0) * (l.u || 0)) - (!j ? r.fr || 0 : 0))]}));
-      } else if (m.k === 'cap') return;
-      else { const nt = m.src === 'tx' ? r.pnote || '' : m.k === 'exp' ? '' : r.note || '';
-        rows.push({i, cls: m.amt < 0 ? 'ret' : '', cells: [dispDate(m.date), (m.k === 'exp' ? (r.note || 'مصاريف') : m.k === 'draw' ? 'سحب' + vtx(m) : 'ربح' + (r.m ? ' ' + monthName(r.m) : '')) + (nt ? ' — ' + nt : ''), '', '', '', m.k === 'exp' ? fmtP(r.amt) : '', fmtP(m.amt)]}); }
+    const sec = (k, title) => { const L = ms.map((m, i) => [m, i]).filter(([m]) => m.k === k); if (!L.length) return; rows.push({grp: title});
+      L.forEach(([m, i]) => rows.push({i, foot: [`${dispDate(m.date)} — ${k === 'exp' ? m.r.note || 'مصاريف' : k === 'draw' ? 'سحب' + vtx(m) : 'رأس مال' + vtx(m)}${k === 'exp' || /رأس/.test(noteOf(m)) || !noteOf(m) ? '' : ' — ' + noteOf(m)}`, fmtP(Math.abs(m.amt))]})); };
+    sec('cap', 'رأس المال');
+    const ships = ms.map((m, i) => [m, i]).filter(([m]) => m.k === 'ship');
+    if (ships.length) rows.push({grp: `الشحنات (${ships.length})`, big: 1});
+    ships.forEach(([m, i]) => {
+      const r = m.r, sg = r.ret ? -1 : 1, ls = r.lines && r.lines.length ? r.lines : [];
+      rows.push({i, grp: `${dispDate(r.date)}${r.site ? ' — ' + r.site : ''}${r.ret ? ' — مرتجع' : ''}`, sub: 1});
+      ls.forEach(l => rows.push({i, cls: r.ret ? 'ret' : '', cells: [l.n || '', fmtQ(l.q), l.w ? fmtQ(l.w) : '', fmtP(l.u || 0), fmtP(sg * Math.round((+l.q || 0) * (l.u || 0)))]}));
+      if (r.fr) rows.push({i, cls: 'fr', foot: ['النقل والمصاريف', fmtP(-r.fr)]});
+      if (r.fr || ls.length > 1) rows.push({i, cls: 'nt', foot: ['صافي الشحنة', fmtP(m.amt)]});
     });
+    sec('exp', 'المصاريف'); sec('draw', 'المسحوبات');
     return {title: `كشف حساب ${v.name}`, period: `لحد ${dispDate(todayISO())}`, ivc: true,
-      cols: [{h: 'التاريخ', w: 13, c: 'l'}, {h: 'الصنف', w: 29, c: 'l'}, {h: 'العدد', w: 8, c: 'n'}, {h: 'الوزن', w: 8, c: 'n'}, {h: 'الربح', w: 10, c: 'n'}, {h: 'النقل والمصاريف', w: 14, c: 'n'}, {h: 'الصافي', w: 18, c: 'b'}],
+      cols: [{h: 'الصنف', w: 45, c: 'l'}, {h: 'العدد', w: 10, c: 'n'}, {h: 'الوزن', w: 10, c: 'n'}, {h: 'ربح الواحدة', w: 15, c: 'n'}, {h: 'الإجمالي', w: 20, c: 'b'}],
       rows, sum: [['إجمالي العمولة', fmtP(s.gross)], ['(−) نقل ومصاريف الشحنات', fmtP(s.fr)], ...[...s.expBy].map(([k, x]) => ['(−) ' + (k.startsWith('مصاريف') ? k : 'مصاريف ' + k), fmtP(x)]),
-        ['صافي العمولة', fmtP(s.prof)], ['(−) المسحوبات', fmtP(s.draw)], ['الباقي ليه أرباح', fmtP(s.prof - s.draw)], ['رأس المال', fmtP(s.cap)]],
+        ['صافي العمولة', fmtP(s.prof), 'sub'], ['(−) المسحوبات', fmtP(s.draw)], ['الباقي ليه أرباح', fmtP(s.prof - s.draw), 'sub'], ['(+) رأس المال', fmtP(s.cap)]],
       fin: ['إجمالي اللي ليه', fmtP(s.bal)]};
   }
   let b = 0;
   ms.forEach((m, i) => { b += m.amt; const r = m.r;
     const what = m.k === 'cap' ? 'رأس مال' + vtx(m) : m.k === 'prof' ? 'ربح ' + (r.m ? 'شهر ' + monthName(r.m) : '') : m.k === 'draw' ? 'سحب' + vtx(m) : m.k === 'ship' ? 'شحنة' : (r.note || 'مصاريف');
-    const note = m.src === 'tx' ? r.pnote || '' : m.k === 'exp' ? '' : r.note || '';
+    const note = noteOf(m);
     rows.push({i, cls: m.amt < 0 ? 'ret' : '', cells: [dispDate(m.date), what + (note ? ' — ' + note : ''), m.amt > 0 ? fmtP(m.amt) : '', m.amt < 0 ? fmtP(-m.amt) : '', fmtP(b)]}); });
   return {title: `كشف حساب ${v.name}`, period: `لحد ${dispDate(todayISO())}`,
     cols: [{h: 'التاريخ', w: 15, c: 'l'}, {h: 'البيان', w: 37, c: 'l'}, {h: 'ليه', w: 16, c: 'n'}, {h: 'سحب', w: 16, c: 'n'}, {h: 'الرصيد', w: 16, c: 'b'}],
-    rows, sum: [['رأس المال', fmtP(s.cap)], ['الأرباح', fmtP(s.prof)], ['المسحوب', fmtP(s.draw)]], fin: ['الباقي ليه', fmtP(s.bal)]};
+    rows, sum: [['رأس المال', fmtP(s.cap)], ['الأرباح', fmtP(s.prof)], ['المسحوبات', fmtP(s.draw)]], fin: ['الباقي ليه', fmtP(s.bal)]};
+}
+/* شاشة المربوط بعميل: كارت لكل شحنة (التاريخ والمكان وصافيها فوق، وأصنافها تحتها، والنقل في آخرها)، وكروت لرأس المال والمصاريف والمسحوبات */
+function ivCards(v, ms) {
+  const card = (title, tot, rows, cls) => `<section class="ctab ${cls}"><div class="cth"><span>${title}</span><b>${tot}</b></div><table class="cmt"><tbody>${rows}</tbody></table></section>`;
+  const ships = ms.map((m, i) => [m, i]).filter(([m]) => m.k === 'ship');
+  const simple = (k, title, cls) => {
+    const L = ms.map((m, i) => [m, i]).filter(([m]) => m.k === k); if (!L.length) return '';
+    return card(`${title} (${L.length})`, fmtP(L.reduce((n, [m]) => n + Math.abs(m.amt), 0)), L.map(([m, i]) => {
+      const nt0 = m.src === 'tx' ? m.r.pnote || '' : k === 'exp' ? '' : m.r.note || '', nt = /رأس/.test(nt0) ? '' : nt0, vt = m.src === 'tx' ? (k === 'cap' ? 'دخل ' : 'من ') + vName(m.r.vault) : '';
+      return `<tr data-k="${i}"><td class="d">${shortDate(m.date)}</td><td class="w"><b>${esc(k === 'exp' ? m.r.note || 'مصاريف' : k === 'cap' ? 'رأس مال' : 'سحب')}</b>${[vt, nt].filter(Boolean).length ? `<small>${esc([vt, nt].filter(Boolean).join(' — '))}</small>` : ''}</td><td class="am">${fmtP(Math.abs(m.amt))}</td></tr>`; }).join(''), cls);
+  };
+  const shipHtml = ships.map(([m, i]) => {
+    const r = m.r, sg = r.ret ? -1 : 1;
+    return card(`${dispDate(r.date)}${r.site ? ' — ' + esc(r.site) : ''}${r.ret ? ' — مرتجع' : ''}`, fmtP(m.amt),
+      (r.lines || []).map(l => `<tr data-k="${i}"><td class="w"><b>${esc(l.n)}</b><small><bdi dir="ltr">${fmtQ(l.q)} × ${fmtP(l.u || 0)}</bdi>${l.w ? ` · وزن <bdi dir="ltr">${fmtQ(l.w)}</bdi>` : ''}</small></td><td class="am">${fmtP(sg * Math.round((+l.q || 0) * (l.u || 0)))}</td></tr>`).join('')
+      + (r.fr ? `<tr data-k="${i}"><td class="w"><b>النقل والمصاريف</b></td><td class="am neg">${fmtP(-r.fr)}</td></tr>` : ''), 'inc');
+  }).join('');
+  return (simple('cap', 'رأس المال', 'inc') ? `<div class="cwrap">${simple('cap', 'رأس المال', 'inc')}</div>` : '')
+    + (ships.length ? `<h2 class="rph">الشحنات (${ships.length})<small>الرقم الأخضر فوق = صافي الشحنة: العدد × ربح الواحدة ناقص النقل</small></h2><div class="cwrap">${shipHtml}</div>` : '')
+    + (simple('exp', 'المصاريف', 'exp') || simple('draw', 'المسحوبات', 'exp') ? `<div class="cwrap">${simple('exp', 'المصاريف', 'exp')}${simple('draw', 'المسحوبات', 'exp')}</div>` : '');
 }
 function renderIv(id) {
   const pg = $('#p-jrd'), v = ivGet(id);
@@ -4888,11 +4933,13 @@ function renderIv(id) {
       ${pend.map(e => `<tr data-pe="${esc(e.id)}"><td class="d">${shortDate(e.date)}</td><td class="w"><b>${e.kind === 'rinv' ? 'مرتجع' : 'فاتورة'} — ${(e.lines || []).length} صنف</b><small>${esc((e.lines || []).slice(0, 2).map(l => `${l.name} × ${fmtQ(l.qty)}`).join('، '))}${(e.lines || []).length > 2 ? '…' : ''}</small></td><td class="am">${fmtP(e.dr || e.cr || 0)}</td></tr>`).join('')}
     </tbody></table></section>` : ''}
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
-    ${R.rows.length ? `<div class="ldgw"><table class="ldg rp wide"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
+    ${v.mode === 'c' ? (ms.length ? ivCards(v, ms) : '<div class="empty">لسه مفيش حركات</div>')
+      : R.rows.length ? `<div class="ldgw"><table class="ldg rp wide"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
       ${R.rows.map(r => `<tr class="${r.cls || ''}" data-k="${r.i}">${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">لسه مفيش حركات</div>'}
-    <div class="card" style="margin-top:10px">${R.sum.map(([a, b]) => `<div class="bl"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
+    <h2 class="rph">الملخص</h2>
+    <div class="card">${R.sum.map(([a, b, st]) => `<div class="bl ${st || ''}"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
     <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>
-    <div class="mrow3" style="margin-top:10px;grid-template-columns:1fr 1fr"><button class="btn green" id="ivShare" type="button">📲 ابعت الكشف واتساب</button><button class="btn gold" id="ivPdf" type="button">معاينة / تنزيل PDF</button></div>`;
+    <div class="mrow3" style="margin-top:10px;grid-template-columns:1fr 1fr"><button class="btn green" id="ivShare" type="button">📲 ابعت واتساب</button><button class="btn gold" id="ivPdf" type="button">معاينة / تنزيل PDF</button></div>`;
   $('#ivBack').onclick = () => go('jrd/iv'); $('#ivSet').onclick = () => ivpModal(v);
   if ($('#ivProf')) $('#ivProf').onclick = () => ivMoveModal(v, 'prof');
   if ($('#ivExp')) $('#ivExp').onclick = () => ivMoveModal(v, 'exp');

@@ -288,28 +288,45 @@ body{font-size:var(--f3);line-height:1.6}
 /* عنوان كل يوم في قايمة الحركات */
 .dayh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:14px 2px 6px;padding-bottom:4px;border-bottom:1px solid var(--line);font-weight:800;font-size:var(--f2);color:var(--gold-d)}
 .dayh b{direction:ltr;font-size:var(--f2);font-variant-numeric:tabular-nums}.dayh b.neg{color:var(--red)}.dayh b.pos{color:var(--green)}
-/* القفل بالرقم السري */
+/* شاشة القفل: نفس شكل قفل الحسابات بالظبط، والشريط الأخضر وعلامة "الخزنة" بيميزوها */
 #lock{position:fixed;inset:0;z-index:115;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px 18px;overflow:auto}
 #lock.on{display:flex}
-#lock img{width:96px;border-radius:18px;background:var(--card);box-shadow:var(--shadow)}
-#lock h2{margin:12px 0 2px;font-size:var(--f5);font-weight:800}
-#lock .box{width:100%;max-width:340px;margin-top:16px;display:grid;gap:10px}
-#lock .inp{text-align:center;font-size:var(--f5);letter-spacing:.3em;direction:ltr}
+#lock img{width:110px;border-radius:18px;background:var(--card);box-shadow:0 4px 18px #0002}
+#lock h2{margin:12px 0 2px;font-size:var(--f5);font-weight:800;display:flex;align-items:center;gap:8px}
+#lock h2 svg{width:30px;height:30px;color:var(--green)}
+#lock .tag{display:inline-block;margin-top:6px;padding:3px 12px;border-radius:999px;background:var(--green-l);color:var(--green);border:1px solid var(--green);font-weight:800;font-size:var(--f2)}
+#lock .box{width:100%;max-width:380px;margin-top:16px}
+#lock .err{color:var(--red);font-weight:800;min-height:26px;text-align:center;margin:6px 0}
+#lock .lnk{display:block;text-align:center;margin-top:14px;color:var(--gold-d);font-weight:700;text-decoration:underline;cursor:pointer;background:none;border:0;width:100%;font-size:var(--f3)}
+#lock .btn.big{min-height:48px;font-size:var(--f3);border-radius:12px}
+#lkPad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0;direction:ltr}
+#lkPad .pk{font:inherit;font-size:var(--f5);font-weight:700;min-height:54px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:inherit;-webkit-tap-highlight-color:transparent}
+#lkPad .pk:active{background:var(--gold)}
+html[data-theme=dark] #lkPad .pk{background:var(--bg);border-color:var(--field)}
+.shake{animation:sh .35s}
+@keyframes sh{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 .lkerr{color:var(--red);font-weight:800;text-align:center;min-height:1.5em}
+/* نفس تنسيق قفل الحسابات (كارت أبيض بخط فوق)، والخط هنا أخضر علشان تعرف إنها الخزنة */
+#lock img{width:84px;border-radius:16px;box-shadow:0 2px 12px #0002}
+#lock h2{font-size:var(--f4);margin:10px 0 0}
+#lock h2 svg{width:26px;height:26px}
+#lock .box{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--green);border-radius:14px;padding:18px 18px 14px;box-shadow:var(--shadow);margin-top:18px}
+#lock #lkP{font-size:var(--f4)!important;letter-spacing:.25em;min-height:50px}
+#lock .btn{margin-top:4px}
+#lock .lnk{margin-top:10px;font-size:var(--f2)}
+html[data-theme=dark] #lock{background:var(--bg);color:var(--ink)}
+html[data-theme=dark] #lock .box{background:var(--card)}
+html[data-theme=dark] #lock .inp{background:var(--bg);border-color:var(--field);color:var(--ink)}
+html[data-theme=dark] #lock label{color:var(--sub)}
 </style>
 </head>
 <body>
-<div id="lock" aria-hidden="true">
+<div id="lock">
   <img src="icons/logo.jpg" alt="فلاش أون">
-  <h2>دفتر الخزنة</h2>
+  <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 10v5M18 10v5"/></svg>دفتر الخزنة</h2>
   <div style="color:var(--gold-d);font-weight:700">فلاش أون</div>
-  <div class="box">
-    <input class="inp" id="lkP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="الرقم السري">
-    <div class="lkerr" id="lkErr"></div>
-    <button class="btn gold" id="lkGo" type="button">فتح</button>
-    <details class="hint"><summary style="cursor:pointer;font-weight:700">نسيت الرقم السري؟</summary>
-      <p class="hint">الحركات كلها محفوظة على الشيت ومش هتضيع. امسح أيقونة الدفتر وضيفها تاني، وبعدين من الحسابات ← الإعدادات ← "الدفتر أيقونة لوحده" اربطها تاني وهتنزل كل الحركات، واعمل رقم سري جديد.</p></details>
-  </div>
+  <span class="tag">الخزنة — مش الحسابات</span>
+  <div class="box" id="lockBox"></div>
 </div>
 <script>try { if (localStorage.getItem('fo_cash_lock')) document.getElementById('lock').classList.add('on'); } catch (e) {}</script>
 <header class="top">
@@ -432,7 +449,7 @@ function toast(msg, ms = 2800) {
   clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms);
 }
 function modal(html, wide) { $('#modal').className = 'modal' + (wide ? ' wide' : ''); $('#modal').innerHTML = html; $('#mask').classList.add('on'); }
-function closeModal() { $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; if (typeof reloadLater !== 'undefined' && reloadLater) setTimeout(reloadFromStorage, 0); }
+function closeModal() { $('#mask').style.zIndex = ''; $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; if (typeof reloadLater !== 'undefined' && reloadLater) setTimeout(reloadFromStorage, 0); }
 function confirmBox(msg, okLabel = 'تأكيد', danger = false) {
   return new Promise(res => {
     modal(`<p>${esc(msg)}</p><div class="g2"><button class="btn ${danger ? 'red' : 'gold'}" id="cOk">${esc(okLabel)}</button><button class="btn line" id="cNo">إلغاء</button></div>`);
@@ -1333,10 +1350,12 @@ function useJoin(o, later) {
   setTimeout(() => { toast('✔ الدفتر اتربط بالشيت، وبنزّل الحركات…', 5000); autoPull().finally(() => syncNow()); }, later ? 500 : 0);
 }
 if (/^#cashjoin=/.test(location.hash)) { const o = readJoin(location.hash); history.replaceState(null, '', location.pathname); if (o) useJoin(o, true); }
-/* ====================== القفل بالرقم السري ======================
-   الرقم نفسه مبيتخزنش: بيتخزن ملح وبصمة منه (PBKDF2) في مفتاح لوحده fo_cash_lock، على الجهاز ده بس (كل أيقونة ليها رقمها).
-   الحركات نفسها في fo_cash_v1 زي ما هي، لأن برنامج الحسابات بيقرا ويكتب فيها على نفس الجهاز. */
-const PIN_KEY = 'fo_cash_lock', PIN_HIDDEN = 5 * 60 * 1000, PIN_IDLE = 10 * 60 * 1000;
+/* ====================== القفل بكلمة السر (نفس قواعد قفل الحسابات، من غير بصمة) ======================
+   كلمة السر نفسها مبتتخزنش: بيتخزن ملح وبصمة منها (PBKDF2) في مفتاح لوحده fo_cash_lock، على الجهاز ده بس (كل أيقونة ليها كلمتها).
+   الحركات نفسها في fo_cash_v1 زي ما هي، لأن برنامج الحسابات بيقرا ويكتب فيها على نفس الجهاز.
+   زي الحسابات: 6 حروف أو أرقام على الأقل، بيفتح لوحده لما توقف كتابة نص ثانية، الغلط بيمسح ويهز، لوحة أرقام جوه الصفحة على الموبايل،
+   وبيتقفل لوحده بعد 10 دقايق من غير استخدام أو لو الصفحة استخبت أكتر من 5 دقايق. */
+const PIN_KEY = 'fo_cash_lock', PIN_HIDDEN = 5 * 60 * 1000, PIN_IDLE = 10 * 60 * 1000, PIN_MIN = 6;
 const pinGet = () => { try { const o = JSON.parse(localStorage.getItem(PIN_KEY) || 'null'); return o && o.h && o.s ? o : null; } catch (e) { return null; } };
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 async function pinHash(pin, salt) {
@@ -1345,66 +1364,103 @@ async function pinHash(pin, salt) {
 }
 async function pinOk(pin) { const o = pinGet(); return !o || (await pinHash(normDigits(pin), o.s)) === o.h; }
 let pinLastAct = Date.now(), pinHiddenAt = 0;
-function lockNow() {
-  if (!pinGet()) return;
-  if ($('#mask').classList.contains('on') && !$('#modal').querySelector('#tSave')) closeModal();
-  $('#lock').classList.add('on'); $('#lkP').value = ''; $('#lkErr').textContent = '';
-  setTimeout(() => { try { $('#lkP').focus(); } catch (e) {} }, 50);
-}
 const isLocked = () => $('#lock').classList.contains('on');
-async function tryUnlock(show) {
-  const v = normDigits($('#lkP').value).trim(), o = pinGet();
-  if (!o) { $('#lock').classList.remove('on'); return; }
-  if (!v) { if (show) $('#lkErr').textContent = 'اكتب الرقم السري'; return; }
-  if (await pinOk(v)) { $('#lock').classList.remove('on'); $('#lkP').value = ''; $('#lkErr').textContent = ''; pinLastAct = Date.now(); refresh(); }
-  else if (show) { $('#lkErr').textContent = 'الرقم السري غلط'; $('#lkP').select(); }
+function lockNow(msg) {
+  if (!pinGet()) return;
+  if ($('#mask').classList.contains('on')) closeModal();
+  showLock(msg);
 }
-$('#lkP').oninput = () => { $('#lkErr').textContent = ''; const o = pinGet(); if (o && normDigits($('#lkP').value).length === o.n) tryUnlock(false); };
-$('#lkP').onkeydown = e => { if (e.key === 'Enter') tryUnlock(true); };
-$('#lkGo').onclick = () => tryUnlock(true);
-$('#bLockNow').onclick = lockNow;
-['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => { pinLastAct = Date.now(); }, true));
+function showLock(msg) {
+  $('#lock').classList.add('on');
+  $('#lockBox').innerHTML = `
+    <label for="lkP">كلمة السر</label>
+    <input class="inp" id="lkP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" autofocus style="text-align:center;font-size:var(--f4)">
+    <div class="err" id="lkErr">${esc(msg || '')}</div>
+    <button class="btn gold big" id="lkGo" type="button">فتح</button>
+    <button class="lnk" id="lkAbc" type="button">كلمة السر فيها حروف؟ افتح لوحة الحروف</button>
+    <button class="lnk" id="lkForgot" type="button">نسيت كلمة السر؟</button>`;
+  let busy = false, tm = 0;
+  /* silent = فتح تلقائي أثناء الكتابة: لو كلمة السر لسه ناقصة أو غلط مفيش رسالة ولا مسح */
+  const go = async silent => {
+    const pw = $('#lkP').value; if (!pw || busy) return;
+    busy = true;
+    if (!silent) { $('#lkGo').disabled = true; $('#lkErr').textContent = '⏳ بفتح…'; }
+    const ok = await pinOk(pw);
+    busy = false;
+    if (ok) { $('#lock').classList.remove('on'); $('#lockBox').innerHTML = ''; pinLastAct = Date.now(); refresh(); return; }
+    if (silent) return;
+    $('#lkGo').disabled = false; $('#lkErr').textContent = 'كلمة السر غلط'; $('#lkP').value = '';
+    $('#lockBox').classList.remove('shake'); void $('#lockBox').offsetWidth; $('#lockBox').classList.add('shake'); $('#lkP').focus();
+  };
+  $('#lkGo').onclick = () => go(false);
+  $('#lkP').onkeydown = e => { if (e.key === 'Enter') go(false); };
+  /* أول ما توقف كتابة (نص ثانية) وهي طول كلمة السر أو أكتر، بيجرب يفتح لوحده */
+  const need = Math.min(PIN_MIN, (pinGet() || {}).n || PIN_MIN);
+  $('#lkP').oninput = () => { clearTimeout(tm); if ($('#lkP').value.length >= need) tm = setTimeout(() => go(true), 450); };
+  $('#lkForgot').onclick = () => {
+    modal(`<h3>نسيت كلمة السر؟</h3><p>الحركات كلها محفوظة على الشيت ومش هتضيع.</p>
+      <ol class="steps"><li>امسح أيقونة الدفتر من الشاشة الرئيسية.</li><li>من الحسابات ← الإعدادات ← كارت الدفتر ← <b>"📲 الدفتر أيقونة لوحده"</b> نزّلها تاني واربطها، وهتنزل كل الحركات.</li><li>من إعدادات الدفتر اعمل كلمة سر جديدة.</li></ol>
+      <button class="btn line" id="fgX" type="button" style="margin-top:10px">تمام</button>`);
+    $('#mask').style.zIndex = 130; $('#fgX').onclick = () => { $('#mask').style.zIndex = ''; closeModal(); };
+  };
+  $('#lkAbc').onclick = () => { const i = $('#lkP'); const num = i.inputMode === 'numeric'; i.inputMode = num ? 'text' : 'numeric'; if (num) i.removeAttribute('pattern'); else i.setAttribute('pattern', '[0-9]*'); $('#lkAbc').textContent = num ? 'ارجع للوحة الأرقام' : 'كلمة السر فيها حروف؟ افتح لوحة الحروف'; i.blur(); setTimeout(() => i.focus(), 50); };
+  const focusPw = () => { const i = $('#lkP'); if (i && document.activeElement !== i) { try { i.focus({preventScroll: true}); } catch (e) { i.focus(); } } };
+  /* الأيفون بيمنع فتح الكيبورد من غير لمسة، فعلى الموبايل بنعرض لوحة أرقام جوه الصفحة نفسها. زرار "لوحة الحروف" بيرجّع الكيبورد العادي */
+  if (matchMedia('(pointer:coarse)').matches) {
+    const inp = $('#lkP'); inp.setAttribute('inputmode', 'none'); inp.readOnly = true;
+    const pad = document.createElement('div'); pad.id = 'lkPad';
+    pad.innerHTML = ['1','2','3','4','5','6','7','8','9','⌫','0','فتح'].map(k => `<button type="button" class="pk" data-k="${k}">${k}</button>`).join('');
+    $('#lkErr').after(pad);
+    pad.onclick = e => { const b = e.target.closest('.pk'); if (!b) return; const k = b.dataset.k;
+      if (k === '⌫') inp.value = inp.value.slice(0, -1); else if (k === 'فتح') return go(false); else inp.value += k;
+      inp.oninput(); };
+    $('#lkAbc').onclick = () => { pad.remove(); inp.readOnly = false; inp.inputMode = 'text'; inp.removeAttribute('pattern'); $('#lkGo').style.display = ''; $('#lkAbc').remove(); setTimeout(() => inp.focus(), 50); };
+    $('#lkGo').style.display = 'none';
+  } else [0, 100, 400, 900, 1600].forEach(ms => setTimeout(focusPw, ms));
+}
+document.addEventListener('pointerup', e => { if (isLocked() && !e.target.closest('button,a,summary,input,#mask')) { const i = $('#lkP'); if (i && !i.readOnly) i.focus(); } }, true);
+$('#bLockNow').onclick = () => lockNow();
+['pointerdown', 'keydown', 'scroll'].forEach(ev => addEventListener(ev, () => { pinLastAct = Date.now(); }, {passive: true, capture: true}));
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) pinHiddenAt = Date.now();
-  else if (pinHiddenAt && Date.now() - pinHiddenAt > PIN_HIDDEN) lockNow();
+  else if (!isLocked() && pinHiddenAt && Date.now() - pinHiddenAt > PIN_HIDDEN) lockNow();
 });
-setInterval(() => { if (!isLocked() && Date.now() - pinLastAct > PIN_IDLE) lockNow(); }, 20000);
+setInterval(() => { if (!isLocked() && Date.now() - pinLastAct > PIN_IDLE) lockNow('اتقفل لوحده بعد 10 دقايق من غير استخدام'); }, 20000);
 function pinBtn() { $('#bLockNow').style.display = pinGet() ? '' : 'none'; }
 function askPin(title) {
   return new Promise(res => {
     modal(`<h3>${esc(title)}</h3><input class="inp num amt" id="apP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off"><div class="lkerr" id="apE"></div><div class="g2"><button class="btn gold" id="apOk" type="button">تمام</button><button class="btn line" id="apX" type="button">رجوع</button></div>`);
     setTimeout(() => $('#apP').focus(), 50);
     $('#apX').onclick = () => { closeModal(); res(false); };
-    $('#apOk').onclick = async () => { if (await pinOk($('#apP').value)) { closeModal(); res(true); } else $('#apE').textContent = 'الرقم السري غلط'; };
+    $('#apOk').onclick = async () => { if (await pinOk($('#apP').value)) { closeModal(); res(true); } else $('#apE').textContent = 'كلمة السر غلط'; };
   });
 }
 function renderPin() {
   const box = $('#sPin'); if (!box) return;
   pinBtn();
   if (pinGet()) {
-    box.innerHTML = `<div class="sync ok">✔ الدفتر مقفول برقم سري على الجهاز ده. بيتقفل لوحده لو سبته 10 دقايق، أو قفلته ورجعتله بعد 5 دقايق.</div>
-      <div class="g2"><button class="btn line sm" id="pinCh" type="button">غيّر الرقم السري</button><button class="btn red sm" id="pinOff" type="button">شيل القفل</button></div>`;
-    $('#pinCh').onclick = async () => { if (await askPin('اكتب الرقم السري الحالي')) { localStorage.removeItem(PIN_KEY); renderPin(); toast('اكتب الرقم الجديد مرتين ودوس "شغّل القفل"', 4000); } };
-    $('#pinOff').onclick = async () => { if (await askPin('اكتب الرقم السري علشان تشيل القفل')) { localStorage.removeItem(PIN_KEY); renderPin(); toast('اتشال القفل'); } };
+    box.innerHTML = `<div class="sync ok">✔ الدفتر مقفول بكلمة سر على الجهاز ده. بيتقفل لوحده لو سبته 10 دقايق، أو قفلته ورجعتله بعد 5 دقايق.</div>
+      <div class="g2"><button class="btn line sm" id="pinCh" type="button">غيّر كلمة السر</button><button class="btn red sm" id="pinOff" type="button">شيل القفل</button></div>`;
+    $('#pinCh').onclick = async () => { if (await askPin('اكتب كلمة السر الحالية')) { localStorage.removeItem(PIN_KEY); renderPin(); toast('اكتب كلمة السر الجديدة مرتين ودوس "شغّل القفل"', 4000); } };
+    $('#pinOff').onclick = async () => { if (await askPin('اكتب كلمة السر علشان تشيل القفل')) { localStorage.removeItem(PIN_KEY); renderPin(); toast('اتشال القفل'); } };
     return;
   }
-  box.innerHTML = `<p class="hint" style="margin:0 0 8px">زي الحسابات: الدفتر مبيتفتحش غير بالرقم السري. الرقم على الجهاز ده (أو الأيقونة دي) بس.</p>
-    <div class="g2"><input class="inp num" id="pin1" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" placeholder="رقم سري جديد"><input class="inp num" id="pin2" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" placeholder="اكتبه تاني"></div>
+  box.innerHTML = `<p class="hint" style="margin:0 0 8px">زي الحسابات بالظبط: الدفتر مبيتفتحش غير بكلمة السر. الكلمة على الجهاز ده (أو الأيقونة دي) بس.</p>
+    <div class="g2"><input class="inp num" id="pin1" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" placeholder="كلمة السر (6 على الأقل)"><input class="inp num" id="pin2" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" placeholder="اكتبها تاني"></div>
     <div class="lkerr" id="pinE"></div>
     <button class="btn gold" id="pinOn" type="button">🔒 شغّل القفل</button>`;
   $('#pinOn').onclick = async () => {
     const a = normDigits($('#pin1').value).trim(), b = normDigits($('#pin2').value).trim();
-    if (!/^\d{4,12}$/.test(a)) return $('#pinE').textContent = 'الرقم السري لازم يبقى أرقام بس، من 4 لـ 12 رقم';
-    if (a !== b) return $('#pinE').textContent = 'الرقمين مش زي بعض';
+    if (a.length < PIN_MIN) return $('#pinE').textContent = 'كلمة السر لازم تبقى 6 حروف أو أرقام على الأقل';
+    if (a !== b) return $('#pinE').textContent = 'الكلمتين مش زي بعض';
     if (!(crypto && crypto.subtle)) return $('#pinE').textContent = 'المتصفح ده مش بيدعم القفل';
     const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
-    try { localStorage.setItem(PIN_KEY, JSON.stringify({s: salt, h: await pinHash(a, salt), n: a.length})); } catch (e) { return $('#pinE').textContent = 'معرفتش أحفظ الرقم'; }
-    renderPin(); toast('✔ الدفتر بقى مقفول بالرقم السري', 4000);
+    try { localStorage.setItem(PIN_KEY, JSON.stringify({s: salt, h: await pinHash(a, salt), n: a.length})); } catch (e) { return $('#pinE').textContent = 'معرفتش أحفظ كلمة السر'; }
+    renderPin(); toast('✔ الدفتر بقى مقفول بكلمة السر', 4000);
   };
 }
 pinBtn();
-if (isLocked() && !pinGet()) $('#lock').classList.remove('on');
-if (isLocked()) setTimeout(() => { try { $('#lkP').focus(); } catch (e) {} }, 100);
+if (pinGet()) showLock(); else $('#lock').classList.remove('on');
 window.addEventListener('hashchange', route);
 $('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#tSave')) closeModal(); });
 route();

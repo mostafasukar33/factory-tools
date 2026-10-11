@@ -138,7 +138,7 @@ function cashState() {
    app: acc (الحسابات) / mkt (تطبيق الشريك) / cash (الدفتر). full = الصفحة كلها (موبايل بس). go = بيوصل للشاشة */
 const MOB = {width: 390, height: 844}, LAP = {width: 1440, height: 900}, LAP2 = {width: 1100, height: 760};
 const PNAME = 'مؤسسة تجربة';
-const accGo = h => async A => { await A.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); go(h); }, h); };
+const accGo = h => async A => { await A.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); if (typeof cashSide !== 'undefined') cashSide = 'me'; go(h); if (h === 'cash') renderCash(); }, h); };
 const accEval = code => async A => { await A.evaluate(code => { if ($('#mask').classList.contains('on')) closeModal(); (0, eval)(code); }, code); };
 const party = `liveParties().find(p => p.name.startsWith('${PNAME}'))`;
 const mktGo = h => async M => { await M.evaluate(h => nav(h), h); };
@@ -174,6 +174,8 @@ const SCREENS = [
   {name: 'acc-lock-m', app: 'acc', vp: MOB, go: accEval("$('#bLock').click()")},
   ...ACC('l', LAP),
   {name: 'acc-party-l1100', app: 'acc', vp: LAP2, go: accEval(`go('p/' + ${party}.id)`)},
+  {name: 'acc-cash-mk-m', app: 'acc', vp: MOB, full: true, go: accEval(`cashSide = 'mkt'; go('cash'); renderCash()`)},
+  {name: 'acc-cash-mk-l', app: 'acc', vp: LAP, go: accEval(`cashSide = 'mkt'; go('cash'); renderCash()`)},
   {name: 'acc-cash-l1100', app: 'acc', vp: LAP2, go: accGo('cash')},
   {name: 'acc-list-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval("tab = 'mkt'; go('home'); renderHome()")},
   {name: 'acc-party-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval(`go('p/' + ${party}.id)`)},
@@ -226,6 +228,11 @@ function accExtra(iso0, now) {
   const P = n => liveParties().find(p => p.name === n), ops = mkDb().ops, ts = (n, h) => now - n * 86400000 + (h - 9) * 3600000;
   [['pay', 'معرض تجربة الأمل', 250000, 'cash', 0, 9], ['pay', 'عميل تجربة خمسة', 150000, 'tr', 0, 10], ['inv', 'عميل تجربة واحد', 66000, '', 0, 10.5], ['exp', '', 30000, '', 0, 11], ['spay', '', 120000, '', 0, 12], ['hand', '', 900000, '', 1, 17]]
     .forEach(([t, n, amt, m, dd, h], i) => { const p = n && P(n), id = 'mshot' + i; ops[id] = {id, t, amt, ts: ts(dd, h), cr: ts(dd, h), upd: ts(dd, h), cid: p ? p.id : '', cname: n, m, cat: t === 'exp' ? 'بنزين' : '', sname: t === 'spay' ? 'مورد تجربة الخامات' : '', del: false}; });
+  /* حركات سوق اتنقلت فعلاً (علشان نص "حركة شريكي" في الخزنة): تحصيل كاش، تحويل دخل خزنتي، مصروف، دفعة مورد، وكاش سلّمه */
+  ensureMktVault();
+  [['pay', 'عميل تجربة اتنين', 180000, 'cash', 0, 9.5, 'v_mkt'], ['pay', 'عميل تجربة تلاتة', 95000, 'insta', 0, 10, v], ['exp', '', 15000, '', 0, 11.5, 'v_mkt'], ['spay', 'مورد تجربة الكرتون', 60000, '', 0, 13, 'v_mkt'], ['hand', '', 100000, '', 0, 16, 'v_mkt']]
+    .forEach(([t, n, amt, m, dd, h, vv], i) => { const p = n && P(n), id = 'mdone' + i; ops[id] = {id, t, amt, ts: ts(dd, h), cr: ts(dd, h), upd: ts(dd, h), cid: t === 'pay' && p ? p.id : '', cname: n, m, cat: t === 'exp' ? 'أكل وشرب' : '', sname: t === 'spay' ? n : '', del: false};
+      mkMove(ops[id], {pid: p ? p.id : '', amt, date: d(dd), vault: vv, to: t === 'hand' ? v : ''}); });
   saveDB();
 }
 async function accPage(browser, base, vp, dark) {

@@ -781,6 +781,7 @@ html[data-theme=dark] .mtag.insta{background:#2a2240;color:#B9A6F0}html[data-the
 .mkst .i b{color:var(--green)}.mkst .o b{color:var(--red)}.mkst .h b{color:var(--tr)}
 .mkst .k{grid-column:1/-1;background:var(--gold-l);border-color:var(--gold)}.mkst .k b{color:var(--ink)}
 @media (min-width:1000px){.mkst{grid-template-columns:repeat(5,1fr)}.mkst .k{grid-column:auto}}
+.mkcf{margin-bottom:12px}.mkcr{text-align:center;font-size:var(--f2);font-weight:700;color:var(--sub);margin-top:8px}
 .mkdet .cth{color:var(--gold-d);border-top:3px solid var(--gold)}
 .cmt tr.mkdh td{background:var(--row);border-top:1px solid var(--line);padding:9px 12px}
 .cmt tr.mkdh td b{display:block;font-size:var(--f3);color:var(--ink)}.cmt tr.mkdh td small{display:block;font-size:var(--f1);color:var(--sub);font-weight:600;margin-top:1px}
@@ -3385,8 +3386,15 @@ function cashNoteOnce() {
 /* حركة السوق جوه الخزنة: اللي جه من الشريك (وارد كاش) واللي اتصرف من فلوسه، يوم بيوم ومفصول تماماً عن خزنتي. للعرض بس: التعديل من وارد السوق */
 const MK_CK = {pay: ['cash', 'تحصيل', 1], cs: ['cash', 'بيع كاش', 1], exp: ['exp', 'مصروف', -1], spay: ['voda', 'مورد', -1], hand: ['tr', 'سلّم لك', -1]};
 function mkCashKind(m) { return m.src === 'pay' ? (m.r.kind === 'pay' ? 'pay' : 'spay') : m.r.type === 'inc' ? 'cs' : m.r.type === 'exp' ? 'exp' : 'hand'; }
-function mkCashBlock(from, to) {
+/* فترة السوق لوحدها (مش مربوطة باختيار يوم/شهر/سنة بتاع خزنتي): افتراضي آخر أسبوعين */
+let mkcMode = '14', mkcFrom = '', mkcTo = '';
+function mkcRange() {
+  const t = todayISO(), n = {'7': 6, '14': 13, '30': 29}[mkcMode];
+  return n !== undefined ? [addDays(t, -n), t] : [mkcFrom || addDays(t, -13), mkcTo || t];
+}
+function mkCashBlock() {
   if (!db.vaults.some(v => v.id === MKV)) return '';
+  const [from, to] = mkcRange();
   const mv = vaultMoves(MKV, from, to).map(m => Object.assign({k: mkCashKind(m)}, m)), sum = {pay: 0, cs: 0, exp: 0, spay: 0, hand: 0};
   mv.forEach(m => sum[m.k] += m.amt);
   const inn = sum.pay + sum.cs, out = sum.exp + sum.spay + sum.hand;
@@ -3394,6 +3402,8 @@ function mkCashBlock(from, to) {
   const stat = (n, v, c) => `<div class="mks ${c}"><span>${n}</span><b>${fmtP(v)}</b></div>`;
   const row = m => { const [tg, tn] = MK_CK[m.k]; return `<tr class="nohov"><td class="w"><span class="mtag ${tg}">${tn}</span> <b>${esc(m.who)}</b>${m.what ? `<small>${esc(m.what)}</small>` : ''}</td><td class="am ${m.k === 'hand' ? 'h' : m.sign > 0 ? 'i' : 'o'}">${m.sign > 0 ? '+' : '−'}${fmtP(m.amt)}</td></tr>`; };
   return `<div class="csec mkc"><b>🏪 حركة السوق (مع شريكك)</b></div>
+    <div class="card mkcf"><div class="seg s4" id="mkcMode">${[['7', 'أسبوع'], ['14', 'أسبوعين'], ['30', 'شهر'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${mkcMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+      ${mkcMode === 'range' ? `<div class="g2" style="margin-top:8px"><input class="inp" type="date" id="mkcFrom" value="${from}"><input class="inp" type="date" id="mkcTo" value="${to}"></div>` : `<div class="mkcr">${dispDate(from)} ← ${dispDate(to)}</div>`}</div>
     <div class="mkst">${stat('وارد السوق (كاش اتحصّل)', inn, 'i')}${stat('مصروفات السوق', sum.exp, 'o')}${stat('دفعات موردين', sum.spay, 'o')}${stat('سلّمه لك', sum.hand, 'h')}${stat('معاه دلوقتي (الفترة)', inn - out, 'k')}</div>
     <section class="ctab mkdet"><div class="cth"><span>تفصيل حركة السوق يوم بيوم (${mv.length})</span></div>
       <table class="cmt"><tbody>${days.length ? days.map(d => { const L = mv.filter(m => m.date === d), di = L.filter(m => m.sign > 0).reduce((a, m) => a + m.amt, 0), dout = L.filter(m => m.sign < 0).reduce((a, m) => a + m.amt, 0);
@@ -3447,7 +3457,7 @@ function renderCash() {
     ${cashVault ? '' : '<div class="csec"><b>🏭 خزنتي (المصنع)</b></div>'}
     <div class="cwrap">${cashTable('الإيرادات', mv.filter(m => m.sign > 0), mv, 'inc')}${cashTable('المصروفات', mv.filter(m => m.sign < 0), mv, 'exp')}</div>
     ${mv.some(m => !m.sign) ? cashTable('تحويلات', mv.filter(m => !m.sign), mv, '') : ''}
-    ${cashVault ? '' : mkCashBlock(from, to)}
+    ${mkCashBlock()}
     `;
   $$('#p-cash .vt').forEach(el => el.onclick = () => { cashVault = cashVault === el.dataset.v ? '' : el.dataset.v; renderCash(); });
   $('#cRecv').onclick = () => pickParty('pay');
@@ -3465,6 +3475,8 @@ function renderCash() {
     const m = mv[+el.dataset.i];
     if (m.src === 'tx') m.r.pt ? partnerTxModal(m.r) : txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
   });
+  $$('#mkcMode button').forEach(b => b.onclick = () => { mkcMode = b.dataset.m; renderCash(); });
+  if ($('#mkcFrom')) { $('#mkcFrom').onchange = () => { mkcFrom = $('#mkcFrom').value; renderCash(); }; $('#mkcTo').onchange = () => { mkcTo = $('#mkcTo').value; renderCash(); }; }
   $('#cSet').onclick = vaultSettings;
   $('#cPart').onclick = () => go('part');
   $('#cOpen2').onclick = openingModal;

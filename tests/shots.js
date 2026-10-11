@@ -143,6 +143,14 @@ const accEval = code => async A => { await A.evaluate(code => { if ($('#mask').c
 const party = `liveParties().find(p => p.name.startsWith('${PNAME}'))`;
 const mktGo = h => async M => { await M.evaluate(h => nav(h), h); };
 const cashGo = h => async C => { await C.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); go(h); }, h); };
+/* مساهم تجريبي (أول مرة بس): رأس مال وشحنة بأصنافها ومصروف وسحب، علشان شاشة الجرد وكشف المساهم */
+const IVSHOT = `if (!IDX.ivp.get('ip_shot')) { const t = todayISO(), u = Date.now(), add = (k, r) => { const x = Object.assign({id: r.id, iv: 'ip_shot', k, note: '', at: u, upd: u, del: false, hist: []}, r); db.ivrs.push(x); IDX.ivr.set(x.id, x); };
+  const v = {id: 'ip_shot', name: 'مساهم تجربة', mode: 'c', party: ${party}.id, from: addDays(t, -40), note: '', at: u, upd: u, del: false, hist: []}; db.ivps.push(v); IDX.ivp.set(v.id, v);
+  add('cap', {id: 'ir_shot1', amt: 29000000, date: addDays(t, -60)});
+  add('ship', {id: 'ir_shot2', date: addDays(t, -30), lines: [{n: 'لفة تجربة 16 مم', q: 300, w: 4.5, u: 2250}, {n: 'لفة تجربة 23 مم', q: 160, w: 7.25, u: 3625}], fr: 300000, site: 'المنيا'});
+  add('exp', {id: 'ir_shot3', amt: 300000, date: addDays(t, -20), note: 'مصروف تجربة'});
+  add('draw', {id: 'ir_shot4', amt: 1000000, date: addDays(t, -10)}); }
+`;
 const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-list-' + sfx, go: accEval("tab = 'mkt'; go('home'); renderHome()"), full: true},
   {name: 'acc-site-' + sfx, go: accEval("tab = 'site'; go('home'); renderHome()")},
@@ -158,6 +166,8 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-rep-' + sfx, go: accGo('rep'), full: true},
   {name: 'acc-col-' + sfx, go: async A => { await accGo('rep')(A); await A.evaluate(() => { repKind = 'col'; repColMode = 'month'; renderReports(); }); }, full: true},
   {name: 'acc-set-' + sfx, go: accGo('set'), full: true},
+  {name: 'acc-jrd-' + sfx, go: accEval(IVSHOT + "jrDate = ''; jrStock = null; go('jrd')"), full: true},
+  {name: 'acc-iv-' + sfx, go: accEval(IVSHOT + "go('jrd/iv/ip_shot')"), full: true},
 ].map(x => Object.assign({app: 'acc', vp}, x, extra, vp.width > 999 ? {full: false} : {}));
 const SCREENS = [
   ...ACC('m', MOB),

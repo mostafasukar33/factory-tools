@@ -244,6 +244,34 @@ const T0 = Date.now();
   /* خانة ملف النقل اتشالت من الإعدادات، فبنفتح شاشة النقل مباشرة */
   const openImport = (A, d) => A.evaluate(x => importModal(readImport(x)), d);
   try {
+    /* أدوات الشكل (الخط والتبويبات والأرقام): متعرّفة هنا فوق علشان أقسام قبل قسم الشكل تستخدمها */
+    const fs5 = X => X.evaluate(() => {
+      const tok = ['--f1', '--f2', '--f3', '--f4', '--f5'].map(v => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(v)));
+      const ICON = '#bSearch,#bNewParty,.dnav button,.dpk button,.dph button,.chk,.qkm .btn,#lkPad .pk,.qa2 .qb i,.fabn';
+      const bad = new Set();
+      for (const el of document.querySelectorAll('body *')) {
+        if (el.closest('#render,svg') || el.closest(ICON)) continue;
+        if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue;
+        const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+        const f = parseFloat(getComputedStyle(el).fontSize);
+        if (!tok.some(t => Math.abs(t - f) < 0.1)) bad.add(f + 'px ' + el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + '.' + String(el.className).trim().replace(/\s+/g, '.'));
+      }
+      return [tok.every(t => t > 0), [...bad].slice(0, 6)];
+    });
+    const segOk = (X, name) => X.evaluate(() => [...document.querySelectorAll('.seg')].filter(g => g.getClientRects().length).flatMap(g => {
+      const bs = [...g.querySelectorAll('button')].filter(b => b.getClientRects().length), hs = bs.map(b => Math.round(b.getBoundingClientRect().height));
+      const bad = [];
+      if (Math.max(...hs) - Math.min(...hs) > 1) bad.push((g.id || 'seg') + ': ارتفاعات ' + [...new Set(hs)].join('/'));
+      bs.forEach(b => { const r = document.createRange(); r.selectNodeContents(b); const tops = new Set([...r.getClientRects()].map(x => Math.round(x.top))); if (tops.size > 1 || b.scrollWidth > b.clientWidth + 1) bad.push((g.id || 'seg') + ': ' + b.textContent.trim()); });
+      return bad;
+    })).then(b => eq(name + ': التبويبات منظمة', b, []));
+    const numCol = (X, root, sel) => X.evaluate(([root, sel]) => {
+      const L = [...document.querySelectorAll(root + ' ' + sel.split(',').join(',' + root + ' '))].filter(e => e.getClientRects().length && e.textContent.trim())
+        .map(e => { const g = document.createRange(); g.selectNodeContents(e); return [g.getBoundingClientRect().left, e.className + ':' + e.textContent.trim().slice(0, 12) + '@' + (e.closest('section,.list,.ctab') || {}).className + '|' + e.parentElement.className + '|' + e.parentElement.parentElement.className]; });
+      const xs = L.map(x => x[0]), lo = Math.min(...xs);
+      return [L.length, L.length ? Math.round(Math.max(...xs) - lo) : 0, L.filter(x => x[0] - lo > 1).slice(0, 4).map(x => Math.round(x[0] - lo) + ' ' + x[1])];
+    }, [root, sel]);
+    const colOk = async (name, X, root, sel) => { const [n, spread, off] = await numCol(X, root, sel); eq(`${name}: الأرقام تحت بعض (${n} رقم)`, [n >= 2, spread <= 1, off], [true, true, []]); };
     sec('١) كلمة السر والتشفير');
     const A = await D1.page('accounts.html');
     await unlock(A, true);
@@ -728,6 +756,112 @@ const T0 = Date.now();
     eq('كشف العميل مفيهوش "عميل سوق/مواقع"، والمورد فيه "مورد"', await A.evaluate(() => { const ps = liveParties(), c = ps.find(x => x.sec === 'mkt'), m = ps.find(x => x.sec === 'sup');
       const t = (p) => { const pg = buildStmtPages(p, stmtData(p.id, '', '')); const r = pg[0].querySelector('.cust i'); const v = r ? r.textContent : ''; $('#render').innerHTML = ''; return v; };
       return [t(c), t(m)]; }), ['', 'مورد']);
+    sec('١٣ب) الجرد والمساهمين');
+    eq('الموبايل: مفيش زرار جديد تحت، والجرد زرار جوه التقارير', await A.evaluate(() => { go('rep'); renderReports(); return [getComputedStyle($('nav button[data-go=jrd]')).display, !!$('#rpJrd')]; }), ['none', true]);
+    await A.click('#rpJrd'); await A.waitForSelector('#jrS', {timeout: 3000});
+    /* الأرقام اللي جاية لوحدها = نفس اللي بيتحسب من الحسابات والخزنة بطريقة تانية */
+    eq('الجرد: العملا والموردين والخزن من الحسابات (من غير الحساب الفرعي)', await A.evaluate(() => {
+      const n = jrdCalc(todayISO()), b = allBalances(), w = {mkt: 0, site: 0, sup: 0};
+      b.forEach((v, id) => { const p = P.get(id); if (!p.noTot) w[p.sec] += v; });
+      return [n.mkt === w.mkt, n.site === w.site, n.sup === -w.sup, n.vault === vaultBal(''), !!$('#jrBack')]; }), [true, true, true, true, true]);
+    await A.fill('#jrS', '1000'); await A.settle(100);
+    const J1 = await A.evaluate(() => { const n = jrdCalc(todayISO()), T = jrdTot(n, 100000); return [$('#jrStockV').textContent, $('#jrNet').textContent.trim().startsWith(fmtP(T.net)), T.net === n.mkt + n.site + n.vault + 100000 - n.sup]; });
+    eq('المخزون بيتكتب مبلغ والصافي بيتحسب على طول', J1, ['1,000', true, true]);
+    await A.click('#jrSave'); await A.settle(200);
+    eq('الجرد اتحفظ بأرقامه', await A.evaluate(() => { const s = jrdSaved(); return [s.length, s[0].stock, s[0].date === todayISO(), !!$('#p-jrd tr[data-s]')]; }), [1, 100000, true, true]);
+    await A.click('#jrSave'); await A.settle(200);
+    eq('حفظ نفس اليوم تاني بيحدّث نفس الجرد مش جرد جديد', await A.evaluate(() => jrdSaved().length), 1);
+
+    /* مساهم شهري: رأس مال من غير خزنة، وسحب من الخزنة مش مصروف */
+    const vb1 = await vbal(A), pf0 = await A.evaluate(() => profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()));
+    await A.evaluate(() => go('jrd/iv')); await A.waitForSelector('#ivNew', {timeout: 3000});
+    await A.click('#ivNew'); await A.fill('#ipN', 'مساهم تجربة شهري'); await A.fill('#ipA', '100000'); await A.click('#ipOk'); await A.waitForSelector('#ivDraw', {timeout: 3000});
+    const IV1 = () => A.evaluate(() => ivList().find(v => v.name === 'مساهم تجربة شهري'));
+    eq('رأس المال الأول مبيلمسش الخزنة', [await A.evaluate(id => ivSums(id).bal, (await IV1()).id), await vbal(A)], [10000000, vb1]);
+    await A.click('#ivDraw'); await A.fill('#imA', '500'); await A.click('#imOk'); await closed(A);
+    const pf1 = await A.evaluate(() => profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()));
+    eq('السحب من الخزنة: الخزنة نقصت والرصيد قل، ومش مصروف في الأرباح', [await vbal(A), await A.evaluate(id => ivSums(id).bal, (await IV1()).id), pf1.exp === pf0.exp, pf1.after === pf0.after, await A.evaluate(() => catsL('exp').some(c => c.id === 'c_ivdraw'))], [vb1 - 50000, 9950000, true, true, false]);
+    eq('السحب ظاهر في الخزنة ودفتر الخزنة وبيتفتح في نافذة المساهم', await A.evaluate(() => { const t = db.txs.find(x => x.iv && !x.del); bridgeOut(); const c = readCash().tx.find(x => x.id === t.id); ivTxModal(t); const ok = !!$('#imOk') && $('#imA').value === '500'; closeModal(); return [!!c && c.iv === t.iv, ok]; }), [true, true]);
+    /* ربح الشهر: الاقتراح من الشهور اللي فاتت */
+    const SG = await A.evaluate(() => {
+      const v = ivList().find(x => x.name === 'مساهم تجربة شهري'), t = todayISO(), m1 = t.slice(0, 7), [y, mo] = m1.split('-').map(Number), d = new Date(y, mo, 1), m2 = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+      const before = ivSuggest(v, m2), now = Date.now(), r = {id: newId('ir_'), iv: v.id, k: 'prof', m: m1, amt: 300000, date: t, note: '', at: now, upd: now, del: false, hist: []};
+      db.ivrs.push(r); IDX.ivr.set(r.id, r);
+      const s = ivSuggest(v, m2), p1 = profitOf(...monthRange(m1)).before, p2 = profitOf(...monthRange(m2)).before, f = p1 > 0 && p2 > 0 ? Math.min(2, Math.max(.5, p2 / p1)) : 1;
+      const want = Math.round(300000 / 10000000 * ivSums(v.id).cap * f / 10000) * 10000;
+      r.del = true; touch(r);
+      return [before, !!s && s.amt === want, !!s && s.why.includes('%')]; });
+    eq('اقتراح ربح الشهر: مفيش من غير تاريخ، وبعده نفس نسبة رأس المال × حركة الشغل', SG, [null, true, true]);
+    eq('الربح الشهري بيتخصم في تقرير الأرباح، والشهر مبيتكررش', await A.evaluate(() => {
+      const v = ivList().find(x => x.name === 'مساهم تجربة شهري'), t = todayISO();
+      ivMoveModal(v, 'prof'); $('#imM').value = t.slice(0, 7); $('#imA').value = '200'; $('#imD').value = t; $('#imOk').click();
+      const x = profitOf(t.slice(0, 7) + '-01', t);
+      ivMoveModal(v, 'prof'); $('#imM').value = t.slice(0, 7); $('#imA').value = '50'; $('#imD').value = t; $('#imOk').click(); const dup = !!$('#imOk'); closeModal();
+      return [x.iv >= 20000, x.after === x.before - x.part - x.iv, dup, db.ivrs.filter(r => !r.del && r.iv === v.id && r.k === 'prof').length]; }), [true, true, true, 1]);
+
+    /* مساهم مربوط بعميل: الفواتير بتنزل بأصنافها وأعدادها، وانت بتكتب ربح الواحدة */
+    const CI = await A.evaluate(() => {
+      const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), inv = db.entries.filter(e => !e.del && e.party === p.id && (e.kind === 'inv' || e.kind === 'rinv')).sort(entCmp);
+      ivpModal(null); $('#ipN').value = 'مساهم تجربة عميل'; $$('#ipM button')[1].click(); $('#ipP').value = p.id; $('#ipF').value = inv[0].date; $('#ipOk').click();
+      const v = ivList().find(x => x.name === 'مساهم تجربة عميل');
+      return [inv.length, ivPending(v).length, inv.length > 0]; });
+    eq('كل فواتير العميل من تاريخ البداية نازلة "مستنية الربح"', CI[1], CI[0]);
+    const SH = await A.evaluate(() => {
+      const v = ivList().find(x => x.name === 'مساهم تجربة عميل'), e = ivPending(v).find(x => x.kind === 'inv' && (x.lines || []).length);
+      ivShipModal(v, null, e);
+      const names = $$('#shL [data-f=n]').map(i => i.value), qs = $$('#shL [data-f=q]').map(i => num(i.value));
+      const want = e.lines.map(l => l.name), wq = e.lines.map(l => +l.qty);
+      $('#shOk').click(); const blocked = !!$('#shOk');   // ربح الواحدة لسه متكتبش
+      $$('#shL [data-f=u]').forEach(i => { i.value = '2.5'; i.dispatchEvent(new Event('input')); });
+      $('#shF').value = '10'; $('#shF').dispatchEvent(new Event('input'));
+      $('#shAdd').click(); const last = $('#shL [data-i]:last-child'); last.querySelector('[data-f=n]').value = 'صنف زيادة تجربة'; last.querySelector('[data-f=q]').value = '2'; last.querySelector('[data-f=u]').value = '1';
+      $('#shOk').click();
+      const r = db.ivrs.find(x => !x.del && x.src === e.id), gross = e.lines.reduce((s, l) => s + Math.round(l.qty * 250), 0) + 200;
+      return [JSON.stringify(names) === JSON.stringify(want), JSON.stringify(qs) === JSON.stringify(wq), blocked, !!r && r.lines.length === e.lines.length + 1, !!r && ivShipNet(r) === gross - 1000, ivPending(v).some(x => x.id === e.id), ivSums(v.id).prof === gross - 1000]; });
+    eq('الشحنة: الأصناف والأعداد من الفاتورة، ربح الواحدة إجباري، سطر زيادة، والنقل بيتخصم', SH, [true, true, true, true, true, false, true]);
+    eq('شيل سطر من الشحنة بيعدّل الصافي، وإلغاء الشحنة بيرجّع الفاتورة مستنية', await A.evaluate(() => {
+      const v = ivList().find(x => x.name === 'مساهم تجربة عميل'), r = db.ivrs.find(x => !x.del && x.iv === v.id && x.k === 'ship'), n0 = ivShipNet(r);
+      ivShipModal(v, r); $('#shL [data-i]:last-child [data-rm]').click(); $('#shOk').click();
+      const n1 = ivShipNet(r), h = r.hist.length;
+      ivShipModal(v, r); $('#shDel').click(); $('#cOk').click();
+      return new Promise(res => setTimeout(() => res([n0 - n1, h, r.del, ivPending(v).some(x => x.id === r.src)]), 50)); }), [200, 1, true, true]);
+    eq('كشف المساهم المربوط بعميل: نفس أعمدة ملف الإكسيل والـ PDF', await A.evaluate(() => {
+      const v = ivList().find(x => x.name === 'مساهم تجربة عميل'), R = ivReport(v); go('jrd/iv/' + v.id); renderJrd();
+      const pg = buildReportPages(R), th = [...pg[0].querySelectorAll('thead th')].map(x => x.textContent); $('#render').innerHTML = '';
+      return [th.join('|'), !!$('#p-jrd tr[data-pe]'), R.fin[0]]; }), ['التاريخ|الصنف|العدد|الوزن|الربح|النقل والمصاريف|الصافي', true, 'إجمالي اللي ليه']);
+
+    /* نقل كشف قديم من ملف (نفس شكل الملف اللي بيتعمل من الإكسيل)، ونقله مرتين مبيكررش */
+    const IMP = {app: 'flash-on-investors', v: 1, list: [{id: 'ip_imp_t', name: 'مساهم تجربة قديم', mode: 'c', hint: 'تجربة واحد', from: '2026-09-11', at: 1, upd: 1760000000000, rows: [
+      {id: 'ir_imp_t_cap', k: 'cap', date: '2025-05-04', amt: 29000000, note: 'رأس المال', at: 1, upd: 1760000000000},
+      {id: 'ir_imp_t_s1', k: 'ship', date: '2025-05-04', lines: [{n: 'لفة تجربة 16', q: 300, w: 4.5, u: 2250}, {n: 'لفة تجربة 23', q: 160, w: 7.25, u: 3625}], fr: 300000, site: 'المنيا', note: '', at: 2, upd: 1760000000000},
+      {id: 'ir_imp_t_s2', k: 'ship', date: '2026-08-11', lines: [{n: 'ماسورة تجربة', q: 52, u: 10000}], fr: 100000, site: '', note: '', at: 3, upd: 1760000000000},
+      {id: 'ir_imp_t_e1', k: 'exp', date: '2026-03-15', amt: 300000, note: 'مصروف تجربة', at: 4, upd: 1760000000000},
+      {id: 'ir_imp_t_d1', k: 'draw', date: '2026-07-05', amt: 1000000, note: '', at: 5, upd: 1760000000000}]}]};
+    const IM = async () => { await A.evaluate(f => ivImport(JSON.stringify(f)), IMP); await A.waitForSelector('#iiGo'); const sel = await A.evaluate(() => { const s = $('[data-ipp="0"]'); return s.options[s.selectedIndex].text; }); await A.click('#iiGo'); await A.settle(200); return sel; };
+    eq('النقل: بيختار العميل اللي اسمه شبه الملف لوحده', await IM(), 'عميل تجربة واحد');
+    const IR = await A.evaluate(() => { const v = ivGet('ip_imp_t'), s = ivSums(v.id); return [s.cap, s.gross, s.fr, s.exp, s.draw, s.bal, db.ivrs.filter(r => r.iv === v.id).length, v.from, P.get(v.party).name]; });
+    eq('النقل: رأس المال والعمولة (العدد × ربح الواحدة) والنقل والمصاريف والسحب والباقي', IR, [29000000, 300 * 2250 + 160 * 3625 + 52 * 10000, 400000, 300000, 1000000, 29000000 + 300 * 2250 + 160 * 3625 + 52 * 10000 - 400000 - 300000 - 1000000, 5, '2026-09-11', 'عميل تجربة واحد']);
+    await IM();
+    eq('النقل مرتين مبيكررش حاجة', await A.evaluate(() => [db.ivps.filter(v => v.id === 'ip_imp_t').length, db.ivrs.filter(r => r.iv === 'ip_imp_t').length]), [1, 5]);
+    eq('الجرد: فلوس المساهمين في "عليك"، والجرد المحفوظ أرقامه ثابتة', await A.evaluate(() => {
+      const n = jrdCalc(todayISO()), s = jrdSaved()[0], iv = ivList().reduce((a, v) => a + ivSums(v.id).bal, 0);
+      return [n.ivs.length, n.ivs.reduce((a, x) => a + x.amt, 0) === iv, s.n.ivs.length, jrdTot(n, 0).owe === n.sup + iv]; }), [3, true, 0, true]);
+
+    /* الشكل: التبويبات والأرقام تحت بعض والخط */
+    await A.evaluate(() => { jrDate = ''; go('jrd'); }); await A.settle(300);
+    await segOk(A, 'الحسابات — الجرد'); await colOk('الحسابات — الجرد', A, '#p-jrd', '.cmt td.am,.cth b');
+    eq('الجرد: الخط بالخمس أحجام بس', await fs5(A), [true, []]);
+    await A.evaluate(() => go('jrd/iv')); await A.settle(300);
+    await segOk(A, 'الحسابات — المساهمين'); await colOk('الحسابات — المساهمين', A, '#p-jrd', '.cmt td.am,.cth b');
+    await A.evaluate(() => go('jrd/iv/ip_imp_t')); await A.settle(300);
+    eq('كشف المساهم: الخط بالخمس أحجام بس', await fs5(A), [true, []]);
+
+    /* المزامنة: الجهاز التاني بياخد المساهمين والكشوف والجرد */
+    await bg(A, 'syncNow()'); await bg(B, 'syncNow()'); await B.settle(1500);
+    eq('الجهاز التاني: نفس المساهمين والكشوف والجرد ونفس الأرقام', await B.evaluate(() => [ivList().length, db.ivrs.filter(r => !r.del).length, jrdSaved().length, ivSums('ip_imp_t').bal]),
+      await A.evaluate(() => [ivList().length, db.ivrs.filter(r => !r.del).length, jrdSaved().length, ivSums('ip_imp_t').bal]));
+    await A.evaluate(() => go('home')); await A.settle(200);
+
     sec('١٤) التاريخ ورصيد أول المدة');
     const OP = await A.evaluate(() => {
       const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name: 'عميل ترتيب تجربة', phone: '', note: '', noTot: false, at: now, upd: now, del: false};
@@ -1448,19 +1582,6 @@ const T0 = Date.now();
 
     sec('الشكل الموحد (lib/ui.css): 5 أحجام خط بس');
     /* كل كلام وأرقام الشاشة بأحجام النظام الخمسة بس (--f1..--f5)، ماعدا الأيقونات والأسهم وورقة الـ PDF */
-    const fs5 = X => X.evaluate(() => {
-      const tok = ['--f1', '--f2', '--f3', '--f4', '--f5'].map(v => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(v)));
-      const ICON = '#bSearch,#bNewParty,.dnav button,.dpk button,.dph button,.chk,.qkm .btn,#lkPad .pk,.qa2 .qb i,.fabn';
-      const bad = new Set();
-      for (const el of document.querySelectorAll('body *')) {
-        if (el.closest('#render,svg') || el.closest(ICON)) continue;
-        if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue;
-        const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
-        const f = parseFloat(getComputedStyle(el).fontSize);
-        if (!tok.some(t => Math.abs(t - f) < 0.1)) bad.add(f + 'px ' + el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + '.' + String(el.className).trim().replace(/\s+/g, '.'));
-      }
-      return [tok.every(t => t > 0), [...bad].slice(0, 6)];
-    });
     if (await A.$('#mask.on')) await A.evaluate(() => closeModal());
     await A.evaluate(() => go('home')); await A.settle(300);
     eq('الحسابات (الرئيسية): الخط بالخمس أحجام بس', await fs5(A), [true, []]);
@@ -1470,13 +1591,6 @@ const T0 = Date.now();
 
     sec('قاعدة التبويبات: سطر واحد ونفس الارتفاع ومفيش كلام مقطوع');
     /* أي مجموعة تبويبات (.seg) ظاهرة: كل زرار نفس الارتفاع، الكلام مش ملفوف على سطرين ولا متقطع */
-    const segOk = (X, name) => X.evaluate(() => [...document.querySelectorAll('.seg')].filter(g => g.getClientRects().length).flatMap(g => {
-      const bs = [...g.querySelectorAll('button')].filter(b => b.getClientRects().length), hs = bs.map(b => Math.round(b.getBoundingClientRect().height));
-      const bad = [];
-      if (Math.max(...hs) - Math.min(...hs) > 1) bad.push((g.id || 'seg') + ': ارتفاعات ' + [...new Set(hs)].join('/'));
-      bs.forEach(b => { const r = document.createRange(); r.selectNodeContents(b); const tops = new Set([...r.getClientRects()].map(x => Math.round(x.top))); if (tops.size > 1 || b.scrollWidth > b.clientWidth + 1) bad.push((g.id || 'seg') + ': ' + b.textContent.trim()); });
-      return bad;
-    })).then(b => eq(name + ': التبويبات منظمة', b, []));
     for (const k of ['profit', 'col', 'debt', 'tot', 'cash', 'item']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
     await A.evaluate(() => go('cash')); await A.settle(200); await segOk(A, 'الحسابات — الخزنة');
     await A.evaluate(() => go('set')); await A.settle(200); await segOk(A, 'الحسابات — الإعدادات');
@@ -1485,13 +1599,6 @@ const T0 = Date.now();
 
     sec('قاعدة الأرقام: تحت بعض في عمود واحد (الحسابات والخزنة والسوق)');
     /* كل رقم في القايمة (وإجمالي القسم بتاعها) بيبدأ من نفس الخط على الشمال بالظبط: مفيش رقم داخل ورقم خارج */
-    const numCol = (X, root, sel) => X.evaluate(([root, sel]) => {
-      const L = [...document.querySelectorAll(root + ' ' + sel.split(',').join(',' + root + ' '))].filter(e => e.getClientRects().length && e.textContent.trim())
-        .map(e => { const g = document.createRange(); g.selectNodeContents(e); return [g.getBoundingClientRect().left, e.className + ':' + e.textContent.trim().slice(0, 12) + '@' + (e.closest('section,.list,.ctab') || {}).className + '|' + e.parentElement.className + '|' + e.parentElement.parentElement.className]; });
-      const xs = L.map(x => x[0]), lo = Math.min(...xs);
-      return [L.length, L.length ? Math.round(Math.max(...xs) - lo) : 0, L.filter(x => x[0] - lo > 1).slice(0, 4).map(x => Math.round(x[0] - lo) + ' ' + x[1])];
-    }, [root, sel]);
-    const colOk = async (name, X, root, sel) => { const [n, spread, off] = await numCol(X, root, sel); eq(`${name}: الأرقام تحت بعض (${n} رقم)`, [n >= 2, spread <= 1, off], [true, true, []]); };
     await A.evaluate(() => { go('cash'); cashMode = 'year'; renderCash(); }); await A.settle(300);
     await colOk('الحسابات — الخزنة', A, '#p-cash', '.cmt td.am,.cth b');
     await A.evaluate(() => { cashMode = 'day'; go('home'); }); await A.settle(300);

@@ -223,7 +223,7 @@ nav .nb{position:absolute;top:6px;inset-inline-start:calc(50% + 6px);background:
 .cb{display:inline-block;font-size:var(--f1);font-weight:800;border-radius:6px;padding:0 6px;background:var(--row);color:var(--blue)}
 .cb.ok{background:var(--green-l);color:var(--green)}.cb.warn{background:var(--gold-l);color:var(--gold-d)}.cb.bad{background:var(--red-l);color:var(--red)}
 .rph{font-size:var(--f4);margin:6px 2px 8px;font-weight:800}.rph small{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}
-.ldg.rp tr[data-p]{cursor:pointer}
+.ldg.rp tr[data-p],.ldg.rp tr[data-k]{cursor:pointer}
 table.ldg.rp.wide{min-width:520px}.ldg.rp td{white-space:nowrap}.ldg.rp td.l{white-space:normal;min-width:110px}
 .sech{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;font-weight:800;color:var(--gold-d)}
 .sech a{font-size:var(--f2);text-decoration:underline;cursor:pointer}
@@ -427,7 +427,7 @@ nav svg{width:26px;height:26px}
   .acts{gap:6px}.acts .btn{min-height:42px;font-size:var(--f2);padding:4px 4px}
   .fab2{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:fixed;inset-inline:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:8px 10px;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:25}
   .fab2 .btn{min-height:50px;font-size:var(--f3);box-shadow:0 3px 10px #0004}
-  #p-party,#p-cash,#p-part{padding-bottom:84px}
+  #p-party,#p-cash,#p-part,#p-jrd{padding-bottom:84px}
   .cbar{position:fixed;top:auto;inset-inline:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:8px 10px;margin:0;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:25}
   .cbar .btn{min-height:48px;font-size:var(--f2);box-shadow:0 3px 10px #0004}
   .cbar .lg{display:none}.cbar .sh{display:inline}
@@ -1228,6 +1228,9 @@ body{font-size:var(--f3);line-height:1.6}
 <!-- ============== التقارير ============== -->
 <section class="page" id="p-rep"></section>
 
+<!-- ============== الجرد والمساهمين ============== -->
+<section class="page" id="p-jrd"></section>
+
 <!-- ============== الإعدادات ============== -->
 <section class="page" id="p-set">
   <div class="card">
@@ -1299,6 +1302,7 @@ body{font-size:var(--f3);line-height:1.6}
   <button data-go="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 10h8M6 14h5M16 14h2"/></svg>الشيكات<i class="nb" id="nbChk"></i></button>
   <div class="ngrp">المتابعة</div>
   <button data-go="rep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>التقارير</button>
+  <button data-go="jrd" class="lap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>الجرد<i class="nb" id="nbJrd"></i></button>
   <button data-go="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>الإعدادات</button>
   <div class="ngrp">أدوات</div>
   <button type="button" class="lap tool" id="nQuick" title="تسجيل سريع: فاتورة أو دفعة أو مصروف (F4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>تسجيل سريع</button>
@@ -1440,7 +1444,7 @@ function defaults() {
 }
 let db = null, cryptoKey = null, saltU8 = null;
 /* كل نوع سجل ومكانه في القاعدة. أي نوع جديد بيتضاف هنا بس، والمزامنة والنسخة الاحتياطية بيشتغلوا عليه لوحدهم */
-const STORE = {party: 'parties', entry: 'entries', vault: 'vaults', cat: 'cats', tx: 'txs', set: 'sets'};
+const STORE = {party: 'parties', entry: 'entries', vault: 'vaults', cat: 'cats', tx: 'txs', set: 'sets', ivp: 'ivps', ivr: 'ivrs', stk: 'stks'};
 let IDX = {}, P = new Map(), E = new Map();          // فهارس سريعة بالـ id
 function reindex() { for (const k in STORE) IDX[k] = new Map((db[STORE[k]] = db[STORE[k]] || []).map(r => [r.id, r])); P = IDX.party; E = IDX.entry; }
 
@@ -2752,6 +2756,9 @@ function viewOf(kind, r) {
   if (kind === 'vault') return ['', cell(r.name), 'خزنة', 'رصيد افتتاحي', (r.open || 0) / 100, ''];
   if (kind === 'cat') return ['', cell(r.name), r.type === 'exp' ? 'بند مصروف' : 'بند إيراد', '', '', ''];
   if (kind === 'set') return ['', r.id, 'إعداد', r.id === 'cashSheet' ? 'ربط دفتر الخزنة' : cell(JSON.stringify(r.val)), '', ''];
+  if (kind === 'ivp') return ['', cell(r.name), 'مساهم', r.mode === 'c' ? 'من شغل عميل' : 'ربح شهري', '', ''];
+  if (kind === 'ivr') { const v = IDX.ivp.get(r.iv), a = ivSign(r); return [r.date, cell(v ? v.name : '؟'), 'مساهم: ' + ({cap: 'رأس مال', prof: 'ربح', ship: 'شحنة', exp: 'مصروف', draw: 'سحب'}[r.k] || ''), cell(r.note || ''), a > 0 ? a / 100 : '', a < 0 ? -a / 100 : '']; }
+  if (kind === 'stk') return [r.date, 'الجرد', 'جرد', 'المخزون', (r.stock || 0) / 100, ''];
   if (kind === 'tx') return [r.date, cell(r.type === 'tr' ? vName(r.vault) + ' ← ' + vName(r.to) : vName(r.vault)), 'خزنة: ' + TXT[r.type], cell((r.type === 'tr' ? '' : cName(r.cat)) + (r.note ? ' — ' + r.note : '')), r.type === 'inc' ? r.amt / 100 : '', r.type === 'inc' ? '' : r.amt / 100];
   const p = P.get(r.party);
   return [r.date, cell(p ? p.name : '؟'), p ? SECS[p.sec] : '', cell(noRef(r.desc)), (r.dr || 0) / 100, (r.cr || 0) / 100];
@@ -3583,7 +3590,7 @@ function renderCash() {
   $('#cVault').onchange = () => { cashVault = $('#cVault').value; renderCash(); };
   $$('#p-cash tr[data-i]').forEach(el => el.onclick = () => {
     const m = mv[+el.dataset.i];
-    if (m.src === 'tx') m.r.pt ? partnerTxModal(m.r) : txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
+    if (m.src === 'tx') m.r.pt ? partnerTxModal(m.r) : m.r.iv && ivGet(m.r.iv) ? ivTxModal(m.r) : txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
   });
   $$('#mkcMode button').forEach(b => b.onclick = () => { mkcMode = b.dataset.m; renderCash(); });
   if ($('#mkcFrom')) { $('#mkcFrom').onchange = () => { mkcFrom = $('#mkcFrom').value; renderCash(); }; $('#mkcTo').onchange = () => { mkcTo = $('#mkcTo').value; renderCash(); }; }
@@ -3944,7 +3951,7 @@ function bridgeOut() {
   };
   db.vaults.forEach(v => put('vaults', {id: v.id, name: v.name, open: (v.open || 0) / 100, upd: v.upd, del: !!v.del}));
   db.cats.forEach(x => put('cats', {id: x.id, type: x.type, name: x.name, ord: x.ord || 0, upd: x.upd, del: !!x.del}));
-  db.txs.forEach(t => put('tx', Object.assign({id: t.id, type: t.type, amt: t.amt / 100, ts: tsOfDate(t.date, t.at), vault: t.vault, note: t.note || '', upd: t.upd, del: !!t.del}, t.type === 'tr' ? {to: t.to} : {cat: t.cat}, t.pt ? {pt: t.pt} : {})));
+  db.txs.forEach(t => put('tx', Object.assign({id: t.id, type: t.type, amt: t.amt / 100, ts: tsOfDate(t.date, t.at), vault: t.vault, note: t.note || '', upd: t.upd, del: !!t.del}, t.type === 'tr' ? {to: t.to} : {cat: t.cat}, t.pt ? {pt: t.pt} : {}, t.iv ? {iv: t.iv, pnote: t.pnote || ''} : {})));
   db.entries.forEach(e => {
     if (!isPay(e) || (!e.vault && !idx.tx.has(e.id))) return;
     put('tx', {id: e.id, type: e.kind === 'pay' ? 'inc' : 'exp', amt: (e.amt || 0) / 100, ts: tsOfDate(vdate(e), e.at), vault: e.vault || '', cat: PAY_CAT[e.kind],
@@ -3992,6 +3999,7 @@ function bridgeIn() {
       /* حركة الشريك: نحتفظ بالشريك وملاحظته حتى لو اتعدلت من الدفتر */
       const pt = t.pt || (cur && cur.pt), keep = pt ? {pt, pnote: cur ? cur.pnote || '' : '', auto: cur ? cur.auto : undefined} : {};
       if (keep.auto === undefined) delete keep.auto;
+      const iv = t.iv || (cur && cur.iv); if (iv) Object.assign(keep, {iv, pnote: cur ? cur.pnote || '' : t.pnote || ''});   // سحب أو رأس مال مساهم
       up('tx', Object.assign({id: t.id, type: t.type, amt: p2(t.amt), vault: t.vault, to: t.to || '', cat: t.cat || '', note: t.note || '', date: isoOf(t.ts), at: t.ts, upd: t.upd || 1, del: !!t.del, hist: cur ? cur.hist || [] : []}, keep));
     }
   });
@@ -4333,6 +4341,7 @@ function cashSums(f, t) {
   const r = {exp: 0, inc: 0, part: 0, byCat: new Map()};
   for (const x of db.txs) {
     if (x.del || x.type === 'tr' || x.date < f || x.date > t || NOT_PL.has(x.cat)) continue;
+    if (x.iv || x.cat === 'c_ivdraw' || x.cat === 'c_ivcap') continue;   // فلوس المساهمين (رأس مال وسحب) مش مصروف ولا إيراد
     if (x.pt || x.cat === 'c_psal' || x.cat === 'c_pdraw') { r.part += x.amt; continue; }
     if (x.type === 'exp') r.exp += x.amt; else r.inc += x.amt;
     const k = (x.type === 'exp' ? '− ' : '+ ') + cName(x.cat); r.byCat.set(k, (r.byCat.get(k) || 0) + x.amt);
@@ -4340,26 +4349,26 @@ function cashSums(f, t) {
   return r;
 }
 function profitOf(f, t) {
-  const a = tradeSums(f, t), c = cashSums(f, t), before = a.sales - a.purch - c.exp + c.inc;
-  return {sales: a.sales, purch: a.purch, exp: c.exp, inc: c.inc, part: c.part, before, after: before - c.part, byCat: c.byCat};
+  const a = tradeSums(f, t), c = cashSums(f, t), iv = ivProfit(f, t), before = a.sales - a.purch - c.exp + c.inc;
+  return {sales: a.sales, purch: a.purch, exp: c.exp, inc: c.inc, part: c.part, iv, before, after: before - c.part - iv, byCat: c.byCat};
 }
 const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 function profitReport(f, t) {
-  const rows = [], tot = {sales: 0, purch: 0, exp: 0, inc: 0, part: 0, before: 0, after: 0}, cats = new Map();
+  const rows = [], tot = {sales: 0, purch: 0, exp: 0, inc: 0, part: 0, iv: 0, before: 0, after: 0}, cats = new Map();
   for (let m = f.slice(0, 7); m <= t.slice(0, 7);) {
     const [y, mo] = m.split('-').map(Number), ms = m + '-01' < f ? f : m + '-01', me0 = m + '-' + pad2(new Date(y, mo, 0).getDate()), me = me0 > t ? t : me0;
     const x = profitOf(ms, me);
     Object.keys(tot).forEach(k => tot[k] += x[k]); x.byCat.forEach((v, k) => cats.set(k, (cats.get(k) || 0) + v));
-    rows.push({raw: {m: MONTHS[mo - 1], s: x.sales, p: x.after}, cells: [`${MONTHS[mo - 1]} ${y}`, fmtP(x.sales), fmtP(x.purch), fmtP(x.exp - x.inc), fmtP(x.before), fmtP(x.part), fmtP(x.after)], cls: x.after < 0 ? 'ret' : ''});
+    rows.push({raw: {m: MONTHS[mo - 1], s: x.sales, p: x.after}, cells: [`${MONTHS[mo - 1]} ${y}`, fmtP(x.sales), fmtP(x.purch), fmtP(x.exp - x.inc), fmtP(x.before), fmtP(x.part + x.iv), fmtP(x.after)], cls: x.after < 0 ? 'ret' : ''});
     m = mo === 12 ? `${y + 1}-01` : `${y}-${pad2(mo + 1)}`;
   }
   const sum = [['صافي المبيعات', fmtP(tot.sales)], ['صافي المشتريات', fmtP(tot.purch)], ['المصروفات', fmtP(tot.exp)],
     ...[...cats.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => ['   ' + k, fmtP(v)]),
     ...(tot.inc ? [['إيرادات تانية من الخزنة', fmtP(tot.inc)]] : []),
-    ['الربح قبل الشركاء', fmtP(tot.before)], ['مرتبات ومسحوبات الشركاء', fmtP(tot.part)]];
+    ['الربح قبل الشركاء', fmtP(tot.before)], ['مرتبات ومسحوبات الشركاء', fmtP(tot.part)], ...(tot.iv ? [['أرباح المساهمين', fmtP(tot.iv)]] : [])];
   return {title: 'الأرباح بالشهر', period: rangeText(f, t),
-    cols: [{h: 'الشهر', w: 16, c: 'l'}, {h: 'المبيعات', w: 14, c: 'n'}, {h: 'المشتريات', w: 14, c: 'n'}, {h: 'المصروفات', w: 13, c: 'n'}, {h: 'الربح قبل الشركاء', w: 15, c: 'n'}, {h: 'الشركاء', w: 13, c: 'n'}, {h: 'الباقي', w: 15, c: 'b'}],
-    rows, sum, fin: [tot.after >= 0 ? 'الباقي بعد الشركاء' : 'خسارة بعد الشركاء', fmtP(tot.after)],
+    cols: [{h: 'الشهر', w: 16, c: 'l'}, {h: 'المبيعات', w: 14, c: 'n'}, {h: 'المشتريات', w: 14, c: 'n'}, {h: 'المصروفات', w: 13, c: 'n'}, {h: 'الربح قبل الشركاء', w: 15, c: 'n'}, {h: tot.iv ? 'الشركاء والمساهمين' : 'الشركاء', w: 13, c: 'n'}, {h: 'الباقي', w: 15, c: 'b'}],
+    rows, sum, fin: [(tot.after >= 0 ? 'الباقي بعد الشركاء' : 'خسارة بعد الشركاء') + (tot.iv ? ' والمساهمين' : ''), fmtP(tot.after)],
     note: 'الربح هنا = المبيعات − المشتريات − المصروفات في نفس الفترة، من غير حساب المخزون. المصروفات = مصروفات الخزنة ناقص إيراداتها التانية.'};
 }
 function renderDash(box = $('#hDash')) {
@@ -4393,7 +4402,7 @@ function searchAll(q) {
   for (const x of db.txs) {
     if (x.del) continue;
     if (hit(`${x.note || ''} ${x.pnote || ''} ${cName(x.cat)} ${x.pt ? partName(x.pt) : ''} ${vName(x.vault)}`, [x.amt]))
-      out.push({date: x.date, at: x.at || 0, title: x.type === 'tr' ? `تحويل: ${vName(x.vault)} ← ${vName(x.to)}` : `${TXT[x.type]} — ${cName(x.cat)}`, sub: x.note || '', amt: x.amt, go: () => { closeModal(); x.pt ? partnerTxModal(x) : txModal(x.type, x); }});
+      out.push({date: x.date, at: x.at || 0, title: x.type === 'tr' ? `تحويل: ${vName(x.vault)} ← ${vName(x.to)}` : `${TXT[x.type]} — ${cName(x.cat)}`, sub: x.note || '', amt: x.amt, go: () => { closeModal(); x.pt ? partnerTxModal(x) : x.iv && ivGet(x.iv) ? ivTxModal(x) : txModal(x.type, x); }});
   }
   return out.sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at);
 }
@@ -4533,7 +4542,8 @@ function renderReports() {
   loadPdfLibs().catch(() => {});   // نجهّز أداة الـ PDF من دلوقتي علشان تبقى جاهزة لما يدوس
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
   const needRange = repKind === 'cash' || repKind === 'item' || repKind === 'profit';
-  $('#p-rep').innerHTML = `
+  const jw = isWide() ? 0 : ivWaiting();
+  $('#p-rep').innerHTML = (isWide() ? '' : `<div class="ctools"><button class="btn line sm" id="rpJrd" type="button">📦 الجرد والمساهمين${jw ? ` (${jw})` : ''}</button></div>`) + `
     <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="card">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
@@ -4562,6 +4572,7 @@ function renderReports() {
   bindI('#rpDay', v => repDay = v); bindI('#rpMonth', v => repMonth = v); bindI('#rpYear', v => repYear = normDigits(v).replace(/\D/g, '').slice(0, 4));
   bindI('#rpFrom', v => repFrom = v); bindI('#rpTo', v => repTo = v); bindI('#rpV', v => repVault = v);
   $$('#p-rep tr[data-p]').forEach(el => el.onclick = () => go('p/' + el.dataset.p));
+  if ($('#rpJrd')) $('#rpJrd').onclick = () => go('jrd');
   $('#rpShare').onclick = () => exportReport(R, 'share');
   $('#rpPdf').onclick = () => exportReport(R, 'preview');
 }
@@ -4595,10 +4606,10 @@ function buildReportPages(R) {
   pages.forEach((x, i) => x.querySelector('.pn').textContent = `صفحة ${i + 1} من ${pages.length}`);
   return pages;
 }
-async function exportReport(R, how) {
+async function exportReport(R, how, fileName) {
   modal('<p style="text-align:center">جاري تجهيز التقرير…</p>');
   let res;
-  try { res = await pagesToPdf(() => buildReportPages(R), `${R.title} - ${R.period}`); }
+  try { res = await pagesToPdf(() => buildReportPages(R), `${R.title} - ${R.period}`, fileName); }
   catch (e) { closeModal(); console.error(e); toast('حصلت مشكلة في تجهيز الـ PDF، جرّب تاني.'); return; }
   closeModal();
   if (how === 'share') return shareFile(res, R.title);
@@ -4635,6 +4646,453 @@ async function pagesToPdf(build, title, fileName) {
   const name = cleanName(fileName || `${title} - ${todayISO().split('-').reverse().join('-')}`) + '.pdf';
   return {blob: doc.output('blob'), imgs, name, pages: pages.length};
 }
+
+/* ====================== الجرد والمساهمين ====================== */
+/* الجرد = اللي ليك (عملاء السوق والمواقع + الخزن + المخزون اللي بتكتبه مبلغ) − اللي عليك (الموردين + فلوس المساهمين) لحد آخر يوم معين.
+   الجرد المحفوظ (stk) أرقامه بتتثبت وقت الحفظ. المساهمين (ivp) وكشف كل واحد (ivr): رأس مال، ربح شهري، شحنة (أصناف وربح الواحدة ونقل)، مصروف بيتخصم منه، سحب.
+   السحب أو رأس المال من خزنة = حركة خزنة عادية (txs) فيها iv وبندها c_ivdraw/c_ivcap، ومش بتدخل الأرباح. أرباح المساهمين بتتخصم في تقرير الأرباح (ivProfit).
+   الحسبة كلها بتحصل لما الصفحة تتفتح بس، ومفيش حاجة شغالة في الخلفية. */
+const IV_CATS = {draw: ['c_ivdraw', 'exp', 'سحب مساهمين'], cap: ['c_ivcap', 'inc', 'إيداع مساهمين']};
+SPECIAL_CATS.add('c_ivdraw'); SPECIAL_CATS.add('c_ivcap'); FIXED_CASH_CATS.add('c_ivdraw'); FIXED_CASH_CATS.add('c_ivcap');
+function ensureIvCats() { Object.values(IV_CATS).forEach(([id, type, name]) => { if (!IDX.cat.get(id)) { const r = {id, type, name, ord: 96, upd: 1, del: false}; db.cats.push(r); IDX.cat.set(id, r); } }); }
+const ivList = () => db.ivps.filter(x => !x.del).sort((a, b) => (a.at || 0) - (b.at || 0));
+const ivGet = id => { const v = IDX.ivp.get(id); return v && !v.del ? v : null; };
+const ivGross = r => (r.lines || []).reduce((s, l) => s + Math.round((+l.q || 0) * (l.u || 0)), 0) * (r.ret ? -1 : 1);
+const ivShipNet = r => ivGross(r) - (r.fr || 0);
+const ivSign = r => r.k === 'ship' ? ivShipNet(r) : r.k === 'exp' || r.k === 'draw' ? -r.amt : r.amt;
+const monthName = m => { const [y, mo] = m.split('-'); return AR_MONTHS[+mo - 1] + ' ' + y; };
+const monthRange = m => { const [y, mo] = m.split('-').map(Number); return [m + '-01', m + '-' + pad2(new Date(y, mo, 0).getDate())]; };
+const nextMonth = m => { const [y, mo] = m.split('-').map(Number); return mo === 12 ? `${y + 1}-01` : `${y}-${pad2(mo + 1)}`; };
+/* كل حركات المساهم (لحد upto لو اتبعت) بالترتيب: من الكشف (ivr) ومن الخزنة (txs) */
+function ivMoves(id, upto) {
+  const out = [];
+  for (const r of db.ivrs) if (!r.del && r.iv === id && (!upto || r.date <= upto)) out.push({src: 'ivr', r, k: r.k, date: r.date, at: r.at || 0, amt: ivSign(r)});
+  for (const t of db.txs) if (!t.del && t.iv === id && (!upto || t.date <= upto)) out.push({src: 'tx', r: t, k: t.type === 'inc' ? 'cap' : 'draw', date: t.date, at: t.at || 0, amt: t.type === 'inc' ? t.amt : -t.amt});
+  return out.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.at - b.at);
+}
+function ivSums(id, upto) {
+  const s = {cap: 0, prof: 0, draw: 0, bal: 0, gross: 0, fr: 0, exp: 0, expBy: new Map()};
+  ivMoves(id, upto).forEach(m => {
+    s.bal += m.amt;
+    if (m.k === 'cap') s.cap += m.amt; else if (m.k === 'draw') s.draw -= m.amt; else s.prof += m.amt;
+    if (m.k === 'ship') { s.gross += ivGross(m.r); s.fr += m.r.fr || 0; }
+    else if (m.k === 'exp') { s.exp += m.r.amt; const k = m.r.note || 'مصاريف'; s.expBy.set(k, (s.expBy.get(k) || 0) + m.r.amt); }
+  });
+  return s;
+}
+/* أرباح المساهمين في فترة (بتتخصم في تقرير الأرباح): الربح الشهري + صافي الشحنات − المصروفات اللي اتخصمت منهم */
+function ivProfit(f, t) {
+  let n = 0;
+  if (!db.ivrs || !db.ivrs.length) return 0;
+  for (const r of db.ivrs) { if (r.del || r.date < f || r.date > t || !ivGet(r.iv) || r.k === 'cap' || r.k === 'draw') continue; n += ivSign(r); }
+  return n;
+}
+/* المساهم الشهري: الشهور اللي ربحها لسه متكتبش (من أول شهر دخل فيه لحد الشهر اللي فات) */
+function ivDue(v) {
+  if (v.mode !== 'm') return [];
+  const ms = ivMoves(v.id); if (!ms.length) return [];
+  const have = new Set(db.ivrs.filter(r => !r.del && r.iv === v.id && r.k === 'prof' && r.m).map(r => r.m)), cur = todayISO().slice(0, 7), out = [];
+  for (let m = ms[0].date.slice(0, 7); m < cur; m = nextMonth(m)) if (!have.has(m)) out.push(m);
+  return out;
+}
+/* المساهم المربوط بعميل: فواتيره (والمرتجعات) من تاريخ البداية اللي لسه ربحها متكتبش */
+function ivPending(v) {
+  if (v.mode !== 'c' || !v.party) return [];
+  const used = new Set(db.ivrs.filter(r => !r.del && r.src).map(r => r.src));
+  return db.entries.filter(e => !e.del && e.party === v.party && (e.kind === 'inv' || e.kind === 'rinv') && (!v.from || e.date >= v.from) && !used.has(e.id)).sort(entCmp);
+}
+const ivWaiting = () => db.ivps.length ? ivList().reduce((n, v) => n + ivDue(v).length + ivPending(v).length, 0) : 0;
+/* اقتراح ربح الشهر: نفس النسبة اللي كان بياخدها من رأس ماله في آخر 3 شهور، وتزيد أو تقل بحركة الشغل الشهر ده عن متوسطهم */
+function ivSuggest(v, m) {
+  const ps = db.ivrs.filter(r => !r.del && r.iv === v.id && r.k === 'prof' && r.m && r.m < m && r.amt > 0).sort((a, b) => b.m.localeCompare(a.m)).slice(0, 3);
+  if (!ps.length) return null;
+  const xs = ps.map(r => ({rate: r.amt / Math.max(1, ivSums(v.id, r.date).cap), p: profitOf(...monthRange(r.m)).before})).filter(x => x.rate > 0);
+  if (!xs.length) return null;
+  const rate = xs.reduce((s, x) => s + x.rate, 0) / xs.length, pos = xs.filter(x => x.p > 0), pAvg = pos.length ? pos.reduce((s, x) => s + x.p, 0) / pos.length : 0;
+  const pNow = profitOf(...monthRange(m)).before, f = pAvg > 0 && pNow > 0 ? Math.min(2, Math.max(0.5, pNow / pAvg)) : 1;
+  const amt = Math.round(rate * ivSums(v.id).cap * f / 10000) * 10000;
+  const pct = x => (Math.round(x * 1000) / 10).toLocaleString('en-US') + '%';
+  const why = `كان بياخد في المتوسط ${pct(rate)} من رأس ماله في الشهر (آخر ${xs.length === 1 ? 'شهر' : xs.length + ' شهور'})، و` +
+    (f > 1.02 ? `الربح في ${monthName(m)} أعلى من متوسطهم بـ ${pct(f - 1)}` : f < 0.98 ? `الربح في ${monthName(m)} أقل من متوسطهم بـ ${pct(1 - f)}` : `الربح في ${monthName(m)} زي متوسطهم`);
+  return amt > 0 ? {amt, why} : null;
+}
+
+/* ---------- حسبة الجرد ---------- */
+function jrdCalc(d) {
+  const before = addDays(d, 1), bal = new Map();
+  for (const e of db.entries) if (!e.del && (e.date < before || e.kind === 'open')) bal.set(e.party, (bal.get(e.party) || 0) + (e.dr || 0) - (e.cr || 0));
+  const n = {mkt: 0, site: 0, sup: 0, cnt: {mkt: 0, site: 0, sup: 0}, vault: db.vaults.length ? vaultBal('', before) : 0, ivs: []};
+  liveParties().forEach(p => { if (p.noTot) return; const b = bal.get(p.id) || 0; if (!b || n.cnt[p.sec] === undefined) return; if (p.sec === 'sup') n.sup -= b; else n[p.sec] += b; n.cnt[p.sec]++; });   // الحساب الفرعي ميدخلش زي الرئيسية
+  ivList().forEach(v => n.ivs.push({id: v.id, name: v.name, amt: ivSums(v.id, d).bal}));
+  return n;
+}
+function jrdTot(n, stock) {
+  const iv = n.ivs.reduce((s, x) => s + x.amt, 0), own = n.mkt + n.site + n.vault + stock;
+  return {iv, own, owe: n.sup + iv, work: own - n.sup, net: own - n.sup - iv};
+}
+const jrdSaved = () => db.stks.filter(s => !s.del).sort((a, b) => b.date.localeCompare(a.date) || (b.at || 0) - (a.at || 0));
+const jrdBefore = d => jrdSaved().find(s => s.date < d) || null;
+let jrDate = '', jrStock = null;
+function jrdBlock(n, stock, prev, live) {
+  const T = jrdTot(n, stock), diff = prev ? T.net - jrdTot(prev.n, prev.stock).net : null;
+  const row = (name, sub, amt, attr = '') => `<tr class="${attr ? '' : 'nohov'}" ${attr}><td class="w"><b>${esc(name)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</td><td class="am">${fmtP(amt)}</td></tr>`;
+  const cnt = k => n.cnt[k] ? `${n.cnt[k]} حساب` : '';
+  return `<div class="tots"><div class="k"><span>صافي حقك في الشغل</span><b id="jrNet" class="${T.net < 0 ? 'cr' : ''}">${fmtP(T.net)} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
+      <div><span>قيمة الشغل قبل المساهمين</span><b id="jrWork">${fmtP(T.work)}</b></div>
+      <div class="${diff !== null && diff < 0 ? 'cr' : ''}" id="jrDiffB"><span>${prev ? 'عن جرد ' + dispDate(prev.date) : 'عن آخر جرد'}</span><b id="jrDiff">${diff === null ? '—' : (diff > 0 ? '+' : '') + fmtP(diff)}</b></div></div>
+    <div class="cwrap">
+      <section class="ctab inc"><div class="cth"><span>ليك</span><b id="jrOwn">${fmtP(T.own)}</b></div><table class="cmt"><tbody>
+        ${row('عملاء السوق', cnt('mkt'), n.mkt)}${row('عملاء المواقع', cnt('site'), n.site)}${row('الخزن', 'رصيد كل الخزن', n.vault)}
+        <tr class="nohov"><td class="w"><b>المخزون</b><small>${live ? 'اللي كتبته فوق' : 'اللي اتكتب يوم الجرد'}</small></td><td class="am" id="jrStockV">${fmtP(stock)}</td></tr></tbody></table></section>
+      <section class="ctab exp"><div class="cth"><span>عليك</span><b id="jrOwe">${fmtP(T.owe)}</b></div><table class="cmt"><tbody>
+        ${row('الموردين', cnt('sup'), n.sup)}${n.ivs.map(x => row(x.name, 'مساهم: رأس ماله وأرباحه اللي مسحبهاش', x.amt, ivGet(x.id) ? `data-iv="${esc(x.id)}"` : '')).join('')}</tbody></table></section>
+    </div>`;
+}
+function jrdReport(d, n, stock, prev) {
+  const T = jrdTot(n, stock), rows = [['ليك', 'عملاء السوق', n.mkt], ['', 'عملاء المواقع', n.site], ['', 'رصيد الخزن', n.vault], ['', 'المخزون', stock], ['عليك', 'الموردين', n.sup], ...n.ivs.map(x => ['', 'المساهم: ' + x.name, x.amt])];
+  const sum = [['إجمالي اللي ليك', fmtP(T.own)], ['إجمالي اللي عليك', fmtP(T.owe)], ['قيمة الشغل قبل المساهمين', fmtP(T.work)]];
+  if (prev) { const pn = jrdTot(prev.n, prev.stock).net; sum.push([`صافي جرد ${dispDate(prev.date)}`, fmtP(pn)], ['الفرق', fmtP(T.net - pn)]); }
+  return {title: 'الجرد', period: dispDate(d), cols: [{h: '', w: 14, c: 'l'}, {h: 'البند', w: 54, c: 'l'}, {h: 'المبلغ', w: 32, c: 'n'}],
+    rows: rows.map(([a, b, c]) => ({cells: [a, b, fmtP(c)], cls: c < 0 ? 'ret' : ''})), sum, fin: ['صافي حقك في الشغل', fmtP(T.net)]};
+}
+
+/* ---------- الصفحة: #jrd (الجرد)، #jrd/iv (المساهمين)، #jrd/iv/<id> (كشف مساهم)، #jrd/s/<id> (جرد محفوظ) ---------- */
+function jrdHead(tab) {
+  const w = ivWaiting();
+  return (isWide() ? '' : '<div class="sech ppbar" style="margin-top:0"><a id="jrBack">→ التقارير</a><b style="font-size:var(--f3);color:var(--ink)">📦 الجرد والمساهمين</b><span></span></div>') +
+    `<div class="seg s2" id="jrK"><button type="button" data-v="jrd" class="${tab === 'jrd' ? 'on' : ''}">الجرد</button><button type="button" data-v="jrd/iv" class="${tab === 'iv' ? 'on' : ''}">المساهمين${w ? ` (${w})` : ''}</button></div>`;
+}
+function jrdBindHead() {
+  if ($('#jrBack')) $('#jrBack').onclick = () => go('rep');
+  $$('#jrK button').forEach(b => b.onclick = () => go(b.dataset.v));
+}
+function renderJrd() {
+  loadPdfLibs().catch(() => {});
+  const parts = decodeURIComponent(location.hash.slice(1)).split('/');
+  if (parts[1] === 'iv' && parts[2]) return renderIv(parts[2]);
+  if (parts[1] === 's' && parts[2]) return renderJrdSaved(parts[2]);
+  if (parts[1] === 'iv') return renderIvList();
+  const pg = $('#p-jrd'), t = todayISO(), d = jrDate || t, n = jrdCalc(d), same = jrdSaved().find(s => s.date === d), prev = jrdBefore(d);
+  const last = same || prev, stock = jrStock !== null ? jrStock : last ? last.stock : 0, saved = jrdSaved();
+  pg.innerHTML = jrdHead('jrd') + `
+    <div class="card">
+      <div class="g2"><div class="fld"><label>تاريخ الجرد</label><input class="inp" type="date" id="jrD" value="${d}"></div>
+      <div class="fld"><label>المخزون اللي في المصنع</label><input class="inp num amt" id="jrS" placeholder="0" value="${stock ? fmtP(stock) : ''}"></div></div>
+      <p class="hint">العملا والموردين والخزن وفلوس المساهمين بيتحسبوا لوحدهم لحد آخر اليوم ده. المخزون بس اللي بتكتبه${last ? ` (آخر جرد ${dispDate(last.date)}: ${fmtP(last.stock)})` : ''}.</p>
+    </div>
+    ${jrdBlock(n, stock, prev, true)}
+    <div class="mrow3" style="grid-template-columns:1fr 1fr"><button class="btn gold" id="jrSave" type="button">💾 ${same ? 'حدّث جرد اليوم ده' : 'احفظ الجرد'}</button><button class="btn line" id="jrPdf" type="button">📄 PDF</button></div>
+    <div style="height:12px"></div>
+    <section class="ctab"><div class="cth"><span>الجرود المحفوظة (${saved.length})</span><span></span></div><table class="cmt"><tbody>
+      ${saved.length ? saved.map(s => { const T = jrdTot(s.n, s.stock), p = jrdBefore(s.date), df = p ? T.net - jrdTot(p.n, p.stock).net : null;
+        return `<tr data-s="${esc(s.id)}"><td class="d">${shortDate(s.date)}</td><td class="w"><b>صافي حقك</b><small>المخزون ${fmtP(s.stock)}${df === null ? '' : ` — ${df >= 0 ? 'زاد' : 'نقص'} ${fmtP(Math.abs(df))}`}</small></td><td class="am">${fmtP(T.net)}</td></tr>`; }).join('')
+        : '<tr><td class="e" colspan="3">لسه مفيش جرد محفوظ. اكتب المخزون واضغط "احفظ الجرد".</td></tr>'}</tbody></table></section>`;
+  jrdBindHead();
+  const sIn = $('#jrS'); bindMoney(sIn);
+  sIn.addEventListener('input', () => {
+    jrStock = toP(sIn.value);
+    const T = jrdTot(n, jrStock), pn = prev ? jrdTot(prev.n, prev.stock).net : null;
+    $('#jrNet').firstChild.textContent = fmtP(T.net) + ' '; $('#jrNet').classList.toggle('cr', T.net < 0);
+    $('#jrWork').textContent = fmtP(T.work); $('#jrOwn').textContent = fmtP(T.own); $('#jrStockV').textContent = fmtP(jrStock);
+    if (pn !== null) { $('#jrDiff').textContent = (T.net - pn > 0 ? '+' : '') + fmtP(T.net - pn); $('#jrDiffB').classList.toggle('cr', T.net - pn < 0); }
+  });
+  $('#jrD').onchange = () => { const v = $('#jrD').value; if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { jrDate = v > t ? t : v; jrStock = null; renderJrd(); } };
+  $$('#p-jrd tr[data-iv]').forEach(el => el.onclick = () => go('jrd/iv/' + el.dataset.iv));
+  $$('#p-jrd tr[data-s]').forEach(el => el.onclick = () => go('jrd/s/' + el.dataset.s));
+  $('#jrPdf').onclick = () => exportReport(jrdReport(d, n, toP(sIn.value), prev), 'preview', `الجرد ${d.split('-').reverse().join('-')}`);
+  $('#jrSave').onclick = async () => {
+    const st = toP(sIn.value);
+    if (st < 0) return toast('المخزون مينفعش يبقى بالسالب');
+    if (!st && !(await confirmBox('المخزون لسه متكتبش (صفر). تحفظ الجرد كده؟', 'احفظ'))) return;
+    const now = Date.now(), cur = jrdSaved().find(s => s.date === d), o = {date: d, stock: st, n: JSON.parse(JSON.stringify(n))};
+    if (cur) { (cur.hist = cur.hist || []).push({t: now, date: cur.date, desc: `جرد — المخزون ${fmtP(cur.stock)}، صافي ${fmtP(jrdTot(cur.n, cur.stock).net)}`, dr: 0, cr: 0}); Object.assign(cur, o); touch(cur); }
+    else { const r = Object.assign({id: newId('jr_'), at: now, upd: now, del: false, hist: []}, o); db.stks.push(r); IDX.stk.set(r.id, r); }
+    jrStock = null; saveDB(); renderJrd(); toast('اتحفظ الجرد ✔');
+  };
+}
+function renderJrdSaved(id) {
+  const pg = $('#p-jrd'), s = IDX.stk.get(id);
+  if (!s || s.del) { go('jrd'); return; }
+  const prev = jrdBefore(s.date);
+  pg.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="jsBack">→ الجرد</a><b style="font-size:var(--f3);color:var(--ink)">📦 جرد ${dispDate(s.date)}</b><span></span></div>
+    <p class="hint">الأرقام دي اتثبتت يوم ما الجرد اتحفظ، ومش بتتغير لو الحسابات اتعدلت بعدها.</p>
+    ${jrdBlock(s.n, s.stock, prev, false)}
+    <div class="mrow3" style="grid-template-columns:1fr 1fr"><button class="btn green" id="jsShare" type="button">📲 ابعت PDF واتساب</button><button class="btn gold" id="jsPdf" type="button">معاينة / تنزيل PDF</button></div>
+    <div class="stack" style="margin-top:10px"><button class="btn red sm" id="jsDel" type="button">إلغاء الجرد ده</button></div>`;
+  const R = jrdReport(s.date, s.n, s.stock, prev), fn = `الجرد ${s.date.split('-').reverse().join('-')}`;
+  $('#jsBack').onclick = () => go('jrd');
+  $('#jsShare').onclick = () => exportReport(R, 'share', fn); $('#jsPdf').onclick = () => exportReport(R, 'preview', fn);
+  $$('#p-jrd tr[data-iv]').forEach(el => el.onclick = () => go('jrd/iv/' + el.dataset.iv));
+  $('#jsDel').onclick = async () => {
+    if (!(await confirmBox(`تلغي جرد ${dispDate(s.date)}؟ هيفضل محفوظ كـ "ملغي".`, 'ألغيه', true))) return;
+    s.del = true; s.delAt = Date.now(); touch(s); saveDB(); go('jrd'); toast('اتلغى');
+  };
+}
+function renderIvList() {
+  const pg = $('#p-jrd'), L = ivList(), sums = new Map(L.map(v => [v.id, ivSums(v.id)])), tot = L.reduce((n, v) => n + sums.get(v.id).bal, 0);
+  const notes = L.flatMap(v => [...ivDue(v).slice(-1).map(m => `<div class="sync warn" data-ivgo="${esc(v.id)}">💰 ربح ${esc(v.name)} لشهر ${monthName(m)} لسه متكتبش. <a class="lnk">اكتبه</a></div>`),
+    ...(ivPending(v).length ? [`<div class="sync warn" data-ivgo="${esc(v.id)}">🧾 فيه ${ivPending(v).length} فاتورة لـ ${esc((P.get(v.party) || {}).name || '')} مستنية ربح ${esc(v.name)}. <a class="lnk">افتحها</a></div>`] : [])]);
+  pg.innerHTML = jrdHead('iv') + notes.join('') + (L.length ? `
+    <section class="ctab"><div class="cth"><span>فلوس المساهمين (${L.length})</span><b>${fmtP(tot)}</b></div><table class="cmt"><tbody>
+      ${L.map(v => { const s = sums.get(v.id); return `<tr data-iv="${esc(v.id)}"><td class="w"><b>${esc(v.name)}</b><small>رأس المال ${fmtP(s.cap)} — أرباح ليه ${fmtP(s.prof - s.draw)}${v.mode === 'c' && P.get(v.party) ? ' — من شغل ' + esc(P.get(v.party).name) : v.mode === 'm' ? ' — ربح شهري' : ''}</small></td><td class="am">${fmtP(s.bal)}</td></tr>`; }).join('')}
+    </tbody></table></section>` : `<div class="card"><h2>💰 المساهمين</h2><p style="font-weight:700;margin:0">الناس اللي حاطين فلوس معاك: رأس مال كل واحد، وأرباحه، واللي سحبه، والباقي عليك ليه. وكل ده بيظهر في الجرد في "عليك".</p></div>`) + `
+    <div class="ctools" style="margin-top:10px"><button class="btn line sm" id="ivNew" type="button">+ مساهم جديد</button><button class="btn line sm" id="ivImp" type="button">📥 نقل كشف قديم من ملف</button></div>
+    <input type="file" id="ivFile" accept=".json,application/json" hidden>`;
+  jrdBindHead();
+  $$('#p-jrd tr[data-iv],#p-jrd [data-ivgo]').forEach(el => el.onclick = () => go('jrd/iv/' + (el.dataset.iv || el.dataset.ivgo)));
+  $('#ivNew').onclick = () => ivpModal(null);
+  $('#ivImp').onclick = () => $('#ivFile').click();
+  $('#ivFile').onchange = async ev => { const f = ev.target.files[0]; ev.target.value = ''; if (f) ivImport(await f.text()); };
+}
+/* كشف المساهم (شاشة و PDF): المربوط بعميل بنفس شكل ملف الإكسيل بتاعه، والشهري حركات ورصيد */
+function ivReport(v) {
+  const ms = ivMoves(v.id), s = ivSums(v.id), rows = [];
+  const vtx = m => m.src === 'tx' ? (m.k === 'cap' ? ' — دخل ' : ' — من ') + vName(m.r.vault) : '';
+  if (v.mode === 'c') {
+    ms.forEach((m, i) => {
+      const r = m.r;
+      if (m.k === 'ship') {
+        const ls = r.lines && r.lines.length ? r.lines : [{n: 'شحنة', q: 0, u: 0}], sg = r.ret ? -1 : 1;
+        ls.forEach((l, j) => rows.push({i, cls: r.ret ? 'ret' : '', cells: [j ? '' : dispDate(r.date), (r.ret ? 'مرتجع: ' : '') + (l.n || ''), fmtQ(l.q), l.w ? fmtQ(l.w) : '', fmtP(l.u || 0), !j && r.fr ? fmtP(r.fr) : '', fmtP(sg * Math.round((+l.q || 0) * (l.u || 0)) - (!j ? r.fr || 0 : 0))]}));
+      } else if (m.k === 'cap') return;
+      else { const nt = m.src === 'tx' ? r.pnote || '' : m.k === 'exp' ? '' : r.note || '';
+        rows.push({i, cls: m.amt < 0 ? 'ret' : '', cells: [dispDate(m.date), (m.k === 'exp' ? (r.note || 'مصاريف') : m.k === 'draw' ? 'سحب' + vtx(m) : 'ربح' + (r.m ? ' ' + monthName(r.m) : '')) + (nt ? ' — ' + nt : ''), '', '', '', m.k === 'exp' ? fmtP(r.amt) : '', fmtP(m.amt)]}); }
+    });
+    return {title: `كشف حساب ${v.name}`, period: `لحد ${dispDate(todayISO())}`, ivc: true,
+      cols: [{h: 'التاريخ', w: 13, c: 'l'}, {h: 'الصنف', w: 29, c: 'l'}, {h: 'العدد', w: 8, c: 'n'}, {h: 'الوزن', w: 8, c: 'n'}, {h: 'الربح', w: 10, c: 'n'}, {h: 'النقل والمصاريف', w: 14, c: 'n'}, {h: 'الصافي', w: 18, c: 'b'}],
+      rows, sum: [['إجمالي العمولة', fmtP(s.gross)], ['(−) نقل ومصاريف الشحنات', fmtP(s.fr)], ...[...s.expBy].map(([k, x]) => ['(−) ' + (k.startsWith('مصاريف') ? k : 'مصاريف ' + k), fmtP(x)]),
+        ['صافي العمولة', fmtP(s.prof)], ['(−) المسحوبات', fmtP(s.draw)], ['الباقي ليه أرباح', fmtP(s.prof - s.draw)], ['رأس المال', fmtP(s.cap)]],
+      fin: ['إجمالي اللي ليه', fmtP(s.bal)]};
+  }
+  let b = 0;
+  ms.forEach((m, i) => { b += m.amt; const r = m.r;
+    const what = m.k === 'cap' ? 'رأس مال' + vtx(m) : m.k === 'prof' ? 'ربح ' + (r.m ? 'شهر ' + monthName(r.m) : '') : m.k === 'draw' ? 'سحب' + vtx(m) : m.k === 'ship' ? 'شحنة' : (r.note || 'مصاريف');
+    const note = m.src === 'tx' ? r.pnote || '' : m.k === 'exp' ? '' : r.note || '';
+    rows.push({i, cls: m.amt < 0 ? 'ret' : '', cells: [dispDate(m.date), what + (note ? ' — ' + note : ''), m.amt > 0 ? fmtP(m.amt) : '', m.amt < 0 ? fmtP(-m.amt) : '', fmtP(b)]}); });
+  return {title: `كشف حساب ${v.name}`, period: `لحد ${dispDate(todayISO())}`,
+    cols: [{h: 'التاريخ', w: 15, c: 'l'}, {h: 'البيان', w: 37, c: 'l'}, {h: 'ليه', w: 16, c: 'n'}, {h: 'سحب', w: 16, c: 'n'}, {h: 'الرصيد', w: 16, c: 'b'}],
+    rows, sum: [['رأس المال', fmtP(s.cap)], ['الأرباح', fmtP(s.prof)], ['المسحوب', fmtP(s.draw)]], fin: ['الباقي ليه', fmtP(s.bal)]};
+}
+function renderIv(id) {
+  const pg = $('#p-jrd'), v = ivGet(id);
+  if (!v) { go('jrd/iv'); return; }
+  const s = ivSums(v.id), R = ivReport(v), ms = ivMoves(v.id), pend = ivPending(v), due = ivDue(v), cp = P.get(v.party);
+  pg.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="ivBack">→ المساهمين</a><b style="font-size:var(--f3);color:var(--ink)">💰 ${esc(v.name)}</b><a id="ivSet">⚙ بياناته</a></div>
+    <div class="cbar">${v.mode === 'm' ? '<button class="btn gold" id="ivProf" type="button">+ ربح الشهر</button>' : '<button class="btn line" id="ivExp" type="button">− مصروف عليه</button>'}
+      <button class="btn redf" id="ivDraw" type="button">− سحب</button><button class="btn line" id="ivCap" type="button">+ رأس مال</button></div>
+    <div class="tots"><div class="k"><span>الباقي ليه عندك</span><b class="${s.bal < 0 ? 'cr' : ''}">${fmtP(s.bal)} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
+      <div><span>رأس المال</span><b>${fmtP(s.cap)}</b></div><div><span>أرباح ليه (بعد السحب)</span><b>${fmtP(s.prof - s.draw)}</b></div></div>
+    ${v.mode === 'c' ? `<p class="hint">${cp ? `مربوط بحساب "${esc(cp.name)}": كل فاتورة${v.from ? ` من ${dispDate(v.from)}` : ''} بتنزل هنا بأصنافها وأعدادها، وانت تكتب ربح الواحدة.` : '⚠ لسه مش مربوط بحساب عميل. اربطه من "⚙ بياناته".'}</p>` : ''}
+    ${due.map(m => { const sg = ivSuggest(v, m); return `<div class="sync warn" data-due="${m}">💰 ربح شهر ${monthName(m)} لسه متكتبش${sg ? ` — المقترح ${fmtP(sg.amt)}` : ''}. <a class="lnk">اكتبه</a></div>`; }).join('')}
+    ${pend.length ? `<section class="ctab exp" style="margin-bottom:12px"><div class="cth"><span>فواتير مستنية الربح (${pend.length})</span><b>${fmtP(pend.reduce((n, e) => n + (e.dr || e.cr || 0), 0))}</b></div><table class="cmt"><tbody>
+      ${pend.map(e => `<tr data-pe="${esc(e.id)}"><td class="d">${shortDate(e.date)}</td><td class="w"><b>${e.kind === 'rinv' ? 'مرتجع' : 'فاتورة'} — ${(e.lines || []).length} صنف</b><small>${esc((e.lines || []).slice(0, 2).map(l => `${l.name} × ${fmtQ(l.qty)}`).join('، '))}${(e.lines || []).length > 2 ? '…' : ''}</small></td><td class="am">${fmtP(e.dr || e.cr || 0)}</td></tr>`).join('')}
+    </tbody></table></section>` : ''}
+    <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
+    ${R.rows.length ? `<div class="ldgw"><table class="ldg rp wide"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
+      ${R.rows.map(r => `<tr class="${r.cls || ''}" data-k="${r.i}">${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">لسه مفيش حركات</div>'}
+    <div class="card" style="margin-top:10px">${R.sum.map(([a, b]) => `<div class="bl"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
+    <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>
+    <div class="mrow3" style="margin-top:10px;grid-template-columns:1fr 1fr"><button class="btn green" id="ivShare" type="button">📲 ابعت الكشف واتساب</button><button class="btn gold" id="ivPdf" type="button">معاينة / تنزيل PDF</button></div>`;
+  $('#ivBack').onclick = () => go('jrd/iv'); $('#ivSet').onclick = () => ivpModal(v);
+  if ($('#ivProf')) $('#ivProf').onclick = () => ivMoveModal(v, 'prof');
+  if ($('#ivExp')) $('#ivExp').onclick = () => ivMoveModal(v, 'exp');
+  $('#ivDraw').onclick = () => ivMoveModal(v, 'draw'); $('#ivCap').onclick = () => ivMoveModal(v, 'cap');
+  $$('#p-jrd [data-due]').forEach(el => el.onclick = () => ivMoveModal(v, 'prof', null, el.dataset.due));
+  $$('#p-jrd tr[data-pe]').forEach(el => el.onclick = () => ivShipModal(v, null, E.get(el.dataset.pe)));
+  $$('#p-jrd tr[data-k]').forEach(el => el.onclick = () => { const m = ms[+el.dataset.k]; if (m) m.k === 'ship' ? ivShipModal(v, m.r) : ivMoveModal(v, m.k, m); });
+  $('#ivShare').onclick = () => exportReport(R, 'share', v.name); $('#ivPdf').onclick = () => exportReport(R, 'preview', v.name);
+}
+
+/* ---------- النوافذ ---------- */
+const IVM = {cap: 'رأس مال', prof: 'ربح', draw: 'سحب', exp: 'مصروف عليه'};
+function ivLockedModal(title, date) { modal(`<h3>🔒 ${esc(title)}</h3><div class="sync">الحركة دي في فترة مقفولة (لحد ${dispDate(lockDate())}). افتحها من الإعدادات لو محتاج تعدّل.</div><button class="btn line" id="lvX" type="button">رجوع</button>`); $('#lvX').onclick = closeModal; }
+/* رأس مال / ربح / سحب / مصروف. رأس المال والسحب ممكن من خزنة (حركة خزنة) أو من غير خزنة (الفلوس جوه الشغل) */
+function ivMoveModal(v, kind, m, month) {
+  const r = m ? m.r : null, isNew = !r, isTx = m && m.src === 'tx', canV = kind === 'cap' || kind === 'draw';
+  if (r && isLocked(r.date)) return ivLockedModal(`${IVM[kind]} ${v.name} ${fmtP(r.amt)}`, r.date);
+  ensureVaults();
+  const t = todayISO(), pm = (() => { const [y, mo] = t.split('-').map(Number), d = new Date(y, mo - 2, 1); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`; })();
+  const mm = r && r.m || month || (ivDue(v)[0] || pm), sg = kind === 'prof' && isNew ? ivSuggest(v, mm) : null;
+  const vsel = isTx ? r.vault : isNew ? (kind === 'draw' ? defVault() : '') : '';
+  const notes = [...new Set(db.ivrs.filter(x => !x.del && x.k === 'exp' && x.note).map(x => x.note))];
+  modal(`<h3 class="${kind === 'draw' || kind === 'exp' ? 'exp' : 'inc'}">${isNew ? (kind === 'draw' || kind === 'exp' ? '− ' : '+ ') + IVM[kind] : 'تعديل ' + IVM[kind]} — ${esc(v.name)}</h3>
+    ${kind === 'prof' ? `<div class="fld"><label>ربح شهر</label><input class="inp" type="month" id="imM" value="${mm}"></div>
+      ${sg ? `<div class="sync" id="imSg">💡 المقترح <b>${fmtP(sg.amt)}</b> — ${esc(sg.why)}. <a class="lnk" id="imUse">استخدمه</a></div>` : isNew ? '<p class="hint">الاقتراح بيظهر لوحده بعد ما يبقى فيه شهور قبل كده يتعلم منها.</p>' : ''}` : ''}
+    ${kind === 'exp' ? `<div class="fld"><label>المصروف ده إيه (زي حمدي)</label><input class="inp" id="imN" list="imNL" value="${esc(r ? r.note || '' : '')}" autocomplete="off"><datalist id="imNL">${notes.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>` : ''}
+    <div class="fld"><label>المبلغ</label><input class="inp num amt" id="imA" placeholder="0" value="${r ? fmtP(r.amt) : ''}"></div>
+    ${canV ? `<div class="fld"><label>${kind === 'cap' ? 'الفلوس دخلت خزنة' : 'اتصرف من خزنة'}</label><select class="inp" id="imV">${vaultOpts(vsel, kind === 'cap' ? 'من غير خزنة (الفلوس جوه الشغل من قبل كده)' : 'من غير خزنة')}</select></div>` : ''}
+    <div class="fld"><label>التاريخ</label><input class="inp" id="imD" type="date" value="${r ? r.date : kind === 'prof' ? (mm < t.slice(0, 7) ? nextMonth(mm) + '-01' : t) : t}"></div>
+    ${kind !== 'exp' ? `<div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="imN" value="${esc(r ? (isTx ? r.pnote : r.note) || '' : '')}" autocomplete="off"></div>` : ''}
+    ${r ? histHtml(r) : ''}
+    <div class="stack" style="margin-top:8px"><button class="btn ${kind === 'draw' || kind === 'exp' ? 'redf' : 'gold'}" id="imOk" type="button">${isNew ? 'حفظ' : 'حفظ التعديل'}</button>
+    ${isNew ? '' : '<button class="btn red sm" id="imDel" type="button">إلغاء الحركة</button>'}<button class="btn line" id="imX" type="button">رجوع</button></div>`);
+  bindMoney($('#imA'));
+  if ($('#imUse')) $('#imUse').onclick = () => { $('#imA').value = fmtP(sg.amt); $('#imA').dispatchEvent(new Event('input')); };
+  $('#imX').onclick = closeModal;
+  if (isNew) setTimeout(() => $('#imA') && $('#imA').focus(), 50);
+  $('#imOk').onclick = () => {
+    const amt = toP($('#imA').value), date = $('#imD').value, note = $('#imN').value.trim(), vault = canV ? $('#imV').value : '', mo = kind === 'prof' ? $('#imM').value : '';
+    if (amt < 0 || (amt === 0 && kind !== 'prof')) return toast('اكتب المبلغ');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');
+    if (kind === 'prof' && !/^\d{4}-\d{2}$/.test(mo)) return toast('اختار الشهر');
+    if (kind === 'exp' && !note) return toast('اكتب المصروف ده إيه');
+    if (isLocked(date)) return lockToast();
+    if (kind === 'prof' && db.ivrs.some(x => !x.del && x !== r && x.iv === v.id && x.k === 'prof' && x.m === mo)) return toast(`ربح ${monthName(mo)} متسجل قبل كده. افتحه من الكشف لو عاوز تعدّله.`, 5000);
+    const now = Date.now(), wantTx = !!vault;
+    const desc = x => `${IVM[kind]} ${v.name} ${fmtP(x.amt)}${x.vault ? ' — ' + vName(x.vault) : ''}`;
+    if (r && wantTx === !!isTx) {
+      const same = isTx ? r.amt === amt && r.date === date && r.vault === vault && (r.pnote || '') === note : r.amt === amt && r.date === date && (r.note || '') === note && (r.m || '') === mo;
+      if (same) return closeModal();
+      (r.hist = r.hist || []).push({t: now, date: r.date, desc: desc(r), dr: r.amt, cr: 0});
+      if (isTx) { ensureIvCats(); Object.assign(r, {amt, date, vault, pnote: note, note: `${IVM[kind]} ${v.name}${note ? ' — ' + note : ''}`}); }
+      else Object.assign(r, {amt, date, note}, kind === 'prof' ? {m: mo} : {});
+      touch(r); toast('اتعدّلت ✔');
+    } else {
+      if (r) { r.del = true; r.delAt = now; touch(r); }   // اتنقلت من خزنة لـ "من غير خزنة" أو العكس: القديمة بتتلغي والجديدة بتتسجل
+      if (wantTx) {
+        ensureIvCats();
+        const x = {id: newId('t_'), type: kind === 'cap' ? 'inc' : 'exp', amt, vault, to: '', cat: IV_CATS[kind][0], iv: v.id, pnote: note, note: `${IVM[kind]} ${v.name}${note ? ' — ' + note : ''}`, date, at: now, upd: now, del: false, hist: []};
+        db.txs.push(x); IDX.tx.set(x.id, x);
+      } else {
+        const x = Object.assign({id: newId('ir_'), iv: v.id, k: kind, amt, date, note, at: now, upd: now, del: false, hist: []}, kind === 'prof' ? {m: mo} : {});
+        db.ivrs.push(x); IDX.ivr.set(x.id, x);
+      }
+      toast(r ? 'اتعدّلت ✔' : 'اتسجلت ✔');
+    }
+    saveDB(); closeModal(); route();
+  };
+  if (!isNew) $('#imDel').onclick = async () => {
+    if (!(await confirmBox(`تلغي ${IVM[kind]} ${v.name} ${fmtP(r.amt)}؟ هتفضل محفوظة كـ "ملغية".`, 'ألغيها', true))) return;
+    r.del = true; r.delAt = Date.now(); touch(r); saveDB(); closeModal(); route(); toast('اتلغت');
+  };
+}
+/* شحنة المساهم المربوط بعميل: الأصناف والأعداد من الفاتورة، وانت بتكتب ربح الواحدة والنقل. تقدر تمسح سطر أو تضيف */
+function ivShipModal(v, r, e) {
+  if (r && isLocked(r.date)) return ivLockedModal(`شحنة ${dispDate(r.date)}`, r.date);
+  const src = r ? E.get(r.src) : e, isNew = !r, ret = r ? !!r.ret : e && e.kind === 'rinv';
+  const lastFr = (db.ivrs.filter(x => !x.del && x.iv === v.id && x.k === 'ship' && x.fr).sort((a, b) => b.date.localeCompare(a.date))[0] || {}).fr || 0;
+  let lines = r ? JSON.parse(JSON.stringify(r.lines || [])) : (e ? (e.lines || []).map(l => ({n: l.name, q: +l.qty || 0})) : []);
+  if (!lines.length) lines = [{n: '', q: 0}];
+  const edited = r && src && !src.del && (src.upd || 0) > (r.su || 0) && r.src, gone = r && r.src && (!src || src.del);
+  const lineRow = (l, i) => `<div class="krow fld" data-i="${i}" style="grid-template-columns:1fr 70px 90px auto;gap:6px"><input class="inp" data-f="n" placeholder="الصنف" value="${esc(l.n || '')}"><input class="inp num" data-f="q" inputmode="decimal" placeholder="العدد" value="${l.q ? esc(fmtQ(l.q)) : ''}"><input class="inp num" data-f="u" inputmode="decimal" placeholder="ربح الواحدة" value="${l.u !== undefined && l.u !== null ? fmtP(l.u) : ''}"><button class="btn red sm" data-rm="${i}" type="button" style="width:auto">✕</button></div>`;
+  modal(`<h3 class="inc">${ret ? 'مرتجع' : 'شحنة'} ${esc(src ? (P.get(src.party) || {}).name || '' : '')} — ${esc(v.name)}</h3>
+    ${gone ? '<div class="sync warn">⚠ الفاتورة الأصلية اتلغت من الحسابات. لو الشحنة دي اتلغت فعلاً، اضغط "إلغاء الشحنة".</div>' : ''}
+    ${edited ? '<div class="sync warn">⚠ الفاتورة اتعدلت بعد ما الربح اتكتب. <a class="lnk" id="shRe">هات الأصناف من الفاتورة تاني</a></div>' : ''}
+    <div class="fld"><label>التاريخ</label><input class="inp" id="shD" type="date" value="${r ? r.date : e ? e.date : todayISO()}"></div>
+    <label style="display:block;font-weight:700;margin-bottom:4px">الأصناف (العدد وربح الواحدة بالجنيه)</label>
+    <div id="shL">${lines.map(lineRow).join('')}</div>
+    <button class="btn line sm" id="shAdd" type="button">+ سطر</button>
+    <div class="g2" style="margin-top:10px"><div class="fld"><label>النقل والمصاريف</label><input class="inp num amt" id="shF" placeholder="0" value="${r ? (r.fr ? fmtP(r.fr) : '') : lastFr ? fmtP(lastFr) : ''}"></div>
+      <div class="fld"><label>المكان (اختياري)</label><input class="inp" id="shS" value="${esc(r ? r.site || '' : '')}" autocomplete="off"></div></div>
+    ${isNew && lastFr ? `<p class="hint">النقل متكتب زي آخر شحنة (${fmtP(lastFr)}). غيّره لو مختلف.</p>` : ''}
+    <div class="card" style="margin:8px 0"><div class="bl"><span>العمولة</span><b id="shG">0</b></div><div class="bl"><span>(−) النقل والمصاريف</span><b id="shFr">0</b></div><div class="bl"><span>الصافي ليه</span><b id="shN">0</b></div></div>
+    ${r ? histHtml(r) : ''}
+    <div class="stack"><button class="btn gold" id="shOk" type="button">${isNew ? 'حفظ' : 'حفظ التعديل'}</button>${isNew ? '' : '<button class="btn red sm" id="shDel" type="button">إلغاء الشحنة</button>'}<button class="btn line" id="shX" type="button">رجوع</button></div>`, true);
+  const read = () => $$('#shL [data-i]').map(d => { const g = f => d.querySelector(`[data-f=${f}]`).value, i = +d.dataset.i, old = lines[i] || {};
+    const o = {n: g('n').trim().replace(/\s+/g, ' '), q: Math.round(num(g('q')) * 1000) / 1000, u: g('u').trim() === '' ? null : toP(g('u'))}; if (old.w) o.w = old.w; return o; });
+  const calc = () => { const ls = read(), g = ls.reduce((s, l) => s + Math.round((l.q || 0) * (l.u || 0)), 0) * (ret ? -1 : 1), fr = toP($('#shF').value);
+    $('#shG').textContent = fmtP(g); $('#shFr').textContent = fmtP(fr); $('#shN').textContent = fmtP(g - fr); };
+  const bind = () => { $$('#shL input').forEach(i => i.oninput = calc); $$('#shL [data-rm]').forEach(b => b.onclick = () => { lines = read(); lines.splice(+b.dataset.rm, 1); $('#shL').innerHTML = lines.map(lineRow).join(''); bind(); calc(); }); };
+  bind(); bindMoney($('#shF')); $('#shF').addEventListener('input', calc); calc();
+  $('#shAdd').onclick = () => { lines = read(); lines.push({n: '', q: 0}); $('#shL').innerHTML = lines.map(lineRow).join(''); bind(); $('#shL [data-i]:last-child [data-f=n]').focus(); };
+  if ($('#shRe')) $('#shRe').onclick = () => { const cur = read(), byN = new Map(cur.map(l => [norm(l.n), l.u])); lines = (src.lines || []).map(l => ({n: l.name, q: +l.qty || 0, u: byN.has(norm(l.name)) ? byN.get(norm(l.name)) : null})); $('#shL').innerHTML = lines.map(lineRow).join(''); bind(); calc(); };
+  $('#shX').onclick = closeModal;
+  $('#shOk').onclick = () => {
+    const ls = read().filter(l => l.n || l.q || l.u), date = $('#shD').value, fr = toP($('#shF').value), site = $('#shS').value.trim();
+    if (!ls.length) return toast('مفيش أصناف');
+    if (ls.some(l => !l.n)) return toast('اكتب اسم كل صنف');
+    if (ls.some(l => l.u === null)) return toast('اكتب ربح الواحدة لكل صنف (ولو مالوش ربح اكتب 0)', 4500);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');
+    if (isLocked(date)) return lockToast();
+    const now = Date.now(), o = {date, lines: ls, fr, site};
+    if (r) {
+      if (JSON.stringify([r.date, r.lines, r.fr || 0, r.site || '']) === JSON.stringify([date, ls, fr, site]) && !$('#shRe')) return closeModal();
+      (r.hist = r.hist || []).push({t: now, date: r.date, desc: `شحنة ${v.name}: ${(r.lines || []).length} صنف، صافي ${fmtP(ivShipNet(r))}`, dr: Math.max(0, ivShipNet(r)), cr: 0});
+      Object.assign(r, o); if (src && r.src) r.su = src.upd || 0; touch(r); toast('اتعدّلت ✔');
+    } else {
+      const x = Object.assign({id: newId('ir_'), iv: v.id, k: 'ship', note: '', at: now, upd: now, del: false, hist: []}, o, e ? {src: e.id, su: e.upd || 0} : {}, ret ? {ret: 1} : {});
+      db.ivrs.push(x); IDX.ivr.set(x.id, x); toast('اتسجلت ✔');
+    }
+    saveDB(); closeModal(); route();
+  };
+  if (!isNew) $('#shDel').onclick = async () => {
+    if (!(await confirmBox(`تلغي شحنة ${dispDate(r.date)}؟ ${r.src && src && !src.del ? 'الفاتورة هترجع "مستنية الربح". ' : ''}هتفضل محفوظة كـ "ملغية".`, 'ألغيها', true))) return;
+    r.del = true; r.delAt = Date.now(); touch(r); saveDB(); closeModal(); route(); toast('اتلغت');
+  };
+}
+const ivCustOpts = sel => liveParties().filter(p => p.sec !== 'sup').sort((a, b) => a.name.localeCompare(b.name, 'ar'))
+  .map(p => `<option value="${esc(p.id)}" ${p.id === sel ? 'selected' : ''}>${esc(p.name)}${p.noTot ? ' (حساب فرعي)' : ''}</option>`).join('');
+function ivpModal(v) {
+  const isNew = !v; let mode = v ? v.mode : 'm';
+  modal(`<h3>💰 ${isNew ? 'مساهم جديد' : 'بيانات ' + esc(v.name)}</h3>
+    <div class="fld"><label>الاسم</label><input class="inp" id="ipN" value="${esc(v ? v.name : '')}" autocomplete="off"></div>
+    <div class="fld"><label>أرباحه بتتحسب إزاي</label><div class="seg s2" id="ipM"><button type="button" data-v="m" class="${mode === 'm' ? 'on' : ''}">ربح شهري</button><button type="button" data-v="c" class="${mode === 'c' ? 'on' : ''}">من شغل عميل</button></div></div>
+    <div id="ipC" style="${mode === 'c' ? '' : 'display:none'}">
+      <div class="fld"><label>حساب العميل</label><select class="inp" id="ipP"><option value="">اختار العميل</option>${ivCustOpts(v ? v.party : '')}</select></div>
+      <div class="fld"><label>فواتير العميل من تاريخ</label><input class="inp" type="date" id="ipF" value="${v && v.from ? v.from : todayISO()}"><p class="hint">الفواتير من اليوم ده بتنزل في كشفه "مستنية الربح". اللي قبله مش بيتحسب.</p></div>
+    </div>
+    ${isNew ? `<div class="g2"><div class="fld"><label>رأس ماله اللي معاك دلوقتي</label><input class="inp num amt" id="ipA" placeholder="0"></div><div class="fld"><label>من تاريخ</label><input class="inp" type="date" id="ipD" value="${todayISO()}"></div></div>
+      <p class="hint">رأس المال ده مش هيلمس أي خزنة، لأن الفلوس دي جوه الشغل من قبل كده. أي فلوس جديدة يحطها بعد كده سجلها من "+ رأس مال" واختار الخزنة.</p>` : ''}
+    <div class="stack" style="margin-top:8px"><button class="btn gold" id="ipOk" type="button">حفظ</button>${isNew ? '' : '<button class="btn red sm" id="ipDel" type="button">شيل المساهم</button>'}<button class="btn line" id="ipX" type="button">رجوع</button></div>`);
+  if ($('#ipA')) bindMoney($('#ipA'));
+  $$('#ipM button').forEach(b => b.onclick = () => { mode = b.dataset.v; $$('#ipM button').forEach(x => x.classList.toggle('on', x === b)); $('#ipC').style.display = mode === 'c' ? '' : 'none'; });
+  $('#ipX').onclick = closeModal;
+  $('#ipOk').onclick = () => {
+    const name = $('#ipN').value.trim().replace(/\s+/g, ' '), party = mode === 'c' ? $('#ipP').value : '', from = mode === 'c' ? $('#ipF').value : '';
+    if (!name) return toast('اكتب الاسم');
+    if (mode === 'c' && !party) return toast('اختار حساب العميل');
+    if (ivList().some(x => x !== v && norm(x.name) === norm(name))) return toast('فيه مساهم بنفس الاسم');
+    const now = Date.now(), o = {name, mode, party, from};
+    if (v) { if (['name', 'mode', 'party', 'from'].every(k => (v[k] || '') === (o[k] || ''))) return closeModal(); Object.assign(v, o); touch(v); }
+    else {
+      const amt = toP($('#ipA').value), date = $('#ipD').value;
+      if (amt < 0) return toast('رأس المال مينفعش بالسالب');
+      if (amt && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار تاريخ رأس المال');
+      const x = Object.assign({id: newId('ip_'), note: '', at: now, upd: now, del: false, hist: []}, o); db.ivps.push(x); IDX.ivp.set(x.id, x);
+      if (amt) { const c = {id: newId('ir_'), iv: x.id, k: 'cap', amt, date, note: 'رصيد أول', at: now, upd: now, del: false, hist: []}; db.ivrs.push(c); IDX.ivr.set(c.id, c); }
+      v = x;
+    }
+    saveDB(); closeModal(); go('jrd/iv/' + v.id); route(); toast('اتحفظ ✔');
+  };
+  if (!isNew) $('#ipDel').onclick = async () => {
+    const b = ivSums(v.id).bal;
+    if (b) return toast(`لسه ليه ${fmtP(b)}. سجّل السحب الأول لحد ما رصيده يبقى صفر.`, 5000);
+    if (!(await confirmBox(`تشيل ${v.name} من المساهمين؟ كشفه هيفضل محفوظ.`, 'شيله', true))) return;
+    v.del = true; touch(v); saveDB(); closeModal(); go('jrd/iv');
+  };
+}
+/* نقل كشف قديم (ملف JSON بيتعمل من إكسيل المساهم مرة واحدة): ids ثابتة، فنقله مرتين مبيكررش حاجة. الأرقام بالقرش */
+function ivImport(txt) {
+  let f; try { f = JSON.parse(txt); if (f.app !== 'flash-on-investors' || !Array.isArray(f.list)) throw 0; } catch (x) { return toast('الملف ده مش كشف مساهمين'); }
+  const L = f.list.filter(x => x && x.id && x.name && Array.isArray(x.rows)), already = L.filter(x => IDX.ivp.get(x.id));
+  const bal = x => x.rows.reduce((s, r) => s + ivSign(r), 0);
+  const guess = h => { if (!h) return ''; const c = liveParties().filter(p => p.sec !== 'sup' && norm(p.name).includes(norm(h))).sort((a, b) => !!a.noTot - !!b.noTot || a.name.length - b.name.length); return c.length ? c[0].id : ''; };
+  modal(`<h3>📥 نقل كشف قديم</h3>
+    ${already.length ? `<div class="sync">${already.map(x => esc(x.name)).join(' و')} اتنقل قبل كده. لو نقلته تاني مفيش حاجة هتتكرر.</div>` : ''}
+    ${L.map((x, i) => `<div class="card" style="margin-bottom:8px"><div class="bl"><span><b>${esc(x.name)}</b></span><b>${fmtP(bal(x))}</b></div>
+      <p class="hint">${x.rows.length} حركة — ${x.mode === 'c' ? 'من شغل عميل' : 'ربح شهري'}</p>
+      ${x.mode === 'c' ? `<div class="fld"><label>حساب العميل</label><select class="inp" data-ipp="${i}"><option value="">اختار العميل</option>${ivCustOpts((ivGet(x.id) || {}).party || guess(x.hint))}</select></div>
+        <div class="fld"><label>فواتير العميل من تاريخ</label><input class="inp" type="date" data-ipf="${i}" value="${esc(x.from || todayISO())}"><p class="hint">اللي قبل التاريخ ده موجود في الكشف القديم. الفواتير من اليوم ده بتنزل "مستنية الربح".</p></div>` : ''}</div>`).join('')}
+    <div class="stack"><button class="btn gold" id="iiGo" type="button">انقل</button><button class="btn line" id="iiX" type="button">إغلاق</button></div>`, true);
+  $('#iiX').onclick = closeModal;
+  $('#iiGo').onclick = () => {
+    const pick = L.map((x, i) => x.mode === 'c' ? {party: $(`[data-ipp="${i}"]`).value, from: $(`[data-ipf="${i}"]`).value} : null);
+    if (pick.some(p => p && !p.party)) return toast('اختار حساب العميل');
+    let n = 0;
+    L.forEach((x, i) => {
+      const {rows, hint, ...p} = x;
+      /* اللي موجود بنفس النسخة أو أحدث مبيتلمسش (mergeRow كان هيعلّمه "اتبعت للشيت" وهو لسه متبعتش) */
+      const put = (kind, id, upd, data) => { const cur = IDX[kind].get(id); if (cur && (cur.upd || 0) >= upd) return; if (mergeRow({id, kind, upd, del: false, data})) { delete IDX[kind].get(id).sy; n++; } };
+      put('ivp', x.id, x.upd || 1, Object.assign({note: '', hist: []}, p));
+      rows.forEach(r => put('ivr', r.id, r.upd || 1, Object.assign({iv: x.id, note: '', hist: []}, r)));
+      const v = IDX.ivp.get(x.id);
+      if (pick[i] && v && (v.party !== pick[i].party || v.from !== pick[i].from)) { v.party = pick[i].party; v.from = pick[i].from; touch(v); }
+    });
+    saveDB(); closeModal(); go('jrd/iv'); route(); toast(n ? `اتنقل ✔ (${n} سجل)` : 'كل ده كان متنقل قبل كده ✔', 5000);
+  };
+}
+/* سحب أو رأس مال مساهم اتسجل من الخزنة: بيتفتح من الخزنة أو البحث في نافذة المساهم */
+function ivTxModal(t) { const v = ivGet(t.iv); if (!v) return txModal(t.type, t); if (t.del) return cancelledModal(t); ivMoveModal(v, t.type === 'inc' ? 'cap' : 'draw', {src: 'tx', r: t}); }
 
 /* ====================== مراجعة الجهاز مع الشيت ====================== */
 /* بننزّل كل السجلات من الشيت (من غير ما نغيّر حاجة) ونقارن كل سجل بالنسخة اللي على الجهاز.
@@ -4703,9 +5161,12 @@ function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   let pg = 'home';
   try { localStorage.setItem('fo_lastpg', /^(cash|part|rep|set)$/.test(h) ? h : 'home'); } catch (e) {}
-  if (h === 'set' || h === 'cash' || h === 'part' || (h === 'chk' && CHECKS_ON) || h === 'rep' || h === 'mkt') pg = h; else if (h.startsWith('p/')) pg = 'party';
+  if (h === 'set' || h === 'cash' || h === 'part' || (h === 'chk' && CHECKS_ON) || h === 'rep' || h === 'mkt') pg = h; else if (h.startsWith('p/')) pg = 'party'; else if (h === 'jrd' || h.startsWith('jrd/')) pg = 'jrd';
   if (h === 'sup') tab = 'sup'; else if (pg === 'home' && tab === 'sup' && !isWide()) tab = 'mkt';   // الموبايل: الموردين تبويب لوحده تحت
   autoPartners();
+  /* مرة واحدة: سحب كامل من الشيت علشان أي جرد أو مساهمين اتسجلوا من جهاز تاني قبل التحديث ده ينزلوا */
+  if (!db.cfg.ivPull) { db.cfg.ivPull = 1; if (db.cfg.cursor) { db.cfg.cursor = 0; saveDB(); } }
+  { const w = ivWaiting(); $('#nbJrd').textContent = w || ''; }
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
   document.body.dataset.pg = pg;   // زرار ＋ العايم بيظهر على الموبايل في الرئيسية ووارد السوق والتقارير بس
   const supOn = !isWide() && (pg === 'home' ? tab === 'sup' : pg === 'party' && (P.get(h.slice(2)) || {}).sec === 'sup');
@@ -4724,7 +5185,7 @@ function route() {
       $('#p-party').innerHTML = '<div class="card empty" style="padding:60px 20px;font-size:var(--f3)">لسه مفيش حسابات. اضغط "+ حساب جديد".</div>';
     }
   }
-  if (pg === 'mkt') { $('#mkBar').classList.remove('on'); renderMkt(); } else if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
+  if (pg === 'mkt') { $('#mkBar').classList.remove('on'); renderMkt(); } else if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'jrd') renderJrd(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
 }
 /* شريط أعلى صفحة الحساب ثابت (مبيخبّيش وانت بتنزل): رجوع، فوق، تحت، تعديل */
 function setHdr() { const h = document.querySelector('header.top'); if (h) document.documentElement.style.setProperty('--hh', (getComputedStyle(h).position === 'fixed' ? 0 : h.offsetHeight) + 'px'); }   // على اللاب الشريط في القايمة الجانبية فمفيش مسافة فوق

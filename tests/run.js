@@ -1155,6 +1155,16 @@ const T0 = Date.now();
     eq('صفحة المورد: الموردين هو المتعلّم والرجوع بيرجع للموردين', [await A.evaluate(() => $('nav button.on').dataset.go), (await A.click('#ppBack'), await A.settle(150), await A.evaluate(() => location.hash))], ['sup', '#sup']);
     await A.click('nav button[data-go=home]'); await A.click('#hRep'); await A.settle(150);
     eq('زرار التقارير في العملاء بيفتح التقارير', await A.evaluate(() => location.hash), '#rep');
+    eq('حساب طويل: آخر 30 سطر بس وزرار واحد للأقدم بيفرد ويطوي، والرصيد في الآخر ثابت', await A.evaluate(async () => {
+      const p = liveParties()[0], bal = balance(p.id), made = [];
+      for (let i = 0; i < 60; i++) made.push(addEntry({party: p.id, kind: 'man', date: '2019-01-' + pad2(1 + i % 28), desc: 'حركة طويلة ' + i, dr: 100, cr: 0}));
+      const at = () => new Promise(r => setTimeout(r, 120)), n = () => $$('#p-party .ldg tbody tr[data-id]').length;
+      go('p/' + p.id); await at(); const a = [n(), $$('#ldgOld').length, $('#ldgOld').textContent.includes('أقدم')];
+      $('#ldgOld').click(); await at(); const b = n() > 60, c = $('#ldgOld').textContent.includes('طي');
+      $('#ldgOld').click(); await at(); const d = n() === 30;
+      made.forEach(e => { e.del = true; touch(e); }); saveDB(); ldgAll.delete(p.id); go('home'); await at();
+      return [a, b, c, d, balance(p.id) === bal];
+    }), [[30, 1, true], true, true, true, true]);
     await A.click('nav button[data-go=cash]'); await A.settle(150);
     eq('الخزنة في التابات تحت، والتقارير مش فيها', [await A.evaluate(() => location.hash), await A.isVisible('nav button[data-go=cash]'), await A.isVisible('nav button[data-go=rep]')], ['#cash', true, false]);
     /* المطلوب منك النهارده + الألوان */

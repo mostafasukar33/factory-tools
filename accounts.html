@@ -1949,7 +1949,7 @@ function renderParty(id) {
   if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
   $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => el.dataset.g ? mkGrpModal(p, el.dataset.g.split(',')) : el.dataset.li !== undefined ? lineModal(p, E.get(el.dataset.id), +el.dataset.li) : openEntry(p, E.get(el.dataset.id)));
   if ($('#ppEnd')) $('#ppEnd').onclick = () => jumpTo(true);
-  if ($('#ldgOld')) $('#ldgOld').onclick = () => { ldgAll.add(id); renderParty(id); };
+  if ($('#ldgOld')) $('#ldgOld').onclick = () => { ldgAll.has(id) ? ldgAll.delete(id) : ldgAll.add(id); renderParty(id); };
   if (isFwdSrc(p)) fwBind(p);
   $$('#p-party [data-nl]').forEach(el => el.onclick = nlModal);
   runCounters($('#p-party'));
@@ -2381,17 +2381,18 @@ function ledgerHintOnce() {
   try { if (localStorage.getItem('fo_hint_ledger')) return ''; localStorage.setItem('fo_hint_ledger', '1'); } catch (e) { return ''; }
   return '';
 }
-/* الحساب الطويل أوي: بنرسم آخر LDG_SHOW سطر بس علشان الشاشة تفتح بسرعة، والأقدم بدوسة (ldgAll = الحسابات اللي اتفتح أقدمها) */
-const LDG_MAX = 300, LDG_SHOW = 200, ldgAll = new Set();
+/* الحساب الطويل: بنرسم آخر LDG_SHOW سطر بس، والأقدم متلموم في زرار واحد (فيه عدده والرصيد قبله) بيفرده ويطويه (ldgAll = الحسابات اللي اتفتح أقدمها).
+   للعرض بس: الرصيد وكشف الحساب (PDF) ملهمش دعوة بيه */
+const LDG_MAX = 40, LDG_SHOW = 30, ldgAll = new Set();
 function ledgerTable(p) {
   const s = stmtData(p.id, '', '');
-  const cut = s.rows.length > LDG_MAX && !ldgAll.has(p.id) ? s.rows.length - LDG_SHOW : 0;
+  const over = s.rows.length > LDG_MAX ? s.rows.length - LDG_SHOW : 0, open = ldgAll.has(p.id), cut = open ? 0 : over;
   const fw = isFwdSrc(p), fwTag = r => !r.first ? '' : fw && r.e.kind === 'inv' ? `<small class="fwt ${fwState(r.e)}">${FW_SHORT[fwState(r.e)]}</small>` : r.e.fwFrom ? `<small class="fwt from">↩ من ${esc((P.get((E.get(r.e.fwFrom) || {}).party) || {}).name || 'الحساب الفرعي')}</small>` : '';
   let yPrev = matchMedia('(min-width:1000px)').matches ? '' : null;   // سطر السنة بيظهر بس لما السنة تتغير، على اللاب بس (في الموبايل مبيترسمش علشان ألوان الصفوف متتلخبطش)
   if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده.<br><small style="color:var(--sub)">ابدأ بفاتورة أو دفعة من الأزرار اللي فوق.</small></div>';
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
-    ${cut ? `<tr class="more"><td colspan="7"><a id="ldgOld">↑ عرض الحركات الأقدم (${cut} سطر)</a></td></tr>` : ''}
+    ${over ? `<tr class="more"><td colspan="7"><a id="ldgOld">${open ? `▲ طي الأقدم (${over})` : `▼ ${over} سطر أقدم — الرصيد قبلهم ${fmtP(s.rows[over - 1].run * s.sg)}`}</a></td></tr>` : ''}
     ${(cut ? s.rows.slice(cut) : s.rows).map(r => (yPrev !== null && (r.date || '').slice(0, 4) !== yPrev ? `<tr class="yr"><td colspan="7">${yPrev = (r.date || '').slice(0, 4)}</td></tr>` : '') + `<tr data-id="${esc(r.e.id)}"${r.li !== undefined ? ` data-li="${r.li}"` : ''}${r.grp && r.grp.length > 1 ? ` data-g="${esc(r.grp.map(x => x.id).join(','))}"` : ''} class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${fwTag(r)}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b data-ck="pe:${esc(p.id)}" data-cnt="${s.close * s.sg}">${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>

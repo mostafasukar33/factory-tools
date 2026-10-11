@@ -184,6 +184,7 @@ button:focus-visible{outline:3px solid var(--eq-top);outline-offset:2px}
     <button class="hbtn" id="closeSheet">رجوع</button>
   </header>
   <div class="list" id="list"></div>
+  <div class="actions" id="listActions"><button class="btn danger" id="clearArch">امسح الأرشيف كله</button></div>
   <div class="view" id="view" hidden></div>
   <div class="actions" id="viewActions" hidden>
     <button class="btn main" id="reopen">كمّل عليها</button>
@@ -405,7 +406,7 @@ const dayFmt=new Intl.DateTimeFormat('ar-EG-u-nu-latn',{weekday:'long',day:'nume
 const timeFmt=new Intl.DateTimeFormat('ar-EG-u-nu-latn',{hour:'numeric',minute:'2-digit'});
 
 function dayKey(iso){const d=new Date(iso);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
-function showList(){viewing=-1;$('view').hidden=true;$('viewActions').hidden=true;$('list').hidden=false;
+function showList(){viewing=-1;$('listActions').hidden=!archive.length;$('view').hidden=true;$('viewActions').hidden=true;$('list').hidden=false;
   $('sheetTitle').textContent='الأرشيف';$('sheetSub').textContent='كل حسبة اتقفلت بـ = بتتحفظ هنا باليوم والساعة';
   if(!archive.length){$('list').innerHTML='<div class="note" style="text-align:center;padding-top:30px">لسه مفيش حسابات محفوظة.<br>أي حسبة تقفلها بـ = هتلاقيها هنا.</div>';return;}
   const groups={};archive.forEach((a,i)=>{(groups[dayKey(a.t)]=groups[dayKey(a.t)]||[]).push(i)});
@@ -415,13 +416,18 @@ function showList(){viewing=-1;$('view').hidden=true;$('viewActions').hidden=tru
     ix.forEach(i=>{const a=archive[i];h+=`<button class="calc" data-a="${i}"><span><span>${timeFmt.format(new Date(a.t))}</span><br><span class="meta">${a.lines.length} سطر${a.edited?' · اتعدلت':''}</span></span><span class="sum">${fmt(a.total)}</span></button>`});
     h+='</div>';});
   $('list').innerHTML=h;}
-function showCalc(i){viewing=i;const a=archive[i];$('list').hidden=true;$('view').hidden=false;$('viewActions').hidden=false;
+function showCalc(i){viewing=i;$('listActions').hidden=true;const a=archive[i];$('list').hidden=true;$('view').hidden=false;$('viewActions').hidden=false;
   $('sheetTitle').textContent='حسبة '+timeFmt.format(new Date(a.t));$('sheetSub').textContent=dayFmt.format(new Date(a.t));
   const keep=S;S={closed:true};$('view').innerHTML=tapeHTML(a.lines,false);S=keep;}
 $('list').addEventListener('click',e=>{const b=e.target.closest('.calc');if(b)showCalc(+b.dataset.a)});
 $('archBtn').onclick=()=>{$('sheet').hidden=false;showList()};
 $('closeSheet').onclick=()=>{$('sheet').hidden=true};
 $('backList').onclick=showList;
+let caArmed=false,caT;
+$('clearArch').onclick=()=>{const b=$('clearArch');
+  if(!caArmed){caArmed=true;b.textContent='متأكد؟ اضغط تاني يتمسح الأرشيف كله';clearTimeout(caT);caT=setTimeout(()=>{caArmed=false;b.textContent='امسح الأرشيف كله'},3500);return;}
+  caArmed=false;clearTimeout(caT);b.textContent='امسح الأرشيف كله';
+  archive=[];store.set('tape_archive',archive);S.archId=null;showList();flash('الأرشيف اتمسح');};
 let delArmed=false;
 $('delCalc').onclick=()=>{if(!delArmed){delArmed=true;$('delCalc').textContent='اضغط تاني للتأكيد';setTimeout(()=>{delArmed=false;$('delCalc').textContent='امسحها'},3000);return;}
   delArmed=false;$('delCalc').textContent='امسحها';archive.splice(viewing,1);store.set('tape_archive',archive);if(S.archId&&!archive.find(a=>a.id===S.archId))S.archId=null;showList();};

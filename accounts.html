@@ -896,10 +896,10 @@ html[data-theme=dark] .ifoot .btn.off,html[data-theme=dark] .ifoot .btn:disabled
   .ppbar .jb button{height:28px;padding:0 10px;font-size:var(--f1);border-radius:7px;border-width:1px}
   .ppbar a{font-size:var(--f2)}
   /* راس الحساب: سطر واحد */
-  #p-party .phd{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"h m b" "s m b" "l m b";column-gap:26px;align-items:center;background:var(--pane);color:inherit;border:1px solid var(--line);border-bottom:2px solid var(--gold);border-radius:10px;padding:10px 16px;margin:4px 0 8px}
-  #p-party .phd h2{grid-area:h;font-size:var(--f4);color:inherit}
+  #p-party .phd{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"n m b" "s m b";column-gap:26px;align-items:center;background:var(--pane);color:inherit;border:1px solid var(--line);border-bottom:2px solid var(--gold);border-radius:10px;padding:10px 16px;margin:4px 0 8px}
+  #p-party .phd .pnm{grid-area:n}
+  #p-party .phd h2{font-size:var(--f4);color:inherit}
   #p-party .phd>small{grid-area:s;color:var(--mut);font-size:var(--f1)}
-  #p-party .phd .limw{grid-area:l;justify-self:start;margin-top:4px;font-size:var(--f1);padding:1px 9px;border-radius:20px}
   #p-party .phd .mini2{grid-area:m;margin:0;flex-direction:column;gap:2px;color:var(--mut);font-size:var(--f1)}
   #p-party .phd .mini2 b{color:inherit;font-size:var(--f2)}
   #p-party .phd .bal{grid-area:b;margin:0;padding:0;border:0;flex-direction:column;align-items:center;gap:0}
@@ -1185,6 +1185,18 @@ body{font-size:var(--f3);line-height:1.6}
 .prh{display:flex;width:fit-content;align-items:center;gap:6px;margin:8px 0 2px;padding:3px 12px;border-radius:999px;font-size:var(--f2);font-weight:700;background:var(--green-l);color:var(--green)}
 .prh i{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
 .prh.late{background:var(--red-l);color:var(--red)}
+/* رأس صفحة العميل/المورد مضغوط: الاسم + (آخر دفعة · معدّي الحد) في سطر، والرصيد والمبيعات في سطر */
+.phd{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"n n" "s s" "b m";column-gap:12px;align-items:end;padding:8px 12px}
+.pnm{grid-area:n;display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;min-width:0}
+.pnm h2{flex:0 1 auto;min-width:0;max-width:100%}
+.pnm .prh,.pnm .limw{flex:none;margin:0;padding:1px 8px;font-size:var(--f1);border-radius:999px;white-space:nowrap}
+.limw i{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-inline-end:4px}
+.phd>small{grid-area:s;margin-top:1px}
+.phd .bal{grid-area:b;margin:4px 0 0;padding:4px 0 0;flex-direction:column;align-items:flex-start;gap:0}
+.phd .bal span{font-size:var(--f1)}
+.phd .bal b{font-size:var(--f4)}
+.phd .mini2{grid-area:m;margin:0;flex-direction:column;gap:0;font-size:var(--f1)}
+.phd .mini2 b{font-size:var(--f2)}
 .rch{padding:12px 12px 8px}
 .rchk{display:flex;gap:14px;font-size:var(--f2);color:var(--sub);font-weight:700;margin-bottom:8px}
 .rchk i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:5px}
@@ -2016,7 +2028,12 @@ function payRhythm(p, all, b) {
   const pi = payInfo(p, all, b); if (!pi) return '';
   const {ago, avg, late} = pi;
   const agoT = ago === 0 ? 'النهارده' : ago === 1 ? 'امبارح' : ago === 2 ? 'من يومين' : `من ${ago} ${ago <= 10 ? 'أيام' : 'يوم'}`;
-  return `<div class="prh${late ? ' late' : ''}"><i></i>آخر دفعة ${agoT}${avg ? ` · بيدفع كل ${avg} يوم تقريباً` : ''}</div>`;
+  return `<span class="prh${late ? ' late' : ''}"${avg ? ` title="بيدفع كل ${avg} يوم تقريباً"` : ''}><i></i>آخر دفعة ${agoT}</span>`;
+}
+/* شارة "معدّي الحد" جنب اسم العميل (الرقم في التلميح) */
+function limitChip(p, b) {
+  const c = limitClass(p, b); if (!c) return '';
+  return `<span class="limw ${c}" title="${fmtP(c === 'lim-r' ? limitsOf(p).r : limitsOf(p).y)}"><i></i>${c === 'lim-r' ? 'معدّي الأحمر' : 'معدّي الأصفر'}</span>`;
 }
 function renderParty(id) {
   try { sessionStorage.setItem('fo_lastp', id); } catch (e) {}
@@ -2033,9 +2050,7 @@ function renderParty(id) {
   const nX = all.filter(e => e.del).length;
   $('#p-party').innerHTML = `
     <div class="sech ppbar" style="margin-top:0"><a id="ppBack">→ كل الحسابات</a><span class="jb"><button id="jUp" type="button">↑ فوق</button><button id="jDn" type="button">↓ آخر حركة</button></span><a id="ppEdit">تعديل البيانات</a></div>
-    <div class="phd"><h2>${esc(p.name)}</h2><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}${p.noTot ? ' — <b style="color:var(--gold)">حساب فرعي خارج الإجماليات</b>' : ''}</small>
-      ${payRhythm(p, all, b)}
-      ${limitClass(p, b) ? `<div class="limw ${limitClass(p, b)}">${limitClass(p, b) === 'lim-r' ? '🔴 رصيده فوق الحد الأحمر' : '🟡 رصيده فوق الحد الأصفر'} (${fmtP(limitClass(p, b) === 'lim-r' ? limitsOf(p).r : limitsOf(p).y)})</div>` : ''}
+    <div class="phd"><div class="pnm"><h2>${esc(p.name)}</h2>${payRhythm(p, all, b)}${limitChip(p, b)}</div><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}${p.noTot ? ' — <b style="color:var(--gold)">حساب فرعي خارج الإجماليات</b>' : ''}</small>
       <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}" data-ck="pb:${esc(id)}" data-cnt="${Math.abs(b)}">${fmtP(Math.abs(b))} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
     ${isFwdSrc(p) ? (fwAutoLink(p), fwBar(p)) : ''}

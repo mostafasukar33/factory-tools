@@ -1314,7 +1314,7 @@ setInterval(() => { if (!isLocked() && Date.now() - pinLastAct > PIN_IDLE) lockN
 function askPin(title) {
   return new Promise(res => {
     modal(`<h3>${esc(title)}</h3><input class="inp" id="apP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off"><div class="lkerr" id="apE"></div><button class="big b-cash" id="apOk" type="button">تمام</button><button class="big b-home" id="apX" type="button">رجوع</button>`);
-    setTimeout(() => $('#apP').focus(), 50);
+    setTimeout(() => $('#apP') && $('#apP').focus(), 50);   // النافذة ممكن تكون اتقفلت قبلها
     $('#apX').onclick = () => { closeModal(); res(false); };
     $('#apOk').onclick = async () => { if (await pinOk($('#apP').value)) { closeModal(); res(true); } else $('#apE').textContent = 'كلمة السر غلط'; };
   });

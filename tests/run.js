@@ -1327,6 +1327,14 @@ const T0 = Date.now();
     eq('أرشيف مصطفى: اليوم بحركات الشريك كلها وإجمالي اليوم', await A.evaluate(() => [document.querySelectorAll('#mkBody .mqr').length, [...document.querySelectorAll('#mkBody .mkbal .bl b')].map(b => b.textContent)]), [6, ['9,000', '4,000', '3,250', '1,750']]);
     await A.click('#maPrev'); await A.settle(200);
     eq('أرشيف مصطفى: اليوم اللي قبله فاضي', (await A.textContent('#mkBody')).includes('مفيش حركات من الشريك في اليوم ده'), true);
+    eq('أرشيف مصطفى: يوم/أسبوع/شهر/من–إلى، والأسبوع والشهر والفترة فيهم حركات النهارده بنفس الحساب، والشهر اللي قبله فاضي', await A.evaluate(() => {
+      mkDay = todayISO(); mkArch();
+      const r = [[...$$('#maMode button')].map(b => b.textContent).join(',')], tot = () => [$$('#mkBody .mqr').length, [...$$('#mkBody .mkbal .bl b')].map(b => b.textContent).join(' ')];
+      for (const m of ['week', 'month', 'range']) { $(`#maMode [data-m=${m}]`).click(); r.push(m, ...tot(), !!$('#maPrev'), $('#mkBody .mqsh b').textContent); }
+      $('#maMode [data-m=month]').click(); $('#maPrev').click(); r.push($('#mkBody').textContent.includes('مفيش حركات من الشريك في الشهر ده'));
+      $('#maMode [data-m=day]').click(); r.push(mkAMode, !!$('#maDay')); mkDay = ''; return r; }),
+      ['يوم,أسبوع,شهر,من–إلى', 'week', 6, '9,000 4,000 3,250 1,750', true, 'حساب الأسبوع عند شريكك', 'month', 6, '9,000 4,000 3,250 1,750', true, 'حساب الشهر عند شريكك',
+        'range', 6, '9,000 4,000 3,250 1,750', false, 'حساب الفترة عند شريكك', true, 'day', true]);
     await A.click('#mkTabs button[data-v=in]');
     eq('الشيت: كل عملية مرة واحدة برضه', new Set(mkRows('op').map(r => r[0])).size, mkRows('op').length);
 
@@ -1743,6 +1751,7 @@ const T0 = Date.now();
     /* أي مجموعة تبويبات (.seg) ظاهرة: كل زرار نفس الارتفاع، الكلام مش ملفوف على سطرين ولا متقطع */
     for (const k of ['profit', 'col', 'debt', 'tot', 'cash', 'item']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
     await A.evaluate(() => go('cash')); await A.settle(200); await segOk(A, 'الحسابات — الخزنة');
+    await A.evaluate(() => { mkView = 'arch'; mkAMode = 'day'; go('mkt'); renderMkt(); }); await A.settle(200); if (await A.$('#maMode')) await segOk(A, 'الحسابات — أرشيف الوارد'); await A.evaluate(() => { mkView = 'in'; });
         await A.evaluate(() => go('set')); await A.settle(200); await segOk(A, 'الحسابات — الإعدادات');
     { const X = await D1.page('cash.html'); await X.settle(600); await segOk(X, 'دفتر الخزنة — الرئيسية'); await X.evaluate(() => go('rep')); await X.settle(300); await segOk(X, 'دفتر الخزنة — التقارير'); await X.close(); }
     if (DM) { const MX = DM.pages().find(p => p.url().includes('market.html')); if (MX) for (const h of ['', 'a', 's']) { await MX.evaluate(h => nav(h), h); await MX.settle(300); await segOk(MX, 'حركة السوق (' + (h || 'الرئيسية') + ')'); } }

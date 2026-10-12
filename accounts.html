@@ -6266,7 +6266,7 @@ function mkGroups() {
   arr.forEach(x => { x.ops.sort((a, b) => a.ts - b.ts); x.pend = x.ops.filter(o => mkState(o) === 'new'); x.last = Math.max(...x.ops.map(o => o.ts)); });
   return arr.sort((a, b) => (b.pend.length > 0) - (a.pend.length > 0) || b.last - a.last);
 }
-let mkView = 'in', mkDay = '';
+let mkView = 'in', mkDay = '', mkAMode = 'day', mkAMonth = '', mkAFrom = '', mkATo = '';   // الأرشيف: يوم / أسبوع / شهر / من–إلى
 /* شاشة الوارد (بطلب صاحب المشروع: "تنسيق وسهولة احترافية"): الوارد متقسم على حسب اللي محتاجه:
    ✅ جاهزين للنقل (عميل/مورد مربوط أو بيع كاش: "انقل" وزرار واحد للكل)، ✋ محتاجين قرارك (سؤال واضح وزراير بتجاوب عليه)، و🔴 رجّعتها لشريكك.
    "رجّعها" مبقتش زرار في كل كارت: الدوس على السطر بيفتح نافذته (mkGroupSheet) وفيها "رجّعها لشريكك". المبالغ بالأسود في عمود واحد، واللون في الأيقونة والعلامة بس.
@@ -6434,7 +6434,7 @@ function mkInbox() {
   $$('#mkBody [data-mv]').forEach(el => el.onclick = ev => { ev.stopPropagation(); const g = gs.find(x => x.k === el.dataset.mv); if (g) mkMoveFlow(g, g.pend); });
   $$('#mkBody [data-nl]').forEach(el => el.onclick = nlModal);
   if ($('#mkAll')) $('#mkAll').onclick = mkBulk;
-  if ($('#mkToArch')) $('#mkToArch').onclick = () => { mkView = 'arch'; mkDay = todayISO(); renderMkt(); };
+  if ($('#mkToArch')) $('#mkToArch').onclick = () => { mkView = 'arch'; mkAMode = 'day'; mkDay = todayISO(); renderMkt(); };
   $('#mkwAdd').onclick = mkWantPick;
   $$('#mkBody [data-wp]').forEach(el => el.onclick = () => mkWantModal(P.get(el.dataset.wp), renderMkt));
 }
@@ -6447,27 +6447,62 @@ const mkStTxt = o => {
   if (st === 'ign') return '<span class="tm">⛔ تجاهلتها</span>';
   return `<span class="vok">✓ اتنقلت${at ? ' ' + (isoOf(at) === todayISO() ? dispTime(at) : dispDate(isoOf(at))) : ''}</span>${pe && norm(pe.name) !== norm(o.cname || o.sname || '') ? `<br><small class="tm">على ${esc(pe.name)}</small>` : ''}${s && s.dv && s.dv !== o.upd ? '<br><small class="cr">اتعدلت بعد النقل</small>' : ''}`;
 };
-/* الأرشيف يوم بيوم (يوم ما الشريك سجلها): "حساب اليوم عند شريكك" في 4 مربعات (حصّل، راح لك، صرف، معاه) وتقفيل اليوم،
-   وتحتهم اللي اتنقل بنفس شكل سطور الوارد. اللي لسه من اليوم ده بيتقال فوق وبيودّي الوارد */
+/* فترة الأرشيف (بطلب صاحب المشروع): يوم / أسبوع (سبت→جمعة زي الخزنة) / شهر / من–إلى، بيوم ما الشريك سجل الحركة */
+function mkARange() {
+  const t = todayISO(), d = mkDay || t;
+  if (mkAMode === 'week') { const f = weekStart(d); return [f, addDays(f, 6)]; }
+  if (mkAMode === 'month') { const m = mkAMonth || t.slice(0, 7), [y, mo] = m.split('-').map(Number); return [m + '-01', m + '-' + pad2(new Date(y, mo, 0).getDate())]; }
+  if (mkAMode === 'range') { const f = mkAFrom || t.slice(0, 8) + '01', l = mkATo || t; return f <= l ? [f, l] : [l, f]; }
+  return [d, d];
+}
+function mkAStep(n) {
+  const t = todayISO();
+  if (n > 0 && mkARange()[1] >= t) return;   // مفيش بعد النهارده
+  if (mkAMode === 'day') mkDay = addDays(mkDay || t, n);
+  else if (mkAMode === 'week') mkDay = addDays(weekStart(mkDay || t), 7 * n);
+  else { const [y, m] = (mkAMonth || t.slice(0, 7)).split('-').map(Number), x = new Date(y, m - 1 + n, 1); mkAMonth = `${x.getFullYear()}-${pad2(x.getMonth() + 1)}`; }
+  mkArch();
+}
+function mkALabel() {
+  const t = todayISO(), [f, l] = mkARange(), sd = x => x.slice(8) + '/' + x.slice(5, 7);
+  if (mkAMode === 'day') return `${AR_DAYS[dowOf(f)]} ${dispDate(f)}${f === t ? ' · النهارده' : ''}`;
+  if (mkAMode === 'week') return sd(f) + ' ← ' + sd(l) + (f <= t && t <= l ? ' · الأسبوع ده' : '');
+  const [y, m] = f.split('-'); return AR_MONTHS[+m - 1] + ' ' + y;
+}
+/* الأرشيف (يوم ما الشريك سجلها): "حساب الفترة عند شريكك" في 4 مربعات (حصّل، راح لك، صرف، معاه) وتقفيل اليوم (في اليوم بس)،
+   وتحتهم اللي اتنقل بنفس شكل سطور الوارد. اللي لسه من الفترة دي بيتقال فوق وبيودّي الوارد */
 function mkArch() {
-  const t = todayISO(), d = mkDay || t, day = mkLive().filter(o => isoOf(o.ts) === d), ops = day.filter(mkDone).sort((a, b) => b.ts - a.ts), left = day.filter(o => !mkDone(o)), s = mkSums(day);
-  const prev = mkLive().filter(o => mkDone(o) && isoOf(o.ts) < d).reduce((m, o) => Math.max(m, o.ts), 0);
+  const t = todayISO(), [f, l] = mkARange(), one = mkAMode === 'day', inR = o => { const x = isoOf(o.ts); return x >= f && x <= l; };
+  const day = mkLive().filter(inR), ops = day.filter(mkDone).sort((a, b) => b.ts - a.ts), left = day.filter(o => !mkDone(o)), s = mkSums(day);
+  const per = {day: 'اليوم', week: 'الأسبوع', month: 'الشهر', range: 'الفترة'}[mkAMode], perThis = mkAMode === 'range' ? 'الفترة دي' : per + ' ده';
+  const prev = mkLive().filter(o => mkDone(o) && isoOf(o.ts) < f).reduce((m, o) => Math.max(m, o.ts), 0);
   const nm = o => o.t === 'pay' || o.t === 'inv' || o.t === 'rt' ? o.cname : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat : o.t === 'cs' ? (o.buyer || 'مشتري') : 'تسليم كاش';
   const ic = o => o.t === 'exp' ? ['⛽', 'r'] : o.t === 'spay' ? ['🏭', 'r'] : o.t === 'hand' ? ['🤝', 'b'] : o.t === 'inv' ? ['🧾', 'y'] : o.t === 'rt' ? ['↩', 'y'] : o.t === 'cs' ? ['💰', mkCsTr(o) ? 'b' : 'g'] : o.m === 'cash' ? ['💵', 'g'] : ['⇄', 'b'];
-  $('#mkBody').innerHTML = `<div class="card"><div class="dnav"><button type="button" id="maPrev" title="اليوم اللي قبله">›</button><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}${d === t ? ' · النهارده' : ''}</span><button type="button" id="maNext" title="اليوم اللي بعده">‹</button></div>
-      <label style="margin-top:8px">📅 اختار يوم</label><input class="inp" type="date" id="maDay" value="${d}"></div>
+  const pick = mkAMode === 'range' ? `<div class="g2" style="margin-top:8px"><div class="fld"><label>من</label><input class="inp" type="date" id="maFrom" value="${f}"></div><div class="fld"><label>إلى</label><input class="inp" type="date" id="maTo" value="${l}"></div></div>`
+    : mkAMode === 'month' ? `<label style="margin-top:8px">📅 اختار شهر</label><input class="inp" type="month" id="maMonth" value="${f.slice(0, 7)}">`
+    : `<label style="margin-top:8px">📅 اختار يوم</label><input class="inp" type="date" id="maDay" value="${mkDay || t}">`;
+  $('#mkBody').innerHTML = `<div class="card"><div class="seg s4" id="maMode">${[['day', 'يوم'], ['week', 'أسبوع'], ['month', 'شهر'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${mkAMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+      ${mkAMode === 'range' ? '' : `<div class="dnav"><button type="button" id="maPrev" title="اللي قبله">›</button><span>${mkALabel()}</span><button type="button" id="maNext" title="اللي بعده">‹</button></div>`}
+      ${pick}</div>
     ${left.length ? `<div class="sync warn mkleft" id="maIn">⏳ <b>${left.length}</b> لسه في الوارد (${fmtP(left.reduce((a, o) => a + o.amt, 0))}) <a>افتح</a></div>` : ''}
-    ${day.length ? `<section class="mqsec"><div class="mqsh"><b>حساب اليوم عند شريكك</b></div>
+    ${day.length ? `<section class="mqsec"><div class="mqsh"><b>حساب ${per} عند شريكك</b></div>
       <div class="mkbal mqt"><div class="bl g"><span>حصّل</span><b class="n">${fmtP(s.col)}</b></div><div class="bl b"><span>راح لك</span><b class="n">${fmtP(s.toM)}</b></div><div class="bl r"><span>صرف</span><b class="n">${fmtP(s.sp)}</b></div><div class="bl y"><span>معاه</span><b class="n">${fmtP(s.left)}</b></div></div>
-      ${s.inv ? `<p class="mqinv">🧾 فواتير (إجمالي بس): <b class="n">${fmtP(s.inv)}</b></p>` : ''}${mkCnt(d) ? `<div class="mqcnt">${mkCntLine(mkCnt(d))}</div>` : ''}</section>` : ''}
-    ${ops.length ? `<section class="mqsec ok" id="mqDone"><div class="mqsh"><b>✓ اتنقل من اليوم ده <small>${ops.length}</small></b><b class="n">${fmtP(ops.reduce((a, o) => a + o.amt, 0))}</b></div>
-      ${ops.map(o => { const [i, c] = ic(o); return `<div class="mqg mqr" data-op="${esc(o.id)}" role="button" tabindex="0">${mkHead(i, c, esc(nm(o)), `${mkPill(o)}${o.t === 'exp' && o.note && o.note !== o.cat ? esc(o.note) + ' · ' : ''}سجلها ${dispTime(o.ts)}<br>${mkStTxt(o)}`, o.amt)}</div>`; }).join('')}</section>`
-      : `<div class="card empty">${day.length ? 'لسه متنقلش حاجة من اليوم ده.' : 'مفيش حركات من الشريك في اليوم ده.'}${prev ? `<br><a class="lnk" id="maLast">← آخر يوم قبله فيه حاجة اتنقلت: ${dispDate(isoOf(prev))}</a>` : ''}</div>`}`;
-  $('#maPrev').onclick = () => { mkDay = addDays(d, -1); mkArch(); };
-  $('#maNext').onclick = () => { if (d < t) { mkDay = addDays(d, 1); mkArch(); } };
-  $('#maDay').onchange = () => { if (/^\d{4}-\d{2}-\d{2}$/.test($('#maDay').value)) { mkDay = $('#maDay').value; mkArch(); } };
+      ${s.inv ? `<p class="mqinv">🧾 فواتير (إجمالي بس): <b class="n">${fmtP(s.inv)}</b></p>` : ''}${one && mkCnt(f) ? `<div class="mqcnt">${mkCntLine(mkCnt(f))}</div>` : ''}</section>` : ''}
+    ${ops.length ? `<section class="mqsec ok" id="mqDone"><div class="mqsh"><b>✓ اتنقل من ${perThis} <small>${ops.length}</small></b><b class="n">${fmtP(ops.reduce((a, o) => a + o.amt, 0))}</b></div>
+      ${ops.map(o => { const [i, c] = ic(o); return `<div class="mqg mqr" data-op="${esc(o.id)}" role="button" tabindex="0">${mkHead(i, c, esc(nm(o)), `${mkPill(o)}${o.t === 'exp' && o.note && o.note !== o.cat ? esc(o.note) + ' · ' : ''}سجلها ${one ? '' : dispDate(isoOf(o.ts)) + ' '}${dispTime(o.ts)}<br>${mkStTxt(o)}`, o.amt)}</div>`; }).join('')}</section>`
+      : `<div class="card empty">${day.length ? `لسه متنقلش حاجة من ${perThis}.` : `مفيش حركات من الشريك في ${perThis}.`}${prev ? `<br><a class="lnk" id="maLast">← آخر يوم قبله فيه حاجة اتنقلت: ${dispDate(isoOf(prev))}</a>` : ''}</div>`}`;
+  $$('#maMode button').forEach(b => b.onclick = () => {
+    const m = b.dataset.m; if (m === mkAMode) return;
+    if (m === 'range') [mkAFrom, mkATo] = mkARange(); else if (m === 'month') mkAMonth = f.slice(0, 7); else if (mkAMode === 'month' || mkAMode === 'range') mkDay = l < t ? l : t;
+    mkAMode = m; mkArch();
+  });
+  if ($('#maPrev')) { $('#maPrev').onclick = () => mkAStep(-1); $('#maNext').onclick = () => mkAStep(1); }
+  const okD = v => /^\d{4}-\d{2}(-\d{2})?$/.test(v);
+  if ($('#maDay')) $('#maDay').onchange = () => { if (okD($('#maDay').value)) { mkDay = $('#maDay').value; mkArch(); } };
+  if ($('#maMonth')) $('#maMonth').onchange = () => { if (okD($('#maMonth').value)) { mkAMonth = $('#maMonth').value; mkArch(); } };
+  if ($('#maFrom')) { $('#maFrom').onchange = () => { if (okD($('#maFrom').value)) { mkAFrom = $('#maFrom').value; mkArch(); } }; $('#maTo').onchange = () => { if (okD($('#maTo').value)) { mkATo = $('#maTo').value; mkArch(); } }; }
   if ($('#maIn')) $('#maIn').onclick = () => { mkView = 'in'; renderMkt(); };
-  if ($('#maLast')) $('#maLast').onclick = () => { mkDay = isoOf(prev); mkArch(); };
+  if ($('#maLast')) $('#maLast').onclick = () => { mkAMode = 'day'; mkDay = isoOf(prev); mkArch(); };
   $$('#mkBody [data-op]').forEach(el => el.onclick = () => mkOpMenu(mkDb().ops[el.dataset.op]));
 }
 function mkArrive(o) {

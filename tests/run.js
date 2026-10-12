@@ -650,6 +650,16 @@ const T0 = Date.now();
         card({id: 'x2', type: 'exp', amt: 10, ts: now, vault: 'v_main', cat: 'c_mkexp', note: 'تروسيكل', upd: 1, sy: 1}).map(x => x.includes('مصاريف السوق') || x)];
     }), [['عميل تجربة اسم', `${await Saf.evaluate(() => dispTime(Date.now()))} · تحصيل من عميل · كاش · باقي الحساب`], ['تروسيكل', true]]);
     eq('قايمة الحركات متقسمة بالأيام (عنوان لكل يوم بصافيه)', await Saf.evaluate(() => { const d = document.createElement('div'), t0 = Date.now(); d.innerHTML = txDays([{id: 'a', type: 'inc', amt: 100, ts: t0 - 86400000, vault: 'v_main', cat: 'c_inc0', note: 'أ'}, {id: 'b', type: 'exp', amt: 30, ts: t0 - 86400000, vault: 'v_main', cat: '', note: 'ب'}, {id: 'c', type: 'exp', amt: 5, ts: t0, vault: 'v_main', cat: '', note: 'ج'}]); return [...d.querySelectorAll('.dayh b')].map(b => b.textContent); }), ['+70', '-5']);
+    eq('الدفتر: نفس تقسيم خزنة الحسابات (تحويل عميل السوق لوحده، تحصيل السوق كامل وقصاده "اتحوّلت لك"، الشركاء والمساهمين لوحدهم)', await Saf.evaluate(() => {
+      const now = Date.now(), mv = (r, sign) => ({r, sign, amt: r.amt, who: 'س', what: '', at: r.ts});
+      const cash = {id: 'e_mk_1', type: 'inc', amt: 1000, ts: now, vault: 'v_mkt', cat: 'c_inc0', party: 'p_mk'}, xf = {id: 'e_mk_2', type: 'inc', amt: 500, ts: now, vault: 'v_main', cat: 'c_inc0', party: 'p_mk'};
+      const site = {id: 'e_3', type: 'inc', amt: 70, ts: now, vault: 'v_main', cat: 'c_inc0', party: 'p_site'}, pt = {id: 't1', type: 'exp', amt: 40, ts: now, vault: 'v_main', cat: 'c_pdraw', pt: 'x'}, iv = {id: 't2', type: 'inc', amt: 30, ts: now, vault: 'v_main', cat: 'c_ivcap', iv: 'y'};
+      const sec0 = accSec; accSec = new Map([['p_mk', 'mkt'], ['p_site', 'site']]);
+      const me = kstHtml('me', '', 'me', [mv(xf, 1), mv(site, 1), mv(pt, -1), mv(iv, 1)], 'me');
+      const mk = kstHtml('mk', '', 'mkt', [mv(cash, 1), mv(xf, 1), Object.assign(mv(xf, -1), {mkOut: true})], 'mk');
+      accSec = new Map(); const fb = [homeGroup(mv(xf, 1), 'me'), homeGroup(mv(site, 1), 'me')]; accSec = sec0;
+      return [Object.keys(me.by).join(','), Object.keys(mk.by).join(','), mk.by.col.length, mk.by.col[0].amt, mk.by.col[0].what, mk.by.mkTr[0].amt, me.html.includes('إيداع مساهمين'), mk.html.includes('سحب'), fb.join(',')];
+    }), ['mkcol,col,part,ivcap', 'col,mkTr', 1, 1500, 'كاش 1,000 + تحويل 500', 500, true, false, 'mkcol,col']);
     eq('الحسابات بتبعت البنود الثابتة (دفعات الموردين) لشيت الدفتر', JSON.stringify(sheets.cash.sheets).includes('c_payout'), true);
     /* القفل بالرقم السري */
     await Saf.evaluate(() => go('set')); await Saf.settle(200);
@@ -1277,6 +1287,22 @@ const T0 = Date.now();
       db.txs.push(t); IDX.tx.set(t.id, t); cashVault = ''; cashMode = 'day'; cashDay = ''; go('cash'); renderCash();
       const r = [vaultBal('') === b0 - 12300, profitOf(y0, todayISO()).exp === p0, !$('#p-cash .kss').textContent.includes('تسوية'), !$('#p-cash .kss').textContent.includes('جرد تجربة')];
       t.del = true; touch(t); saveDB(); go('mkt'); return r; }), [true, true, true, true]);
+    eq('الخزنة: تحويل عميل السوق سطر لوحده في حركتي، وفي حركة السوق التحصيل كامل (كاش + تحويل سطر واحد) وقصاده "اتحوّلت لك"، والشركاء سطر لوحده، واللي مفيهوش حركة مبيظهرش', await A.evaluate(() => {
+      const d = todayISO(), now = nowS(), pid = mkEnsureParty('mkt', {newName: 'عميل سوق تجربة التحويل'});
+      const e1 = addEntry({party: pid, kind: 'pay', amt: 100000, date: d, vault: 'v_mkt', method: 'نقدي', note: 'حركة السوق'}), e2 = addEntry({party: pid, kind: 'pay', amt: 50000, date: d, vault: 'v_main', method: 'تحويل', note: 'حركة السوق — إنستا'});
+      [e1, e2].forEach(applyAmounts);
+      const t = {id: 'x_pttest', type: 'exp', amt: 7700, vault: 'v_main', cat: 'c_pdraw', pt: 'pt_x', note: 'مسحوبات تجربة', date: d, at: now, upd: now, del: false, hist: []};
+      db.txs.push(t); IDX.tx.set(t.id, t);
+      const me = kstHtml('me', '', 'me', vaultMoves('', d, d), 'me'), mk = kstHtml('mk', '', 'mkt', vaultMoves('v_mkt', d, d).concat(mkXfers(d, d)), 'mk');
+      const g = (mk.by.col || []).find(m => m.parts && m.r.party === pid);
+      cashMode = 'day'; cashDay = ''; cashVault = ''; go('cash'); renderCash();
+      const r = [(me.by.mkcol || []).some(m => m.r === e2), !(me.by.col || []).some(m => m.r === e2), !!g && g.amt, g && g.what, (mk.by.mkTr || []).some(m => m.r === e2 && m.amt === 50000),
+        (me.by.part || []).some(m => m.r === t), !(me.by.exp || []).some(m => m.r === t), !!$('#kst-me [data-k="me:mkcol"]'), !!$('#kst-mk [data-k="mk:mkTr"]'), $$('#kst-me .kty').length === Object.keys(me.by).length && Object.values(me.by).every(a => a.length) && !!$('#kst-me [data-k="me:ivcap"]') === !!me.by.ivcap];
+      $('#kst-mk [data-k="mk:col"]').click();
+      const kit = [...$$('#modal .kit')].find(x => x.textContent.includes('عميل سوق تجربة التحويل')); kit.click();
+      r.push($$('#modal .kit').length); closeModal();
+      [e1, e2, t].forEach(x => { x.del = true; touch(x); }); P.get(pid).del = true; touch(P.get(pid)); saveDB(); go('mkt'); return r; }),
+      [true, true, 150000, 'كاش 1,000 + تحويل 500', true, true, true, true, true, true, 2]);
     /* الشريك كتب مصروف وهو دفعة لمورد: مصطفى بيحوّلها من عنده، وبيرجّعها لو غلط */
     const cv0 = await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(o => o.t === 'exp'); return {id: o.id, mk: vaultBal('v_mkt'), exp: profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp}; });
     await A.evaluate(() => { cashSide = 'mkt'; go('cash'); }); await A.settle(300);   // الصفحة بتفتح بعد تغيير العنوان (وبتقفل أي نافذة)

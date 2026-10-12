@@ -779,25 +779,44 @@ function homeMoves(V, a, z) {
   });
   return out.sort((p, q) => q.at - p.at);
 }
+/* نفس تقسيم خزنة الحسابات بالظبط (cashGroup هناك): تحويلات عملاء السوق سطر لوحده في حركتي، وفي حركة السوق التحصيل كامل وقصاده "اتحوّلت لك"،
+   والشركاء والمساهمين سطور لوحدها. أي نوع مفيهوش حركة في الفترة مبيظهرش */
 const CG = {
-  col: ['💵 تحصيل من العملاء', 'in'], cs: ['💰 بيع كاش', 'in'], inc: ['إيرادات أخرى', 'in'], fromMk: ['🤝 استلام من الشريك', 'in'], toMkIn: ['🤝 استلام منك', 'in'], trIn: ['⇄ تحويل من خزنة تانية', 'in'],
-  spay: ['🏭 دفعات للموردين', 'out'], exp: ['مصروفات', 'out'], mkexp: ['⛽ مصاريف السوق', 'out'], toMk: ['🤝 تسليم للشريك', 'out'], hand: ['🤝 سلّمها لك', 'out'], trOut: ['⇄ تحويل لخزنة تانية', 'out']
+  col: ['💵 تحصيل من العملاء', 'in'], mkcol: ['📲 تحويلات عملاء السوق', 'in'], cs: ['💰 بيع كاش', 'in'], inc: ['إيرادات أخرى', 'in'], ivcap: ['📦 إيداع مساهمين', 'in'], fromMk: ['🤝 استلام من الشريك', 'in'], toMkIn: ['🤝 استلام منك', 'in'], trIn: ['⇄ تحويل من خزنة تانية', 'in'],
+  spay: ['💸 دفعات للموردين', 'out'], exp: ['مصروفات', 'out'], mkexp: ['⛽ مصاريف السوق', 'out'], part: ['👥 الشركاء', 'out'], ivdraw: ['📦 سحب مساهمين', 'out'], toMk: ['🤝 تسليم للشريك', 'out'], hand: ['🤝 سلّمها لك', 'out'], mkTr: ['📲 اتحوّلت لك', 'out'], trOut: ['⇄ تحويل لخزنة تانية', 'out']
 };
 const CG_ORD = Object.keys(CG);
 /* تسوية الجرد مش مقبوضات ولا مدفوعات (بطلب صاحب المشروع): بتظبط الرصيد بس ومش بتبان */
 const ADJ_CATS = new Set(['c_adj_in', 'c_adj_out']);
 /* نوع الحركة (نفس تقسيم خزنة الحسابات): side = me (خزني) أو mkt (خزنة السوق). '' = مش بتتعرض */
+let accSec = new Map();   // نوع كل حساب (mkt = عميل سوق) من الأسامي اللي الحسابات بتبعتها
+const isMkCust = t => accSec.has(t.party) ? accSec.get(t.party) === 'mkt' : isMkRec(t);   // أيقونة الأيفون ممكن ميكونش عندها الأسامي: دفعة جاية من الشريك = عميل سوق
 function homeGroup(m, side) {
   const t = m.r;
+  if (m.mkOut) return 'mkTr';
   if (ADJ_CATS.has(t.cat)) return '';
   if (t.type === 'tr') {
     const fm = isMkv(t.vault), tm = isMkv(t.to);
     if (side === 'mkt') return fm ? 'hand' : 'toMkIn';
     return fm ? 'fromMk' : tm ? 'toMk' : m.sign > 0 ? 'trIn' : m.sign < 0 ? 'trOut' : '';
   }
-  if (t.party || t.cat === 'c_inc0' || t.cat === 'c_payout') return t.type === 'inc' ? 'col' : 'spay';
+  if (t.party || t.cat === 'c_inc0' || t.cat === 'c_payout') return t.type !== 'inc' ? 'spay' : side === 'me' && isMkCust(t) ? 'mkcol' : 'col';
+  if (t.iv || t.cat === 'c_ivdraw' || t.cat === 'c_ivcap') return t.type === 'inc' ? 'ivcap' : 'ivdraw';
+  if (t.type === 'exp' && (t.pt || t.cat === 'c_psal' || t.cat === 'c_pdraw')) return 'part';
   if (t.type === 'inc') return side === 'mkt' && t.cat === 'c_inc1' ? 'cs' : 'inc';
   return side === 'mkt' ? 'mkexp' : 'exp';
+}
+/* حركة السوق: تحويلات عملاء السوق اللي نزلت في خزني بتتحسب في تحصيل السوق، ونسخة منها "اتحوّلت لك" في الطلع */
+const mkXfers = (a, z) => homeMoves('', a, z).filter(m => m.r.party && m.r.type === 'inc' && isMkCust(m.r))
+  .flatMap(m => [Object.assign({}, m, {sign: 1}), Object.assign({}, m, {sign: -1, mkOut: true})]);
+/* تحصيل السوق: دفعات نفس العميل في نفس اليوم (كاش وتحويل) = سطر واحد بالمبلغ كله */
+function mkColMerge(arr) {
+  const by = new Map();
+  arr.forEach(m => { const k = m.r.party + '|' + isoOf(m.r.ts); (by.get(k) || by.set(k, []).get(k)).push(m); });
+  const how = m => isMkv(m.r.vault) ? 'كاش' : 'تحويل';
+  return [...by.values()].map(L => L.length === 1 ? Object.assign(L[0], {what: how(L[0])})
+    : Object.assign({}, L[0], {amt: r2(L.reduce((n, m) => n + m.amt, 0)), at: Math.max(...L.map(m => m.at)), parts: L, what: L.map(m => how(m) + ' ' + fmt(m.amt)).join(' + ')}))
+    .sort((p, q) => q.at - p.at);
 }
 /* اسم الفترة الصغير جنب عنوان الكارت */
 function homePerTxt() {
@@ -817,6 +836,7 @@ function lastHand() {
 function kstHtml(key, title, side, mv, cls) {
   const by = {}, sum = a => r2(a.reduce((n, m) => n + m.amt, 0));
   mv.forEach(m => { const g = homeGroup(m, side); if (g) (by[g] = by[g] || []).push(m); });
+  if (side === 'mkt' && by.col) by.col = mkColMerge(by.col);
   const ks = CG_ORD.filter(k => by[k]), tot = t => r2(ks.filter(k => CG[k][1] === t).reduce((n, k) => n + sum(by[k]), 0));
   return {by, html: `<section class="kst ${cls}" id="kst-${key}"><div class="ksh">${title}<small>${esc(homePerTxt())}</small></div>
     <div class="kio"><div class="kin"><span>⬇ دخل</span><b class="n" data-ck="h:${key}:in" data-cnt="${tot('in')}">${fmt(tot('in'))}</b></div><div class="kout"><span>⬆ طلع</span><b class="n" data-ck="h:${key}:out" data-cnt="${tot('out')}">${fmt(tot('out'))}</b></div></div>
@@ -833,7 +853,7 @@ function homeTypeSheet(title, k, arr, showV) {
       return `<div class="kit" data-i="${i}" role="button" tabindex="0"><div><b>${esc(m.who)}${pend}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n">${fmt(m.amt)}</b></div>`; }).join('')}</div>
     <button class="btn line" id="kshX" type="button">رجوع</button></div>`);
   $('#kshX').onclick = closeModal;
-  $$('#modal .kit').forEach(el => el.onclick = () => { const x = arr[+el.dataset.i].r; closeModal(); openTx(x.type, x); });
+  $$('#modal .kit').forEach(el => el.onclick = () => { const m = arr[+el.dataset.i], x = m.r; closeModal(); if (m.parts) homeTypeSheet(title, k, m.parts, showV); else openTx(x.type, x); });
 }
 function homeRange() {
   const t = todayISO();
@@ -882,8 +902,9 @@ function renderHome() {
   bindI('#hF', v => home.from = v); bindI('#hT', v => home.to = v);
   const a = dayStart(from <= to ? from : to), z = dayEnd(from <= to ? to : from), V = home.vault;
   const meTitle = V ? `<span>🏭 حركة ${esc(vName(V))} <a class="kclr" id="kAll">✕ كل خزني</a></span>` : '<span>🏭 حركتي</span>';
+  try { accSec = new Map((JSON.parse(localStorage.getItem('fo_acc_names')) || []).map(n => [n.id, n.sec])); } catch (e) {}
   const me = kstHtml('me', meTitle, 'me', homeMoves(V, a, z).map(m => Object.assign(m, {mk: isMkRec(m.r)})), 'me');
-  const mk = hasM ? kstHtml('mk', '<span>🏪 حركة السوق</span>', 'mkt', homeMoves(MKV, a, z), 'mk') : null;
+  const mk = hasM ? kstHtml('mk', '<span>🏪 حركة السوق</span>', 'mkt', homeMoves(MKV, a, z).concat(mkXfers(a, z)), 'mk') : null;
   $('#hTables').className = 'kss' + (hasM ? ' two' : '');
   $('#hTables').innerHTML = me.html + (mk ? mk.html : '');
   const tap = (el, f) => { el.onclick = f; el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); f(ev); } }; };

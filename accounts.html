@@ -396,6 +396,20 @@ nav svg{width:26px;height:26px}
 .pg tr.nt td{background:#F7F2E4 !important;font-weight:800;border-bottom:2px solid #9C7420}
 .pg .sum .l.sub{font-weight:800;border-top:2px solid #111;background:#FBF5E6}
 .pg .note{margin-top:14px;font-size:13.5px;font-weight:600;color:#555;flex:none}
+.pg .coi{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 22px;margin:-4px 0 12px;padding:6px 10px;border-bottom:1px solid #E4DCC8;font-size:13.5px;font-weight:600;color:#555;flex:none}
+.pg .coi b{color:#111;font-weight:800}.pg .coi b.ltr{direction:ltr;unicode-bidi:isolate}
+.pg tr.ih td{background:#F3EAD3 !important;font-weight:800;color:#7A5A12;padding:4px}
+.pg tr.ih td.l{font-size:16px}
+.pg tr.it td{background:#fff !important;font-weight:600;padding:3px 4px;font-size:15.5px}.pg tr.it td.l{padding-right:22px}
+.pg tr.is td{background:#FBF5E6 !important;font-weight:800;padding:4px}
+.pg td small.dk{display:block;font-size:12.5px;color:#9C7420;font-weight:800;line-height:1.2}
+.pg .tot{display:flex;gap:12px;align-items:stretch;margin-top:14px;flex:none}
+.pg .tot .wd{flex:1;border:2px solid #CBBE9B;border-radius:8px;padding:8px 14px;background:#FBF5E6;display:flex;flex-direction:column;justify-content:center}
+.pg .tot .wd span{font-size:13px;font-weight:700;color:#777}
+.pg .tot .wd b{font-size:16px;font-weight:800;line-height:1.5}
+.pg .tot .sum{width:400px;margin-top:0;align-self:auto;display:flex}
+.pg .tot .sum .f{margin-top:0;flex:1;font-size:16px}
+.pg .gen{flex:none;text-align:center;font-size:12px;font-weight:600;color:#888;padding:6px 0}
 .pg .ft{flex:none;background:#111;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 44px;height:44px;font-size:13.5px;font-weight:600;border-top:4px solid #DAAE57}
 .pg .ft span:first-child{color:#DAAE57;font-size:16px;font-weight:700}
 /* ====== تنسيق الموبايل: أصغر وأنضف، من غير ما يتغير أي حاجة في الشغل ====== */
@@ -2648,18 +2662,41 @@ function invOnlyModal(p, e) {
   $('#ivShare').onclick = () => exportStmt(p, s, 'share');
   $('#ivPdf').onclick = () => exportStmt(p, s, 'preview');
 }
+/* المبلغ بالحروف (تفقيط) تحت إجمالي الكشف والفاتورة: "فقط ... جنيهاً لا غير" */
+const AR1 = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة', 'عشرة', 'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
+const AR10 = ['', '', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
+const AR100 = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
+const ar999 = n => { const r = n % 100; return [AR100[Math.floor(n / 100)], r < 20 ? AR1[r] : (r % 10 ? AR1[r % 10] + ' و' : '') + AR10[Math.floor(r / 10)]].filter(Boolean).join(' و'); };
+/* المعدود بعد العدد: [واحد، اتنين، 3–10، 11–99، الباقي] */
+const AR_K = [[1e9, ['مليار', 'ملياران', 'مليارات', 'ملياراً', 'مليار']], [1e6, ['مليون', 'مليونان', 'ملايين', 'مليوناً', 'مليون']], [1e3, ['ألف', 'ألفان', 'آلاف', 'ألفاً', 'ألف']]];
+const arNoun = (n, f) => { const r = n % 100; return r >= 3 && r <= 10 ? f[2] : r >= 11 ? f[3] : f[4]; };
+const arNum = n => { const out = []; AR_K.forEach(([d, f]) => { const k = Math.floor(n / d); n %= d; if (k) out.push(k === 1 ? f[0] : k === 2 ? f[1] : ar999(k) + ' ' + arNoun(k, f)); }); if (n) out.push(ar999(n)); return out.join(' و'); };
+const arCounted = (n, f) => !n ? '' : n === 1 ? f[0] + ' واحد' : n === 2 ? f[1] : arNum(n) + ' ' + arNoun(n, f);
+function moneyWords(p) {
+  p = Math.abs(Math.round(+p || 0));
+  if (!p) return 'لا يوجد رصيد مستحق';
+  return 'فقط ' + [arCounted(Math.floor(p / 100), ['جنيه', 'جنيهان', 'جنيهات', 'جنيهاً', 'جنيه']), arCounted(p % 100, ['قرش', 'قرشان', 'قروش', 'قرشاً', 'قرش'])].filter(Boolean).join(' و') + ' لا غير';
+}
+const DOC_T = {inv: 'فاتورة مبيعات', pur: 'فاتورة مشتريات', rinv: 'مرتجع مبيعات', rpur: 'مرتجع مشتريات'};
+/* الفترة على الورقة بلغة رسمية (الشاشة لسه بـ periodText) */
+const pdfPeriod = (s, issued) => s.lastInv ? `من آخر فاتورة ${dispDate(s.lastInv.date)}` : s.from ? `من ${dispDate(s.from)} إلى ${dispDate(s.to)}` : `كامل الحساب حتى ${dispDate(s.to || isoOf(issued))}`;
 function buildStmtPages(p, s) {
   const box = $('#render'); box.innerHTML = '';
-  const phone = db.cfg.phone, issued = nowS();
+  const c = db.cfg, phone = c.phone, issued = nowS(), per = s.invOnly ? dispDate(s.from) : pdfPeriod(s, issued);
+  /* بيانات الشركة (من الإعدادات): لو فيه حاجة منها بتتكتب كلها في سطر تحت الرأس، والتليفون معاها */
+  const info = [['العنوان', c.coAddr], ['سجل تجاري', c.coCr], ['بطاقة ضريبية', c.coTax]].filter(x => x[1]);
+  if (info.length && phone) info.push(['تليفون', phone]);
+  const gen = `صدر${s.invOnly ? 'ت هذه الفاتورة' : ' هذا الكشف'} إلكترونياً من نظام فلاش أون بتاريخ ${dispDate(isoOf(issued))} الساعة ${dispTime(issued)}`;
   const shell = first => {
     const pg = document.createElement('div'); pg.className = 'pg';
     pg.innerHTML = `<div class="strip"></div><div class="in">` + (first
-      ? `<div class="hd"><img src="icons/logo.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${phone ? `<em>${esc(phone)}</em>` : ''}</div>
-         <div class="ti"><h3>${s.invOnly ? (p.sec === 'sup' ? 'فاتورة مشتريات' : 'فاتورة') : 'كشف حساب'}</h3><div>تاريخ الإصدار: <span>${dispDate(isoOf(issued))}</span></div><div>${s.invOnly ? 'تاريخ الفاتورة' : 'الفترة'}: <span>${esc(s.invOnly ? dispDate(s.from) : periodText(s))}</span></div></div></div>
+      ? `<div class="hd"><img src="icons/logo.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${phone && !info.length ? `<em>${esc(phone)}</em>` : ''}</div>
+         <div class="ti"><h3>${s.invOnly ? (p.sec === 'sup' ? 'فاتورة مشتريات' : 'فاتورة') : 'كشف حساب'}</h3><div>تاريخ الإصدار: <span>${dispDate(isoOf(issued))}</span></div><div>${s.invOnly ? 'تاريخ الفاتورة' : 'الفترة'}: <span>${esc(per)}</span></div></div></div>
+         ${info.length ? `<div class="coi">${info.map(([k, v]) => `<span>${k}: <b${k === 'العنوان' ? '' : ' class="ltr"'}>${esc(v)}</b></span>`).join('')}</div>` : ''}
          <div class="cust"><span>السادة / <b>${esc(p.name)}</b></span>${p.sec === 'sup' ? `<i>${SEC1[p.sec]}</i>` : ''}</div>
          ${p.sec === 'sup' && !s.invOnly ? `<div class="sbox"><div><span>إجمالي المشتريات</span><b>${fmtP(s.tg)}</b></div><div><span>إجمالي المدفوعات</span><b>${fmtP(s.tp)}</b></div><div class="k"><span>الرصيد</span><b>${fmtP(s.close * s.sg)}</b></div></div>` : ''}`
-      : `<div class="mini"><b>فلاش أون</b><span>${s.invOnly ? 'فاتورة' : 'كشف حساب'} — ${esc(p.name)} — ${esc(s.invOnly ? dispDate(s.from) : periodText(s))}</span></div>`) +
-      `</div><div class="ft"><span>عالم متكامل من احتياجاتك الكهربائية</span><span class="pn"></span></div>`;
+      : `<div class="mini"><b>فلاش أون</b><span>${s.invOnly ? 'فاتورة' : 'كشف حساب'} — ${esc(p.name)} — ${esc(per)}</span></div>`) +
+      `</div><div class="gen">${gen}</div><div class="ft"><span>عالم متكامل من احتياجاتك الكهربائية</span><span class="pn"></span></div>`;
     box.appendChild(pg);
     return {pg, inn: pg.querySelector('.in')};
   };
@@ -2669,29 +2706,52 @@ function buildStmtPages(p, s) {
     if (s.invOnly) { t.innerHTML = `<colgroup><col style="width:15%"><col style="width:37%"><col style="width:16%"><col style="width:14%"><col style="width:18%"></colgroup>
       <thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody></tbody>`; return t; }
     t.innerHTML = `<colgroup><col style="width:12.5%"><col style="width:23.5%"><col style="width:14%"><col style="width:10.5%"><col style="width:13%"><col style="width:11.5%"><col style="width:15%"></colgroup>
-      <thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody></tbody>`;
+      <thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>المدفوع</th><th>الرصيد</th></tr></thead><tbody></tbody>`;
     return t;
   };
   const balCell = b => `<td class="b">${fmtP(b * s.sg)}</td>`;
   let pg = shell(true), tbl = mkTable(); pg.inn.appendChild(tbl);
-  const put = tr => {
+  const put = (cls, html) => {
+    const tr = document.createElement('tr'); tr.className = cls; tr.innerHTML = html;
     tbl.tBodies[0].appendChild(tr);
-    if (over(pg.inn, tr) && tbl.tBodies[0].rows.length > 1) { tr.remove(); pg = shell(false); tbl = mkTable(); pg.inn.appendChild(tbl); tbl.tBodies[0].appendChild(tr); }
+    if (over(pg.inn, tr) && tbl.tBodies[0].rows.length > 1) {
+      tr.remove();
+      const last = tbl.tBodies[0].lastElementChild, carry = last && last.classList.contains('ih') && tbl.tBodies[0].rows.length > 1 ? last : null;   // عنوان الفاتورة مبيفضلش لوحده في آخر الصفحة
+      if (carry) carry.remove();
+      pg = shell(false); tbl = mkTable(); pg.inn.appendChild(tbl);
+      if (carry) tbl.tBodies[0].appendChild(carry);
+      tbl.tBodies[0].appendChild(tr);
+    }
   };
-  if (s.open !== null) { const tr = document.createElement('tr'); tr.className = 'op'; tr.innerHTML = `<td class="dt">${dispDate(s.from)}</td><td class="l">${opLabel(s)}</td><td></td><td></td><td></td><td></td>${balCell(s.open)}`; put(tr); }
-  s.rows.forEach((r, i) => {
-    const tr = document.createElement('tr'); tr.className = r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : '';
-    tr.innerHTML = `<td class="dt">${dispDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td><td class="q">${esc(r.qty || '')}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td>` + (s.invOnly
-      ? `<td class="n">${r.gd ? fmtP(r.gd) : r.pd ? '−' + fmtP(r.pd) : ''}</td>`
-      : `<td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td>${balCell(r.run)}`);
-    put(tr);
-  });
-  if (!s.rows.length) { const tr = document.createElement('tr'); tr.innerHTML = `<td colspan="7">مفيش حركات في الفترة دي</td>`; put(tr); }
-  const sum = document.createElement('div'); sum.className = 'sum';
-  sum.innerHTML = `<div class="f"><span>${s.invOnly ? 'إجمالي الفاتورة' : 'الرصيد'}</span><b>${fmtP(s.close * s.sg)} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div>`;
+  const kindCls = r => r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : '';
+  const nums = (gd, pd) => `<td class="n">${gd ? fmtP(gd) : ''}</td><td class="n">${pd ? fmtP(pd) : ''}</td>`;
+  const qp = r => `<td class="q">${esc(r.qty || '')}</td><td class="n">${r.price ? fmtP(r.price) : ''}</td>`;
+  if (s.open !== null) put('op', `<td class="dt">${dispDate(s.from)}</td><td class="l">${opLabel(s)}</td><td></td><td></td><td></td><td></td>${balCell(s.open)}`);
+  if (s.invOnly) s.rows.forEach(r => put(kindCls(r), `<td class="dt">${dispDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td>${qp(r)}<td class="n">${r.gd ? fmtP(r.gd) : r.pd ? '−' + fmtP(r.pd) : ''}</td>`));
+  else {
+    /* الفاتورة اللي فيها أكتر من سطر: عنوان بتاريخها، وتحته أصنافها، وفي آخرها إجماليها والرصيد بعدها */
+    const cnt = new Map(); s.rows.forEach(r => r.e && cnt.set(r.e, (cnt.get(r.e) || 0) + 1));
+    let g = null;
+    s.rows.forEach(r => {
+      const doc = r.e && isDoc(r.e), nm = doc ? r.desc.replace(/^مرتجع: /, '') : r.desc;
+      if (doc && r.first && cnt.get(r.e) > 1) { g = {e: r.e, left: cnt.get(r.e), gd: 0, pd: 0}; put('ih', `<td class="dt">${dispDate(r.date)}</td><td class="l" colspan="6">${DOC_T[r.e.kind]}</td>`); }
+      if (g && r.e === g.e) {
+        put('it' + (r.ret ? ' ret' : ''), `<td></td><td class="l">${esc(nm)}</td>${qp(r)}${nums(r.gd, r.pd)}<td></td>`);
+        g.gd += r.gd; g.pd += r.pd;
+        if (!--g.left) { const net = g.gd - g.pd; put('is', `<td></td><td class="l" colspan="3">${isRet(g.e) ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}</td>${nums(net > 0 ? net : 0, net < 0 ? -net : 0)}${balCell(r.run)}`); g = null; }
+        return;
+      }
+      put(kindCls(r), `<td class="dt">${dispDate(r.date)}</td><td class="l">${doc ? `<small class="dk">${DOC_T[r.e.kind]}</small>` : ''}${esc(nm)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td>${qp(r)}${nums(r.gd, r.pd)}${balCell(r.run)}`);
+    });
+  }
+  if (!s.rows.length) put('', `<td colspan="7">لا توجد حركات خلال هذه الفترة</td>`);
+  const v = s.close * s.sg;
+  const lbl = s.invOnly ? 'إجمالي الفاتورة' : !v ? 'الرصيد' : (v > 0) !== (p.sec === 'sup') ? 'الرصيد المستحق عليكم' : 'الرصيد المستحق لكم';
+  const tot = document.createElement('div'); tot.className = 'tot';
+  tot.innerHTML = `<div class="wd"><span>المبلغ بالحروف</span><b>${moneyWords(v)}</b></div><div class="sum"><div class="f"><span>${lbl}</span><b>${fmtP(s.invOnly ? v : Math.abs(v))} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div></div>`;
   const note = document.createElement('div'); note.className = 'note';
-  note.textContent = s.invOnly ? 'شكراً لتعاملكم معنا. لو فيه أي ملاحظة على الفاتورة يا ريت تتواصلوا معانا.' : 'برجاء مراجعة الكشف، ولو فيه أي ملاحظة يا ريت تتواصلوا معانا.';
-  [sum, note].forEach(el => { pg.inn.appendChild(el); if (over(pg.inn, el)) { el.remove(); pg = shell(false); pg.inn.appendChild(el); } });
+  note.textContent = s.invOnly ? 'نشكركم على ثقتكم في فلاش أون. لأي استفسار بخصوص هذه الفاتورة يرجى التواصل معنا.' : 'يرجى مراجعة هذا الكشف وإخطارنا بأي ملاحظات خلال سبعة أيام من تاريخ إصداره، وإلا اعتُبر الرصيد الوارد به صحيحاً ومعتمداً.';
+  [tot, note].forEach(el => { pg.inn.appendChild(el); if (over(pg.inn, el)) { el.remove(); pg = shell(false); pg.inn.appendChild(el); } });
   const pages = [...box.children];
   pages.forEach((x, i) => x.querySelector('.pn').textContent = `صفحة ${i + 1} من ${pages.length}`);
   return pages;

@@ -2116,6 +2116,8 @@ function payInfo(p, all, b) {
   return {ago, avg, late: b > 0 && (avg ? ago > Math.max(avg * 1.5, 7) : ago > 30)};
 }
 /* العملاء اللي عليهم فلوس واتأخروا عن عادة دفعهم (الحساب الفرعي برّه الإجماليات فمش بيتعدّ) */
+/* الوارد جاي من تطبيق عملاء السوق بس، فاللي اتأخروا فيه = عملاء السوق بس (بطلب صاحب المشروع) */
+const mkLate = () => lateParties().filter(p => p.sec === 'mkt');
 function lateParties() {
   const bal = allBalances();
   return liveParties().filter(p => !p.noTot && p.sec !== 'sup' && ((i) => i && i.late)(payInfo(p, partyEntries(p.id, true), bal.get(p.id) || 0)));
@@ -6255,7 +6257,7 @@ function renderMkt() {
 }
 function mkStatParts() {
   const cash = db.vaults.some(v => v.id === MKV && !v.del) ? Math.max(0, vaultBal(MKV)) : 0;
-  return {wait: mkPending().length, clash: (db.cfg.clash || []).filter(c => !c.seen).length, late: lateParties().length, cash};
+  return {wait: mkPending().length, clash: (db.cfg.clash || []).filter(c => !c.seen).length, late: mkLate().length, cash};
 }
 /* الملخص فوق: عدد اللي مستنياك ومبلغه كبير، وتحته علامات صغيرة للي محتاج تاخد بالك منه (مع الشريك، تعارض، اتأخروا). اللي صفر مبيظهرش */
 function mkStat() {
@@ -6272,8 +6274,8 @@ function mkStatBind() {
     if (k === 'clash') clashModal();
     else if (k === 'cash') go('cash');
     else if (k === 'late') {
-      const l = lateParties();
-      modal(`<h3>🕒 اتأخروا عن عادة الدفع</h3>${l.map(p => `<div class="pt" data-p="${esc(p.id)}"><div class="m"><b>${esc(p.name)}</b><small>${esc(lpAgo(p.id))}</small></div><div class="a"><b>${fmtP(balance(p.id))}</b></div></div>`).join('')}<button class="btn line" id="ltX" type="button" style="margin-top:10px">رجوع</button>`, true);
+      const l = mkLate();
+      modal(`<h3>🕒 عملاء السوق اللي اتأخروا عن عادة الدفع</h3>${l.map(p => `<div class="pt" data-p="${esc(p.id)}"><div class="m"><b>${esc(p.name)}</b><small>${esc(lpAgo(p.id))}</small></div><div class="a"><b>${fmtP(balance(p.id))}</b></div></div>`).join('')}<button class="btn line" id="ltX" type="button" style="margin-top:10px">رجوع</button>`, true);
       $('#ltX').onclick = closeModal;
       $$('#modal .pt[data-p]').forEach(x => x.onclick = () => { closeModal(); go('p/' + x.dataset.p); });
     }

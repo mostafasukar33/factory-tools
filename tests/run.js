@@ -1109,6 +1109,7 @@ const T0 = Date.now();
     await A.click('nav button[data-go=mkt]'); await A.settle(200);
     const card = `#p-mkt [data-mv="${pid1}"]`;
     eq('الوارد متجمع بالعميل: 5,000 كاش + 3,000 تحويل = 8,000، والتحويل محسوب واصل من الأول (مفيش "وصل؟")', [(await A.textContent(`#p-mkt .mqg:has([data-mv="${pid1}"])`)).replace(/\s+/g, ' ').includes('5,000 كاش + 3,000 تحويل = 8,000'), await A.isDisabled(card), await A.$('#p-mkt [data-ok]')], [true, false, null]);
+    eq('الوارد: "اتأخروا عن الدفع" من عملاء السوق بس', await A.evaluate(() => [mkLate().every(p => p.sec === 'mkt'), mkStatParts().late === lateParties().filter(p => p.sec === 'mkt').length]), [true, true]);
     eq('الوارد متقسم (جاهزين للنقل / محتاجين قرارك)، ومفيش زرار "رجّعها" في الوارد نفسه: جوه نافذة السطر', await A.evaluate(async () => {
       const r = [!!document.querySelector('#mkBody .mqsec [data-gs]'), !document.querySelector('#mkBody [data-bk]')];
       document.querySelector('#mkBody [data-gs] .mqw').click(); r.push(!!document.querySelector('#modal [data-bk]') && !!document.querySelector('#modal .mqop')); closeModal(); return r; }), [true, true, true]);

@@ -303,6 +303,7 @@ body{font-size:var(--f3);line-height:1.6}
 .tots .vt{cursor:pointer}.tots .vt.on{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
 .tots b.cr2{color:var(--red)}
 .tots .k + .vt:last-child{grid-column:1/-1}
+.mkb{display:inline-block;font-weight:800;color:var(--gold-d);background:var(--gold-l);border-radius:6px;padding:0 6px}
 @media (max-width:640px){.tots div b{font-size:var(--f3)}.tots .k b{font-size:var(--f5)}.ctools{display:grid;grid-template-columns:1fr 1fr}}
 @media (min-width:1000px){.tots{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.tots .k{grid-column:1/-1}}
 .hpick{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px}
@@ -386,11 +387,11 @@ html[data-theme=dark] #lock label{color:var(--sub)}
     <button class="btn redf" id="bExp" type="button">− مصروف</button>
     <button class="btn gold" id="bInc" type="button">+ إيراد</button>
   </div>
-  <div class="tots" id="hTots"></div>
-  <div class="ctools"><button class="btn line sm" id="bCount" type="button">✎ الفلوس اللي معايا</button><button class="btn line sm" id="bTr" type="button">⇄ تحويل</button><button class="btn line sm" id="hAll" type="button">📋 كل الحركات</button><a class="btn line sm" href="accounts.html#cash" style="text-decoration:none">🔗 الحسابات</a></div>
+  <div class="kb" id="hTots"></div>
+  <div class="ctools"><button class="btn line sm" id="bCount" type="button">✎ جرد الخزنة</button><button class="btn line sm" id="bTr" type="button">⇄ تحويل بين الخزن</button><button class="btn line sm" id="hAll" type="button">📋 كل الحركات</button><a class="btn line sm" href="accounts.html#cash" style="text-decoration:none">🔗 الحسابات</a></div>
   <div class="card hpick" id="hPick"></div>
-  <div class="cnet" id="hNet"></div>
-  <div class="cwrap" id="hTables"></div>
+  <div class="kss" id="hTables"></div>
+  <div id="hNet"></div>
 </section>
 
 <!-- ============== التقارير ============== -->
@@ -513,7 +514,7 @@ function defaults() {
   const mk = (t, n, i) => ({id: 'c_' + t + i, type: t, name: n, ord: i, upd: now, del: false, sy: 0});
   return {
     v: 1,
-    vaults: [{id: 'v_main', name: 'خزنة المصنع', open: 0, upd: now, del: false, sy: 0}],
+    vaults: [{id: 'v_main', name: 'كاش', open: 0, upd: now, del: false, sy: 0}],
     cats: [...DEF_EXP.map((n, i) => mk('exp', n, i)), ...DEF_INC.map((n, i) => mk('inc', n, i))],
     tx: [],
     sheetUrl: '', sheetKey: '', lastSync: 0, lastVault: 'v_main'
@@ -737,9 +738,93 @@ function txTable(title, arr, cls, dated) {
     <table class="cmt"><tbody>${arr.length ? arr.map(t => { const w = txWho(t), pend = t.sy !== t.upd ? '<span class="pend" title="لسه ما اتبعتتش للشيت"></span>' : '';
       return `<tr data-id="${t.id}"><td class="d">${dcell(t)}</td><td class="w"><b>${esc(w.who)}${pend}</b>${w.what ? `<small>${esc(w.what)}</small>` : ''}</td><td class="am">${fmt(t.amt)}</td></tr>`; }).join('') : '<tr><td class="e" colspan="3">مفيش حركات</td></tr>'}</tbody></table></section>`;
 }
-/* الرئيسية = نفس خزنة الحسابات: يوم/شهر/سنة/من–إلى، أسهم السابق والتالي، وفلتر الخزنة (من القايمة أو بالدوس على كارت الخزنة) */
+/* الرئيسية = نفس خزنة الحسابات بالظبط: كارت الأرصدة ("خزني" مقفول بالرقم وبيتفتح على كل خزنة، خزنة السوق بالأزرق، إجمالي النقدية)،
+   يوم/شهر/سنة/من–إلى بالأسهم، وكشف حركة لكل نص (رصيد أول الفترة + المقبوضات − المدفوعات = رصيد آخر الفترة). الشكل في lib/ui.css (.kb/.kst).
+   خزنة السوق (v_mkt) جاية من الحسابات: مش داخلة في "خزني"، والكاش اللي الشريك بيسلّمه داخل خزني */
 const home = {mode: 'day', day: '', month: '', year: '', from: '', to: '', vault: ''};
 let homeDay = '';   // قديم: يوم الرئيسية (بقى home.day)
+let homeOpenV = false;
+const homeOpenG = new Set();
+const MKV = 'v_mkt', isMkv = id => id === MKV;
+const myVaults = () => vaults().filter(v => !isMkv(v.id));
+const isMkRec = t => /^(e|t)_mk_/.test(t.id || '');
+const r2 = n => Math.round(n * 100) / 100;
+/* رصيد خزني كلها (من غير السوق) لحد لحظة معينة (حصري) */
+function balMe(ts = Infinity) {
+  let b = 0;
+  myVaults().forEach(v => b += +v.open || 0);
+  for (const t of liveTx()) {
+    if (t.ts >= ts) continue;
+    const a = +t.amt || 0;
+    if (t.type === 'inc' && !isMkv(t.vault)) b += a;
+    else if (t.type === 'exp' && !isMkv(t.vault)) b -= a;
+    else if (t.type === 'tr') { if (isMkv(t.vault) && !isMkv(t.to)) b += a; else if (!isMkv(t.vault) && isMkv(t.to)) b -= a; }
+  }
+  return r2(b);
+}
+/* حركات خزني كلها (V فاضي) أو خزنة واحدة في الفترة، وكل حركة داخلة (+1) ولا خارجة (−1) ولا تحويل بين خزني (0) */
+function homeMoves(V, a, z) {
+  const out = [];
+  liveTx().forEach(t => {
+    if (t.ts < a || t.ts >= z) return;
+    let sign;
+    if (!V) {
+      if (t.type === 'tr') { const fm = isMkv(t.vault), tm = isMkv(t.to); if (fm && tm) return; sign = fm ? 1 : tm ? -1 : 0; }
+      else { if (isMkv(t.vault)) return; sign = t.type === 'inc' ? 1 : -1; }
+    } else {
+      if (t.vault !== V && !(t.type === 'tr' && t.to === V)) return;
+      sign = t.type === 'inc' ? 1 : t.type === 'exp' ? -1 : t.to === V ? 1 : -1;
+    }
+    const w = t.type === 'tr' && isMkv(t.vault) ? {who: 'كاش من شريك السوق', what: t.note || ''} : txWho(t);
+    out.push({r: t, sign, amt: +t.amt || 0, who: w.who, what: w.what, at: t.ts});
+  });
+  return out.sort((p, q) => q.at - p.at);
+}
+const CG = {
+  col: ['💵 تحصيل من العملاء', 'in'], cs: ['💰 بيع كاش', 'in'], inc: ['إيرادات أخرى', 'in'], fromMk: ['🤝 استلام من الشريك', 'in'], toMkIn: ['🤝 استلام منك', 'in'], trIn: ['⇄ تحويل من خزنة تانية', 'in'],
+  spay: ['🏭 دفعات للموردين', 'out'], exp: ['مصروفات', 'out'], mkexp: ['⛽ مصاريف السوق', 'out'], toMk: ['🤝 تسليم للشريك', 'out'], hand: ['🤝 سلّمها لك', 'out'], trOut: ['⇄ تحويل لخزنة تانية', 'out'],
+  tr: ['⇄ تحويلات بين خزنك', '']
+};
+const CG_ORD = Object.keys(CG);
+/* نوع الحركة (نفس تقسيم خزنة الحسابات): side = me (خزني) أو mkt (خزنة السوق) */
+function homeGroup(m, side) {
+  const t = m.r;
+  if (t.type === 'tr') {
+    const fm = isMkv(t.vault), tm = isMkv(t.to);
+    if (side === 'mkt') return fm ? 'hand' : 'toMkIn';
+    return fm ? 'fromMk' : tm ? 'toMk' : m.sign > 0 ? 'trIn' : m.sign < 0 ? 'trOut' : 'tr';
+  }
+  if (t.party || t.cat === 'c_inc0' || t.cat === 'c_payout') return t.type === 'inc' ? 'col' : 'spay';
+  if (t.type === 'inc') return side === 'mkt' && t.cat === 'c_inc1' ? 'cs' : 'inc';
+  return side === 'mkt' ? 'mkexp' : 'exp';
+}
+const homePerW = () => ({day: 'اليوم', month: 'الشهر', year: 'السنة'})[home.mode] || 'الفترة';
+const signF = (n, s) => n ? s + fmt(n) : '0';
+function lastHand() {
+  let ts = 0;
+  liveTx().forEach(t => { if (t.type === 'tr' && isMkv(t.vault) && !isMkv(t.to) && t.ts > ts) ts = t.ts; });
+  if (!ts) return '';
+  const n = Math.round((dayStart(todayISO()) - dayStart(isoOf(ts))) / 864e5);
+  return n <= 0 ? 'النهارده' : n === 1 ? 'امبارح' : n === 2 ? 'من يومين' : n <= 10 ? `من ${n} أيام` : dispDate(isoOf(ts));
+}
+function kMoveRow(m, day, pool, showV) {
+  const t = m.r, pend = t.sy !== t.upd ? '<span class="pend" title="لسه ما اتبعتتش للشيت"></span>' : '';
+  const bits = [day ? dispTime(t.ts) : dispDate(isoOf(t.ts)), m.what && m.what !== m.who ? m.what : '', showV && t.type !== 'tr' ? vName(t.vault) : ''].filter(Boolean);
+  return `<div class="kmv" data-i="${pool.push(m) - 1}"><div><b>${esc(m.who)}${pend}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n">${fmt(m.amt)}</b></div>`;
+}
+function kstHtml(key, title, side, open, close, mv, day, pool, showV, extra) {
+  const by = {}, sum = a => r2(a.reduce((n, m) => n + m.amt, 0));
+  mv.forEach(m => { const g = homeGroup(m, side); (by[g] = by[g] || []).push(m); });
+  const ks = t => CG_ORD.filter(k => by[k] && CG[k][1] === t);
+  const tin = r2(ks('in').reduce((n, k) => n + sum(by[k]), 0)), tout = r2(ks('out').reduce((n, k) => n + sum(by[k]), 0)), w = homePerW();
+  const grp = k => { const g = key + ':' + k, on = homeOpenG.has(g);
+    return `<div class="ksg${on ? ' on' : ''}" data-g="${g}"><span>${CG[k][0]} <em>(${by[k].length})</em></span><b class="n">${fmt(sum(by[k]))}</b></div><div class="ksl"${on ? '' : ' hidden'}>${by[k].map(m => kMoveRow(m, day, pool, showV)).join('')}</div>`; };
+  return `<section class="kst ${key}" id="kst-${key}"><div class="ksh">${title}</div>
+    <div class="ksr ko"><span>رصيد أول ${w}</span><b class="n">${fmt(open)}</b></div>
+    <div class="ksr ki"><span>⬇ المقبوضات</span><b class="n">${signF(tin, '+')}</b></div>${ks('in').map(grp).join('')}
+    <div class="ksr kx"><span>⬆ المدفوعات</span><b class="n">${signF(tout, '−')}</b></div>${ks('out').map(grp).join('')}
+    <div class="ksr kc"><span>رصيد آخر ${w}</span><b class="n${close < 0 ? ' neg' : ''}" data-ck="h:${key}:close" data-cnt="${close}">${fmt(close)}</b></div>${by.tr ? grp('tr') : ''}${extra || ''}</section>`;
+}
 function homeRange() {
   const t = todayISO();
   if (home.mode === 'day') { const d = home.day || t; return [d, d]; }
@@ -761,36 +846,59 @@ function homeStep(n) {
   renderHome();
 }
 function renderHome() {
-  const vs = vaults(), tot = balance(null), t = todayISO();
+  const vs = myVaults(), hasM = vaults().some(v => isMkv(v.id)), mkB = hasM ? r2(balance(MKV)) : 0, meB = balMe(), tot = r2(meB + mkB), t = todayISO();
   if (home.vault && !vs.some(v => v.id === home.vault)) home.vault = '';
-  $('#hTots').innerHTML = `<div class="k"><span>رصيد كل الخزن</span><b class="${tot < 0 ? 'cr' : ''}" data-ck="h:total" data-cnt="${tot}">${fmt(tot)} <small>${CUR}</small></b></div>`
-    + (vs.length < 2 ? '' : vs.map(v => { const b = balance(v.id); return `<div class="vt ${home.vault === v.id ? 'on' : ''}" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="${b < 0 ? 'cr2' : ''}" data-ck="v:${esc(v.id)}" data-cnt="${b}">${fmt(b)}</b></div>`; }).join(''));
-  $$('#hTots .vt').forEach(el => el.onclick = () => { home.vault = home.vault === el.dataset.v ? '' : el.dataset.v; renderHome(); });
-  $('#bTr').style.display = vs.length > 1 ? '' : 'none';
+  if (home.vault) homeOpenV = true;
+  const nV = vs.length, vsTxt = nV === 1 ? 'خزنة واحدة' : nV === 2 ? 'خزنتين' : nV + ' خزن', last = hasM ? lastHand() : '';
+  const tiles = vs.map(v => { const b = r2(balance(v.id)); return `<div class="kv${home.vault === v.id ? ' on' : ''}${b < 0 ? ' neg' : ''}" data-v="${esc(v.id)}" role="button" tabindex="0"><span>${esc(v.name)}</span><b class="n" data-ck="v:${esc(v.id)}" data-cnt="${b}">${fmt(b)}</b>${b < 0 ? '<a class="kfix">⚠ راجعها</a>' : ''}</div>`; }).join('');
+  const kb = $('#hTots');
+  kb.className = 'kb' + (hasM ? ' two' : '');
+  kb.innerHTML = `<div class="kbme"><div class="kbm${homeOpenV ? ' on' : ''}" id="kMe" role="button" tabindex="0"><span>🏭 خزني <i class="kch">▾</i><small>${homeOpenV ? 'كل خزنة برصيدها · دوس على خزنة تشوف حركتها' : 'الفلوس اللي تحت إيدك · ' + vsTxt}</small></span><b class="n${meB < 0 ? ' neg' : ''}" data-ck="h:me" data-cnt="${meB}">${fmt(meB)}</b></div>
+      <div class="kvs"${homeOpenV ? '' : ' hidden'}>${tiles}</div></div>
+    ${hasM ? `<div class="kbk"><span>🏪 خزنة السوق<small>عهدة الشريك${last ? ' · آخر تسليم ' + last : ''}</small></span><b class="n${mkB < 0 ? ' neg' : ''}" data-ck="h:mk" data-cnt="${mkB}">${fmt(mkB)}</b></div>
+    <div class="kbt"><span>إجمالي النقدية<small>خزني + خزنة السوق</small></span><b class="n${tot < 0 ? ' neg' : ''}" data-ck="h:total" data-cnt="${tot}">${fmt(tot)} <small>${CUR}</small></b></div>` : ''}`;
+  $('#bTr').style.display = vaults().length > 1 ? '' : 'none';
   const [from, to] = homeRange();
   $('#hPick').innerHTML = `<div class="seg" id="hMode">${[['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${home.mode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     ${home.mode === 'range' ? '' : `<div class="dnav"><button type="button" id="hPrev" title="السابق">›</button><span id="hDay">${homeLabel()}</span><button type="button" id="hNext" title="التالي">‹</button></div>`}
     <div id="hPk">${home.mode === 'day' ? `<input class="inp" type="date" id="hD" value="${home.day || t}">`
       : home.mode === 'month' ? `<input class="inp" type="month" id="hM" value="${home.month || t.slice(0, 7)}">`
       : home.mode === 'year' ? `<input class="inp num" id="hY" inputmode="numeric" value="${home.year || t.slice(0, 4)}">`
-      : `<div class="g2"><input class="inp" type="date" id="hF" value="${from}"><input class="inp" type="date" id="hT" value="${to}"></div>`}</div>
-    <select class="inp" id="hV"><option value="">كل الخزن</option>${vs.map(v => `<option value="${esc(v.id)}" ${home.vault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>`;
+      : `<div class="g2"><input class="inp" type="date" id="hF" value="${from}"><input class="inp" type="date" id="hT" value="${to}"></div>`}</div>`;
   $$('#hMode button').forEach(b => b.onclick = () => { home.mode = b.dataset.m; renderHome(); });
   if ($('#hPrev')) { $('#hPrev').onclick = () => homeStep(-1); $('#hNext').onclick = () => homeStep(1); }
   const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); renderHome(); }; };
   bindI('#hD', v => home.day = v); bindI('#hM', v => home.month = v); bindI('#hY', v => home.year = normDigits(v).replace(/\D/g, '').slice(0, 4));
   bindI('#hF', v => home.from = v); bindI('#hT', v => home.to = v);
-  $('#hV').onchange = () => { home.vault = $('#hV').value; renderHome(); };
-  const a = dayStart(from <= to ? from : to), z = dayEnd(from <= to ? to : from), V = home.vault;
-  const list = liveTx().filter(x => x.ts >= a && x.ts < z && (!V || x.vault === V || x.to === V)).sort((p, q) => q.ts - p.ts);
-  /* الصافي: لو خزنة واحدة متختارة التحويل ليها أو منها بيتحسب، ولو كل الخزن ملوش دعوة */
-  let n = 0;
-  list.forEach(x => { if (x.type === 'inc') n += +x.amt; else if (x.type === 'exp') n -= +x.amt; else if (V) n += x.to === V ? +x.amt : -x.amt; });
-  n = Math.round(n * 100) / 100;
-  $('#hNet').innerHTML = `<span>${home.mode === 'day' ? 'صافي اليوم' : 'صافي الفترة'}</span><b class="${n < 0 ? 'neg' : ''}" data-ck="h:net" data-cnt="${n}">${fmt(n)} ${CUR}</b>`;
-  const dated = home.mode !== 'day', trs = list.filter(x => x.type === 'tr');
-  $('#hTables').innerHTML = txTable('الإيرادات', list.filter(x => x.type === 'inc'), 'inc', dated) + txTable('المصروفات', list.filter(x => x.type === 'exp'), 'exp', dated) + (trs.length ? txTable('تحويلات', trs, '', dated) : '');
-  $$('#hTables tr[data-id]').forEach(el => el.onclick = () => { const x = db.tx.find(y => y.id === el.dataset.id); if (x) openTx(x.type, x); });
+  const a = dayStart(from <= to ? from : to), z = dayEnd(from <= to ? to : from), V = home.vault, day = home.mode === 'day', w = homePerW(), pool = [];
+  const meO = V ? r2(balance(V, a)) : balMe(a), meC = V ? r2(balance(V, z)) : balMe(z);
+  const meMv = homeMoves(V, a, z).map(m => Object.assign(m, {mk: isMkRec(m.r)}));
+  const meT = V ? `<span>🏭 حركة ${esc(vName(V))}</span><a class="kclr" id="kAll">✕ كل خزني</a>` : '<span>🏭 حركة خزني</span>';
+  let html = kstHtml('me', meT, 'me', meO, meC, meMv, day, pool, !V && nV > 1), mkO = 0, mkC = 0;
+  if (hasM) {
+    mkO = r2(balance(MKV, a)); mkC = r2(balance(MKV, z));
+    const fyi = homeMoves('', a, z).filter(m => m.r.party && m.r.type === 'inc' && isMkRec(m.r)), on = homeOpenG.has('mk:fyi');
+    const ex = fyi.length ? `<div class="ksg kfyi${on ? ' on' : ''}" data-g="mk:fyi"><span>🔔 للعلم: حصّل ${fmt(r2(fyi.reduce((n, m) => n + m.amt, 0)))} تحويل ودخلت خزنتك مباشرة (محسوبة في تحصيل خزني)</span></div><div class="ksl"${on ? '' : ' hidden'}>${fyi.map(m => kMoveRow(m, day, pool, true)).join('')}</div>` : '';
+    html += kstHtml('mk', '<span>🏪 حركة السوق</span>', 'mkt', mkO, mkC, homeMoves(MKV, a, z), day, pool, false, ex);
+  }
+  $('#hTables').className = 'kss' + (hasM ? ' two' : '');
+  $('#hTables').innerHTML = html;
+  const net = r2(meC - meO + mkC - mkO);
+  $('#hNet').innerHTML = hasM && !V ? `<div class="kday"><span>صافي ${w} على بعض<small>خزني + السوق: النقدية كلها من <bdi>${fmt(r2(meO + mkO))}</bdi> لـ <bdi>${fmt(r2(meC + mkC))}</bdi></small></span><b class="n${net < 0 ? ' neg' : ''}">${net > 0 ? '+' : ''}${fmt(net)}</b></div>` : '';
+  const tap = (el, f) => { el.onclick = f; el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); f(ev); } }; };
+  tap($('#kMe'), () => { homeOpenV = !homeOpenV; if (!homeOpenV) home.vault = ''; renderHome(); });
+  $$('#hTots .kv').forEach(el => tap(el, () => {
+    home.vault = home.vault === el.dataset.v ? '' : el.dataset.v; renderHome();
+    if (home.vault) { const k = $('#kst-me'); if (k && k.scrollIntoView) k.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+  }));
+  $$('#hTots .kfix').forEach(x => x.onclick = ev => { ev.stopPropagation(); countModal(); });
+  if ($('#kAll')) $('#kAll').onclick = () => { home.vault = ''; renderHome(); };
+  $$('#hTables .ksg').forEach(el => el.onclick = () => {
+    const g = el.dataset.g, on = !homeOpenG.has(g);
+    if (on) homeOpenG.add(g); else homeOpenG.delete(g);
+    el.classList.toggle('on', on); el.nextElementSibling.hidden = !on;
+  });
+  $$('#hTables .kmv[data-i]').forEach(el => el.onclick = () => { const x = pool[+el.dataset.i].r; openTx(x.type, x); });
   renderSyncBox(); runCounters($('#p-home'));
 }
 /* استلمت من عميل / دفعت لمورد = إيراد أو مصروف وخانة الاسم مفتوحة على طول */
@@ -1342,7 +1450,7 @@ async function restoreFromSheet() {
   const pend = pendingRecs().length;
   if (!(await confirmBox(`في الشيت ${nTx} حركة. هيتم دمجها مع الموجود على الموبايل (الأحدث تعديلاً هو اللي يكسب)${pend ? `. ملحوظة: عندك ${pend} سجل لسه ما اتبعتوش وهيفضلوا زي ما هم لو أحدث` : ''}. تكمّل؟`, 'أرجّع', false))) return;
   const n = mergeRows(rows);
-  if (!vaults().length) db.vaults.push({id: uid(), name: 'خزنة المصنع', open: 0, upd: Date.now(), del: false, sy: 0});
+  if (!vaults().length) db.vaults.push({id: uid(), name: 'كاش', open: 0, upd: Date.now(), del: false, sy: 0});
   saveDB(); refresh(); toast(`اتم الاسترجاع (${n} سجل اتضاف أو اتحدّث)`, 5000);
 }
 /* دمج سجلات الشيت مع الموجود (الأحدث تعديلاً هو اللي يكسب). بيرجع عدد اللي اتغير */

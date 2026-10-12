@@ -647,7 +647,7 @@ const T0 = Date.now();
       const now = Date.now();
       return [card({id: 'x1', type: 'inc', amt: 50, ts: now, vault: 'v_main', cat: 'c_inc0', note: 'عميل تجربة اسم — ملاحظة', party: 'p_x', pnote: 'باقي الحساب', upd: 1, sy: 1}),
         card({id: 'x2', type: 'exp', amt: 10, ts: now, vault: 'v_main', cat: 'c_mkexp', note: 'تروسيكل', upd: 1, sy: 1}).map(x => x.includes('مصاريف السوق') || x)];
-    }), [['عميل تجربة اسم', `${await Saf.evaluate(() => dispTime(Date.now()))} · تحصيل من عميل · خزنة المصنع · باقي الحساب`], ['تروسيكل', true]]);
+    }), [['عميل تجربة اسم', `${await Saf.evaluate(() => dispTime(Date.now()))} · تحصيل من عميل · كاش · باقي الحساب`], ['تروسيكل', true]]);
     eq('قايمة الحركات متقسمة بالأيام (عنوان لكل يوم بصافيه)', await Saf.evaluate(() => { const d = document.createElement('div'), t0 = Date.now(); d.innerHTML = txDays([{id: 'a', type: 'inc', amt: 100, ts: t0 - 86400000, vault: 'v_main', cat: 'c_inc0', note: 'أ'}, {id: 'b', type: 'exp', amt: 30, ts: t0 - 86400000, vault: 'v_main', cat: '', note: 'ب'}, {id: 'c', type: 'exp', amt: 5, ts: t0, vault: 'v_main', cat: '', note: 'ج'}]); return [...d.querySelectorAll('.dayh b')].map(b => b.textContent); }), ['+70', '-5']);
     eq('الحسابات بتبعت البنود الثابتة (دفعات الموردين) لشيت الدفتر', JSON.stringify(sheets.cash.sheets).includes('c_payout'), true);
     /* القفل بالرقم السري */
@@ -1237,17 +1237,22 @@ const T0 = Date.now();
     await A.click('#p-mkt [data-mv]'); await A.settle(250); await A.click('#mvOk'); await A.settle(300);
     const finalCash = await M.evaluate(() => cashNow());
     eq('بعد نقل الكل: خزنة السوق (المخفية) = اللي مع الشريك، ورصيدها ظاهر فوق في حركة السوق للعرض بس', [await vbal(A, 'v_mkt'), finalCash, await A.evaluate(() => mkPending().length), (await A.textContent('#p-mkt .mkvb b')).replace(/\D/g, '') === String(finalCash / 100), !!(await A.$('#p-mkt .mkvb input, #p-mkt .mkvb button'))], [175000, 175000, 0, true, false]);
-    eq('خزنة السوق: مش في الاختيارات ولا vaultBal("")، بس ليها كارت فوق و"رصيد كل الخزن" فيه فلوسها (زي الدفتر)', await A.evaluate(() => {
+    eq('خزنة السوق: مش في الاختيارات ولا vaultBal("")، بس ليها سطر أزرق فوق و"إجمالي النقدية" فيه فلوسها (زي الدفتر)', await A.evaluate(() => {
       const all = db.vaults.filter(v => !v.del && v.id !== 'v_mkt').reduce((s, v) => s + vaultBal(v.id), 0);
-      cashSide = 'me'; go('cash'); renderCash(); const r = [vaultsL().some(v => v.id === 'v_mkt'), vaultOpts('').includes('v_mkt'), vaultBal('') === all, !!$('#p-cash .vt[data-v=v_mkt]'), +$('#p-cash [data-ck="c:total"]').dataset.cnt === all + vaultBal('v_mkt'),
+      cashVault = ''; go('cash'); renderCash(); const r = [vaultsL().some(v => v.id === 'v_mkt'), vaultOpts('').includes('v_mkt'), vaultBal('') === all, !!$('#p-cash .kbk'), +$('#p-cash [data-ck="c:total"]').dataset.cnt === all + vaultBal('v_mkt'), +$('#p-cash [data-ck="c:me"]').dataset.cnt === all,
         vaultMoves('', todayISO(), todayISO()).some(m => m.who === 'كاش من شريك السوق' && m.sign === 1), vaultMoves('', todayISO(), todayISO()).some(m => m.r.vault === 'v_mkt' && m.r.type !== 'tr')];
-      go('mkt'); return r; }), [false, false, true, true, true, true, false]);
-    eq('الخزنة نصين: "حركتي أنا" مفيهاش مصاريف السوق، و"حركة شريكي" فيها التحصيل ودفعات الموردين ومصاريف السوق والتسليم كل واحد لوحده', await A.evaluate(() => {
-      cashSide = 'me'; cashMode = 'day'; cashDay = ''; go('cash'); renderCash();
-      const me = [$$('#cSide button').length, $('#cSide .on').dataset.s, !$('#p-cash .cwrap').textContent.includes('مصاريف السوق'), $('#p-cash .cwrap').textContent.includes('كاش استلمته من شريكك')];
-      $('#p-cash .vt[data-v=v_mkt]').click();
-      const t = [...$$('#p-cash .cwrap .cth span')].map(x => x.textContent), mk = [cashSide, t.some(x => x.includes('تحصيل من العملا')), t.some(x => x.includes('دفعات للموردين')), t.some(x => x.includes('مصاريف السوق')), t.some(x => x.includes('سلّمه لك')), $('#p-cash .chint').textContent.includes('معاه دلوقتي'), $('#cVault').disabled];
-      cashSide = 'me'; go('mkt'); return me.concat(mk); }), [2, 'me', true, true, 'mkt', true, true, true, true, true, true]);
+      go('mkt'); return r; }), [false, false, true, true, true, true, true, false]);
+    eq('الخزنة: كشف خزني وكشف السوق مع بعض، كل نوع لوحده ومقفول، وأول الفترة + المقبوضات − المدفوعات = آخر الفترة، والدوس على خزنة بيفلتر عليها', await A.evaluate(() => {
+      cashMode = 'day'; cashDay = ''; cashVault = ''; cashOpenV = false; cashOpenG.clear(); go('cash'); renderCash();
+      const tx = k => [...$$('#kst-' + k + ' .ksg span')].map(x => x.textContent);
+      const ok = k => { const n = s => Math.round(parseFloat($('#kst-' + k + ' ' + s + ' .n').textContent.replace(/[,+]/g, '').replace('−', '-')) * 100); return n('.ko') + n('.ki') + n('.kx') === n('.kc'); };
+      const me = tx('me'), mk = tx('mk');
+      const r = [!!$('#kst-mk'), $('#p-cash .kvs').hidden, me.some(x => x.includes('استلام من الشريك')), !me.some(x => x.includes('مصاريف السوق')), mk.some(x => x.includes('تحصيل من العملاء')), mk.some(x => x.includes('دفعات للموردين')), mk.some(x => x.includes('مصاريف السوق')), mk.some(x => x.includes('سلّمها لك')), ok('me'), ok('mk'), $$('#p-cash .ksl:not([hidden])').length];
+      $('#kMe').click(); r.push($('#p-cash .kvs').hidden);
+      const v = $('#p-cash .kv'), id = v.dataset.v; v.click();
+      r.push(cashVault === id, $('#kst-me .ksh').textContent.includes(vName(id)), ok('me'), !$('#p-cash .kday'));
+      const g = $('#kst-me .ksg'); if (g) { g.click(); r.push($$('#p-cash .ksl:not([hidden])').length === 1 && !!$('#p-cash .ksl:not([hidden]) .kmv')); } else r.push(true);
+      cashVault = ''; cashOpenV = false; cashOpenG.clear(); go('mkt'); return r; }), [true, true, true, true, true, true, true, true, true, true, 0, false, true, true, true, true, true]);
     /* الشريك كتب مصروف وهو دفعة لمورد: مصطفى بيحوّلها من عنده، وبيرجّعها لو غلط */
     const cv0 = await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(o => o.t === 'exp'); return {id: o.id, mk: vaultBal('v_mkt'), exp: profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp}; });
     await A.evaluate(() => { cashSide = 'mkt'; go('cash'); }); await A.settle(300);   // الصفحة بتفتح بعد تغيير العنوان (وبتقفل أي نافذة)
@@ -1255,7 +1260,7 @@ const T0 = Date.now();
     await A.click('#omS'); await A.settle(150); await A.fill('#spQ', 'مورد تجربة'); await A.settle(100); await A.click('#spL .pt'); await A.settle(300);
     eq('تحويل مصروف الشريك لدفعة مورد: المصروف اتشال، ودفعة مورد من خزنة السوق بنفس المبلغ، ورصيد السوق زي ما هو، والأرباح نزل منها', await A.evaluate(c => {
       const o = db.mkt.ops[c.id], t = IDX.tx.get('t_mk_' + c.id), e = E.get('e_mk_' + c.id);
-      return [t.del, e.kind, e.vault, e.amt, mkT(o), mkState(o), vaultBal('v_mkt') === c.mk, c.exp - profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp, $$('#p-cash .cwrap .cth span').some(x => x.textContent.includes('مصاريف السوق'))]; }, cv0), [true, 'ppay', 'v_mkt', 25000, 'spay', 'done', true, 25000, false]);
+      return [t.del, e.kind, e.vault, e.amt, mkT(o), mkState(o), vaultBal('v_mkt') === c.mk, c.exp - profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp, $$('#kst-mk .ksg span').some(x => x.textContent.includes('مصاريف السوق'))]; }, cv0), [true, 'ppay', 'v_mkt', 25000, 'spay', 'done', true, 25000, false]);
     await A.evaluate(id => mkOpMenu(db.mkt.ops[id]), cv0.id); await A.settle(150); await A.click('#omE'); await A.settle(150); await A.click('#aeOk'); await A.settle(300);
     eq('"رجّعها مصروف" بترجّعها زي ما كانت', await A.evaluate(c => { const o = db.mkt.ops[c.id]; return [IDX.tx.get('t_mk_' + c.id).del, E.get('e_mk_' + c.id).del, mkT(o), mkState(o), vaultBal('v_mkt') === c.mk, profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp === c.exp]; }, cv0), [false, true, 'exp', 'done', true, true]);
     await A.evaluate(() => { cashSide = 'me'; go('mkt'); });
@@ -1686,25 +1691,26 @@ const T0 = Date.now();
     /* أي مجموعة تبويبات (.seg) ظاهرة: كل زرار نفس الارتفاع، الكلام مش ملفوف على سطرين ولا متقطع */
     for (const k of ['profit', 'col', 'debt', 'tot', 'cash', 'item']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
     await A.evaluate(() => go('cash')); await A.settle(200); await segOk(A, 'الحسابات — الخزنة');
-    await A.evaluate(() => { cashSide = 'mkt'; go('cash'); renderCash(); }); await A.settle(200); await segOk(A, 'الحسابات — الخزنة (حركة شريكي)'); await A.evaluate(() => { cashSide = 'me'; });
-    await A.evaluate(() => go('set')); await A.settle(200); await segOk(A, 'الحسابات — الإعدادات');
+        await A.evaluate(() => go('set')); await A.settle(200); await segOk(A, 'الحسابات — الإعدادات');
     { const X = await D1.page('cash.html'); await X.settle(600); await segOk(X, 'دفتر الخزنة — الرئيسية'); await X.evaluate(() => go('rep')); await X.settle(300); await segOk(X, 'دفتر الخزنة — التقارير'); await X.close(); }
     if (DM) { const MX = DM.pages().find(p => p.url().includes('market.html')); if (MX) for (const h of ['', 'a', 's']) { await MX.evaluate(h => nav(h), h); await MX.settle(300); await segOk(MX, 'حركة السوق (' + (h || 'الرئيسية') + ')'); } }
 
     sec('قاعدة الأرقام: تحت بعض في عمود واحد (الحسابات والخزنة والسوق)');
     /* كل رقم في القايمة (وإجمالي القسم بتاعها) بيبدأ من نفس الخط على الشمال بالظبط: مفيش رقم داخل ورقم خارج */
-    await A.evaluate(() => { go('cash'); cashMode = 'year'; renderCash(); }); await A.settle(300);
-    await colOk('الحسابات — الخزنة', A, '#p-cash', '.cmt td.am,.cth b');
-    await A.evaluate(() => { cashSide = 'mkt'; renderCash(); }); await A.settle(300);
-    await colOk('الحسابات — الخزنة (حركة شريكي)', A, '#p-cash', '.cmt td.am,.cth b');
-    await A.evaluate(() => { cashSide = 'me'; }); 
+    await A.evaluate(() => { go('cash'); cashMode = 'year'; cashOpenG.clear(); CG_ORD.concat('fyi').forEach(k => { cashOpenG.add('me:' + k); cashOpenG.add('mk:' + k); }); renderCash(); }); await A.settle(300);
+    await colOk('الحسابات — الخزنة (كشف خزني)', A, '#kst-me', '.n');
+    if (await A.$('#kst-mk')) await colOk('الحسابات — الخزنة (كشف السوق)', A, '#kst-mk', '.n');
+    if (await A.evaluate(() => !isWide())) await colOk('الحسابات — الخزنة (الأرصدة فوق)', A, '#p-cash .kb', '.kbm>.n,.kbk>.n,.kbt>.n');
+    await A.evaluate(() => { cashOpenG.clear(); });
     await A.evaluate(() => { cashMode = 'day'; go('home'); }); await A.settle(300);
     await colOk('الحسابات — قايمة العملاء', A, '#hList', '.pt .a b');
     { const X = await D1.page('cash.html'); await X.settle(800);
-      await X.evaluate(() => { home.mode = 'year'; renderHome(); }); await X.settle(200);
-      await colOk('دفتر الخزنة — الرئيسية', X, '#hTables', '.cmt td.am,.cth b');
-      eq('دفتر الخزنة نفس شكل خزنة الحسابات: نفس الزراير والكروت واختيار الفترة', await X.evaluate(() => [[...document.querySelectorAll('#p-home .cbar .btn')].map(b => b.querySelector('.lg') ? b.querySelector('.lg').textContent : b.textContent.trim()), $('#hTots .k span').textContent, [...document.querySelectorAll('#hMode button')].map(b => b.textContent)]),
-        [['استلمت من عميل', 'دفعت لمورد', '− مصروف', '+ إيراد'], 'رصيد كل الخزن', ['يوم', 'شهر', 'سنة', 'من–إلى']]);
+      await X.evaluate(() => { home.mode = 'year'; CG_ORD.concat('fyi').forEach(k => { homeOpenG.add('me:' + k); homeOpenG.add('mk:' + k); }); renderHome(); }); await X.settle(200);
+      await colOk('دفتر الخزنة — الرئيسية (كشف خزني)', X, '#kst-me', '.n');
+      if (await X.$('#kst-mk')) await colOk('دفتر الخزنة — الرئيسية (كشف السوق)', X, '#kst-mk', '.n');
+      await X.evaluate(() => { homeOpenG.clear(); renderHome(); });
+      eq('دفتر الخزنة نفس شكل خزنة الحسابات: نفس الزراير والكروت واختيار الفترة', await X.evaluate(() => [[...document.querySelectorAll('#p-home .cbar .btn')].map(b => b.querySelector('.lg') ? b.querySelector('.lg').textContent : b.textContent.trim()), !!$('#hTots .kbm') && !!$('#hTots .kvs') && !!$('#hTables #kst-me'), [...document.querySelectorAll('#hMode button')].map(b => b.textContent)]),
+        [['استلمت من عميل', 'دفعت لمورد', '− مصروف', '+ إيراد'], true, ['يوم', 'شهر', 'سنة', 'من–إلى']]);
       await X.evaluate(() => { rep.mode = 'range'; rep.from = '2000-01-01'; rep.to = todayISO(); rep.detail = true; go('rep'); }); await X.settle(400);
       await colOk('دفتر الخزنة — التقارير', X, '#rOut', '.tx .a,.dayh b');
       await X.close(); }

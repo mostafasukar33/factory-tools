@@ -127,22 +127,24 @@ function cashState() {
   let n = 0;
   const tx = (type, amt, d, h, m, x) => Object.assign({id: 'x_shot' + (++n), type, amt, ts: at(d, h, m), vault: 'v_main', note: '', upd: NOW, del: false, sy: 0}, x);
   return {v: 1, sheetUrl: '', sheetKey: '', lastSync: 0, lastVault: 'v_main',
-    vaults: [{id: 'v_main', name: 'خزنة المصنع', open: 1500000 / 100, upd: 1, del: false, sy: 0}, {id: 'v_bank', name: 'البنك', open: 85000, upd: 1, del: false, sy: 0}],
+    vaults: [{id: 'v_main', name: 'كاش', open: 1500000 / 100, upd: 1, del: false, sy: 0}, {id: 'v_bank', name: 'البنك', open: 85000, upd: 1, del: false, sy: 0}, {id: 'v_mkt', name: 'خزنة السوق', open: 0, upd: 1, del: false, sy: 0}],
     cats: [...E.map((x, i) => mk('exp', x, i)), ...I.map((x, i) => mk('inc', x, i))],
     tx: [tx('inc', 12500, 0, 9, 40, {cat: 'c_inc0', note: 'عميل تجربة واحد'}), tx('exp', 3200, 0, 10, 15, {cat: 'c_exp4', note: 'نقل طلبية'}), tx('exp', 18000, 0, 11, 0, {cat: 'c_exp0'}),
       tx('inc', 4750, 0, 12, 30, {cat: 'c_inc1'}), tx('tr', 20000, 0, 13, 0, {to: 'v_bank'}), tx('exp', 950, 0, 14, 10, {cat: 'c_exp7', note: 'شاي وسكر'}),
-      tx('exp', 6400, 1, 10, 0, {cat: 'c_exp3', note: 'يومية العمال'}), tx('inc', 30000, 1, 12, 0, {cat: 'c_inc0', note: 'معرض تجربة الأمل'}), tx('exp', 2150, 2, 9, 45, {cat: 'c_exp2'})]};
+      tx('exp', 6400, 1, 10, 0, {cat: 'c_exp3', note: 'يومية العمال'}), tx('inc', 30000, 1, 12, 0, {cat: 'c_inc0', note: 'معرض تجربة الأمل'}), tx('exp', 2150, 2, 9, 45, {cat: 'c_exp2'}),
+      tx('inc', 7200, 1, 11, 0, {vault: 'v_mkt', cat: 'c_inc0', party: 'p_shot', pkind: 'pay', note: 'عميل تجربة السوق'}), tx('exp', 350, 0, 10, 30, {vault: 'v_mkt', cat: 'c_mkexp', note: 'بنزين'}),
+      tx('tr', 5000, 0, 15, 0, {vault: 'v_mkt', to: 'v_main'})]};
 }
 
 /* ====================== الشاشات ======================
    app: acc (الحسابات) / mkt (تطبيق الشريك) / cash (الدفتر). full = الصفحة كلها (موبايل بس). go = بيوصل للشاشة */
 const MOB = {width: 390, height: 844}, LAP = {width: 1440, height: 900}, LAP2 = {width: 1100, height: 760};
 const PNAME = 'مؤسسة تجربة';
-const accGo = h => async A => { await A.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); if (typeof cashSide !== 'undefined') cashSide = 'me'; go(h); if (h === 'cash') renderCash(); }, h); };
+const accGo = h => async A => { await A.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); if (typeof cashSide !== 'undefined') { cashSide = 'me'; cashOpenV = false; cashOpenG.clear(); cashVault = ''; } go(h); if (h === 'cash') renderCash(); }, h); };
 const accEval = code => async A => { await A.evaluate(code => { if ($('#mask').classList.contains('on')) closeModal(); (0, eval)(code); }, code); };
 const party = `liveParties().find(p => p.name.startsWith('${PNAME}'))`;
 const mktGo = h => async M => { await M.evaluate(h => nav(h), h); };
-const cashGo = h => async C => { await C.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); go(h); }, h); };
+const cashGo = h => async C => { await C.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); if (typeof homeOpenV !== 'undefined') { homeOpenV = false; homeOpenG.clear(); home.vault = ''; } go(h); }, h); };
 /* مساهم تجريبي (أول مرة بس): رأس مال وشحنة بأصنافها ومصروف وسحب، علشان شاشة الجرد وكشف المساهم */
 const IVSHOT = `if (!IDX.ivp.get('ip_shot')) { const t = todayISO(), u = Date.now(), add = (k, r) => { const x = Object.assign({id: r.id, iv: 'ip_shot', k, note: '', at: u, upd: u, del: false, hist: []}, r); db.ivrs.push(x); IDX.ivr.set(x.id, x); };
   const v = {id: 'ip_shot', name: 'مساهم تجربة', mode: 'c', party: ${party}.id, from: addDays(t, -40), note: '', at: u, upd: u, del: false, hist: []}; db.ivps.push(v); IDX.ivp.set(v.id, v);
@@ -177,8 +179,8 @@ const SCREENS = [
   {name: 'acc-mkt-arch-m', app: 'acc', vp: MOB, full: true, go: accEval("mkView = 'arch'; mkDay = ''; go('mkt'); renderMkt()")},
   {name: 'acc-cash-wk-m', app: 'acc', vp: MOB, go: accEval("cashSide = 'me'; cashMode = 'week'; go('cash'); renderCash()")},
   {name: 'acc-cash-rng-m', app: 'acc', vp: MOB, go: accEval("cashSide = 'me'; cashMode = 'range'; go('cash'); renderCash()")},
-  {name: 'acc-cash-mk-m', app: 'acc', vp: MOB, full: true, go: accEval(`cashSide = 'mkt'; go('cash'); renderCash()`)},
-  {name: 'acc-cash-mk-l', app: 'acc', vp: LAP, go: accEval(`cashSide = 'mkt'; go('cash'); renderCash()`)},
+  {name: 'acc-cash-open-m', app: 'acc', vp: MOB, full: true, go: accEval(`cashOpenV = true; cashOpenG.clear(); cashOpenG.add('me:exp'); cashOpenG.add('mk:spay'); go('cash'); renderCash()`)},
+  {name: 'acc-cash-open-l', app: 'acc', vp: LAP, go: accEval(`cashOpenV = true; cashOpenG.clear(); cashOpenG.add('me:exp'); go('cash'); renderCash()`)},
   {name: 'acc-cash-l1100', app: 'acc', vp: LAP2, go: accGo('cash')},
   {name: 'acc-list-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval("tab = 'mkt'; go('home'); renderHome()")},
   {name: 'acc-party-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval(`go('p/' + ${party}.id)`)},
@@ -205,6 +207,7 @@ const SCREENS = [
   {name: 'cash-rep-m', app: 'cash', vp: MOB, full: true, go: cashGo('rep')},
   {name: 'cash-set-m', app: 'cash', vp: MOB, full: true, go: cashGo('set')},
   {name: 'cash-exp-m', app: 'cash', vp: MOB, go: async C => { await C.evaluate(() => { go('home'); $('#bExp').click(); document.activeElement && document.activeElement.blur(); }); }},
+  {name: 'cash-home-open-m', app: 'cash', vp: MOB, full: true, go: async C => { await C.evaluate(() => { go('home'); homeOpenV = true; homeOpenG.add('me:exp'); homeOpenG.add('mk:hand'); renderHome(); }); }},
   {name: 'cash-home-l', app: 'cash', vp: LAP, go: cashGo('home')},
   {name: 'cash-home-m-dark', app: 'cash', vp: MOB, dark: true, full: true, go: cashGo('home')},
   /* ورق الـ PDF (لازم ميتغيرش): بيتصور آخر حاجة في كل جهاز لأن الورقة بتتحط قدام الصفحة */

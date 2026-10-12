@@ -33,3 +33,71 @@ html[data-theme=dark]{
 /* الكروت: ظل خفيف بدل الخط اللي حواليها في الفاتح (الليلي بيفضل بالخط). ورقة الـ PDF مبتتلمسش */
 :is(.card,.panel,.list,.ldgw):not(#render *){box-shadow:var(--shadow2)}
 html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-color:transparent}
+/* ============ شاشة الخزنة (الحسابات والدفتر بنفس الشكل) ============
+   .kb كارت الأرصدة: "خزني" مقفول بالرقم وبيتفتح على كل خزنة (.kv)، خزنة السوق بالأزرق (.kbk)، وإجمالي النقدية غامق (.kbt).
+   .kst كشف الحركة: رصيد أول الفترة + المقبوضات − المدفوعات = رصيد آخر الفترة، وكل نوع (.ksg) بيفتح حركاته (.ksl). كل الأرقام عمود واحد على الشمال */
+.kb,.kst{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow2);overflow:hidden;margin-bottom:12px}
+:is(.kb,.kst,.kday) .n{font-weight:800;direction:ltr;unicode-bidi:isolate;white-space:nowrap;font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+:is(.kb,.kst,.kday) small{display:block;font-size:var(--f1);color:var(--sub);font-weight:600;line-height:1.5}
+.kbm,.kbk,.kbt,.ksr,.ksg,.kmv,.kday{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.kbm{padding:14px 16px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
+.kbm>span{font-weight:800;font-size:var(--f4)}
+.kbm>.n{font-size:var(--f5);color:var(--ink)}
+.kch{font-style:normal;display:inline-block;color:var(--sub);font-size:var(--f2);transition:transform .2s}
+.kbm.on .kch{transform:rotate(180deg)}
+.kvs{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;padding:0 16px 14px}
+.kv{border:1.5px solid var(--line);border-radius:12px;padding:8px 10px;cursor:pointer;background:var(--card);min-width:0}
+.kv span{display:block;font-size:var(--f2);font-weight:800;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kv .n{display:block;font-size:var(--f3);text-align:right;color:var(--ink)}
+.kv.on{border-color:var(--gold);background:var(--gold-l);box-shadow:0 0 0 1px var(--gold)}
+.kv.neg{border-color:var(--red)}.kv.neg .n{color:var(--red)}
+.kfix{display:block;margin-top:2px;font-size:var(--f1);font-weight:800;color:var(--red);cursor:pointer}
+.kbk{padding:12px 16px;background:var(--tr-l);border-top:1px solid var(--line)}
+.kbk>span{font-weight:800;font-size:var(--f3);color:var(--tr)}
+.kbk>.n{font-size:var(--f4);color:var(--tr)}
+.kbt{padding:12px 16px;background:var(--bar);border-top:2px solid var(--gold)}
+.kbt>span{font-weight:800;font-size:var(--f3);color:var(--gold)}
+.kbt>span small{color:var(--gold);opacity:.75}
+.kbt>.n{font-size:var(--f4);color:var(--gold)}
+.kbt>.n small{display:inline;font-size:var(--f2);color:var(--gold)}
+.kss{display:grid;gap:12px;margin-bottom:12px}.kss .kst{margin:0}
+.kst{border-top:5px solid var(--gold);scroll-margin-top:calc(var(--hh,64px) + 70px)}
+.kst.mk{border-top-color:var(--tr)}
+.ksh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 16px 6px;font-weight:800;font-size:var(--f3)}
+.kst.mk .ksh{color:var(--tr)}
+.kclr{font-size:var(--f1);font-weight:800;color:var(--gold-d);border:1px solid var(--gold);background:var(--gold-l);border-radius:8px;padding:2px 8px;cursor:pointer;white-space:nowrap}
+.ksr{padding:8px 16px;font-weight:800}
+.ksr .n{font-size:var(--f3)}
+.ko{color:var(--sub);font-weight:700}.ko .n{color:var(--sub)}
+.ki,.kx{border-top:1px solid var(--line)}
+.ki,.ki .n{color:var(--green)}.kx,.kx .n{color:var(--red)}
+.ksg{padding:6px 16px;font-size:var(--f2);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
+.ksg>span{padding-inline-start:22px;font-weight:700}
+.ksg>span::after{content:"◂";color:var(--sub);font-size:var(--f1);margin-inline-start:6px}
+.ksg.on>span::after{content:"▾"}
+.ksg em{font-style:normal;color:var(--sub);font-weight:600}
+.ksg .n{font-size:var(--f2);color:var(--ink)}
+.ksg.on,.ksl{background:var(--row)}
+.kmv{padding:6px 16px;border-top:1px solid var(--card);cursor:pointer}
+.kmv>div{padding-inline-start:38px;min-width:0}
+.kmv>div>b{display:block;font-size:var(--f2)}
+.kmv .n{font-size:var(--f2);font-weight:700;color:var(--ink)}
+.kc{border-top:2px solid var(--ink);margin:4px 16px 0;padding:10px 0 12px}
+.kc .n{font-size:var(--f4);color:var(--ink)}
+.ksg.kfyi{margin:0 16px 12px;padding:6px 10px;border-radius:10px;background:var(--tr-l);color:var(--tr);font-size:var(--f1)}
+.ksg.kfyi>span{padding:0;font-weight:700}
+.ksg.kfyi+.ksl{margin:-8px 0 12px}
+.kday{padding:12px 16px;margin-bottom:12px;background:var(--gold-l);border:2px solid var(--gold);border-radius:14px}
+.kday>span{font-weight:800;color:var(--gold-d)}
+.kday>.n{font-size:var(--f4);color:var(--green)}
+.kday bdi{direction:ltr;unicode-bidi:isolate}
+:is(.kb,.kst,.kday) .n.neg{color:var(--red)}
+.kvs[hidden],.ksl[hidden]{display:none}
+@media (min-width:1000px){
+  .kb.two{display:grid;grid-template-columns:2fr 1fr 1fr}
+  .kb.two .kbk,.kb.two .kbt{flex-direction:column;align-items:flex-start;justify-content:center;border-top:0}
+  .kb.two .kbk{border-inline-start:1px solid var(--line)}
+  .kb.two .kbt{border-inline-start:2px solid var(--gold)}
+  .kss.two{grid-template-columns:1fr 1fr;align-items:start}
+}
+.kc+.ksg{margin-bottom:8px;color:var(--sub)}.kc+.ksg .n{color:var(--sub)}

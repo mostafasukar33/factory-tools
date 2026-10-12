@@ -1781,7 +1781,7 @@ function landingHash() {
 }
 function unlocked() {
   $('#lock').classList.remove('on'); $('#lockBox').innerHTML = '';
-  lastAct = Date.now(); bridgeIn();
+  lastAct = Date.now(); bridgeIn(); kashName();
   /* أول شاشة بعد القفل: الوارد لو فيه حاجة مستنية أو تعارض، وإلا العملاء (أو آخر صفحة كان فيها) */
   try { if (!location.hash) { const h = landingHash(); if (h) location.hash = h; } } catch (e) {}
   route(); flushSave();
@@ -3604,7 +3604,7 @@ const cName = id => (IDX.cat.get(id) || {name: 'بدون بند'}).name;
 const isPay = e => e.kind === 'pay' || e.kind === 'ppay';
 function ensureVaults() {
   if (db.vaults.length) return;
-  db.vaults.push({id: 'v_main', name: 'خزنة المصنع', open: 0, ord: 0, upd: 1, del: false});
+  db.vaults.push({id: 'v_main', name: 'كاش', open: 0, ord: 0, upd: 1, del: false});
   DEF_EXP.forEach((n, i) => db.cats.push({id: 'c_exp' + i, type: 'exp', name: n, ord: i, upd: 1, del: false}));
   db.cats.push({id: 'c_inc1', type: 'inc', name: 'مبيعات نقدي', ord: 1, upd: 1, del: false}, {id: 'c_inc2', type: 'inc', name: 'أخرى', ord: 2, upd: 1, del: false});
   reindex(); ensurePayCats(); saveDB();
@@ -3687,14 +3687,18 @@ function cashStep(n) {
   else cashYear = String((+cashYear || +t.slice(0, 4)) + n);
   renderCash();
 }
-/* الخزنة متقسمة نصين واضحين (بطلب صاحب المشروع): "حركتي أنا" = خزني أنا، و"حركة شريكي" = خزنة السوق (الفلوس اللي مع الشريك).
-   كل نص فيه الداخل والخارج متقسمين على نوعهم: تحصيل من العملا، دفعات للموردين، مصروفات، إيرادات، وتسليم الكاش بين النصين. نفس الفترة للنصين */
-let cashSide = 'me';
+/* شاشة الخزنة (بطلب صاحب المشروع): كارت الأرصدة فوق = "خزني" مقفول بالرقم، ولما يتفتح بيبان كل خزنة برصيدها، وخزنة السوق بالأزرق ثابتة، و"إجمالي النقدية" في الآخر.
+   وتحته كشف حركة لكل نص زي كشف البنك: رصيد أول الفترة + المقبوضات − المدفوعات = رصيد آخر الفترة. كل نوع مقفول وبيتفتح بدوسة على حركاته.
+   الدوس على خزنة بيفلتر كشف "خزني" عليها. الدفتر (cash.html) بنفس الشكل والكلاسات (.kb/.kst في lib/ui.css) */
+let cashSide = 'me';   // قديم: النصين بقوا ظاهرين مع بعض
+let cashOpenV = false;
+const cashOpenG = new Set();
 const CG = {
-  col: ['💵 تحصيل من العملا', 'inc'], cs: ['💰 بيع كاش', 'inc'], inc: ['إيرادات تانية', 'inc'], fromMk: ['🤝 كاش استلمته من شريكك', 'inc'], toMkIn: ['🤝 فلوس اديتهاله', 'inc'],
-  spay: ['🏭 دفعات للموردين', 'exp'], exp: ['مصروفات', 'exp'], mkexp: ['⛽ مصاريف السوق', 'exp'], toMk: ['🤝 فلوس اديتها لشريكك', 'exp'], hand: ['🤝 سلّمه لك', 'exp'],
+  col: ['💵 تحصيل من العملاء', 'in'], cs: ['💰 بيع كاش', 'in'], inc: ['إيرادات أخرى', 'in'], fromMk: ['🤝 استلام من الشريك', 'in'], toMkIn: ['🤝 استلام منك', 'in'], trIn: ['⇄ تحويل من خزنة تانية', 'in'],
+  spay: ['🏭 دفعات للموردين', 'out'], exp: ['مصروفات', 'out'], mkexp: ['⛽ مصاريف السوق', 'out'], toMk: ['🤝 تسليم للشريك', 'out'], hand: ['🤝 سلّمها لك', 'out'], trOut: ['⇄ تحويل لخزنة تانية', 'out'],
   tr: ['⇄ تحويلات بين خزنك', '']
 };
+const CG_ORD = Object.keys(CG);
 /* نوع الحركة: side = me (خزني) أو mkt (خزنة السوق) */
 function cashGroup(m, side) {
   const r = m.r;
@@ -3702,26 +3706,48 @@ function cashGroup(m, side) {
   if (r.type === 'tr') {
     const fromM = isMkv(r.vault), toM = isMkv(r.to);
     if (side === 'mkt') return fromM ? 'hand' : 'toMkIn';
-    return fromM ? 'fromMk' : toM ? 'toMk' : 'tr';
+    return fromM ? 'fromMk' : toM ? 'toMk' : m.sign > 0 ? 'trIn' : m.sign < 0 ? 'trOut' : 'tr';
   }
   if (r.type === 'inc') return side === 'mkt' && r.cat === 'c_inc1' ? 'cs' : 'inc';
   return side === 'mkt' ? 'mkexp' : 'exp';
 }
 const isMkRec = r => /^(e|t)_mk_/.test(r.id || '');
-/* جدول نوع واحد: الاسم كبير والتفصيل صغير تحته، والوقت (في اليوم) أو التاريخ */
+/* جدول نوع واحد (الشركاء): الاسم كبير والتفصيل صغير تحته، والوقت (في اليوم) أو التاريخ */
 function cashTable(title, arr, all, cls, day) {
   const tot = arr.reduce((n, m) => n + m.amt, 0);
   const dc = m => day && m.at ? dispTime(m.at) : shortDate(m.date);
   return `<section class="ctab ${cls}"><div class="cth"><span>${title} (${arr.length})</span><b data-ck="c:t:${esc(title)}" data-cnt="${tot}">${fmtP(tot)}</b></div>
     <table class="cmt"><tbody>${arr.length ? arr.map(m => `<tr data-i="${all.indexOf(m)}"><td class="d">${dc(m)}</td><td class="w"><b>${esc(m.who)}</b>${m.what || m.mk ? `<small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(((m.what || '').replace(/حركة السوق( — )?/, '')).trim() === m.who ? '' : (m.what || '').replace(/حركة السوق( — )?/, ''))}</small>` : ''}</td><td class="am">${fmtP(m.amt)}</td></tr>`).join('') : '<tr><td class="e" colspan="3">مفيش حركات</td></tr>'}</tbody></table></section>`;
 }
-/* النص الواحد: عمود الداخل وعمود الخارج، وجوه كل عمود جدول لكل نوع (اللي فيه حركات بس) */
-function cashSideHtml(mv, side, day) {
-  const by = {};
-  mv.forEach(m => { const g = cashGroup(m, side); m.g = g; (by[g] = by[g] || []).push(m); });
-  const order = side === 'mkt' ? [['col', 'cs', 'toMkIn', 'inc'], ['spay', 'mkexp', 'hand', 'exp']] : [['col', 'inc', 'fromMk'], ['spay', 'exp', 'toMk']];
-  const col = (ks, t) => { const has = ks.filter(k => by[k]); return `<div class="ccol"><div class="cch ${t}">${t === 'inc' ? '⬇️ الداخل' : '⬆️ الخارج'}</div>${has.length ? has.map(k => cashTable(CG[k][0], by[k], mv, CG[k][1], day)).join('') : `<div class="ctab ${t}"><table class="cmt"><tbody><tr><td class="e">مفيش حاجة ${t === 'inc' ? 'دخلت' : 'طلعت'}</td></tr></tbody></table></div>`}</div>`; };
-  return `<div class="cwrap">${col(order[0], 'inc')}${col(order[1], 'exp')}</div>${by.tr ? cashTable(CG.tr[0], by.tr, mv, '', day) : ''}`;
+const cashPerW = () => ({day: 'اليوم', week: 'الأسبوع', month: 'الشهر', year: 'السنة'})[cashMode] || 'الفترة';
+const signP = (p, s) => p ? s + fmtP(p) : '0';
+/* آخر مرة الشريك سلّم كاش (تحويل من خزنة السوق) */
+function lastHand() {
+  let d = '';
+  db.txs.forEach(t => { if (!t.del && t.type === 'tr' && isMkv(t.vault) && !isMkv(t.to) && t.date > d) d = t.date; });
+  if (!d) return '';
+  const n = Math.round((new Date(todayISO()) - new Date(d)) / 864e5);
+  return n <= 0 ? 'النهارده' : n === 1 ? 'امبارح' : n === 2 ? 'من يومين' : n <= 10 ? `من ${n} أيام` : dispDate(d);
+}
+/* سطر حركة جوه النوع: الاسم كبير، وتحته الوقت والتفصيل والخزنة */
+function kMoveRow(m, day, pool, showV) {
+  const what = (m.what || '').replace(/حركة السوق( — )?/, '').trim(), vid = m.r.type === 'tr' ? '' : m.r.vault;
+  const bits = [day && m.at ? dispTime(m.at) : dispDate(m.date), what && what !== m.who ? what : '', showV && vid ? vName(vid) : ''].filter(Boolean);
+  return `<div class="kmv" data-i="${pool.push(m) - 1}"><div><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n">${fmtP(m.amt)}</b></div>`;
+}
+/* كشف حركة نص واحد: رصيد أول الفترة، المقبوضات بأنواعها، المدفوعات بأنواعها، رصيد آخر الفترة */
+function kstHtml(key, title, side, open, close, mv, day, pool, showV, extra) {
+  const by = {}, sum = a => a.reduce((n, m) => n + m.amt, 0);
+  mv.forEach(m => { m.side = side; const g = cashGroup(m, side); (by[g] = by[g] || []).push(m); });
+  const ks = t => CG_ORD.filter(k => by[k] && CG[k][1] === t);
+  const tin = ks('in').reduce((n, k) => n + sum(by[k]), 0), tout = ks('out').reduce((n, k) => n + sum(by[k]), 0), w = cashPerW();
+  const grp = k => { const g = key + ':' + k, on = cashOpenG.has(g);
+    return `<div class="ksg${on ? ' on' : ''}" data-g="${g}"><span>${CG[k][0]} <em>(${by[k].length})</em></span><b class="n">${fmtP(sum(by[k]))}</b></div><div class="ksl"${on ? '' : ' hidden'}>${by[k].map(m => kMoveRow(m, day, pool, showV)).join('')}</div>`; };
+  return `<section class="kst ${key}" id="kst-${key}"><div class="ksh">${title}</div>
+    <div class="ksr ko"><span>رصيد أول ${w}</span><b class="n">${fmtP(open)}</b></div>
+    <div class="ksr ki"><span>⬇ المقبوضات</span><b class="n">${signP(tin, '+')}</b></div>${ks('in').map(grp).join('')}
+    <div class="ksr kx"><span>⬆ المدفوعات</span><b class="n">${signP(tout, '−')}</b></div>${ks('out').map(grp).join('')}
+    <div class="ksr kc"><span>رصيد آخر ${w}</span><b class="n${close < 0 ? ' neg' : ''}" data-ck="c:${key}:close" data-cnt="${close}">${fmtP(close)}</b></div>${by.tr ? grp('tr') : ''}${extra || ''}</section>`;
 }
 function renderCash() {
   const pg = $('#p-cash');
@@ -3733,17 +3759,28 @@ function renderCash() {
     $('#cNew').onclick = () => { ensureVaults(); renderCash(); };
     return;
   }
-  const vs = vaultsL(), hasM = db.vaults.some(v => v.id === MKV && !v.del), mkB = hasM ? vaultBal(MKV) : 0, total = vaultBal('') + mkB;
+  const vs = vaultsL(), hasM = db.vaults.some(v => v.id === MKV && !v.del), mkB = hasM ? vaultBal(MKV) : 0, meB = vaultBal(''), total = meB + mkB;
   if (cashVault && !vs.some(v => v.id === cashVault)) cashVault = '';
-  if (!hasM) cashSide = 'me';
-  const side = cashSide, [from, to] = cashRange(), day = cashMode === 'day';
-  const mv = (side === 'mkt' ? vaultMoves(MKV, from, to) : vaultMoves(cashVault, from, to)).map(m => Object.assign(m, {mk: side === 'me' && isMkRec(m.r)}));
-  let tin = 0, tout = 0;
-  mv.forEach(m => { if (m.sign > 0) tin += m.amt; else if (m.sign < 0) tout += m.amt; });
-  /* اللي حصّله الشريك تحويل (إنستا/فودافون) بيدخل خزنتي على طول: بيظهر في نصه للعلم بس ومش داخل في حسابه */
-  const mkTr = side === 'mkt' ? vaultMoves('', from, to).filter(m => m.src === 'pay' && m.r.kind === 'pay' && isMkRec(m.r)) : [];
-  const cards = vs.map(v => [v.id, v.name, vaultBal(v.id)]).concat(hasM ? [[MKV, 'خزنة السوق', mkB]] : []);
-  const t = todayISO();
+  if (cashVault) cashOpenV = true;
+  const [from, to] = cashRange(), day = cashMode === 'day', after = addDays(to, 1), t = todayISO(), w = cashPerW(), pool = [];
+  const nV = vs.length, vsTxt = nV === 1 ? 'خزنة واحدة' : nV === 2 ? 'خزنتين' : nV + ' خزن';
+  /* خزني */
+  const meMv = vaultMoves(cashVault, from, to).map(m => Object.assign(m, {mk: isMkRec(m.r)}));
+  const meO = vaultBal(cashVault, from), meC = vaultBal(cashVault, after);
+  const meT = cashVault ? `<span>🏭 حركة ${esc(vName(cashVault))}</span><a class="kclr" id="kAll">✕ كل خزني</a>` : '<span>🏭 حركة خزني</span>';
+  let html = kstHtml('me', meT, 'me', meO, meC, meMv, day, pool, !cashVault && nV > 1);
+  /* خزنة السوق + اللي الشريك حصّله تحويل ودخل خزنتي على طول (للعلم بس) */
+  let mkO = 0, mkC = 0;
+  if (hasM) {
+    const mkMv = vaultMoves(MKV, from, to), fyi = vaultMoves('', from, to).filter(m => m.src === 'pay' && m.r.kind === 'pay' && isMkRec(m.r));
+    mkO = vaultBal(MKV, from); mkC = vaultBal(MKV, after);
+    fyi.forEach(m => m.side = 'mkt');
+    const ex = fyi.length ? `<div class="ksg kfyi${cashOpenG.has('mk:fyi') ? ' on' : ''}" data-g="mk:fyi"><span>🔔 للعلم: حصّل ${fmtP(fyi.reduce((n, m) => n + m.amt, 0))} تحويل ودخلت خزنتك مباشرة (محسوبة في تحصيل خزني)</span></div><div class="ksl"${cashOpenG.has('mk:fyi') ? '' : ' hidden'}>${fyi.map(m => kMoveRow(m, day, pool, true)).join('')}</div>` : '';
+    html += kstHtml('mk', '<span>🏪 حركة السوق</span>', 'mkt', mkO, mkC, mkMv, day, pool, false, ex);
+  }
+  const net = meC - meO + mkC - mkO;
+  const tiles = vs.map(v => { const b = vaultBal(v.id); return `<div class="kv${cashVault === v.id ? ' on' : ''}${b < 0 ? ' neg' : ''}" data-v="${esc(v.id)}" role="button" tabindex="0"><span>${esc(v.name)}</span><b class="n" data-ck="c:v:${esc(v.id)}" data-cnt="${b}">${fmtP(b)}</b>${b < 0 ? '<a class="kfix">⚠ راجعها</a>' : ''}</div>`; }).join('');
+  const last = hasM ? lastHand() : '';
   pg.innerHTML = `
     <div class="cbar">
       <button class="btn green" id="cRecv" type="button" title="استلمت من عميل">💵 <span class="lg">استلمت من عميل</span><span class="sh">استلمت</span></button>
@@ -3751,11 +3788,15 @@ function renderCash() {
       <button class="btn redf" id="cExp" type="button">− مصروف</button>
       <button class="btn gold" id="cInc" type="button">+ إيراد</button>
     </div>
-    <div class="tots"><div class="k"><span>رصيد كل الخزن</span><b class="${total < 0 ? 'cr' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
-      ${cards.length < 2 ? '' : cards.map(([id, n, b]) => `<div class="vt ${(isMkv(id) ? side === 'mkt' : side === 'me' && cashVault === id) ? 'on' : ''}" data-v="${esc(id)}"><span>${esc(n)}</span><b class="${b < 0 ? 'cr2' : ''}" data-ck="c:v:${esc(id)}" data-cnt="${b}">${fmtP(b)}</b></div>`).join('')}</div>
+    <div class="kb${hasM ? ' two' : ''}">
+      <div class="kbme"><div class="kbm${cashOpenV ? ' on' : ''}" id="kMe" role="button" tabindex="0"><span>🏭 خزني <i class="kch">▾</i><small>${cashOpenV ? 'كل خزنة برصيدها · دوس على خزنة تشوف حركتها' : 'الفلوس اللي تحت إيدك · ' + vsTxt}</small></span><b class="n${meB < 0 ? ' neg' : ''}" data-ck="c:me" data-cnt="${meB}">${fmtP(meB)}</b></div>
+        <div class="kvs"${cashOpenV ? '' : ' hidden'}>${tiles}</div></div>
+      ${hasM ? `<div class="kbk"><span>🏪 خزنة السوق<small>عهدة الشريك${last ? ' · آخر تسليم ' + last : ''}</small></span><b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></div>
+      <div class="kbt"><span>إجمالي النقدية<small>خزني + خزنة السوق</small></span><b class="n${total < 0 ? ' neg' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)} <small>${CUR}</small></b></div>` : ''}
+    </div>
     <div class="ctools">
-      <button class="btn line sm" id="cOpen2" type="button">✎ الفلوس اللي معايا</button>
-      <button class="btn line sm" id="cTr" type="button">⇄ تحويل</button>
+      <button class="btn line sm" id="cOpen2" type="button">✎ جرد الخزنة</button>
+      <button class="btn line sm" id="cTr" type="button">⇄ تحويل بين الخزن</button>
       <button class="btn line sm" id="cSet" type="button">⚙ الخزن والبنود</button>
       <button class="btn line sm mob" id="cPart" type="button">👥 الشركاء</button>
     </div>
@@ -3766,17 +3807,23 @@ function renderCash() {
         : cashMode === 'month' ? `<input class="inp" type="month" id="cMonth" value="${cashMonth || t.slice(0, 7)}">`
         : cashMode === 'year' ? `<input class="inp num" id="cYear" inputmode="numeric" value="${cashYear || t.slice(0, 4)}">`
         : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div><label class="cyr">أو سنة كاملة <input class="inp num" id="cYr" inputmode="numeric" placeholder="${t.slice(0, 4)}" value="${from.slice(5) === '01-01' && to === from.slice(0, 4) + '-12-31' ? from.slice(0, 4) : ''}"></label>`}</div>
-      <select class="inp" id="cVault" style="margin-top:8px"${side === 'mkt' ? ' disabled' : ''}><option value="">${side === 'mkt' ? 'خزنة السوق' : 'كل الخزن'}</option>${side === 'mkt' ? '' : vs.map(v => `<option value="${esc(v.id)}" ${cashVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
     </div>
-    ${hasM ? `<div class="seg s2 cside" id="cSide"><button type="button" data-s="me" class="${side === 'me' ? 'on' : ''}">🏭 حركتي أنا</button><button type="button" data-s="mkt" class="${side === 'mkt' ? 'on' : ''}">🏪 حركة السوق</button></div>
-      <p class="chint">${side === 'mkt' ? 'الفلوس اللي مع شريكك في السوق: اللي حصّله، ودفعه للموردين، ومصاريف السوق، واللي سلّمهولك. <b>معاه دلوقتي: ' + fmtP(mkB) + '</b>' : 'فلوسك انت وخزنك: اللي حصّلته، واللي دفعته للموردين، ومصاريفك. اللي جه من شريكك عليه علامة 🏪.'}</p>` : ''}
-    <div class="cnet"><span>${day ? 'صافي اليوم' : 'صافي الفترة'}</span><b class="${tin - tout < 0 ? 'neg' : ''}" data-ck="c:net" data-cnt="${tin - tout}">${fmtP(tin - tout)} ${CUR}</b></div>
-    ${cashSideHtml(mv, side, day)}
-    ${mkTr.length ? `<div class="cfyi">${cashTable('🔔 للعلم: حصّلها تحويل ودخلت خزنتك', mkTr, mkTr, 'fyi', day)}</div>` : ''}
+    <div class="kss${hasM ? ' two' : ''}">${html}</div>
+    ${hasM && !cashVault ? `<div class="kday"><span>صافي ${w} على بعض<small>خزني + السوق: النقدية كلها من <bdi>${fmtP(meO + mkO)}</bdi> لـ <bdi>${fmtP(meC + mkC)}</bdi></small></span><b class="n${net < 0 ? ' neg' : ''}">${net > 0 ? '+' : ''}${fmtP(net)}</b></div>` : ''}
     `;
-  const pick = (all, el) => all[+el.dataset.i];
-  $$('#p-cash .vt').forEach(el => el.onclick = () => { const v = el.dataset.v; if (isMkv(v)) { cashSide = side === 'mkt' ? 'me' : 'mkt'; cashVault = ''; } else { cashSide = 'me'; cashVault = cashVault === v ? '' : v; } renderCash(); });
-  $$('#cSide button').forEach(b => b.onclick = () => { cashSide = b.dataset.s; renderCash(); });
+  const tap = (el, f) => { el.onclick = f; el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); f(ev); } }; };
+  tap($('#kMe'), () => { cashOpenV = !cashOpenV; if (!cashOpenV) cashVault = ''; renderCash(); });
+  $$('#p-cash .kv').forEach(el => tap(el, () => {
+    cashVault = cashVault === el.dataset.v ? '' : el.dataset.v; renderCash();
+    if (cashVault) { const k = $('#kst-me'); if (k && k.scrollIntoView) k.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+  }));
+  $$('#p-cash .kfix').forEach(a => a.onclick = ev => { ev.stopPropagation(); openingModal(); });
+  if ($('#kAll')) $('#kAll').onclick = () => { cashVault = ''; renderCash(); };
+  $$('#p-cash .ksg').forEach(el => el.onclick = () => {
+    const g = el.dataset.g, on = !cashOpenG.has(g);
+    if (on) cashOpenG.add(g); else cashOpenG.delete(g);
+    el.classList.toggle('on', on); el.nextElementSibling.hidden = !on;
+  });
   $('#cRecv').onclick = () => pickParty('pay');
   $('#cPayS').onclick = () => pickParty('ppay');
   $('#cExp').onclick = () => txModal('exp');
@@ -3788,18 +3835,21 @@ function renderCash() {
   bindI('#cDay', v => cashDay = v); bindI('#cMonth', v => cashMonth = v); bindI('#cYear', v => cashYear = normDigits(v).replace(/\D/g, '').slice(0, 4));
   bindI('#cFrom', v => cashFrom = v); bindI('#cTo', v => cashTo = v);
   bindI('#cYr', v => { const y = normDigits(v).replace(/\D/g, '').slice(0, 4); if (y.length === 4) { cashFrom = y + '-01-01'; cashTo = y + '-12-31'; } });
-  $('#cVault').onchange = () => { cashVault = $('#cVault').value; renderCash(); };
   const open = m => {
     const op = isMkRec(m.r) && mkDb().ops[m.r.id.slice(5)];   // حركة جاية من الشريك: نافذتها فيها "دي دفعة لمورد" للمصروف
-    if (op && MK_T[op.t] && (side === 'mkt' || op.t === 'exp')) return mkOpMenu(op);
+    if (op && MK_T[op.t] && (m.side === 'mkt' || op.t === 'exp')) return mkOpMenu(op);
     if (m.src === 'tx') m.r.pt ? partnerTxModal(m.r) : m.r.iv && ivGet(m.r.iv) ? ivTxModal(m.r) : txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
   };
-  $$('#p-cash .cwrap tr[data-i], #p-cash > .ctab tr[data-i]').forEach(el => el.onclick = () => open(pick(mv, el)));
-  $$('#p-cash .cfyi tr[data-i]').forEach(el => el.onclick = () => open(pick(mkTr, el)));
+  $$('#p-cash .kmv[data-i]').forEach(el => el.onclick = () => open(pool[+el.dataset.i]));
   $('#cSet').onclick = vaultSettings;
   $('#cPart').onclick = () => go('part');
   $('#cOpen2').onclick = openingModal;
   runCounters(pg);
+}
+/* اسم "خزنة المصنع" بقى "كاش" (بطلب صاحب المشروع). مرة واحدة وبيتزامن لكل الأجهزة والدفتر */
+function kashName() {
+  const v = IDX.vault.get('v_main');
+  if (v && !v.del && v.name === 'خزنة المصنع') { v.name = 'كاش'; touch(v); saveDB(); }
 }
 /* رصيد البداية: الفلوس اللي في كل خزنة يوم ما بدأت تشتغل على البرنامج */
 /* الفلوس اللي معايا دلوقتي: بتكتب الموجود فعلاً في كل خزنة.

@@ -1194,6 +1194,24 @@ body{font-size:var(--f3);line-height:1.6}
 .rchb .bb{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px;border-bottom:1px solid var(--line)}
 .rchb .bb i{width:34%;max-width:18px;border-radius:3px 3px 0 0}
 .rchb small{font-size:var(--f1);color:var(--sub);margin-top:3px;white-space:nowrap}
+
+/* موبايل الحسابات: شريط فوق سطر واحد رفيع (اللاب ما يتلمسش) */
+#bBellM{display:none}
+@media (max-width:999.98px){
+  .top{padding:calc(5px + env(safe-area-inset-top)) 10px 5px;gap:6px;flex-wrap:nowrap}
+  .top img{width:26px;height:26px;border-radius:6px}
+  .top h1{display:none}
+  .top small{display:inline;font-size:var(--f3);color:var(--gold);font-weight:800}
+  .top .homebtn{min-height:34px;min-width:34px;padding:6px 8px;border-radius:9px;position:relative;margin-inline-start:0;justify-content:center}
+  .top .lt{display:none}
+  .top #bTheme,.top #bSet{min-width:34px!important;min-height:34px!important;height:34px;padding:6px 8px!important;line-height:1}
+  .top .homebtn{height:34px}
+  .top #bBellM{display:inline-flex;margin-inline-start:auto}
+  .top #bSet{margin-inline-start:0}
+  .top #bBellM .nb{position:absolute;top:-4px;inset-inline-start:-4px;min-width:16px;height:16px;line-height:16px;font-size:var(--f1);border-radius:8px;padding:0 3px;text-align:center;background:var(--red);color:#fff;font-style:normal}
+  .top #bBellM .nb:empty{display:none}
+  .top #bBellM.has{color:var(--gold)}
+}
 </style>
 </head>
 <body>
@@ -1208,9 +1226,10 @@ body{font-size:var(--f3);line-height:1.6}
 <header class="top">
   <img src="icons/logo.jpg" alt="فلاش أون">
   <div><h1>فلاش أون</h1><small>الحسابات</small></div>
-  <button class="homebtn lockbtn" id="bSet" type="button" title="الإعدادات" aria-label="الإعدادات" style="min-width:40px;justify-content:center;padding:8px 10px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  <button class="homebtn lockbtn" id="bBellM" type="button" title="إشعارات الوارد" aria-label="إشعارات الوارد"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><i id="bellNM" class="nb"></i></button>
   <button class="homebtn lockbtn" id="bTheme" type="button" title="ليلي / فاتح" style="min-width:40px;justify-content:center;padding:8px 10px"></button>
-  <button class="homebtn lockbtn" id="bLock" type="button" title="قفل"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>قفل</button>
+  <button class="homebtn lockbtn" id="bLock" type="button" title="قفل"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span class="lt">قفل</span></button>
+  <button class="homebtn lockbtn" id="bSet" type="button" title="الإعدادات" aria-label="الإعدادات" style="min-width:40px;justify-content:center;padding:8px 10px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
 
 <main>
@@ -5915,7 +5934,7 @@ function mkAlert(list) {
 /* اللاب: جرس الإشعارات فوق والعداد على زرار "حركة السوق" في القايمة الجانبية. دوسة على الجرس بتفتح آخر العمليات اللي مستنياك */
 function mkBell() {
   const n = db && mkCreds() ? mkPending().length : 0, t = n > 99 ? '99+' : n || '';
-  $('#bellN').textContent = t; $('#nbMkt').textContent = t;
+  $('#bellN').textContent = t; $('#bellNM').textContent = t; $('#bBellM').classList.toggle('has', !!n); $('#nbMkt').textContent = t;
   $('#bBell').classList.toggle('has', !!n);
   if ($('#mkPop').classList.contains('on')) mkPop(true);
 }
@@ -5934,6 +5953,7 @@ function mkPop(keep) {
   $('#mpGo').onclick = () => { p.classList.remove('on'); mkCreds() ? go('mkt') : mkGoSettings(); };
   p.classList.add('on');
 }
+$('#bBellM').onclick = () => go('mkt');
 $('#bBell').onclick = e => { e.stopPropagation(); mkPop(); };
 document.addEventListener('click', e => { if (!e.target.closest('#mkPop') && !e.target.closest('#bBell')) $('#mkPop').classList.remove('on'); });
 /* يفتح الإعدادات على كارت حركة السوق */

@@ -749,6 +749,7 @@ html[data-theme=dark] .cnet b{color:var(--ink)}html[data-theme=dark] .cnet b.neg
   #p-cash>.card #cPick:has(.g2){grid-column:1/-1}
 }
 .dnav{display:flex;align-items:center;justify-content:center;gap:6px}
+@media (max-width:999.98px){#p-cash #cPick.pkh{display:none}#p-cash #cPick.pkh+#cVault{grid-column:1/-1}}
 .dnav button{width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:22px;font-weight:800;line-height:1;cursor:pointer;color:var(--ink);padding:0}
 .dnav span{min-width:112px;text-align:center;border:1px solid var(--gold);background:var(--gold-l);border-radius:10px;padding:6px 10px;font-weight:800;font-size:var(--f2);color:var(--gold-d);white-space:nowrap}
 .dnav button:active{transform:scale(.94)}
@@ -760,6 +761,15 @@ html[data-theme=dark] .dnav span{color:var(--ink)}
 #mkBar{position:fixed;top:calc(var(--hh,64px) + 6px);inset-inline:10px;margin:auto;max-width:560px;z-index:125;background:#111;color:#fff;border:2px solid var(--gold);border-radius:12px;padding:10px 14px;font-weight:700;font-size:var(--f2);box-shadow:0 6px 22px #0006;cursor:pointer;display:none;animation:foUp .2s ease-out}
 #mkBar.on{display:block}#mkBar b{color:var(--gold)}#mkBar u{color:var(--gold);margin-inline-start:6px}
 .sync.mkrem{cursor:pointer;background:var(--gold-l);border-style:solid;color:var(--ink)}.sync.mkrem b{font-size:var(--f3)}.sync.mkrem.ok{color:var(--green)}
+.ppbar b.tt{font-size:var(--f3);color:var(--ink)}
+/* شريط رجوع رفيع (موبايل بس): رجوع صغير واسم الشاشة جنبه من غير عنوان كبير */
+@media (max-width:999.98px){
+  .ppbar.tb{justify-content:flex-start;gap:6px;margin:0 0 6px;padding:0;min-height:32px;border-bottom:1px solid var(--line)}
+  .ppbar.tb a{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:32px;font-size:var(--f3)}
+  .ppbar.tb a em{display:none}
+  .ppbar.tb b.tt{font-size:var(--f2)}
+  .ppbar.tb>:last-child:not(a:first-child):not(b){margin-inline-start:auto}
+}
 .mkdot{font-size:var(--f1);font-weight:700;color:var(--green);display:flex;align-items:center;gap:5px}.mkdot i{width:9px;height:9px;border-radius:50%;background:var(--green)}
 .mkdot.w{color:var(--gold-d)}.mkdot.w i{background:#E9B930}
 .mkh{background:var(--gold-l);border:1.5px solid var(--gold);border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
@@ -1120,6 +1130,9 @@ html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
 #hTabs .supt small{font-size:var(--f1);color:var(--sub);margin-inline-start:4px}
 #hTabs.t3{grid-template-columns:repeat(2,1fr)}
 .mkstat{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:8px 12px;margin-bottom:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:var(--f2);font-weight:700;color:var(--ink)}
+.mkstat em.mkbl{font-style:normal;white-space:nowrap}.mkstat em.mkbl b{direction:ltr;unicode-bidi:isolate;color:var(--ink)}.mkstat em.mkbl b.neg{color:var(--red)}
+@media (min-width:1000px){.mkstat em.mkbl,.mkstat em.mkbl+i{display:none}}
+@media (max-width:999.98px){.mkvb{display:none}.mkstat{gap:4px 14px}.mkstat>i{display:none}}
 .mkstat a{cursor:pointer;white-space:nowrap}.mkstat a b{color:var(--red)}.mkstat i{color:var(--sub);font-style:normal}.mkstat span{color:var(--green)}
 #hTabs .hcash{border-style:dashed;border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
 #hTabs .hcash small{font-size:var(--f1)!important;color:var(--gold-d)!important}
@@ -3675,7 +3688,7 @@ function renderCash() {
     <div class="card">
       <div class="seg s4" id="cMode">${[['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${cashMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
       ${cashMode === 'range' ? '' : `<div class="dnav"><button type="button" id="cPrev" title="السابق">›</button><span id="cNavL">${cashNavLabel()}</span><button type="button" id="cNext" title="التالي">‹</button></div>`}
-      <div id="cPick">${cashMode === 'day' ? `<input class="inp" type="date" id="cDay" value="${cashDay || t}">`
+      <div id="cPick"${cashMode === 'range' ? '' : ' class="pkh"'}>${cashMode === 'day' ? `<input class="inp" type="date" id="cDay" value="${cashDay || t}">`
         : cashMode === 'month' ? `<input class="inp" type="month" id="cMonth" value="${cashMonth || t.slice(0, 7)}">`
         : cashMode === 'year' ? `<input class="inp num" id="cYear" inputmode="numeric" value="${cashYear || t.slice(0, 4)}">`
         : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div>`}</div>
@@ -4657,7 +4670,7 @@ function renderReports() {
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
   const needRange = repKind === 'cash' || repKind === 'item' || repKind === 'profit';
   const jw = isWide() ? 0 : ivWaiting();
-  $('#p-rep').innerHTML = (isWide() ? '' : `<div class="ctools"><button class="btn line sm" id="rpJrd" type="button">📦 الجرد والمساهمون${jw ? ` (${jw})` : ''}</button></div>`) + `
+  $('#p-rep').innerHTML = (isWide() ? '' : `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b></div><div class="ctools"><button class="btn line sm" id="rpJrd" type="button">📦 الجرد والمساهمون${jw ? ` (${jw})` : ''}</button></div>`) + `
     <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="card">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
@@ -4687,6 +4700,7 @@ function renderReports() {
   bindI('#rpFrom', v => repFrom = v); bindI('#rpTo', v => repTo = v); bindI('#rpV', v => repVault = v);
   $$('#p-rep tr[data-p]').forEach(el => el.onclick = () => go('p/' + el.dataset.p));
   if ($('#rpJrd')) $('#rpJrd').onclick = () => go('jrd');
+  if ($('#rpBack')) $('#rpBack').onclick = () => go('home');
   $('#rpShare').onclick = () => exportReport(R, 'share');
   $('#rpPdf').onclick = () => exportReport(R, 'preview');
 }
@@ -4883,7 +4897,7 @@ function jrdReport(d, n, stock, prev) {
 }
 function jrdHead(tab) {
   const w = ivWaiting();
-  return (isWide() ? '' : '<div class="sech ppbar" style="margin-top:0"><a id="jrBack">→ التقارير</a><b style="font-size:var(--f3);color:var(--ink)">📦 الجرد والمساهمون</b><span></span></div>') +
+  return (isWide() ? '' : '<div class="sech ppbar tb" style="margin-top:0"><a id="jrBack">→<em> التقارير</em></a><b class="tt">📦 الجرد والمساهمون</b><span></span></div>') +
     `<div class="seg s2" id="jrK"><button type="button" data-v="jrd" class="${tab === 'jrd' ? 'on' : ''}">الجرد</button><button type="button" data-v="jrd/iv" class="${tab === 'iv' ? 'on' : ''}">المساهمون${w ? ` (${w})` : ''}</button></div>`;
 }
 function jrdBindHead() {
@@ -4933,7 +4947,7 @@ function renderJrdSaved(id) {
   const pg = $('#p-jrd'), s = IDX.stk.get(id);
   if (!s || s.del) { go('jrd'); return; }
   const prev = jrdBefore(s.date);
-  pg.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="jsBack">→ الجرد</a><b style="font-size:var(--f3);color:var(--ink)">📦 جرد ${dispDate(s.date)}</b><span></span></div>
+  pg.innerHTML = `<div class="sech ppbar tb" style="margin-top:0"><a id="jsBack">→<em> الجرد</em></a><b class="tt">📦 جرد ${dispDate(s.date)}</b><span></span></div>
     <p class="hint">هذه الأرقام مثبّتة وقت حفظ الجرد، ولا تتغير بتعديل الحسابات لاحقاً.</p>
     ${jrdBlock(s.n, s.stock, prev, false)}
     <div class="mrow3" style="grid-template-columns:1fr 1fr"><button class="btn green" id="jsShare" type="button">📲 إرسال PDF عبر واتساب</button><button class="btn gold" id="jsPdf" type="button">معاينة / تنزيل PDF</button></div>
@@ -5022,7 +5036,7 @@ function renderIv(id) {
   const pg = $('#p-jrd'), v = ivGet(id);
   if (!v) { go('jrd/iv'); return; }
   const s = ivSums(v.id), R = ivReport(v), ms = ivMoves(v.id), pend = ivPending(v), due = ivDue(v), cp = P.get(v.party);
-  pg.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="ivBack">→ المساهمين</a><b style="font-size:var(--f3);color:var(--ink)">💰 ${esc(v.name)}</b><a id="ivSet">⚙ بياناته</a></div>
+  pg.innerHTML = `<div class="sech ppbar tb" style="margin-top:0"><a id="ivBack">→<em> المساهمين</em></a><b class="tt">💰 ${esc(v.name)}</b><a id="ivSet">⚙ بياناته</a></div>
     <div class="cbar">${v.mode === 'm' ? '<button class="btn gold" id="ivProf" type="button">+ ربح الشهر</button>' : '<button class="btn line" id="ivExp" type="button">− مصروفات</button>'}
       <button class="btn redf" id="ivDraw" type="button">− مسحوبات</button><button class="btn line" id="ivCap" type="button">+ رأس مال</button></div>
     <div class="tots"><div class="k"><span>الرصيد المستحق للمساهم</span><b class="${s.bal < 0 ? 'cr' : ''}">${fmtP(s.bal)} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
@@ -6039,9 +6053,9 @@ function mkGroups() {
 let mkView = 'in', mkDay = '';
 function renderMkt() {
   const box = $('#p-mkt'); if (!box || !db) return;
-  if (!mkCreds()) { box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a></div><div class="card empty">حركة السوق لسه متربطتش.<br><a class="lnk" id="mkSet">اربطها من الإعدادات</a></div>`; $('#mkBack').onclick = () => go('home'); $('#mkSet').onclick = mkGoSettings; return; }
+  if (!mkCreds()) { box.innerHTML = `<div class="sech ppbar tb" style="margin-top:0"><a id="mkBack">→<em> الحسابات</em></a></div><div class="card empty">حركة السوق لسه متربطتش.<br><a class="lnk" id="mkSet">اربطها من الإعدادات</a></div>`; $('#mkBack').onclick = () => go('home'); $('#mkSet').onclick = mkGoSettings; return; }
   const n = mkPending().length;
-  box.innerHTML = `<div class="sech ppbar" style="margin-top:0"><a id="mkBack">→ الحسابات</a><b style="font-size:var(--f3);color:var(--ink)">📥 وارد السوق</b><span class="mkdot ${mkErr ? 'w' : ''}"><i></i>${mkErr === 'key' ? 'الشيت رفض المفتاح' : mkErr ? 'مش قادر يوصل للشيت' : mkLastOk ? 'متصل' : '…'}</span></div>
+  box.innerHTML = `<div class="sech ppbar tb" style="margin-top:0"><a id="mkBack">→<em> الحسابات</em></a><b class="tt">📥 وارد السوق</b><span class="mkdot ${mkErr ? 'w' : ''}"><i></i>${mkErr === 'key' ? 'الشيت رفض المفتاح' : mkErr ? 'مش قادر يوصل للشيت' : mkLastOk ? 'متصل' : '…'}</span></div>
     ${mkStat()}
     <div class="mkvb"><span>🗄️ رصيد خزنة السوق</span><b>${fmtP(mkLive().reduce((s, o) => s + mkSign(o) * o.amt, 0))} <small>${CUR}</small></b></div>
     <div class="seg s2" id="mkTabs"><button type="button" data-v="in" class="${mkView === 'in' ? 'on' : ''}">الوارد${n ? ` <b class="mkn">${n}</b>` : ''}</button><button type="button" data-v="arch" class="${mkView === 'arch' ? 'on' : ''}">الأرشيف</button></div>
@@ -6057,12 +6071,12 @@ function mkStatParts() {
   return {wait: mkPending().length, clash: (db.cfg.clash || []).filter(c => !c.seen).length, late: lateParties().length, cash};
 }
 function mkStat() {
-  const s = mkStatParts(), a = [];
+  const s = mkStatParts(), a = [], bal = mkLive().reduce((x, o) => x + mkSign(o) * o.amt, 0);
   if (s.wait) a.push(`<a data-st="wait">⏳ <b>${s.wait}</b> مستني نقل</a>`);
   if (s.clash) a.push(`<a data-st="clash">⚠️ <b>${s.clash}</b> تعارض</a>`);
   if (s.late) a.push(`<a data-st="late">🕒 <b>${s.late}</b> اتأخر عن عادته</a>`);
   if (s.cash) a.push(`<a data-st="cash">💵 <b>${fmtP(s.cash)}</b> كاش مع الشريك</a>`);
-  return `<div class="mkstat" id="mkStat">${a.length ? a.join('<i>·</i>') : '<span>✔ مفيش حاجة مستنياك</span>'}</div>`;
+  return `<div class="mkstat" id="mkStat"><em class="mkbl">🗄️ رصيد خزنة السوق <b class="${bal < 0 ? 'neg' : ''}">${fmtP(bal)}</b></em><i>·</i>${a.length ? a.join('<i>·</i>') : '<span>✔ مفيش حاجة مستنياك</span>'}</div>`;
 }
 function mkStatBind() {
   $$('#mkStat [data-st]').forEach(el => el.onclick = () => {

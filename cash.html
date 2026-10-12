@@ -783,12 +783,15 @@ function homeMoves(V, a, z) {
 const CG = {
   col: ['💵 تحصيل من العملاء', 'in'], cs: ['💰 بيع كاش', 'in'], inc: ['إيرادات أخرى', 'in'], fromMk: ['🤝 استلام من الشريك', 'in'], toMkIn: ['🤝 استلام منك', 'in'], trIn: ['⇄ تحويل من خزنة تانية', 'in'],
   spay: ['🏭 دفعات للموردين', 'out'], exp: ['مصروفات', 'out'], mkexp: ['⛽ مصاريف السوق', 'out'], toMk: ['🤝 تسليم للشريك', 'out'], hand: ['🤝 سلّمها لك', 'out'], trOut: ['⇄ تحويل لخزنة تانية', 'out'],
-  tr: ['⇄ تحويلات بين خزنك', '']
+  tr: ['⇄ تحويلات بين خزنك', ''], adj: ['تسوية الجرد (مطابقة مع الواقع)', '']
 };
 const CG_ORD = Object.keys(CG);
+/* تسوية الجرد مش مقبوضات ولا مدفوعات (بطلب صاحب المشروع): سطر لوحده قبل رصيد آخر الفترة علشان الحساب يفضل مظبوط */
+const ADJ_CATS = new Set(['c_adj_in', 'c_adj_out']);
 /* نوع الحركة (نفس تقسيم خزنة الحسابات): side = me (خزني) أو mkt (خزنة السوق) */
 function homeGroup(m, side) {
   const t = m.r;
+  if (ADJ_CATS.has(t.cat)) return 'adj';
   if (t.type === 'tr') {
     const fm = isMkv(t.vault), tm = isMkv(t.to);
     if (side === 'mkt') return fm ? 'hand' : 'toMkIn';
@@ -819,10 +822,13 @@ function kstHtml(key, title, side, open, close, mv, day, pool, showV, extra) {
   const tin = r2(ks('in').reduce((n, k) => n + sum(by[k]), 0)), tout = r2(ks('out').reduce((n, k) => n + sum(by[k]), 0)), w = homePerW();
   const grp = k => { const g = key + ':' + k, on = homeOpenG.has(g);
     return `<div class="ksg${on ? ' on' : ''}" data-g="${g}"><span>${CG[k][0]} <em>(${by[k].length})</em></span><b class="n">${fmt(sum(by[k]))}</b></div><div class="ksl"${on ? '' : ' hidden'}>${by[k].map(m => kMoveRow(m, day, pool, showV)).join('')}</div>`; };
+  const adjRow = () => { const g = key + ':adj', on = homeOpenG.has(g), n = r2(by.adj.reduce((a, m) => a + m.amt * (m.r.type === 'inc' ? 1 : -1), 0));
+    return `<div class="ksg kadj${on ? ' on' : ''}" data-g="${g}"><span>${CG.adj[0]} <em>(${by.adj.length})</em></span><b class="n">${n > 0 ? '+' + fmt(n) : n < 0 ? '−' + fmt(-n) : '0'}</b></div><div class="ksl"${on ? '' : ' hidden'}>${by.adj.map(m => kMoveRow(m, day, pool, showV)).join('')}</div>`; };
   return `<section class="kst ${key}" id="kst-${key}"><div class="ksh">${title}</div>
     <div class="ksr ko"><span>رصيد أول ${w}</span><b class="n">${fmt(open)}</b></div>
     <div class="ksr ki"><span>⬇ المقبوضات</span><b class="n">${signF(tin, '+')}</b></div>${ks('in').map(grp).join('')}
     <div class="ksr kx"><span>⬆ المدفوعات</span><b class="n">${signF(tout, '−')}</b></div>${ks('out').map(grp).join('')}
+    ${by.adj ? adjRow() : ''}
     <div class="ksr kc"><span>رصيد آخر ${w}</span><b class="n${close < 0 ? ' neg' : ''}" data-ck="h:${key}:close" data-cnt="${close}">${fmt(close)}</b></div>${by.tr ? grp('tr') : ''}${extra || ''}</section>`;
 }
 function homeRange() {

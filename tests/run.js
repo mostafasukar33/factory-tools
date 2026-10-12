@@ -1257,7 +1257,7 @@ const T0 = Date.now();
     eq('الخزنة: كشف خزني وكشف السوق مع بعض، كل نوع لوحده ومقفول، وأول الفترة + المقبوضات − المدفوعات = آخر الفترة، والدوس على خزنة بيفلتر عليها', await A.evaluate(() => {
       cashMode = 'day'; cashDay = ''; cashVault = ''; cashOpenV = false; cashOpenG.clear(); go('cash'); renderCash();
       const tx = k => [...$$('#kst-' + k + ' .ksg span')].map(x => x.textContent);
-      const ok = k => { const n = s => Math.round(parseFloat($('#kst-' + k + ' ' + s + ' .n').textContent.replace(/[,+]/g, '').replace('−', '-')) * 100); return n('.ko') + n('.ki') + n('.kx') === n('.kc'); };
+      const ok = k => { const n = s => { const e = $('#kst-' + k + ' ' + s + ' .n'); return e.dataset.cnt ? +e.dataset.cnt : Math.round(parseFloat(e.textContent.replace(/[,+]/g, '').replace('−', '-')) * 100); }; return n('.ko') + n('.ki') + n('.kx') + ($('#kst-' + k + ' .kadj') ? n('.kadj') : 0) === n('.kc'); };
       const me = tx('me'), mk = tx('mk');
       const r = [!!$('#kst-mk'), $('#p-cash .kvs').hidden, me.some(x => x.includes('استلام من الشريك')), !me.some(x => x.includes('مصاريف السوق')), mk.some(x => x.includes('تحصيل من العملاء')), mk.some(x => x.includes('دفعات للموردين')), mk.some(x => x.includes('مصاريف السوق')), mk.some(x => x.includes('سلّمها لك')), ok('me'), ok('mk'), $$('#p-cash .ksl:not([hidden])').length];
       $('#kMe').click(); r.push($('#p-cash .kvs').hidden);
@@ -1265,6 +1265,13 @@ const T0 = Date.now();
       r.push(cashVault === id, $('#kst-me .ksh').textContent.includes(vName(id)), ok('me'), !$('#p-cash .kday'));
       const g = $('#kst-me .ksg'); if (g) { g.click(); r.push($$('#p-cash .ksl:not([hidden])').length === 1 && !!$('#p-cash .ksl:not([hidden]) .kmv')); } else r.push(true);
       cashVault = ''; cashOpenV = false; cashOpenG.clear(); go('mkt'); return r; }), [true, true, true, true, true, true, true, true, true, true, 0, false, true, true, true, true, true]);
+    eq('تسوية الجرد مش في المدفوعات ولا المقبوضات: سطر لوحده قبل رصيد آخر الفترة والحساب مظبوط', await A.evaluate(() => {
+      const t = {id: 'x_adjtest', type: 'exp', amt: 12300, vault: vaultsL()[0].id, cat: ensureAdjCat('exp'), note: 'جرد تجربة', date: todayISO(), at: nowS(), upd: nowS(), del: false, hist: []};
+      db.txs.push(t); IDX.tx.set(t.id, t); cashVault = ''; cashMode = 'day'; cashDay = ''; go('cash'); renderCash();
+      const n = s => { const e = $('#kst-me ' + s + ' .n'); return e.dataset.cnt ? +e.dataset.cnt : Math.round(parseFloat(e.textContent.replace(/[,+]/g, '').replace('−', '-')) * 100); };
+      const txt = [...$$('#kst-me .ksg:not(.kadj) span')].map(x => x.textContent).join('|');
+      const r = [!!$('#kst-me .kadj'), n('.kadj'), !txt.includes('تسوية'), n('.ko') + n('.ki') + n('.kx') + n('.kadj') === n('.kc')];
+      t.del = true; touch(t); saveDB(); go('mkt'); return r; }), [true, -13300, true, true]);
     /* الشريك كتب مصروف وهو دفعة لمورد: مصطفى بيحوّلها من عنده، وبيرجّعها لو غلط */
     const cv0 = await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(o => o.t === 'exp'); return {id: o.id, mk: vaultBal('v_mkt'), exp: profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp}; });
     await A.evaluate(() => { cashSide = 'mkt'; go('cash'); }); await A.settle(300);   // الصفحة بتفتح بعد تغيير العنوان (وبتقفل أي نافذة)

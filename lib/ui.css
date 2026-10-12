@@ -101,3 +101,4 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
   .kss.two{grid-template-columns:1fr 1fr;align-items:start}
 }
 .kc+.ksg{margin-bottom:8px;color:var(--sub)}.kc+.ksg .n{color:var(--sub)}
+.ksg.kadj{border-top:1px solid var(--line);color:var(--sub);font-weight:800}.ksg.kadj .n{color:var(--sub)}

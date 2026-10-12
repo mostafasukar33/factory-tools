@@ -907,7 +907,7 @@ const T0 = Date.now();
     await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll());
     await A.click('#smHelp'); await A.click('#mhCopy'); const mkCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.mkt.load(mkCode); await A.click('#mhX');
     await A.fill('#smUrl', MKT_URL); await A.click('#smGo'); await A.settle(2500);
-    await A.evaluate(() => putSet('tgOpts', {bk: false, sum: false, al: false}));   // رسايل الحسابات على تليجرام بتتجرب لوحدها تحت، علشان متدخلش وسط رسايل الشريك
+    await A.evaluate(() => putSet('tgOpts', {bk: false, sum: false, al: false, wk: false, mo: false, nl: false}));   // رسايل الحسابات على تليجرام بتتجرب لوحدها تحت، علشان متدخلش وسط رسايل الشريك
     const mkc = await A.evaluate(() => getSet('mktSheet', null));
     eq('شيت السوق اتربط ومقفول على مفتاح اتعمل لوحده ومش في الكود', [!!(mkc && mkc.k), mkCode.includes(mkc.k) || /TEST-|script\.google\.com\/macros/.test(mkCode), JSON.parse(sheets.mkt.post(JSON.stringify({key: 'Other-Key-123', action: 'ping'}))).error, JSON.parse(sheets.mkt.get()).ok], [true, false, 'key', false]);
     eq('كود شيت الحسابات الأساسي متلمسش (مفيش تليجرام ولا إذن زيادة)', await A.evaluate(() => /UrlFetchApp|telegram|DriveApp|ScriptApp/.test(scriptFor())), false);
@@ -970,7 +970,7 @@ const T0 = Date.now();
     const TD = await A.evaluate(() => db.entries.filter(e => !e.del && e.kind === 'pay').map(e => e.date).sort().pop());
     /* الإرسال اللوحده بعد المزامنة (من غير تاريخ) بيستخدم الساعة الحقيقية، فلو الاختبار اشتغل بعد 8 بالليل كان بيبعت نسخة النهارده في النص. هنا بنجرب بتواريخ ثابتة بس */
     await A.evaluate(() => { window.__tgA = tgAfterSync; window.tgAfterSync = d => d ? window.__tgA(d) : Promise.resolve(); });
-    await A.evaluate(() => { putSet('tgOpts', {bk: true, sum: true, al: true}); db.cfg.tg = {}; });
+    await A.evaluate(() => { putSet('tgOpts', {bk: true, sum: true, al: true, wk: false, mo: false, nl: false}); db.cfg.tg = {}; });
     const d0 = tgDocs().length, m0 = tgTexts().length;
     await bg(A, `tgAfterSync(new Date('${TD}T21:00:00'))`);
     const doc = tgDocs()[d0], bk = doc ? JSON.parse(doc.body.document.data) : {};
@@ -987,13 +987,28 @@ const T0 = Date.now();
     await A.settle(600);
     const al1 = tgTexts().length; await A.evaluate(() => tgSyncFail()); await A.settle(300);
     eq('تليجرام: تنبيه لو المزامنة واقفة أكتر من نص ساعة، ومرة واحدة بس', [tgTexts()[al1 - 1].includes('المزامنة مع شيت الحسابات واقفة'), tgTexts().length - al1], [true, 0]);
-    await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: true, al: true}); db.cfg.tg = {}; });
+    await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: true, al: true, wk: false, mo: false, nl: false}); db.cfg.tg = {}; });
     const d1 = tgDocs().length;
     await bg(A, `tgAfterSync(new Date('2001-01-02T21:00:00'))`);
     eq('تليجرام: لو النسخة اليومية مقفولة من الإعدادات مبتتبعتش', tgDocs().length - d1, 0);
+    eq('تليجرام: الأسبوع بيخلص الخميس 8 بالليل (الجمعة→الخميس) والشهر آخر يوم 8 بالليل', await A.evaluate(() => [weekDone(new Date('2026-10-15T21:00:00')), weekDone(new Date('2026-10-15T19:00:00')).to, weekDone(new Date('2026-10-12T10:00:00')).to, monthDone(new Date('2026-10-31T21:00:00')).m, monthDone(new Date('2026-10-31T19:00:00')).m, monthDone(new Date('2026-01-05T10:00:00'))]),
+      [{f: '2026-10-09', to: '2026-10-15'}, '2026-10-08', '2026-10-08', '2026-10', '2026-09', {f: '2025-12-01', to: '2025-12-31', m: '2025-12'}]);
+    {
+      const thu = await A.evaluate(d => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + (4 - x.getDay() + 7) % 7); return isoOf(x.getTime()); }, TD);
+      const nlId = await A.evaluate(() => { const e = db.entries.find(e => !e.del && e.kind === 'inv' && P.get(e.party) && !P.get(e.party).del); e.mkNL = 1; return e.id; });
+      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: false, wk: true, mo: false, nl: true}); db.cfg.tg = {}; });
+      const w0 = tgTexts().length;
+      await bg(A, `tgAfterSync(new Date('${thu}T21:00:00'))`);
+      const got = tgTexts().slice(w0);
+      await A.evaluate(() => { db.cfg.tg = {}; });   // جهاز تاني
+      await bg(A, `tgAfterSync(new Date('${thu}T21:30:00'))`);
+      eq('تليجرام: ملخص الأسبوع بالمصروفات وتنبيه الفواتير اللي بنودها متكتبتش، مرة واحدة حتى من جهاز تاني', [got.length, got.some(x => x.startsWith('🗓 ملخص الأسبوع') && x.includes('تحصيل من العملاء') && x.includes('رصيد الخزن آخر الأسبوع')), got.some(x => x.startsWith('📝 فواتير بنودها لسه متكتبتش: 1')), tgTexts().length - w0], [2, true, true, 2]);
+      await A.evaluate(id => { delete db.entries.find(e => e.id === id).mkNL; }, nlId);
+      eq('تليجرام: الصبح مفيش فواتير ناقصة = مفيش رسالة', await A.evaluate(() => nlSum().empty || nlSum().text.startsWith('📥')), true);
+    }
     eq('تليجرام: مفيش أي سطر اتكتب في شيت الحركات بتاع الشريك', sheets.mkt.sheets['الحركات'].rows.length, mkRows0);
     eq('آخر تحديث للبرنامج: بيظهر بوقت النشر، ومبيظهرش لو المتصفح معرفوش', await A.evaluate(() => { const lm = new Date('2026-10-11T15:40:00').getTime(); return [verText(lm, lm + 60000).includes(dispDate('2026-10-11')), verText(lm, lm + 500)]; }), [true, '']);
-    await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: false}); db.cfg.tg = {}; });
+    await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: false, wk: false, mo: false, nl: false}); db.cfg.tg = {}; });
 
     const mlink = await A.evaluate(() => mktLink());
     DM = await newDevice(browser, base, sheets);

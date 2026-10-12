@@ -6480,27 +6480,59 @@ function mktUpdateHelp() {
    بيعدّي على بوت شيت السوق (نفس البوت ونفس الشات). مبيتكتبش منه أي حاجة في شيت الحركات، فتطبيق الشريك مبيشوفش ولا يحس بحاجة.
    - نسخة احتياطية كل يوم: نفس ملف "تنزيل نسخة احتياطية" المتقفل بكلمة السر، مع أول مزامنة ناجحة في اليوم.
    - ملخص اليوم: بعد 8 بالليل ملخص النهارده، ولو متبعتش يتبعت الصبح ملخص امبارح. اليوم اللي مفيهوش أي حركة مبيتبعتش.
+   - ملخص الأسبوع (الجمعة→الخميس) الخميس 8 بالليل، وملخص الشهر آخر يوم 8 بالليل، بالمصروفات متقسمة بالبند. ولو متبعتوش يتبعتوا أول ما التطبيق يتفتح بعدها.
+   - كل يوم الصبح (من 7): الفواتير اللي بنودها لسه متكتبتش (nlList) والوارد المستني. لو مفيش حاجة مبيتبعتش.
    - تنبيه: لو المزامنة مع شيت الحسابات بتفشل والشيت نفسه بيرد (مش النت) لأكتر من نص ساعة، أو حصل تعارض.
    once (في شيت السوق) بيمنع إن جهازين يبعتوا نفس النسخة أو نفس الملخص. الاختيارات إعداد مشترك set اسمه tgOpts (كلها شغالة من الأول).
    لو كود الشيت قديم (VER < 3) بيرد error 'action'، فبنستنى 6 ساعات قبل ما نجرب تاني (علشان منبعتش ملف كبير على الفاضي). */
 const TG_FAIL_MS = 30 * 60000;
-const tgOpts = () => Object.assign({bk: true, sum: true, al: true}, getSet('tgOpts', {}) || {});
+const tgOpts = () => Object.assign({bk: true, sum: true, al: true, wk: true, mo: true, nl: true}, getSet('tgOpts', {}) || {});
 const tgCfg = () => db.cfg.tg = db.cfg.tg || {};
 const tgOld = j => !!(j && j.ok === false && j.error === 'action');
 const tgRes = (j, okMsg) => !j ? 'معرفتش أوصل لشيت السوق. جرّب تاني.' : tgOld(j) ? 'كود شيت السوق قديم: حدّثه الأول (التحذير الأصفر فوق).' : j.dup ? 'اتبعت قبل كده النهارده.' : j.sent ? okMsg : 'البوت لسه مش شغال: احفظ التوكن وابعتله "ابدأ" وجرّب التنبيه.';
 function dayBefore(iso) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() - 1); return isoOf(d.getTime()); }
 function daySum(d) {
-  const t = tradeSums(d, d), cs = cashSums(d, d);
+  return rangeSum(d, d, `📊 ملخص ${d === todayISO() ? 'النهارده' : d === dayBefore(todayISO()) ? 'امبارح' : 'يوم'} ${dispDate(d)}`, 'آخر اليوم');
+}
+/* ملخص فترة (اليوم والأسبوع والشهر). detail = المصروفات متقسمة بالبند */
+function rangeSum(f, to, head, end, detail) {
+  const t = tradeSums(f, to), cs = cashSums(f, to);
   let col = 0, paid = 0;
-  for (const e of db.entries) { if (e.del || !isPay(e) || e.date !== d) continue; const p = P.get(e.party); if (!p || p.noTot) continue; if (e.kind === 'pay') col += e.amt; else paid += e.amt; }
-  const nx = new Date(d + 'T12:00:00'); nx.setDate(nx.getDate() + 1);
-  const L = [`📊 ملخص ${d === todayISO() ? 'النهارده' : d === dayBefore(todayISO()) ? 'امبارح' : 'يوم'} ${dispDate(d)}`,
-    `🧾 مبيعات: ${fmtP(t.sales)}`, `💵 تحصيل من العملاء: ${fmtP(col)}`, `🏭 دفعت للموردين: ${fmtP(paid)}`, `📤 مصروفات: ${fmtP(cs.exp + cs.part)}`];
+  for (const e of db.entries) { if (e.del || !isPay(e) || e.date < f || e.date > to) continue; const p = P.get(e.party); if (!p || p.noTot) continue; if (e.kind === 'pay') col += e.amt; else paid += e.amt; }
+  const nx = new Date(to + 'T12:00:00'); nx.setDate(nx.getDate() + 1);
+  const L = [head, `🧾 مبيعات: ${fmtP(t.sales)}`, `💵 تحصيل من العملاء: ${fmtP(col)}`, `🏭 دفعت للموردين: ${fmtP(paid)}`, `📤 مصروفات: ${fmtP(cs.exp + cs.part)}`];
+  if (detail) [...cs.byCat].filter(([k]) => k.startsWith('− ')).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => L.push(`   • ${k.slice(2)}: ${fmtP(v)}`));
+  if (detail && cs.part) L.push(`   • الشركاء: ${fmtP(cs.part)}`);
   if (t.purch) L.push(`📦 مشتريات: ${fmtP(t.purch)}`);
   if (cs.inc) L.push(`📥 إيرادات تانية: ${fmtP(cs.inc)}`);
-  L.push(`💰 رصيد الخزن آخر اليوم: ${fmtP(vaultBal('', isoOf(nx.getTime())))}`);
+  L.push(`💰 رصيد الخزن ${end}: ${fmtP(vaultBal('', isoOf(nx.getTime())))}`);
   const n = mkCreds() ? mkPending().length : 0; if (n) L.push(`📥 وارد السوق مستني تنقله: ${n}`);
   return {text: L.join('\n'), empty: !t.sales && !t.purch && !col && !paid && !cs.exp && !cs.part && !cs.inc};
+}
+/* آخر أسبوع خلص: من الجمعة للخميس، وبيخلص الخميس 8 بالليل */
+function weekDone(now) {
+  const d = new Date(now.getTime()); d.setHours(12, 0, 0, 0);
+  const back = (d.getDay() - 4 + 7) % 7 || (now.getHours() >= 20 ? 0 : 7);
+  d.setDate(d.getDate() - back); const to = isoOf(d.getTime()); d.setDate(d.getDate() - 6);
+  return {f: isoOf(d.getTime()), to};
+}
+/* آخر شهر خلص: بيخلص آخر يوم فيه 8 بالليل */
+function monthDone(now) {
+  const nx = new Date(now.getTime()); nx.setDate(nx.getDate() + 1);
+  const cur = nx.getDate() === 1 && now.getHours() >= 20;
+  const a = new Date(now.getFullYear(), now.getMonth() - (cur ? 0 : 1), 1, 12), b = new Date(a.getFullYear(), a.getMonth() + 1, 0, 12);
+  return {f: isoOf(a.getTime()), to: isoOf(b.getTime()), m: isoOf(a.getTime()).slice(0, 7)};
+}
+/* الصبح: الفواتير اللي اتنقلت من السوق وبنودها لسه متكتبتش، والوارد اللي لسه متنقلش */
+function nlSum() {
+  const l = nlList(), n = mkCreds() ? mkPending().length : 0, L = [];
+  if (l.length) {
+    L.push(`📝 فواتير بنودها لسه متكتبتش: ${l.length} (${fmtP(l.reduce((s, e) => s + docTotal(e), 0))})`);
+    l.slice(0, 15).forEach(e => L.push(`   • ${P.get(e.party).name}: ${fmtP(docTotal(e))} (${dispDate(e.date)})`));
+    if (l.length > 15) L.push(`   … و${l.length - 15} كمان`);
+  }
+  if (n) L.push(`📥 وارد السوق مستني تنقله: ${n}`);
+  return {text: L.join('\n'), empty: !L.length};
 }
 async function tgBackup(once, t = todayISO()) {
   const data = await backupData();
@@ -6516,14 +6548,16 @@ async function tgAfterSync(now = new Date(nowS())) {
   if (tgBusy || !mkCreds() || nowS() - (c.old || 0) < 6 * 3600000) return;
   const o = tgOpts(), t = isoOf(now.getTime()), day = now.getHours() >= 20 ? t : dayBefore(t), d0 = db;
   const needBk = o.bk && c.bk !== t, needSum = o.sum && (c.sum || '') < day;
-  if (!needBk && !needSum) return;
+  const W = weekDone(now), M = monthDone(now);
+  const needWk = o.wk && (c.wk || '') < W.to, needMo = o.mo && (c.mo || '') < M.m, needNl = o.nl && now.getHours() >= 7 && c.nl !== t;
+  if (!needBk && !needSum && !needWk && !needMo && !needNl) return;
   tgBusy = true;
   try {
     /* الأول نسأل الشيت (سؤال صغير): الكود جديد؟ والبوت شغال؟ علشان منبعتش ملف النسخة على الفاضي */
     const st = await tgCall('tgstate');
     if (!st || db !== d0) return;
     if (!st.v || st.v < 3) { c.old = nowS(); return; }
-    if (!st.chat) { c.bk = t; c.sum = day; return; }   // مفيش بوت شغال: نجرب بكره
+    if (!st.chat) { c.bk = t; c.sum = day; c.wk = W.to; c.mo = M.m; c.nl = t; return; }   // مفيش بوت شغال: نجرب بكره
     if (needBk) {
       const j = await tgBackup(true, t);
       if (db !== d0) return;
@@ -6535,6 +6569,14 @@ async function tgAfterSync(now = new Date(nowS())) {
       if (db !== d0) return;
       if (j && j.ok) c.sum = day;
     }
+    /* ملخص الأسبوع والشهر والفواتير اللي متكتبتش: نفس الطريقة (مرة واحدة من كل الأجهزة بـ once، والفاضي مبيتبعتش) */
+    const one = async (k, v, S) => {
+      const j = S.empty ? {ok: true} : await tgCall('tgmsg', {text: S.text, once: {k, v}});
+      if (db === d0 && j && j.ok) c[k] = v;
+    };
+    if (needWk) await one('wk', W.to, rangeSum(W.f, W.to, `🗓 ملخص الأسبوع من ${dispDate(W.f)} لـ ${dispDate(W.to)}`, 'آخر الأسبوع', true));
+    if (needMo && db === d0) await one('mo', M.m, rangeSum(M.f, M.to, `📅 ملخص شهر ${AR_MONTHS[+M.m.slice(5) - 1]} ${M.m.slice(0, 4)}`, 'آخر الشهر', true));
+    if (needNl && db === d0) await one('nl', t, nlSum());
   } finally { tgBusy = false; if (db === d0) flushSave(); }
 }
 /* تنبيه واحد لكل سبب كل كام ساعة بالكتير */
@@ -6592,7 +6634,7 @@ function renderMktSettings() {
       <div class="krow" style="grid-template-columns:1fr auto"><textarea class="inp" id="tgTok" rows="2" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:var(--f2);min-height:54px;resize:none" placeholder="الصق توكن البوت هنا"></textarea><button class="btn gold" id="tgSave" type="button" style="width:auto;padding:0 14px">حفظ التوكن</button></div>
       <button class="btn line sm" id="tgTest" type="button" style="margin-top:8px">جرّب التنبيه</button>
       <div class="fld" id="tgMine" style="margin-top:12px"><label>يوصلك كمان من الحسابات (على نفس البوت، وشريكك مبيشوفش منه حاجة)</label>
-        ${[['bk', '💾 نسخة احتياطية كل يوم (متقفلة بكلمة السر)'], ['sum', '📊 ملخص اليوم بعد 8 بالليل (أو الصبح لو متبعتش)'], ['al', '⚠️ تنبيه لو المزامنة وقفت أو حصل تعارض']].map(([k, n]) => `<div class="chkrow"><input type="checkbox" id="tgo_${k}" data-tgo="${k}" ${tgOpts()[k] ? 'checked' : ''}><label for="tgo_${k}">${n}</label></div>`).join('')}
+        ${[['bk', '💾 نسخة احتياطية كل يوم (متقفلة بكلمة السر)'], ['sum', '📊 ملخص اليوم بعد 8 بالليل (أو الصبح لو متبعتش)'], ['wk', '📅 ملخص الأسبوع الخميس 8 بالليل (من الجمعة للخميس)'], ['mo', '📅 ملخص الشهر آخر يوم فيه 8 بالليل'], ['nl', '📝 كل يوم الصبح: الفواتير اللي بنودها لسه متكتبتش والوارد المستني'], ['al', '⚠️ تنبيه لو المزامنة وقفت أو حصل تعارض']].map(([k, n]) => `<div class="chkrow"><input type="checkbox" id="tgo_${k}" data-tgo="${k}" ${tgOpts()[k] ? 'checked' : ''}><label for="tgo_${k}">${n}</label></div>`).join('')}
         <div class="g2" style="margin-top:6px"><button class="btn line sm" id="tgSumNow" type="button">ابعت ملخص النهارده</button><button class="btn line sm" id="tgBkNow" type="button">ابعت نسخة دلوقتي</button></div></div>
       <p class="hint">التوكن بيتحفظ جوه شيت السوق بس (مش في البرنامج ولا على الجهاز). شريكك ملوش دعوة بتليجرام.</p>
       <details class="fld" style="margin-top:8px"><summary style="font-weight:700;color:var(--sub);cursor:pointer">لينك شيت السوق</summary>

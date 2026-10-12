@@ -779,11 +779,13 @@ function homeMoves(V, a, z) {
   });
   return out.sort((p, q) => q.at - p.at);
 }
-/* نفس تقسيم خزنة الحسابات بالظبط (cashGroup هناك): تحويلات عملاء السوق سطر لوحده في حركتي، وفي حركة السوق التحصيل كامل وقصاده "اتحوّلت لك"،
-   والشركاء والمساهمين سطور لوحدها. أي نوع مفيهوش حركة في الفترة مبيظهرش */
+/* نفس تقسيم خزنة الحسابات بالظبط (cashGroup هناك): كل كارت = صفحة صاحبه في الدفتر الورق، بالأسامي. حركة السوق: تحصيل عملاء السوق كامل
+   (سطر لكل عميل في اليوم وتحته التقسيمة) وقصاده "تحويل لمصطفى"، ومصروفاته ودفعاته "من أحمد". حركتي: "عملاء السوق" = اللي وصلني بس وتحته إجمالي الدفعة.
+   الشركاء والمساهمين سطور لوحدها. أي نوع مفيهوش حركة في الفترة مبيظهرش، وكارت السوق كله مبيظهرش لو مفيهوش حركة */
+const MK_ME = 'مصطفى', MK_PN = 'أحمد';
 const CG = {
-  col: ['💵 تحصيل من العملاء', 'in'], mkcol: ['📲 تحويلات عملاء السوق', 'in'], cs: ['💰 بيع كاش', 'in'], inc: ['إيرادات أخرى', 'in'], ivcap: ['📦 إيداع مساهمين', 'in'], fromMk: ['🤝 استلام من الشريك', 'in'], toMkIn: ['🤝 استلام منك', 'in'], trIn: ['⇄ تحويل من خزنة تانية', 'in'],
-  spay: ['💸 دفعات للموردين', 'out'], exp: ['مصروفات', 'out'], mkexp: ['⛽ مصاريف السوق', 'out'], part: ['👥 الشركاء', 'out'], ivdraw: ['📦 سحب مساهمين', 'out'], toMk: ['🤝 تسليم للشريك', 'out'], hand: ['🤝 سلّمها لك', 'out'], mkTr: ['📲 اتحوّلت لك', 'out'], trOut: ['⇄ تحويل لخزنة تانية', 'out']
+  col: ['💵 تحصيل من العملاء', 'in'], mkcol: ['🏪 عملاء السوق', 'in'], cs: ['💰 بيع كاش', 'in'], inc: ['إيرادات أخرى', 'in'], ivcap: ['📦 إيداع مساهمين', 'in'], fromMk: ['🤝 استلام من ' + MK_PN, 'in'], toMkIn: ['🤝 استلم من ' + MK_ME, 'in'], trIn: ['⇄ تحويل من خزنة تانية', 'in'],
+  spay: ['💸 دفعات للموردين', 'out'], mkspay: ['💸 دفعات موردين من ' + MK_PN, 'out'], exp: ['مصروفاتي', 'out'], mkexp: ['⛽ مصروفات من ' + MK_PN, 'out'], part: ['👥 الشركاء', 'out'], ivdraw: ['📦 سحب مساهمين', 'out'], toMk: ['🤝 تسليم ل' + MK_PN, 'out'], hand: ['🤝 سلّم ل' + MK_ME + ' كاش', 'out'], mkTr: ['📲 تحويل ل' + MK_ME, 'out'], trOut: ['⇄ تحويل لخزنة تانية', 'out']
 };
 const CG_ORD = Object.keys(CG);
 /* تسوية الجرد مش مقبوضات ولا مدفوعات (بطلب صاحب المشروع): بتظبط الرصيد بس ومش بتبان */
@@ -800,23 +802,27 @@ function homeGroup(m, side) {
     if (side === 'mkt') return fm ? 'hand' : 'toMkIn';
     return fm ? 'fromMk' : tm ? 'toMk' : m.sign > 0 ? 'trIn' : m.sign < 0 ? 'trOut' : '';
   }
-  if (t.party || t.cat === 'c_inc0' || t.cat === 'c_payout') return t.type !== 'inc' ? 'spay' : side === 'me' && isMkCust(t) ? 'mkcol' : 'col';
+  if (t.party || t.cat === 'c_inc0' || t.cat === 'c_payout') return t.type !== 'inc' ? (side === 'mkt' ? 'mkspay' : 'spay') : side === 'me' && isMkCust(t) ? 'mkcol' : 'col';
   if (t.iv || t.cat === 'c_ivdraw' || t.cat === 'c_ivcap') return t.type === 'inc' ? 'ivcap' : 'ivdraw';
   if (t.type === 'exp' && (t.pt || t.cat === 'c_psal' || t.cat === 'c_pdraw')) return 'part';
   if (t.type === 'inc') return side === 'mkt' && t.cat === 'c_inc1' ? 'cs' : 'inc';
   return side === 'mkt' ? 'mkexp' : 'exp';
 }
-/* حركة السوق: تحويلات عملاء السوق اللي نزلت في خزني بتتحسب في تحصيل السوق، ونسخة منها "اتحوّلت لك" في الطلع */
+/* حركة السوق: تحويلات عملاء السوق اللي نزلت في خزني بتتحسب في تحصيل السوق، ونسخة منها "تحويل لمصطفى" في الطلع */
 const mkXfers = (a, z) => homeMoves('', a, z).filter(m => m.r.party && m.r.type === 'inc' && isMkCust(m.r))
   .flatMap(m => [Object.assign({}, m, {sign: 1}), Object.assign({}, m, {sign: -1, mkOut: true})]);
-/* تحصيل السوق: دفعات نفس العميل في نفس اليوم (كاش وتحويل) = سطر واحد بالمبلغ كله */
-function mkColMerge(arr) {
-  const by = new Map();
+/* دفعات نفس عميل السوق في نفس اليوم = سطر واحد. في السوق: المبلغ كله وتحته التقسيمة. في حركتي: اللي وصلني وتحته إجمالي الدفعة */
+function mkColMerge(arr, side) {
+  const by = new Map(), tot = new Map();
   arr.forEach(m => { const k = m.r.party + '|' + isoOf(m.r.ts); (by.get(k) || by.set(k, []).get(k)).push(m); });
-  const how = m => isMkv(m.r.vault) ? 'كاش' : 'تحويل';
-  return [...by.values()].map(L => L.length === 1 ? Object.assign(L[0], {what: how(L[0])})
-    : Object.assign({}, L[0], {amt: r2(L.reduce((n, m) => n + m.amt, 0)), at: Math.max(...L.map(m => m.at)), parts: L, what: L.map(m => how(m) + ' ' + fmt(m.amt)).join(' + ')}))
-    .sort((p, q) => q.at - p.at);
+  if (side === 'me') liveTx().forEach(t => { if (t.party && t.type === 'inc' && t.vault) { const k = t.party + '|' + isoOf(t.ts); if (by.has(k)) tot.set(k, r2((tot.get(k) || 0) + (+t.amt || 0))); } });
+  return [...by.entries()].map(([k, L]) => {
+    const amt = r2(L.reduce((n, m) => n + m.amt, 0)), name = txWho(L[0].r).who;
+    const sum = f => r2(L.filter(f).reduce((n, m) => n + m.amt, 0)), tr = sum(m => !isMkv(m.r.vault)), ca = sum(m => isMkv(m.r.vault));
+    const what = side === 'me' ? 'إجمالي الدفعة ' + fmt(Math.max(tot.get(k) || 0, amt))
+      : [tr ? fmt(tr) + ' تحويل ل' + MK_ME : '', ca ? fmt(ca) + ' عهدة مع ' + MK_PN : ''].filter(Boolean).join(' و ');
+    return Object.assign({}, L[0], {amt, at: Math.max(...L.map(m => m.at)), who: side === 'me' ? name + ' حوّلك' : name, what, parts: L.length > 1 ? L : null});
+  }).sort((p, q) => q.at - p.at);
 }
 /* اسم الفترة الصغير جنب عنوان الكارت */
 function homePerTxt() {
@@ -836,7 +842,8 @@ function lastHand() {
 function kstHtml(key, title, side, mv, cls) {
   const by = {}, sum = a => r2(a.reduce((n, m) => n + m.amt, 0));
   mv.forEach(m => { const g = homeGroup(m, side); if (g) (by[g] = by[g] || []).push(m); });
-  if (side === 'mkt' && by.col) by.col = mkColMerge(by.col);
+  if (side === 'mkt' && by.col) by.col = mkColMerge(by.col, side);
+  if (side === 'me' && by.mkcol) by.mkcol = mkColMerge(by.mkcol, side);
   const ks = CG_ORD.filter(k => by[k]), tot = t => r2(ks.filter(k => CG[k][1] === t).reduce((n, k) => n + sum(by[k]), 0));
   return {by, html: `<section class="kst ${cls}" id="kst-${key}"><div class="ksh">${title}<small>${esc(homePerTxt())}</small></div>
     <div class="kio"><div class="kin"><span>⬇ دخل</span><b class="n" data-ck="h:${key}:in" data-cnt="${tot('in')}">${fmt(tot('in'))}</b></div><div class="kout"><span>⬆ طلع</span><b class="n" data-ck="h:${key}:out" data-cnt="${tot('out')}">${fmt(tot('out'))}</b></div></div>
@@ -904,8 +911,9 @@ function renderHome() {
   const meTitle = V ? `<span>🏭 حركة ${esc(vName(V))} <a class="kclr" id="kAll">✕ كل خزني</a></span>` : '<span>🏭 حركتي</span>';
   try { accSec = new Map((JSON.parse(localStorage.getItem('fo_acc_names')) || []).map(n => [n.id, n.sec])); } catch (e) {}
   const me = kstHtml('me', meTitle, 'me', homeMoves(V, a, z).map(m => Object.assign(m, {mk: isMkRec(m.r)})), 'me');
-  const mk = hasM ? kstHtml('mk', '<span>🏪 حركة السوق</span>', 'mkt', homeMoves(MKV, a, z).concat(mkXfers(a, z)), 'mk') : null;
-  $('#hTables').className = 'kss' + (hasM ? ' two' : '');
+  const mk0 = hasM ? kstHtml('mk', '<span>🏪 حركة السوق</span>', 'mkt', homeMoves(MKV, a, z).concat(mkXfers(a, z)), 'mk') : null;
+  const mk = mk0 && Object.keys(mk0.by).length ? mk0 : null;   // مفيش حركة سوق في الفترة = الكارت مبيظهرش
+  $('#hTables').className = 'kss' + (mk ? ' two' : '');
   $('#hTables').innerHTML = me.html + (mk ? mk.html : '');
   const tap = (el, f) => { el.onclick = f; el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); f(ev); } }; };
   tap($('#kMe'), () => { homeOpenV = !homeOpenV; if (!homeOpenV) home.vault = ''; renderHome(); });

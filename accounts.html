@@ -3756,12 +3756,14 @@ function cashStep(n) {
    الدفتر (cash.html) بنفس الشكل والكلاسات (.kb/.kst في lib/ui.css) */
 let cashSide = 'me';   // قديم: النصين بقوا ظاهرين مع بعض
 let cashOpenV = false;
-/* بطلب صاحب المشروع (علشان النقل للدفتر الورق يبقى سهل): عملاء السوق شريكه بس اللي بيحصّل منهم، فالتحويل اللي نزل في خزنته من عميل سوق
-   بيبان في حركتي سطر لوحده (mkcol)، وفي حركة السوق التحصيل كامل (كاش + تحويل، دفعة واحدة لكل عميل في اليوم) وقصاده "اتحوّلت لك" في الطلع (mkTr).
-   والشركاء والمساهمين سطور لوحدها مش جوه المصروفات. أي نوع مفيهوش حركة في الفترة مبيظهرش */
+/* بطلب صاحب المشروع (علشان النقل للدفتر الورق يبقى سهل): كل كارت = صفحة صاحبه في الدفتر، بالأسامي.
+   حركة السوق (أحمد): تحصيل عملاء السوق كامل، سطر لكل عميل في اليوم وتحته "5 تحويل لمصطفى و 5 عهدة مع أحمد"، وقصاده في الطلع "تحويل لمصطفى"،
+   ومصروفاته ودفعاته للموردين "من أحمد". حركتي: "عملاء السوق" = الجزء اللي وصلني بس ("كريم حوّلك" وتحته إجمالي الدفعة)، ومصروفاتي ودفعاتي.
+   الشركاء والمساهمين سطور لوحدها. أي نوع مفيهوش حركة في الفترة مبيظهرش، وكارت السوق كله مبيظهرش لو مفيهوش حركة */
+const MK_ME = 'مصطفى', MK_PN = 'أحمد';
 const CG = {
-  col: ['💵 تحصيل من العملاء', 'in'], mkcol: ['📲 تحويلات عملاء السوق', 'in'], cs: ['💰 بيع كاش', 'in'], inc: ['إيرادات أخرى', 'in'], ivcap: ['📦 إيداع مساهمين', 'in'], fromMk: ['🤝 استلام من الشريك', 'in'], toMkIn: ['🤝 استلام منك', 'in'], trIn: ['⇄ تحويل من خزنة تانية', 'in'],
-  spay: ['💸 دفعات للموردين', 'out'], exp: ['مصروفات', 'out'], mkexp: ['⛽ مصاريف السوق', 'out'], part: ['👥 الشركاء', 'out'], ivdraw: ['📦 سحب مساهمين', 'out'], toMk: ['🤝 تسليم للشريك', 'out'], hand: ['🤝 سلّمها لك', 'out'], mkTr: ['📲 اتحوّلت لك', 'out'], trOut: ['⇄ تحويل لخزنة تانية', 'out']
+  col: ['💵 تحصيل من العملاء', 'in'], mkcol: ['🏪 عملاء السوق', 'in'], cs: ['💰 بيع كاش', 'in'], inc: ['إيرادات أخرى', 'in'], ivcap: ['📦 إيداع مساهمين', 'in'], fromMk: ['🤝 استلام من ' + MK_PN, 'in'], toMkIn: ['🤝 استلم من ' + MK_ME, 'in'], trIn: ['⇄ تحويل من خزنة تانية', 'in'],
+  spay: ['💸 دفعات للموردين', 'out'], mkspay: ['💸 دفعات موردين من ' + MK_PN, 'out'], exp: ['مصروفاتي', 'out'], mkexp: ['⛽ مصروفات من ' + MK_PN, 'out'], part: ['👥 الشركاء', 'out'], ivdraw: ['📦 سحب مساهمين', 'out'], toMk: ['🤝 تسليم ل' + MK_PN, 'out'], hand: ['🤝 سلّم ل' + MK_ME + ' كاش', 'out'], mkTr: ['📲 تحويل ل' + MK_ME, 'out'], trOut: ['⇄ تحويل لخزنة تانية', 'out']
 };
 const CG_ORD = Object.keys(CG);
 /* تسوية الجرد مش مقبوضات ولا مدفوعات ولا مصروف (بطلب صاحب المشروع): بتظبط رصيد الخزنة على الواقع بس، ومش بتبان في الخزنة ولا الأرباح */
@@ -3771,7 +3773,7 @@ const isMkCust = e => { const p = P.get(e.party); return !!p && p.sec === 'mkt';
 function cashGroup(m, side) {
   const r = m.r;
   if (m.mkOut) return 'mkTr';
-  if (m.src === 'pay') return r.kind !== 'pay' ? 'spay' : side === 'me' && isMkCust(r) ? 'mkcol' : 'col';
+  if (m.src === 'pay') return r.kind !== 'pay' ? (side === 'mkt' ? 'mkspay' : 'spay') : side === 'me' && isMkCust(r) ? 'mkcol' : 'col';
   if (ADJ_CATS.has(r.cat)) return '';
   if (r.type === 'tr') {
     const fromM = isMkv(r.vault), toM = isMkv(r.to);
@@ -3783,17 +3785,21 @@ function cashGroup(m, side) {
   if (r.type === 'inc') return side === 'mkt' && r.cat === 'c_inc1' ? 'cs' : 'inc';
   return side === 'mkt' ? 'mkexp' : 'exp';
 }
-/* حركة السوق: تحويلات عملاء السوق اللي نزلت في خزني بتتحسب في تحصيل السوق، ونسخة منها "اتحوّلت لك" في الطلع */
+/* حركة السوق: تحويلات عملاء السوق اللي نزلت في خزني بتتحسب في تحصيل السوق، ونسخة منها "تحويل لمصطفى" في الطلع */
 const mkXfers = (from, to) => vaultMoves('', from, to).filter(m => m.src === 'pay' && m.r.kind === 'pay' && isMkCust(m.r))
   .flatMap(m => [Object.assign({}, m, {sign: 1}), Object.assign({}, m, {sign: -1, mkOut: true})]);
-/* تحصيل السوق: دفعات نفس العميل في نفس اليوم (كاش وتحويل) = سطر واحد بالمبلغ كله */
-function mkColMerge(arr) {
-  const by = new Map();
+/* دفعات نفس عميل السوق في نفس اليوم = سطر واحد. في السوق: المبلغ كله وتحته التقسيمة. في حركتي: اللي وصلني وتحته إجمالي الدفعة */
+function mkColMerge(arr, side) {
+  const by = new Map(), tot = new Map();
   arr.forEach(m => { const k = m.r.party + '|' + m.date; (by.get(k) || by.set(k, []).get(k)).push(m); });
-  const how = m => m.r.vault === MKV ? 'كاش' : 'تحويل';
-  return [...by.values()].map(L => L.length === 1 ? Object.assign(L[0], {what: how(L[0])})
-    : Object.assign({}, L[0], {amt: L.reduce((n, m) => n + m.amt, 0), at: Math.max(...L.map(m => m.at)), parts: L, what: L.map(m => how(m) + ' ' + fmtP(m.amt)).join(' + ')}))
-    .sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at);
+  if (side === 'me') db.entries.forEach(e => { if (!e.del && e.kind === 'pay' && e.vault) { const k = e.party + '|' + vdate(e); if (by.has(k)) tot.set(k, (tot.get(k) || 0) + e.amt); } });
+  return [...by.entries()].map(([k, L]) => {
+    const amt = L.reduce((n, m) => n + m.amt, 0), p = P.get(L[0].r.party), name = p ? p.name : '؟';
+    const sum = f => L.filter(f).reduce((n, m) => n + m.amt, 0), tr = sum(m => !isMkv(m.r.vault)), ca = sum(m => isMkv(m.r.vault));
+    const what = side === 'me' ? 'إجمالي الدفعة ' + fmtP(Math.max(tot.get(k) || 0, amt))
+      : [tr ? fmtP(tr) + ' تحويل ل' + MK_ME : '', ca ? fmtP(ca) + ' عهدة مع ' + MK_PN : ''].filter(Boolean).join(' و ');
+    return Object.assign({}, L[0], {amt, at: Math.max(...L.map(m => m.at)), who: side === 'me' ? name + ' حوّلك' : name, what, parts: L.length > 1 ? L : null});
+  }).sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at);
 }
 const isMkRec = r => /^(e|t)_mk_/.test(r.id || '');
 /* جدول نوع واحد (الشركاء): الاسم كبير والتفصيل صغير تحته، والوقت (في اليوم) أو التاريخ */
@@ -3823,7 +3829,8 @@ function lastHand() {
 function kstHtml(key, title, side, mv, cls) {
   const by = {}, sum = a => a.reduce((n, m) => n + m.amt, 0);
   mv.forEach(m => { m.side = side; const g = cashGroup(m, side); if (g) (by[g] = by[g] || []).push(m); });
-  if (side === 'mkt' && by.col) by.col = mkColMerge(by.col);
+  if (side === 'mkt' && by.col) by.col = mkColMerge(by.col, side);
+  if (side === 'me' && by.mkcol) by.mkcol = mkColMerge(by.mkcol, side);
   const ks = CG_ORD.filter(k => by[k]), tot = t => ks.filter(k => CG[k][1] === t).reduce((n, k) => n + sum(by[k]), 0);
   return {by, html: `<section class="kst ${cls}" id="kst-${key}"><div class="ksh">${title}<small>${esc(cashPerTxt())}</small></div>
     <div class="kio"><div class="kin"><span>⬇ دخل</span><b class="n" data-ck="c:${key}:in" data-cnt="${tot('in')}">${fmtP(tot('in'))}</b></div><div class="kout"><span>⬆ طلع</span><b class="n" data-ck="c:${key}:out" data-cnt="${tot('out')}">${fmtP(tot('out'))}</b></div></div>
@@ -3858,7 +3865,8 @@ function renderCash() {
   const [from, to] = cashRange(), t = todayISO(), nV = vs.length;
   const meTitle = cashVault ? `<span>🏭 حركة ${esc(vName(cashVault))} <a class="kclr" id="kAll">✕ كل خزني</a></span>` : '<span>🏭 حركتي</span>';
   const me = kstHtml('me', meTitle, 'me', vaultMoves(cashVault, from, to).map(m => Object.assign(m, {mk: isMkRec(m.r)})), 'me');
-  const mk = hasM ? kstHtml('mk', '<span>🏪 حركة السوق</span>', 'mkt', vaultMoves(MKV, from, to).concat(mkXfers(from, to)), 'mk') : null;
+  const mk0 = hasM ? kstHtml('mk', '<span>🏪 حركة السوق</span>', 'mkt', vaultMoves(MKV, from, to).concat(mkXfers(from, to)), 'mk') : null;
+  const mk = mk0 && Object.keys(mk0.by).length ? mk0 : null;   // مفيش حركة سوق في الفترة = الكارت مبيظهرش
   const tiles = vs.map(v => { const b = vaultBal(v.id); return `<div class="kv${cashVault === v.id ? ' on' : ''}${b < 0 ? ' neg' : ''}" data-v="${esc(v.id)}" role="button" tabindex="0"><span>${esc(v.name)}</span><b class="n" data-ck="c:v:${esc(v.id)}" data-cnt="${b}">${fmtP(b)}</b>${b < 0 ? '<a class="kfix">⚠ راجعها</a>' : ''}</div>`; }).join('');
   const last = hasM ? lastHand() : '';
   pg.innerHTML = `
@@ -3888,7 +3896,7 @@ function renderCash() {
         : cashMode === 'year' ? `<input class="inp num" id="cYear" inputmode="numeric" value="${cashYear || t.slice(0, 4)}">`
         : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div><label class="cyr">أو سنة كاملة <input class="inp num" id="cYr" inputmode="numeric" placeholder="${t.slice(0, 4)}" value="${from.slice(5) === '01-01' && to === from.slice(0, 4) + '-12-31' ? from.slice(0, 4) : ''}"></label>`}</div>
     </div>
-    <div class="kss${hasM ? ' two' : ''}">${me.html}${mk ? mk.html : ''}</div>
+    <div class="kss${mk ? ' two' : ''}">${me.html}${mk ? mk.html : ''}</div>
     `;
   const tap = (el, f) => { el.onclick = f; el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); f(ev); } }; };
   tap($('#kMe'), () => { cashOpenV = !cashOpenV; if (!cashOpenV) cashVault = ''; renderCash(); });
@@ -3899,7 +3907,7 @@ function renderCash() {
   $$('#p-cash .kfix').forEach(a => a.onclick = ev => { ev.stopPropagation(); openingModal(); });
   if ($('#kAll')) $('#kAll').onclick = ev => { ev.stopPropagation(); cashVault = ''; renderCash(); };
   const open = m => {
-    if (m.parts) return cashTypeSheet('حركة السوق', 'col', m.parts, open);   // تحصيل مجمّع من عميل سوق: أجزاءه (كاش وتحويل) وكل جزء بيتفتح لوحده
+    if (m.parts) return m.side === 'mkt' ? cashTypeSheet('حركة السوق', 'col', m.parts, open) : cashTypeSheet('حركتي', 'mkcol', m.parts, open);   // دفعة مجمّعة من عميل سوق: أجزاءها وكل جزء بيتفتح لوحده
     const op = isMkRec(m.r) && mkDb().ops[m.r.id.slice(5)];   // حركة جاية من الشريك: نافذتها فيها "دي دفعة لمورد" للمصروف
     if (op && MK_T[op.t] && (m.side === 'mkt' || op.t === 'exp')) return mkOpMenu(op);
     if (m.src === 'tx') m.r.pt ? partnerTxModal(m.r) : m.r.iv && ivGet(m.r.iv) ? ivTxModal(m.r) : txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }

@@ -650,16 +650,16 @@ const T0 = Date.now();
         card({id: 'x2', type: 'exp', amt: 10, ts: now, vault: 'v_main', cat: 'c_mkexp', note: 'تروسيكل', upd: 1, sy: 1}).map(x => x.includes('مصاريف السوق') || x)];
     }), [['عميل تجربة اسم', `${await Saf.evaluate(() => dispTime(Date.now()))} · تحصيل من عميل · كاش · باقي الحساب`], ['تروسيكل', true]]);
     eq('قايمة الحركات متقسمة بالأيام (عنوان لكل يوم بصافيه)', await Saf.evaluate(() => { const d = document.createElement('div'), t0 = Date.now(); d.innerHTML = txDays([{id: 'a', type: 'inc', amt: 100, ts: t0 - 86400000, vault: 'v_main', cat: 'c_inc0', note: 'أ'}, {id: 'b', type: 'exp', amt: 30, ts: t0 - 86400000, vault: 'v_main', cat: '', note: 'ب'}, {id: 'c', type: 'exp', amt: 5, ts: t0, vault: 'v_main', cat: '', note: 'ج'}]); return [...d.querySelectorAll('.dayh b')].map(b => b.textContent); }), ['+70', '-5']);
-    eq('الدفتر: نفس تقسيم خزنة الحسابات (تحويل عميل السوق لوحده، تحصيل السوق كامل وقصاده "اتحوّلت لك"، الشركاء والمساهمين لوحدهم)', await Saf.evaluate(() => {
+    eq('الدفتر: نفس تقسيم خزنة الحسابات (عملاء السوق في حركتي، تحصيل السوق كامل وتحته التقسيمة وقصاده "تحويل لمصطفى"، الشركاء والمساهمين لوحدهم)', await Saf.evaluate(() => {
       const now = Date.now(), mv = (r, sign) => ({r, sign, amt: r.amt, who: 'س', what: '', at: r.ts});
-      const cash = {id: 'e_mk_1', type: 'inc', amt: 1000, ts: now, vault: 'v_mkt', cat: 'c_inc0', party: 'p_mk'}, xf = {id: 'e_mk_2', type: 'inc', amt: 500, ts: now, vault: 'v_main', cat: 'c_inc0', party: 'p_mk'};
+      const cash = {id: 'e_mk_1', type: 'inc', amt: 1000, ts: now, vault: 'v_mkt', cat: 'c_inc0', party: 'p_mk', note: 'عميل تجربة'}, xf = {id: 'e_mk_2', type: 'inc', amt: 500, ts: now, vault: 'v_main', cat: 'c_inc0', party: 'p_mk', note: 'عميل تجربة'};
       const site = {id: 'e_3', type: 'inc', amt: 70, ts: now, vault: 'v_main', cat: 'c_inc0', party: 'p_site'}, pt = {id: 't1', type: 'exp', amt: 40, ts: now, vault: 'v_main', cat: 'c_pdraw', pt: 'x'}, iv = {id: 't2', type: 'inc', amt: 30, ts: now, vault: 'v_main', cat: 'c_ivcap', iv: 'y'};
       const sec0 = accSec; accSec = new Map([['p_mk', 'mkt'], ['p_site', 'site']]);
       const me = kstHtml('me', '', 'me', [mv(xf, 1), mv(site, 1), mv(pt, -1), mv(iv, 1)], 'me');
       const mk = kstHtml('mk', '', 'mkt', [mv(cash, 1), mv(xf, 1), Object.assign(mv(xf, -1), {mkOut: true})], 'mk');
       accSec = new Map(); const fb = [homeGroup(mv(xf, 1), 'me'), homeGroup(mv(site, 1), 'me')]; accSec = sec0;
-      return [Object.keys(me.by).join(','), Object.keys(mk.by).join(','), mk.by.col.length, mk.by.col[0].amt, mk.by.col[0].what, mk.by.mkTr[0].amt, me.html.includes('إيداع مساهمين'), mk.html.includes('سحب'), fb.join(',')];
-    }), ['mkcol,col,part,ivcap', 'col,mkTr', 1, 1500, 'كاش 1,000 + تحويل 500', 500, true, false, 'mkcol,col']);
+      return [Object.keys(me.by).join(','), Object.keys(mk.by).join(','), mk.by.col.length, mk.by.col[0].amt, mk.by.col[0].who, mk.by.col[0].what, mk.by.mkTr[0].amt, me.by.mkcol[0].who, me.html.includes('إيداع مساهمين'), mk.html.includes('سحب'), mk.html.includes('تحويل لمصطفى'), fb.join(',')];
+    }), ['mkcol,col,part,ivcap', 'col,mkTr', 1, 1500, 'عميل تجربة', '500 تحويل لمصطفى و 1,000 عهدة مع أحمد', 500, 'عميل تجربة حوّلك', true, false, true, 'mkcol,col']);
     eq('الحسابات بتبعت البنود الثابتة (دفعات الموردين) لشيت الدفتر', JSON.stringify(sheets.cash.sheets).includes('c_payout'), true);
     /* القفل بالرقم السري */
     await Saf.evaluate(() => go('set')); await Saf.settle(200);
@@ -1274,7 +1274,7 @@ const T0 = Date.now();
       const sumOk = k => { const rows = t => [...$$('#kst-' + k + ' .kty.kt' + t + ' .n')].reduce((n, e) => n + Math.round(parseFloat(e.textContent.replace(/,/g, '')) * 100), 0);
         return +$('#kst-' + k + ' .kin .n').dataset.cnt === rows('in') && +$('#kst-' + k + ' .kout .n').dataset.cnt === rows('out'); };
       const me = tx('me'), mk = tx('mk');
-      const r = [!!$('#kst-mk'), $('#p-cash .kvs').hidden, me.some(x => x.includes('استلام من الشريك')), !me.some(x => x.includes('مصاريف السوق')), mk.some(x => x.includes('تحصيل من العملاء')), mk.some(x => x.includes('دفعات للموردين')), mk.some(x => x.includes('مصاريف السوق')), mk.some(x => x.includes('سلّمها لك')), sumOk('me'), sumOk('mk'), !/رصيد أول|رصيد آخر/.test($('#p-cash .kss').textContent)];
+      const r = [!!$('#kst-mk'), $('#p-cash .kvs').hidden, me.some(x => x.includes('استلام من أحمد')), !me.some(x => x.includes('مصروفات من')), mk.some(x => x.includes('تحصيل من العملاء')), mk.some(x => x.includes('دفعات موردين من أحمد')), mk.some(x => x.includes('مصروفات من أحمد')), mk.some(x => x.includes('سلّم لمصطفى كاش')), sumOk('me'), sumOk('mk'), !/رصيد أول|رصيد آخر/.test($('#p-cash .kss').textContent)];
       const ty = $('#kst-me .kty'); ty.click();
       r.push($('#mask').classList.contains('on') && $$('#modal .kit').length === +ty.querySelector('em').textContent); closeModal();
       $('#kMe').click(); r.push($('#p-cash .kvs').hidden);
@@ -1287,7 +1287,7 @@ const T0 = Date.now();
       db.txs.push(t); IDX.tx.set(t.id, t); cashVault = ''; cashMode = 'day'; cashDay = ''; go('cash'); renderCash();
       const r = [vaultBal('') === b0 - 12300, profitOf(y0, todayISO()).exp === p0, !$('#p-cash .kss').textContent.includes('تسوية'), !$('#p-cash .kss').textContent.includes('جرد تجربة')];
       t.del = true; touch(t); saveDB(); go('mkt'); return r; }), [true, true, true, true]);
-    eq('الخزنة: تحويل عميل السوق سطر لوحده في حركتي، وفي حركة السوق التحصيل كامل (كاش + تحويل سطر واحد) وقصاده "اتحوّلت لك"، والشركاء سطر لوحده، واللي مفيهوش حركة مبيظهرش', await A.evaluate(() => {
+    eq('الخزنة: "عملاء السوق" في حركتي (كريم حوّلك وتحته إجمالي الدفعة)، وفي حركة السوق التحصيل كامل سطر لكل عميل وتحته "تحويل لمصطفى و عهدة مع أحمد" وقصاده "تحويل لمصطفى"، والشركاء سطر لوحده، واللي مفيهوش حركة مبيظهرش (حتى كارت السوق)', await A.evaluate(() => {
       const d = todayISO(), now = nowS(), pid = mkEnsureParty('mkt', {newName: 'عميل سوق تجربة التحويل'});
       const e1 = addEntry({party: pid, kind: 'pay', amt: 100000, date: d, vault: 'v_mkt', method: 'نقدي', note: 'حركة السوق'}), e2 = addEntry({party: pid, kind: 'pay', amt: 50000, date: d, vault: 'v_main', method: 'تحويل', note: 'حركة السوق — إنستا'});
       [e1, e2].forEach(applyAmounts);
@@ -1296,13 +1296,15 @@ const T0 = Date.now();
       const me = kstHtml('me', '', 'me', vaultMoves('', d, d), 'me'), mk = kstHtml('mk', '', 'mkt', vaultMoves('v_mkt', d, d).concat(mkXfers(d, d)), 'mk');
       const g = (mk.by.col || []).find(m => m.parts && m.r.party === pid);
       cashMode = 'day'; cashDay = ''; cashVault = ''; go('cash'); renderCash();
-      const r = [(me.by.mkcol || []).some(m => m.r === e2), !(me.by.col || []).some(m => m.r === e2), !!g && g.amt, g && g.what, (mk.by.mkTr || []).some(m => m.r === e2 && m.amt === 50000),
+      const mc = (me.by.mkcol || []).find(m => m.r === e2);
+      const r = [!!mc && [mc.who, mc.what, mc.amt].join('|'), !(me.by.col || []).some(m => m.r === e2), !!g && g.amt, g && g.what, (mk.by.mkTr || []).some(m => m.r === e2 && m.amt === 50000),
         (me.by.part || []).some(m => m.r === t), !(me.by.exp || []).some(m => m.r === t), !!$('#kst-me [data-k="me:mkcol"]'), !!$('#kst-mk [data-k="mk:mkTr"]'), $$('#kst-me .kty').length === Object.keys(me.by).length && Object.values(me.by).every(a => a.length) && !!$('#kst-me [data-k="me:ivcap"]') === !!me.by.ivcap];
       $('#kst-mk [data-k="mk:col"]').click();
       const kit = [...$$('#modal .kit')].find(x => x.textContent.includes('عميل سوق تجربة التحويل')); kit.click();
       r.push($$('#modal .kit').length); closeModal();
+      cashDay = '2001-01-01'; renderCash(); r.push(!$('#kst-mk'), $('#p-cash .kss').className); cashDay = '';
       [e1, e2, t].forEach(x => { x.del = true; touch(x); }); P.get(pid).del = true; touch(P.get(pid)); saveDB(); go('mkt'); return r; }),
-      [true, true, 150000, 'كاش 1,000 + تحويل 500', true, true, true, true, true, true, 2]);
+      ['عميل سوق تجربة التحويل حوّلك|إجمالي الدفعة 1,500|50000', true, 150000, '500 تحويل لمصطفى و 1,000 عهدة مع أحمد', true, true, true, true, true, true, 2, true, 'kss']);
     /* الشريك كتب مصروف وهو دفعة لمورد: مصطفى بيحوّلها من عنده، وبيرجّعها لو غلط */
     const cv0 = await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(o => o.t === 'exp'); return {id: o.id, mk: vaultBal('v_mkt'), exp: profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp}; });
     await A.evaluate(() => { cashSide = 'mkt'; go('cash'); }); await A.settle(300);   // الصفحة بتفتح بعد تغيير العنوان (وبتقفل أي نافذة)
@@ -1310,7 +1312,7 @@ const T0 = Date.now();
     await A.click('#omS'); await A.settle(150); await A.fill('#spQ', 'مورد تجربة'); await A.settle(100); await A.click('#spL .pt'); await A.settle(300);
     eq('تحويل مصروف الشريك لدفعة مورد: المصروف اتشال، ودفعة مورد من خزنة السوق بنفس المبلغ، ورصيد السوق زي ما هو، والأرباح نزل منها', await A.evaluate(c => {
       const o = db.mkt.ops[c.id], t = IDX.tx.get('t_mk_' + c.id), e = E.get('e_mk_' + c.id);
-      return [t.del, e.kind, e.vault, e.amt, mkT(o), mkState(o), vaultBal('v_mkt') === c.mk, c.exp - profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp, $$('#kst-mk .kty .l').some(x => x.textContent.includes('مصاريف السوق'))]; }, cv0), [true, 'ppay', 'v_mkt', 25000, 'spay', 'done', true, 25000, false]);
+      return [t.del, e.kind, e.vault, e.amt, mkT(o), mkState(o), vaultBal('v_mkt') === c.mk, c.exp - profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp, $$('#kst-mk .kty .l').some(x => x.textContent.includes('مصروفات من'))]; }, cv0), [true, 'ppay', 'v_mkt', 25000, 'spay', 'done', true, 25000, false]);
     await A.evaluate(id => mkOpMenu(db.mkt.ops[id]), cv0.id); await A.settle(150); await A.click('#omE'); await A.settle(150); await A.click('#aeOk'); await A.settle(300);
     eq('"رجّعها مصروف" بترجّعها زي ما كانت', await A.evaluate(c => { const o = db.mkt.ops[c.id]; return [IDX.tx.get('t_mk_' + c.id).del, E.get('e_mk_' + c.id).del, mkT(o), mkState(o), vaultBal('v_mkt') === c.mk, profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp === c.exp]; }, cv0), [false, true, 'exp', 'done', true, true]);
     await A.evaluate(() => { cashSide = 'me'; go('mkt'); });

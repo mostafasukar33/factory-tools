@@ -1364,6 +1364,25 @@ body{font-size:var(--f3);line-height:1.6}
   .ldg.pft th:nth-child(5),.ldg.pft td:nth-child(5),.ldg.pft th:nth-child(6),.ldg.pft td:nth-child(6){display:none}
   .ldg.pft td.l{min-width:0}
 }
+/* شريط العملاء على الموبايل (بطلب صاحب المشروع): من غير خانة بحث كبيرة. زراير كبيرة ومتباعدة بالأيقونة والكلمة:
+   بحث | التقارير | الجرد | حساب جديد. العدسة بتفتح خانة الاسم، والترتيب زرار صغير فوق القايمة */
+#hTools,#bSearchAll,.srow .lb,.psort{display:none}
+@media (max-width:999.98px){
+  html body main .srow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  html body main .srow #hSearch,html body main .srow #hSort{display:none}
+  #hTools{display:contents}
+  html body main .srow #bSearch,html body main .srow #bNewParty,html body main .srow .hcash{flex:1 1 0;min-width:0;width:auto;height:auto;min-height:58px;margin:0!important;padding:6px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:12px;font-size:var(--f3);line-height:1;position:relative}
+  html body main .srow #bSearch,html body main .srow .hcash{background:var(--card);border:1px solid var(--line);color:var(--ink)}
+  html body main .srow #bSearch svg,html body main .srow .hcash i-c{color:var(--gold-d)}
+  html body main .srow .lb{display:block;font-size:var(--f1);font-weight:700;white-space:nowrap}
+  html body main .srow .hcash small{position:absolute;top:4px;inset-inline-start:6px;min-width:18px;height:18px;line-height:18px;border-radius:9px;background:var(--red);color:#fff!important;font-size:var(--f1)!important;padding:0 4px}
+  html body main .srow.open #hSearch{display:block;order:-1;flex:1 1 calc(100% - 130px);height:48px;min-height:48px;font-size:var(--f3)}
+  html body main .srow.open #bSearchAll{display:flex;order:-1;flex:0 0 120px;width:auto;min-height:48px;height:48px;margin:0!important;padding:4px 6px;font-size:var(--f1);border-radius:10px}
+  html body main .srow.open #bSearch{border-color:var(--gold-d);background:var(--gold-l)}
+  #hList .pth{align-items:center}
+  #hTabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr}
+  #hList .psort{display:inline-flex;align-items:center;min-height:30px;padding:2px 12px;border:1px solid var(--line);border-radius:15px;background:var(--card);color:var(--ink);font-size:var(--f1);font-weight:700;cursor:pointer}
+}
 /* اللاب: القايمة الجانبية من غير تكرار عملاء السوق/المواقع/الموردين (موجودين فوق القايمة)، وآخر زرار مش مستخبي ورا القفل */
 @media (min-width:1000px){nav .qk{display:none}nav{overflow-y:auto;padding-bottom:64px;scrollbar-width:none}}
 </style>
@@ -1399,8 +1418,10 @@ body{font-size:var(--f3);line-height:1.6}
   <div class="srow">
     <input class="inp" id="hSearch" type="search" placeholder="دوّر بالاسم أو التليفون" autocomplete="off">
     <select class="inp" id="hSort"><option value="bal">الأكبر</option><option value="name">بالاسم</option><option value="last">الأحدث</option></select>
-    <button class="btn line" id="bSearch" type="button" title="دوّر في كل الحركات (مبلغ، صنف، ملاحظة…)" aria-label="دوّر في كل الحركات">🔎</button>
-    <button class="btn gold" id="bNewParty" type="button" title="حساب جديد" aria-label="حساب جديد"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 9.5-4.9M19 14v6M16 17h6"/></svg></button>
+    <button class="btn line" id="bSearch" type="button" title="دوّر في كل الحركات (مبلغ، صنف، ملاحظة…)" aria-label="بحث">🔎<span class="lb">بحث</span></button>
+    <span id="hTools"></span>
+    <button class="btn gold" id="bNewParty" type="button" title="حساب جديد" aria-label="حساب جديد"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 9.5-4.9M19 14v6M16 17h6"/></svg><span class="lb">حساب جديد</span></button>
+    <button class="btn line" id="bSearchAll" type="button">🔎 في الحركات</button>
   </div>
   <div class="tabs" id="hTabs"></div>
   <div id="hList"></div>
@@ -1912,8 +1933,9 @@ function renderHome() {
   /* الموبايل: "العملاء" فيها السوق والمواقع بس + زرار الخزنة، و"الموردين" تبويب لوحده تحت (#sup) */
   const wide = isWide(), tabs = wide ? [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']] : tab === 'sup' ? [] : [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع']];
   $('#hTabs').innerHTML = (!wide && tab === 'sup' ? `<div class="supt">🏭 الموردين <small>${cnt('sup')}</small></div>` : tabs.map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small></button>`).join(''))
-    + (!wide && tab !== 'sup' ? '<button class="hcash" id="hRep" type="button">📊 التقارير</button>' + (() => { const w = ivWaiting(); return `<button class="hcash" id="hJrd" type="button">📦 الجرد${w ? `<small>${w} مستني</small>` : ''}</button>`; })() : '');
-  $('#hTabs').classList.toggle('t3', !wide && tab !== 'sup');
+    ;
+  $('#hTools').innerHTML = !wide && tab !== 'sup' ? '<button class="hcash" id="hRep" type="button">📊<span class="lb">التقارير</span></button>' + (() => { const w = ivWaiting(); return `<button class="hcash" id="hJrd" type="button">📦<span class="lb">الجرد</span>${w ? `<small>${w}</small>` : ''}</button>`; })() : '';
+  $('#hTabs').classList.remove('t3');
   $$('#hTabs button[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
   if ($('#hRep')) $('#hRep').onclick = () => go('rep');
   if ($('#hJrd')) $('#hJrd').onclick = () => go('jrd');
@@ -1937,13 +1959,15 @@ function renderList(bal) {
   const pays = new Map(); for (const e of db.entries) if (e.kind === 'pay' && !e.del) (pays.get(e.party) || pays.set(e.party, []).get(e.party)).push(e);
   const lpy = (p, b) => { const i = p.sec === 'sup' ? null : payInfo(p, pays.get(p.id) || [], b); if (!i) return '';
     return `<span class="lpy${i.late ? ' late' : ''}">آخر دفعة ${i.ago === 0 ? 'النهارده' : i.ago === 1 ? 'امبارح' : i.ago === 2 ? 'من يومين' : `من ${i.ago} ${i.ago <= 10 ? 'أيام' : 'يوم'}`}</span>`; };
-  $('#hList').innerHTML = `<div class="pth"><span>الاسم</span><span>${hw}</span></div>` + ps.map(p => {
+  const sortT = {bal: 'الأكبر', name: 'بالاسم', last: 'الأحدث'};
+  $('#hList').innerHTML = `<div class="pth"><span>الاسم</span><button class="psort" id="hSortB" type="button">⇅ ${sortT[sort]}</button><span>${hw}</span></div>` + ps.map(p => {
     const b = bal.get(p.id) || 0;
     return `<div class="pt ${p.id === curParty ? 'cur' : ''} ${p.sec === 'sup' ? 'sup' : ''} ${b ? '' : 'zero'} ${b < 0 ? 'neg' : ''} ${limitClass(p, b)}" data-id="${esc(p.id)}">
       <div class="m"><b>${esc(p.name)}</b>${lpy(p, b)}<small><span class="tag ${p.sec === 'sup' ? 'sup' : ''}">${SEC1[p.sec]}</span>${p.noTot ? '<span class="tag off">خارج الإجمالي</span>' : ''}<span class="ph">${esc(p.phone || '')}</span></small></div>
       <div class="a"><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b><small${!b || balWord(b) === hw ? ' class="same"' : ''}>${balWord(b)}</small></div></div>`;
   }).join('');
   $$('#hList .pt').forEach(el => el.onclick = () => go('p/' + el.dataset.id));
+  $('#hSortB').onclick = () => { const k = Object.keys(sortT); $('#hSort').value = k[(k.indexOf(sort) + 1) % k.length]; renderList(); };
 }
 $('#hSearch').addEventListener('input', () => renderList());
 /* اختصارات الكيبورد (اللاب توب): Ctrl+K البحث، F2 فاتورة، F3 دفعة، وفي خانة البحث الأسهم بتتنقل بين الحسابات وEnter بيفتح */
@@ -1967,7 +1991,13 @@ addEventListener('keydown', e => {
 });
 $('#hSort').addEventListener('change', () => renderList());
 $('#bNewParty').onclick = () => partyModal();
-$('#bSearch').onclick = () => searchModal($('#hSearch').value.trim());   // اللي مكتوب في خانة الحسابات بيتدور عليه في كل الحركات على طول
+$('#bSearch').onclick = () => {
+  if (isWide()) return searchModal($('#hSearch').value.trim());   // اللاب: اللي مكتوب في خانة الحسابات بيتدور عليه في كل الحركات
+  /* الموبايل (بطلب صاحب المشروع): مفيش خانة بحث كبيرة. العدسة بتفتح خانة الاسم، ودوسة تانية بتقفلها */
+  const r = $('.srow'), op = r.classList.toggle('open');
+  if (op) $('#hSearch').focus(); else if ($('#hSearch').value) { $('#hSearch').value = ''; renderList(); }
+};
+$('#bSearchAll').onclick = () => searchModal($('#hSearch').value.trim());
 
 /* ====================== حساب جديد / تعديل حساب ====================== */
 function partyModal(p) {
@@ -2654,7 +2684,7 @@ function ledgerTable(p) {
   if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده.<br><small style="color:var(--sub)">ابدأ بفاتورة أو دفعة من الأزرار اللي فوق.</small></div>';
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
-    ${over ? `<tr class="more"><td colspan="6">${ext ? '<a id="ldgFold">▲ طي</a>' : ''}${cut ? `<a id="ldgOld">▼ ${cut} سطر أقدم</a><small>الرصيد السابق</small>` : ''}</td><td class="b">${cut ? fmtP(s.rows[cut - 1].run * s.sg) : ''}</td></tr>` : ''}
+    ${over ? `<tr class="more"><td colspan="${isWide() ? 6 : 4}">${ext ? '<a id="ldgFold">▲ طي</a>' : ''}${cut ? `<a id="ldgOld">▼ ${cut} سطر أقدم</a><small>الرصيد السابق</small>` : ''}</td><td class="b">${cut ? fmtP(s.rows[cut - 1].run * s.sg) : ''}</td></tr>` : ''}
     ${(cut ? s.rows.slice(cut) : s.rows).map(r => (yPrev !== null && (r.date || '').slice(0, 4) !== yPrev ? `<tr class="yr"><td colspan="7">${yPrev = (r.date || '').slice(0, 4)}</td></tr>` : '') + `<tr data-id="${esc(r.e.id)}"${r.li !== undefined ? ` data-li="${r.li}"` : ''}${r.grp && r.grp.length > 1 ? ` data-g="${esc(r.grp.map(x => x.id).join(','))}"` : ''} class="${r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : ''} ${r.first ? 'f' : ''}"><td class="dt">${shortDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small>${esc(r.ref)}</small>` : ''}${fwTag(r)}${r.qty ? `<small class="qp">${esc(r.qty)}${r.price ? ' × ' + fmtP(r.price) : ''}</small>` : ''}</td><td class="q hq">${r.qty ? esc(r.qty.split(' ')[0]) + `<small>${esc(r.qty.split(' ').slice(1).join(' '))}</small>` : ''}</td><td class="n hq">${r.price ? fmtP(r.price) : ''}</td><td class="n">${r.gd ? fmtP(r.gd) : ''}</td><td class="n">${r.pd ? fmtP(r.pd) : ''}</td><td class="b">${fmtP(r.run * s.sg)}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="ldgf" id="ldgEnd"><span>الرصيد</span><b data-ck="pe:${esc(p.id)}" data-cnt="${s.close * s.sg}">${fmtP(s.close * s.sg)} <small>${CUR}</small></b></div>

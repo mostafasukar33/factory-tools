@@ -672,8 +672,8 @@ const T0 = Date.now();
     eq('لوحة النهارده اتشالت من الرئيسية', await A.$('#hDash'), null);
     const SR = await A.evaluate(() => [searchAll('لفة تجربة').length, searchAll('1350').map(r => r.title)[0] || '', searchAll('سلفة').length, searchAll('x').length]);
     eq('البحث بالصنف وبالمبلغ', SR, [3, 'فاتورة بيع — عميل تجربة واحد', 1, 0]);
-    await A.click('#bSearch'); await A.fill('#saQ', 'سلفة'); await A.settle(400);
-    eq('البحث في الحركات', (await A.textContent('#saR')).includes('مسحوبات الشركاء'), true); await A.click('#saX2');
+    await A.evaluate(() => go('home')); await A.settle(150); await A.click('#bSearch'); await A.click('#bSearchAll'); await A.fill('#saQ', 'سلفة'); await A.settle(400);
+    eq('البحث في الحركات', (await A.textContent('#saR')).includes('مسحوبات الشركاء'), true); await A.click('#saX2'); await A.click('#bSearch');
 
     eq('مفيش أرقام فواتير: لا خانة ولا عرض في الكشف ولا العنوان', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv'); const f = !!$('#dcNo'); closeModal();
       const e = partyEntries(p.id).find(x => x.kind === 'inv'); return [f, /رقم/.test(docTitle(e)), /رقم/.test(docDesc(e)), stmtData(p.id, '', '').rows.some(r => isDoc(r.e) && r.ref)]; }), [false, false, false, false]);
@@ -875,9 +875,23 @@ const T0 = Date.now();
     await A.evaluate(() => { tab = 'mkt'; go('home'); }); await A.settle(200);
     eq('الموبايل: مفيش زرار الليلي فوق، وزرار الحساب الجديد مش نفس ＋ بتاع التسجيل السريع، وسطر "آخر دفعة" تحت الاسم', await A.evaluate(() => [!!$('#bTheme').offsetParent, $('#bNewParty').textContent.includes('＋'), !!$('#bNewParty svg'),
       [...$$('#hList .lpy')].some(x => x.offsetParent && x.textContent.startsWith('آخر دفعة'))]), [false, false, true, true]);
-    await A.fill('#hSearch', 'تجربة'); await A.click('#bSearch'); await A.settle(400);
-    eq('زرار 🔎 بيدوّر في كل الحركات على اللي مكتوب في خانة البحث', await A.evaluate(() => [$('#saQ').value, $$('#saR .cm').length > 0]), ['تجربة', true]);
-    await A.evaluate(() => closeModal()); await A.fill('#hSearch', ''); await A.settle(150);
+    eq('الموبايل: مفيش خانة بحث كبيرة، والزراير (بحث، التقارير، الجرد، حساب جديد) في سطر واحد كبار ومتباعدين', await A.evaluate(() => {
+      const bs = ['#bSearch', '#hRep', '#hJrd', '#bNewParty'].map(x => $(x).getBoundingClientRect());
+      return [getComputedStyle($('#hSearch')).display, bs.every(r => Math.abs(r.top - bs[0].top) < 2 && r.height >= 52 && r.width >= 70), bs.slice(1).every((r, i) => Math.abs(r.right - bs[i].left) >= 6 || Math.abs(bs[i].right - r.left) >= 6)]; }), ['none', true, true]);
+    await A.click('#bSearch'); await A.fill('#hSearch', 'تجربة واحد'); await A.settle(200);
+    eq('العدسة بتفتح خانة الاسم وبتفلتر القايمة', await A.evaluate(() => [getComputedStyle($('#hSearch')).display !== 'none', $$('#hList .pt').length]), [true, 1]);
+    await A.click('#bSearchAll'); await A.settle(400);
+    eq('"في الحركات" بيدوّر في كل الحركات على اللي مكتوب', await A.evaluate(() => [$('#saQ').value, $$('#saR .cm').length > 0]), ['تجربة واحد', true]);
+    await A.evaluate(() => closeModal()); await A.click('#bSearch'); await A.settle(150);
+    eq('دوسة تانية على العدسة بتقفل الخانة وترجع القايمة كلها', await A.evaluate(() => [getComputedStyle($('#hSearch')).display, $('#hSearch').value, $$('#hList .pt').length > 1]), ['none', '', true]);
+    await A.click('#hSortB'); await A.settle(150);
+    eq('زرار الترتيب الصغير فوق القايمة بيغيّر الترتيب', await A.evaluate(() => [$('#hSort').value, $('#hSortB').textContent.includes('بالاسم')]), ['name', true]);
+    await A.click('#hSortB'); await A.click('#hSortB'); await A.settle(150);
+    await A.evaluate(() => { const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name: 'عميل طويل تجربة', phone: '', note: '', noTot: false, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p);
+      for (let i = 0; i < 45; i++) addEntry({party: p.id, kind: 'man', date: '2026-0' + (1 + i % 9) + '-1' + (i % 9), desc: 'بند ' + i, dr: 1000, cr: 0}); go('p/' + p.id); }); await A.settle(300);
+    eq('كشف حساب طويل على الموبايل: سطر "أقدم" مبيعملش عمود فاضي', await A.evaluate(() => { const t = $('#p-party .ldg'), th = [...t.querySelectorAll('thead th')].filter(x => getComputedStyle(x).display !== 'none');
+      return [!!$('#ldgOld'), Math.abs(th.reduce((n, x) => n + x.getBoundingClientRect().width, 0) - t.getBoundingClientRect().width) <= 4]; }), [true, true]);
+    await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل طويل تجربة'); db.entries.filter(e => e.party === p.id).forEach(e => { e.del = true; e.delAt = nowS(); touch(e); }); p.del = true; touch(p); saveDB(); go('home'); }); await A.settle(150);   // الحساب ده للاختبار بس، ميدخلش في أقسام السوق
     await A.evaluate(() => { go('rep'); repKind = 'profit'; repMode = 'year'; repYear = ''; renderReports(); }); await A.settle(300);
     eq('تقرير الأرباح: الشهور الفاضية مش ظاهرة، والجدول جوه الشاشة على الموبايل (والـ PDF فيه السنة كلها)', await A.evaluate(() => {
       const R = buildReport(), tb = $('#p-rep table.pft'), w = tb.closest('.ldgw');

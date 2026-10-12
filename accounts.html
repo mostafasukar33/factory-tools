@@ -1871,6 +1871,7 @@ function landingHash() {
 function unlocked() {
   $('#lock').classList.remove('on'); $('#lockBox').innerHTML = '';
   lastAct = Date.now(); kashName(); forgetCashBook();
+  if (db.vaults.length && ensurePayCats()) saveDB();   // بنود الخزنة الثابتة (تحصيل من عميل / دفعات للموردين) زي ما كانت بتتعمل وقت الفتح
   /* أول شاشة بعد القفل: الوارد لو فيه حاجة مستنية أو تعارض، وإلا العملاء (أو آخر صفحة كان فيها) */
   try { if (!location.hash) { const h = landingHash(); if (h) location.hash = h; } } catch (e) {}
   route(); flushSave();

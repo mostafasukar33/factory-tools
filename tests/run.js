@@ -621,6 +621,8 @@ const T0 = Date.now();
       const k = !!localStorage.getItem('fo_cash_v1'); localStorage.removeItem('fo_cash_v1'); return k; }), true);
     eq('صفحة الدفتر بقت ورقة "اتقفل" فيها زرار للحسابات بس', (() => { const h = fs.readFileSync(path.join(ROOT, 'cash.html'), 'utf8');
       return [h.includes('href="accounts.html"'), /localStorage\.(setItem|removeItem)|fo_cash_v1|webmanifest/.test(h), fs.existsSync(path.join(ROOT, 'cash.webmanifest'))]; })(), [true, false, false]);
+    await B.evaluate(() => { db.cats = db.cats.filter(c => c.id !== 'c_payout' && c.id !== 'c_inc0'); reindex(); lockNow(); }); await unlock(B);
+    eq('الخزنة الداخلية: بندين "تحصيل من عميل" و"دفعات للموردين" بيتعملوا لوحدهم وقت الفتح زي الأول', await B.evaluate(() => [cName('c_inc0'), cName('c_payout')]), ['تحصيل من عميل', 'دفعات للموردين']);
     /* نفس المصروفين اللي كانوا بييجوا من الدفتر قبل كده، علشان أرقام الأقسام الجاية متتغيرش */
     await B.evaluate(() => { const now = Date.now(), c = catsL('exp')[0];
       [['t_from_ledger', 7700, c.id, 'من الدفتر'], ['t_from_app', 3300, 'c_exp0', 'من الحسابات']].forEach(([id, amt, cat, note]) => { const r = {id, type: 'exp', amt, vault: 'v_main', to: '', cat, note, date: todayISO(), at: now, upd: now, del: false, hist: []}; db.txs.push(r); IDX.tx.set(id, r); });

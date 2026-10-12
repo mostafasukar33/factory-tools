@@ -2309,18 +2309,17 @@ function docModal(p, kind, e, opts = {}) {
     $$('#dcLines [data-f=price]').forEach(bindMoney);
     $$('#dcLines [data-f=qty]').forEach(el => el.addEventListener('input', () => { el.value = normDigits(el.value).replace(/[^\d.]/g, ''); }));
     $$('#dcLines input').forEach(el => el.addEventListener('input', calc));
-    /* اقتراحات الاسم: أصناف الحساب ده الأول بآخر سعر واتكتب إمتى، وبعدها باقي الأصناف لو بتكتب. دوسة = الاسم والوحدة والسعر */
+    /* اقتراحات الاسم: أصناف الحساب ده بس بآخر سعر واتكتب إمتى (مش أصناف باقي العملاء). دوسة = الاسم والوحدة والسعر */
     $$('#dcLines [data-f=name]').forEach(el => {
       const li = el.closest('.li'), box = li.querySelector('.sg');
       let rows = [];
       const hide = () => { box.classList.remove('on'); box.innerHTML = ''; };
       const show = () => {
-        const q = norm(el.value), mk = new Set(mine.map(x => norm(x.name)));
+        const q = norm(el.value);
         const a = mine.filter(x => !q || norm(x.name).includes(q)).slice(0, 5);
-        const b = q ? [...book.values()].filter(x => !mk.has(norm(x.name)) && norm(x.name).includes(q)).slice(0, 4) : [];
-        rows = a.concat(b);
+        rows = a;
         if (!rows.length || (rows.length === 1 && norm(rows[0].name) === q)) return hide();
-        box.innerHTML = rows.map((x, i) => (i === 0 && a.length ? `<div class="sh">${base === 'inv' ? 'اتباع للحساب ده قبل كده' : 'اتشرى من الحساب ده قبل كده'}</div>` : '') + (i === a.length && b.length ? '<div class="sh">أصناف تانية</div>' : '')
+        box.innerHTML = rows.map((x, i) => (i === 0 ? `<div class="sh">${base === 'inv' ? 'اتباع للحساب ده قبل كده' : 'اتشرى من الحساب ده قبل كده'}</div>` : '')
           + `<div class="sr" data-i="${i}"><span>${esc(x.name)}${x.date ? `<small>${esc(x.unit || '')} — آخر مرة ${dispDate(x.date)}</small>` : x.unit ? `<small>${esc(x.unit)}</small>` : ''}</span>${x.price ? `<b>${fmtP(x.price)}</b>` : ''}</div>`).join('');
         box.classList.add('on');
       };

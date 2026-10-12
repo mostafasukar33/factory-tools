@@ -271,7 +271,8 @@ const T0 = Date.now();
       const xs = L.map(x => x[0]), lo = Math.min(...xs);
       return [L.length, L.length ? Math.round(Math.max(...xs) - lo) : 0, L.filter(x => x[0] - lo > 1).slice(0, 4).map(x => Math.round(x[0] - lo) + ' ' + x[1])];
     }, [root, sel]);
-    const colOk = async (name, X, root, sel) => { const [n, spread, off] = await numCol(X, root, sel); eq(`${name}: الأرقام تحت بعض (${n} رقم)`, [n >= 2, spread <= 1, off], [true, true, []]); };
+    const colOk = async (name, X, root, sel) => { const [n, spread, off] = await numCol(X, root, sel); if (n < 2 && !RUN.base) return;   // --only=smoke/mkt بيتخطى إدخال البيانات (٣–٩)، فمفيش أرقام كفاية تتقارن
+      eq(`${name}: الأرقام تحت بعض (${n} رقم)`, [n >= 2, spread <= 1, off], [true, true, []]); };
     sec('١) كلمة السر والتشفير');
     const A = await D1.page('accounts.html');
     await unlock(A, true);

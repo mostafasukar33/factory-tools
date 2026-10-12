@@ -1214,7 +1214,18 @@ const T0 = Date.now();
     eq('الإعدادات: داكن بيشتغل ويتحفظ على الموبايل', await M.evaluate(() => [document.documentElement.dataset.theme, JSON.parse(localStorage.getItem('fo_ui')).theme]), ['dark', 'dark']);
     await M.click('#uiTheme button[data-v=light]'); await M.click('#uiFs button[data-v="1.12"]');
     eq('الإعدادات: فاتح وحجم خط كبير', await M.evaluate(() => [document.documentElement.dataset.theme, document.documentElement.dataset.fs]), ['light', 'z']);
-    await M.click('#uiFs button[data-v="1"]'); await M.evaluate(() => nav('')); await M.settle(100);
+    await M.click('#uiFs button[data-v="1"]');     /* قفل السوق بكلمة سر */
+    await M.fill('#pin1', '123456'); await M.fill('#pin2', '123456'); await M.click('#pinOn'); await M.waitForSelector('#pinNow');
+    eq('قفل السوق: اتحفظ ملح وبصمة من غير كلمة السر نفسها', await M.evaluate(() => { const o = JSON.parse(localStorage.getItem('fo_mkt_lock')); return [!!o.s, !!o.h, JSON.stringify(o).includes('123456')]; }), [true, true, false]);
+    await M.click('#pinNow'); await M.waitForSelector('#lock.on #lkP');
+    await M.evaluate(() => { const i = document.querySelector('#lkP'); i.readOnly = false; i.value = '111111'; }); await M.click('#lkGo');
+    await M.waitForFunction(() => /غلط/.test(document.querySelector('#lkErr').textContent));
+    eq('قفل السوق: كلمة غلط متفتحش', await M.evaluate(() => document.querySelector('#lock').classList.contains('on')), true);
+    await M.evaluate(() => { const i = document.querySelector('#lkP'); i.value = '123456'; }); await M.click('#lkGo');
+    await M.waitForFunction(() => !document.querySelector('#lock').classList.contains('on'));
+    await M.click('#pinOff'); await M.fill('#apP', '123456'); await M.click('#apOk'); await M.waitForSelector('#pinOn');
+    eq('قفل السوق: اتشال', await M.evaluate(() => localStorage.getItem('fo_mkt_lock')), null);
+    await M.evaluate(() => nav('')); await M.settle(100);
 
     await bg(A, 'mkSync()'); await A.settle(900);
     await A.click('nav button[data-go=mkt]'); await A.settle(250);

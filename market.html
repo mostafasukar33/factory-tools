@@ -219,6 +219,21 @@ html[data-theme=dark] .tbl th:nth-child(4),html[data-theme=dark] .tbl td:nth-chi
 .pick.dt{margin:0;height:48px;line-height:46px;border-color:var(--gold);background:var(--gold-l);color:var(--gold-d);font-weight:800;font-size:var(--f3)}
 .pick.dt b{color:var(--ink)}
 .more{display:block;width:100%;border:1px dashed var(--field);background:none;border-radius:12px;height:44px;font-weight:700;color:var(--gold-d);cursor:pointer;font-size:var(--f2)}
+/* قفل التطبيق بكلمة سر */
+#lock{position:fixed;inset:0;z-index:115;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px 18px;overflow:auto}
+#lock.on{display:flex}
+#lock img{width:84px;border-radius:16px;box-shadow:0 2px 12px #0002}
+#lock h2{margin:10px 0 0;font-size:var(--f4);font-weight:800}
+#lock .box{width:100%;max-width:380px;margin-top:18px;background:var(--card);border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:14px;padding:18px 18px 14px}
+#lock label{display:block;text-align:center;font-weight:700;color:var(--sub);font-size:var(--f2)}
+#lock .inp{width:100%;height:50px;border:1px solid var(--field);border-radius:11px;background:var(--card);color:var(--ink);padding:0 14px;font-size:var(--f4);letter-spacing:.25em;text-align:center;outline:none;margin-top:6px}
+#lock .err,.lkerr{color:var(--red);font-weight:800;min-height:1.6em;text-align:center;margin:6px 0}
+#lock .lnk{display:block;text-align:center;margin-top:10px;color:var(--gold-d);font-weight:700;text-decoration:underline;cursor:pointer;background:none;border:0;width:100%;font-size:var(--f2)}
+#lkPad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0;direction:ltr}
+#lkPad .pk{font:inherit;font-size:var(--f5);font-weight:700;min-height:54px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:inherit;-webkit-tap-highlight-color:transparent}
+#lkPad .pk:active{background:var(--gold)}
+.shake{animation:sh .35s}
+@keyframes sh{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 /* إعدادات */
 .card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow)}
 .card h2{font-size:var(--f2);margin:0 0 9px;font-weight:800;color:var(--gold-d)}
@@ -305,6 +320,8 @@ body{font-size:var(--f3);line-height:1.6}
 <style id="appfeel">html{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}body,body *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}input,textarea,[contenteditable],[contenteditable] *{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}</style>
 </head>
 <body>
+<div id="lock"><img src="icons/logo.jpg" alt=""><h2>حركة السوق</h2><div class="box" id="lockBox"></div></div>
+<script>try { if (localStorage.getItem('fo_mkt_lock')) document.getElementById('lock').classList.add('on'); } catch (e) {}</script>
 <header class="top" id="top"></header>
 <button class="alert stuck" id="stuck" type="button" style="display:none"></button>
 <main id="main"></main>
@@ -317,7 +334,7 @@ body{font-size:var(--f3);line-height:1.6}
 /*
   حركة السوق — تطبيق الشريك (فلاش أون)
   -------------------------------------
-  - الشريك بيسجل اللي حصّله من عملاء السوق. مفيش كلمة سر: الربط بييجي من "رابط الربط" اللي مصطفى بيبعته (#marketjoin=...).
+  - الشريك بيسجل اللي حصّله من عملاء السوق. قفل كلمة السر اختياري من الإعدادات (fo_mkt_lock، على الموبايل ده بس): الربط بييجي من "رابط الربط" اللي مصطفى بيبعته (#marketjoin=...).
   - كل حاجة متخزنة على الموبايل في fo_mkt_v1، وبتتبعت لشيت "حركة السوق" (منفصل عن شيت الحسابات) أول ما يبقى فيه نت.
   - مفيش اعتماد على "حالة النت" اللي المتصفح بيقولها: بنجرب الطلب ونتعامل مع الفشل، واللي متبعتش بيفضل مستني ويتبعت لوحده.
   - كل عملية ليها id ثابت، فمفيش تكرار أبداً حتى لو اتبعتت كذا مرة.
@@ -1208,8 +1225,10 @@ function drawSettings() {
       <div class="kv"><span>حركات مستنية تتبعت</span><b class="${n ? 'wt' : ''}">${n}</b></div>
       <button class="big b-home" id="sSync" type="button">🔄 حدّث دلوقتي</button>
       <p class="hint" style="text-align:right">الحركات بتتبعت وبتتحدث لوحدها كل كام ثانية. ولو مفيش نت بتتحفظ على الموبايل وتتبعت أول ما يرجع.</p></div>
+    <div class="card"><h2>🔒 قفل التطبيق</h2><div id="sPin"></div></div>
     <div class="card"><h2>معنى الألوان</h2><p class="hint" style="text-align:right;margin:0"><b class="ok">أخضر</b> = فلوس دخلت معاك · <b class="bk">أحمر</b> = فلوس طلعت منك · <b style="color:var(--tr)">أزرق</b> = راحت لمصطفى · <b style="color:var(--gold-d)">دهبي</b> = فاتورة أو حاجة مستنية مصطفى</p></div>
-    <div class="card"><h2>عن التطبيق</h2><div class="kv"><span>التطبيق</span><b>حركة السوق — فلاش أون</b></div><p class="hint" style="text-align:right;margin-top:6px">مفيش كلمة سر ولا حاجة تتظبط. أي غلطة تقدر تعدّلها أو تمسحها من الرئيسية أو الأرشيف، طول ما مصطفى لسه منقلهاش لحساباته.</p></div>`;
+    <div class="card"><h2>عن التطبيق</h2><div class="kv"><span>التطبيق</span><b>حركة السوق — فلاش أون</b></div><p class="hint" style="text-align:right;margin-top:6px">أي غلطة تقدر تعدّلها أو تمسحها من الرئيسية أو الأرشيف، طول ما مصطفى لسه منقلهاش لحساباته.</p></div>`;
+  renderPin();
   $$('#uiTheme button').forEach(b => b.onclick = () => { uiSet({theme: b.dataset.v}); drawSettings(); });
   $$('#uiFs button').forEach(b => b.onclick = () => { uiSet({fs: b.dataset.v}); drawSettings(); });
   $('#sSync').onclick = async () => {
@@ -1219,6 +1238,113 @@ function drawSettings() {
     if (scr.v === 's') drawSettings();
   };
 }
+
+/* ====================== القفل بكلمة السر ======================
+   كلمة السر نفسها مبتتخزنش: بيتخزن ملح وبصمة منها (PBKDF2) في fo_mkt_lock على الموبايل ده بس. الحركات في fo_mkt_v1 زي ما هي.
+   6 على الأقل، بيفتح لوحده لما توقف كتابة، الغلط بيمسح ويهز، لوحة أرقام جوه الصفحة على الموبايل،
+   وبيتقفل لوحده بعد 10 دقايق من غير استخدام أو لو التطبيق استخبى أكتر من 5 دقايق. */
+const PIN_KEY = 'fo_mkt_lock', PIN_HIDDEN = 5 * 60 * 1000, PIN_IDLE = 10 * 60 * 1000, PIN_MIN = 6;
+const pinGet = () => { try { const o = JSON.parse(localStorage.getItem(PIN_KEY) || 'null'); return o && o.h && o.s ? o : null; } catch (e) { return null; } };
+const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+async function pinHash(pin, salt) {
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(pin)), 'PBKDF2', false, ['deriveBits']);
+  return hex(await crypto.subtle.deriveBits({name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode(salt), iterations: 60000}, k, 256));
+}
+async function pinOk(pin) { const o = pinGet(); return !o || (await pinHash(normDigits(pin), o.s)) === o.h; }
+let pinLastAct = Date.now(), pinHiddenAt = 0;
+const isLocked = () => $('#lock').classList.contains('on');
+function lockNow(msg) {
+  if (!pinGet()) return;
+  if ($('#mask').classList.contains('on')) closeModal();
+  showLock(msg);
+}
+function showLock(msg) {
+  $('#lock').classList.add('on');
+  $('#lockBox').innerHTML = `
+    <label for="lkP">كلمة السر</label>
+    <input class="inp" id="lkP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password">
+    <div class="err" id="lkErr">${esc(msg || '')}</div>
+    <button class="big b-cash" id="lkGo" type="button">فتح</button>
+    <button class="lnk" id="lkAbc" type="button">كلمة السر فيها حروف؟ افتح لوحة الحروف</button>
+    <button class="lnk" id="lkForgot" type="button">نسيت كلمة السر؟</button>`;
+  let busy = false, tm = 0;
+  const go = async silent => {
+    const pw = $('#lkP').value; if (!pw || busy) return;
+    busy = true;
+    if (!silent) { $('#lkGo').disabled = true; $('#lkErr').textContent = '⏳ بفتح…'; }
+    const ok = await pinOk(pw);
+    busy = false;
+    if (ok) { $('#lock').classList.remove('on'); $('#lockBox').innerHTML = ''; pinLastAct = Date.now(); return; }
+    if (silent) return;
+    $('#lkGo').disabled = false; $('#lkErr').textContent = 'كلمة السر غلط'; $('#lkP').value = '';
+    $('#lockBox').classList.remove('shake'); void $('#lockBox').offsetWidth; $('#lockBox').classList.add('shake'); $('#lkP').focus();
+  };
+  $('#lkGo').onclick = () => go(false);
+  $('#lkP').onkeydown = e => { if (e.key === 'Enter') go(false); };
+  const need = Math.min(PIN_MIN, (pinGet() || {}).n || PIN_MIN);
+  $('#lkP').oninput = () => { clearTimeout(tm); if ($('#lkP').value.length >= need) tm = setTimeout(() => go(true), 450); };
+  $('#lkForgot').onclick = () => {
+    modal(`<h3>نسيت كلمة السر؟</h3><p>الحركات كلها محفوظة عند مصطفى ومش هتضيع. امسح أيقونة التطبيق من الموبايل، وخلّي مصطفى يبعتلك رابط الربط تاني وافتحه، وبعدين اعمل كلمة سر جديدة من الإعدادات.</p><button class="big b-home" id="fgX" type="button">تمام</button>`);
+    $('#mask').style.zIndex = 130; $('#fgX').onclick = () => { $('#mask').style.zIndex = ''; closeModal(); };
+  };
+  const inp = $('#lkP');
+  if (matchMedia('(pointer:coarse)').matches) {
+    inp.setAttribute('inputmode', 'none'); inp.readOnly = true;
+    const pad = document.createElement('div'); pad.id = 'lkPad';
+    pad.innerHTML = ['1','2','3','4','5','6','7','8','9','⌫','0','فتح'].map(k => `<button type="button" class="pk" data-k="${k}">${k}</button>`).join('');
+    $('#lkErr').after(pad);
+    pad.onclick = e => { const b = e.target.closest('.pk'); if (!b) return; const k = b.dataset.k;
+      if (k === '⌫') inp.value = inp.value.slice(0, -1); else if (k === 'فتح') return go(false); else inp.value += k;
+      inp.oninput(); };
+    $('#lkAbc').onclick = () => { pad.remove(); inp.readOnly = false; inp.inputMode = 'text'; inp.removeAttribute('pattern'); $('#lkGo').style.display = ''; $('#lkAbc').remove(); setTimeout(() => inp.focus(), 50); };
+    $('#lkGo').style.display = 'none';
+  } else {
+    $('#lkAbc').onclick = () => { const num = inp.inputMode === 'numeric'; inp.inputMode = num ? 'text' : 'numeric'; if (num) inp.removeAttribute('pattern'); else inp.setAttribute('pattern', '[0-9]*'); $('#lkAbc').textContent = num ? 'ارجع للوحة الأرقام' : 'كلمة السر فيها حروف؟ افتح لوحة الحروف'; inp.blur(); setTimeout(() => inp.focus(), 50); };
+    [0, 100, 400].forEach(ms => setTimeout(() => { if (inp && document.activeElement !== inp) try { inp.focus({preventScroll: true}); } catch (e) {} }, ms));
+  }
+}
+['pointerdown', 'keydown', 'scroll'].forEach(ev => addEventListener(ev, () => { pinLastAct = Date.now(); }, {passive: true, capture: true}));
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pinHiddenAt = Date.now();
+  else if (!isLocked() && pinHiddenAt && Date.now() - pinHiddenAt > PIN_HIDDEN) lockNow();
+});
+setInterval(() => { if (!isLocked() && Date.now() - pinLastAct > PIN_IDLE) lockNow('اتقفل لوحده بعد 10 دقايق من غير استخدام'); }, 20000);
+function askPin(title) {
+  return new Promise(res => {
+    modal(`<h3>${esc(title)}</h3><input class="inp" id="apP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off"><div class="lkerr" id="apE"></div><button class="big b-cash" id="apOk" type="button">تمام</button><button class="big b-home" id="apX" type="button">رجوع</button>`);
+    setTimeout(() => $('#apP').focus(), 50);
+    $('#apX').onclick = () => { closeModal(); res(false); };
+    $('#apOk').onclick = async () => { if (await pinOk($('#apP').value)) { closeModal(); res(true); } else $('#apE').textContent = 'كلمة السر غلط'; };
+  });
+}
+function renderPin() {
+  const box = $('#sPin'); if (!box) return;
+  if (pinGet()) {
+    box.innerHTML = `<p class="hint" style="text-align:right;margin:0 0 6px">✔ التطبيق مقفول بكلمة سر على الموبايل ده. بيتقفل لوحده لو سبته 10 دقايق، أو خرجت منه وجيت بعد 5 دقايق.</p>
+      <button class="big b-cash" id="pinNow" type="button">🔒 اقفل دلوقتي</button>
+      <button class="big b-home" id="pinCh" type="button">غيّر كلمة السر</button>
+      <button class="big b-red" id="pinOff" type="button">شيل القفل</button>`;
+    $('#pinNow').onclick = () => lockNow();
+    $('#pinCh').onclick = async () => { if (await askPin('اكتب كلمة السر الحالية')) { try { localStorage.removeItem(PIN_KEY); } catch (e) {} renderPin(); toast('اكتب كلمة السر الجديدة مرتين ودوس "شغّل القفل"', 4000); } };
+    $('#pinOff').onclick = async () => { if (await askPin('اكتب كلمة السر علشان تشيل القفل')) { try { localStorage.removeItem(PIN_KEY); } catch (e) {} renderPin(); toast('اتشال القفل'); } };
+    return;
+  }
+  box.innerHTML = `<p class="hint" style="text-align:right;margin:0 0 6px">التطبيق مبيتفتحش غير بكلمة السر. الكلمة على الموبايل ده بس.</p>
+    <input class="inp2" id="pin1" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" placeholder="كلمة السر (6 على الأقل)">
+    <input class="inp2" id="pin2" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" placeholder="اكتبها تاني">
+    <div class="lkerr" id="pinE"></div>
+    <button class="big b-cash" id="pinOn" type="button">🔒 شغّل القفل</button>`;
+  $('#pinOn').onclick = async () => {
+    const a = normDigits($('#pin1').value).trim(), b = normDigits($('#pin2').value).trim();
+    if (a.length < PIN_MIN) return $('#pinE').textContent = 'كلمة السر لازم تبقى 6 حروف أو أرقام على الأقل';
+    if (a !== b) return $('#pinE').textContent = 'الكلمتين مش زي بعض';
+    if (!(crypto && crypto.subtle)) return $('#pinE').textContent = 'المتصفح ده مش بيدعم القفل';
+    const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
+    try { localStorage.setItem(PIN_KEY, JSON.stringify({s: salt, h: await pinHash(a, salt), n: a.length})); } catch (e) { return $('#pinE').textContent = 'معرفتش أحفظ كلمة السر'; }
+    renderPin(); toast('✔ التطبيق بقى مقفول بكلمة السر', 4000);
+  };
+}
+if (pinGet()) showLock(); else $('#lock').classList.remove('on');
 
 route();
 setTimeout(sync, 200);

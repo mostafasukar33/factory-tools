@@ -728,7 +728,7 @@ function runCounters(root) {
 function txWho(t) {
   if (t.type === 'tr') return {who: `تحويل: ${vName(t.vault)} ← ${vName(t.to)}`, what: t.note || ''};
   if (t.party) return {who: (t.note || '').split(' — ')[0] || 'حساب', what: t.pnote || ''};
-  return {who: t.note || cName(t), what: t.note ? cName(t) : ''};
+  return {who: t.note || cName(t), what: t.note && t.note !== cName(t) ? cName(t) : ''};
 }
 function txTable(title, arr, cls, dated) {
   const tot = arr.reduce((n, t) => n + t.amt, 0);

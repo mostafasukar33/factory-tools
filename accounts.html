@@ -1123,6 +1123,7 @@ html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
 #p-mkt .ic .il:not(.cl)>.m{flex:1;min-width:0;display:grid;grid-template-columns:84px minmax(0,1fr);gap:10px;align-items:center}
 #p-mkt .ic .il:not(.cl)>.m .mtag{text-align:center;white-space:normal;line-height:1.4;padding:2px 6px}
 #p-mkt .il.cl .m .mtag{min-width:76px;text-align:center}
+.il.cl .m .mkcat{font-size:var(--f2);font-weight:800}
 @media (min-width:1000px){
   #p-party .acts{flex-wrap:wrap}
   main.split #hAlerts .todo{padding:2px 8px 4px;margin-bottom:6px;border-radius:10px}
@@ -1137,7 +1138,7 @@ html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
 .mkstat{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:8px 12px;margin-bottom:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:var(--f2);font-weight:700;color:var(--ink)}
 .mkstat em.mkbl{font-style:normal;white-space:nowrap}.mkstat em.mkbl b{direction:ltr;unicode-bidi:isolate;color:var(--ink)}.mkstat em.mkbl b.neg{color:var(--red)}
 @media (min-width:1000px){.mkstat em.mkbl,.mkstat em.mkbl+i{display:none}}
-@media (max-width:999.98px){.mkvb{display:none}.mkstat{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}.mkstat>i{display:none}}
+@media (max-width:999.98px){.mkvb{display:none}.mkstat{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}.mkstat em.mkbl{grid-column:1/-1}.mkstat>i{display:none}}
 .mkstat a{cursor:pointer;white-space:nowrap}.mkstat a b{color:var(--red)}.mkstat i{color:var(--sub);font-style:normal}.mkstat span{color:var(--green)}
 #hTabs .hcash{border-style:dashed;border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
 #hTabs .hcash small{font-size:var(--f1)!important;color:var(--gold-d)!important}
@@ -3644,7 +3645,7 @@ function cashTable(title, arr, all, cls, day) {
   const tot = arr.reduce((n, m) => n + m.amt, 0);
   const dc = m => day && m.at ? dispTime(m.at) : shortDate(m.date);
   return `<section class="ctab ${cls}"><div class="cth"><span>${title} (${arr.length})</span><b data-ck="c:t:${esc(title)}" data-cnt="${tot}">${fmtP(tot)}</b></div>
-    <table class="cmt"><tbody>${arr.length ? arr.map(m => `<tr data-i="${all.indexOf(m)}"><td class="d">${dc(m)}</td><td class="w"><b>${esc(m.who)}</b>${m.what || m.mk ? `<small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc((m.what || '').replace(/حركة السوق( — )?/, ''))}</small>` : ''}</td><td class="am">${fmtP(m.amt)}</td></tr>`).join('') : '<tr><td class="e" colspan="3">مفيش حركات</td></tr>'}</tbody></table></section>`;
+    <table class="cmt"><tbody>${arr.length ? arr.map(m => `<tr data-i="${all.indexOf(m)}"><td class="d">${dc(m)}</td><td class="w"><b>${esc(m.who)}</b>${m.what || m.mk ? `<small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(((m.what || '').replace(/حركة السوق( — )?/, '')).trim() === m.who ? '' : (m.what || '').replace(/حركة السوق( — )?/, ''))}</small>` : ''}</td><td class="am">${fmtP(m.amt)}</td></tr>`).join('') : '<tr><td class="e" colspan="3">مفيش حركات</td></tr>'}</tbody></table></section>`;
 }
 /* النص الواحد: عمود الداخل وعمود الخارج، وجوه كل عمود جدول لكل نوع (اللي فيه حركات بس) */
 function cashSideHtml(mv, side, day) {
@@ -6029,8 +6030,9 @@ function lpAgo(pid) {
 const mkTag = m => `<span class="mtag ${m}">${MK_M[m] || m}</span>`;
 /* معنى الألوان زي تطبيق الشريك: d-in فلوس دخلت معاه، d-out طلعت، d-to راحت لمصطفى، d-inv فاتورة/مرتجع */
 const mkDir = o => o.t === 'cs' || (o.t === 'pay' && o.m === 'cash') ? 'd-in' : o.t === 'exp' || o.t === 'spay' ? 'd-out' : o.t === 'inv' || o.t === 'rt' ? 'd-inv' : 'd-to';
-const mkLTag = o => o.t === 'rt' ? '<span class="mtag rt">↩️ مرتجع/شغل</span>' : o.t === 'cs' ? '<span class="mtag cs">بيع كاش</span>' : o.t === 'exp' ? `<span class="mtag exp">${esc(o.cat)}</span>` : o.t === 'inv' ? '<span class="mtag inv">فاتورة</span>' : mkTag(o.m || 'cash');
-const mkWhat = o => o.t === 'rt' ? 'مرتجع/شغل: ' + o.cname + (o.note ? ' — ' + o.note : '') : o.t === 'pay' ? o.cname + ' — ' + (MK_M[o.m] || '') : o.t === 'inv' ? 'فاتورة: ' + o.cname + ' (إجمالي بس)' : o.t === 'exp' ? 'مصروف: ' + o.cat + (o.note ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعة لمورد: ' + o.sname : o.t === 'cs' ? 'بيع كاش من المصنع: ' + (o.buyer || '') : 'كاش سلّمه لك';
+const mkLTag = o => o.t === 'rt' ? '<span class="mtag rt">↩️ مرتجع/شغل</span>' : o.t === 'cs' ? '<span class="mtag cs">بيع كاش</span>' : o.t === 'exp' ? '<span class="mtag exp">مصروف</span>' : o.t === 'inv' ? '<span class="mtag inv">فاتورة</span>' : mkTag(o.m || 'cash');
+const mkCatNote = o => o.cat + (o.note && o.note !== o.cat ? ' — ' + o.note : '');
+const mkWhat = o => o.t === 'rt' ? 'مرتجع/شغل: ' + o.cname + (o.note ? ' — ' + o.note : '') : o.t === 'pay' ? o.cname + ' — ' + (MK_M[o.m] || '') : o.t === 'inv' ? 'فاتورة: ' + o.cname + ' (إجمالي بس)' : o.t === 'exp' ? 'مصروف: ' + mkCatNote(o) : o.t === 'spay' ? 'دفعة لمورد: ' + o.sname : o.t === 'cs' ? 'بيع كاش من المصنع: ' + (o.buyer || '') : 'كاش سلّمه لك';
 /* حصّلت / راح لمصطفى / مصروف / معايا — نفس حسبة شريكك */
 function mkSums(ops) {
   let col = 0, toM = 0, sp = 0, inv = 0;
@@ -6138,7 +6140,7 @@ function mkArch() {
   $('#mkBody').innerHTML = `<div class="card"><div class="dnav"><button type="button" id="maPrev" title="اليوم اللي قبله">›</button><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}${d === t ? ' · النهارده' : ''}</span><button type="button" id="maNext" title="اليوم اللي بعده">‹</button></div>
       <label style="margin-top:8px">📅 اختار يوم</label><input class="inp" type="date" id="maDay" value="${d}"></div>
     ${left.length ? `<div class="sync warn mkleft" id="maIn">⏳ <b>${left.length}</b> لسه في الوارد (${fmtP(left.reduce((a, o) => a + o.amt, 0))}) <a>افتح</a></div>` : ''}
-    ${ops.length ? `<div class="mkh mkha2"><b>✓ اتنقل من اليوم ده</b><span class="n">${ops.length}</span></div><div class="ic">${ops.map(o => `<div class="il ${mkDir(o)}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<span><b>${esc(o.t === 'pay' || o.t === 'inv' || o.t === 'rt' ? o.cname : o.t === 'spay' ? o.sname : o.t === 'exp' ? (o.note || o.cat) : o.t === 'cs' ? (o.buyer || 'بيع كاش') : 'تسليم كاش')}</b><br><small class="tm">سجلها ${dispTime(o.ts)}</small></span></span><span style="text-align:left"><b class="money">${fmtP(o.amt)}</b><br>${mkStTxt(o)}</span></div>`).join('')}</div>`
+    ${ops.length ? `<div class="mkh mkha2"><b>✓ اتنقل من اليوم ده</b><span class="n">${ops.length}</span></div><div class="ic">${ops.map(o => `<div class="il ${mkDir(o)}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}<span><b>${esc(o.t === 'pay' || o.t === 'inv' || o.t === 'rt' ? o.cname : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat : o.t === 'cs' ? (o.buyer || 'مشتري') : 'تسليم كاش')}</b><br><small class="tm">${o.t === 'exp' && o.note && o.note !== o.cat ? esc(o.note) + ' — ' : ''}سجلها ${dispTime(o.ts)}</small></span></span><span style="text-align:left"><b class="money">${fmtP(o.amt)}</b><br>${mkStTxt(o)}</span></div>`).join('')}</div>`
       : `<div class="card empty">${day.length ? 'لسه متنقلش حاجة من اليوم ده.' : 'مفيش حركات من الشريك في اليوم ده.'}${prev ? `<br><a class="lnk" id="maLast">← آخر يوم قبله فيه حاجة اتنقلت: ${dispDate(isoOf(prev))}</a>` : ''}</div>`}
     ${mkCnt(d) ? mkCntLine(mkCnt(d)) : ''}${day.length ? `<div class="card mkbal"><div class="mkbt">حساب اليوم</div><div class="bl"><span>حصّلت</span><b>${fmtP(s.col)}</b></div><div class="bl"><span>راح لمصطفى (تحويلات + كاش سلّمه)</span><b>${fmtP(s.toM)}</b></div><div class="bl"><span>مصروف (مصروفات + دفعات موردين)</span><b>${fmtP(s.sp)}</b></div><div class="bl k"><span>معاه</span><b>${fmtP(s.left)}</b></div>${s.inv ? `<div class="bl"><span>🧾 فواتير (إجمالي بس)</span><b>${fmtP(s.inv)}</b></div>` : ''}</div>` : ''}`;
   $('#maPrev').onclick = () => { mkDay = addDays(d, -1); mkArch(); };
@@ -6172,7 +6174,7 @@ function mkCard(g) {
       : '')) + igBtn;
     const when = st === 'new' || st === 'back' ? `<small class="tm">${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' · ' + dispDate(isoOf(o.ts)) : ''}</small>` : '';
     const fixed = st === 'new' && s && s.back && s.bv !== o.upd ? ' <small class="fx">اتصلحت</small>' : '';
-    return `<div class="il cl ${st === 'done' ? 'dn' : ''} ${mkDir(o)}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}${(o.t === 'exp' || o.t === 'rt') && o.note ? `<small class="tm">${esc(o.note)}</small>` : ''}${o.t === 'cs' && o.buyer ? `<small class="tm">${esc(o.buyer)}</small>` : ''}${when}${fixed}</span><b class="money">${fmtP(o.amt)}</b>${right ? `<span class="ilw">${right}</span>` : ''}</div>
+    return `<div class="il cl ${st === 'done' ? 'dn' : ''} ${mkDir(o)}" data-op="${esc(o.id)}"><span class="m">${mkLTag(o)}${o.t === 'exp' ? `<b class="mkcat">${esc(o.cat)}</b>` : ''}${(o.t === 'exp' || o.t === 'rt') && o.note && o.note !== o.cat ? `<small class="tm">${esc(o.note)}</small>` : ''}${o.t === 'cs' && o.buyer ? `<small class="tm">${esc(o.buyer)}</small>` : ''}${when}${fixed}</span><b class="money">${fmtP(o.amt)}</b>${right ? `<span class="ilw">${right}</span>` : ''}</div>
       ${st === 'back' && s ? `<div class="ilnote">ملاحظتك: ${esc(s.back)}</div>` : ''}`;
   };
   const sum = g.kind === 'pay' && pendPays.length > 1 ? `<div class="ilsum">${['cash', 'tr', 'insta', 'voda'].map(m => { const t = pendPays.filter(o => o.m === m).reduce((a, o) => a + o.amt, 0); return t ? `${fmtP(t)} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ')} = <b>${fmtP(tot)}</b></div>` : '';
@@ -6339,7 +6341,7 @@ function mkBulk() {
   modal(`<h3>⚡ انقل كل الجاهز</h3>
     
     <div class="mkbl">${[...by.entries()].map(([k, L]) => `<div class="mkbg"><div class="mkbgh"><b>${k === 'x:cs' ? '💰 بيع كاش من المصنع' : (L[0].t === 'spay' ? '🏭 ' : '') + esc(P.get(k).name)}</b><b class="money">${fmtP(L.reduce((s, o) => s + o.amt, 0))}</b></div>
-      ${L.map(o => `<div class="mkbr"><span>${mkLTag(o)}${o.t === 'cs' && o.buyer ? ' <small>' + esc(o.buyer) + '</small>' : ''}</span><span><b class="money">${fmtP(o.amt)}</b> <small class="tm">${dispDate(isoOf(o.ts))}</small></span></div>`).join('')}</div>`).join('')}</div>
+      ${L.map(o => `<div class="mkbr"><span>${mkLTag(o)}${o.t === 'exp' ? ' <small>' + esc(o.cat) + '</small>' : ''}${o.t === 'cs' && o.buyer ? ' <small>' + esc(o.buyer) + '</small>' : ''}</span><span><b class="money">${fmtP(o.amt)}</b> <small class="tm">${dispDate(isoOf(o.ts))}</small></span></div>`).join('')}</div>`).join('')}</div>
     ${hasTr ? `<div class="fld"><label>التحويلات تدخل خزنة</label><select class="inp" id="mbV">${vaultOpts(mkVaultFor('tr'), 'من غير خزنة (في حساب العميل بس)')}</select></div>` : ''}
     <div class="mfoot"><div class="dtot"><span>الإجمالي</span><b>${fmtP(tot)}</b></div>
       <div class="mrow"><button class="btn green" id="mbOk" type="button">انقلهم كلهم</button><button class="btn line" id="mbX" type="button">إلغاء</button></div></div>`, true);
@@ -6370,7 +6372,7 @@ function mkConfirm(ops, to) {
   const key = o => o.t === 'pay' ? o.m : o.t;
   modal(`<h3>${title}</h3>
     <p style="margin-bottom:8px">${ops.length > 1 ? `${ops.length} عمليات` : 'عملية'} ${kind === 'spay' ? 'دفعة لمورد' : kind === 'pay' ? 'دفعة' : kind === 'rt' ? 'مرتجع/شغل' : ''} ${who}</p>
-    ${ops.map((o, i) => `<div class="mvr" data-i="${i}"><div class="mvh">${mkLTag(o)} <small>${(o.t === 'exp' || o.t === 'rt') && o.note ? esc(o.note) + ' — ' : ''}${o.t === 'cs' && o.buyer ? esc(o.buyer) + ' — ' : ''}اتسجلت ${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</small></div>
+    ${ops.map((o, i) => `<div class="mvr" data-i="${i}"><div class="mvh">${mkLTag(o)} <small>${o.t === 'exp' ? esc(o.cat) + ' — ' : ''}${(o.t === 'exp' || o.t === 'rt') && o.note && o.note !== o.cat ? esc(o.note) + ' — ' : ''}${o.t === 'cs' && o.buyer ? esc(o.buyer) + ' — ' : ''}اتسجلت ${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</small></div>
       <div class="g2"><div class="fld"><label>المبلغ</label><input class="inp num" data-f="amt" value="${fmtP(o.amt)}"></div>
         ${o.t === 'rt' ? `<div class="fld"><label>الخزنة</label><div class="mkcash">↩️ من غير خزنة</div><input type="hidden" data-f="v" value=""></div>`
           : mkCashOp(o) && o.t !== 'hand' ? `<div class="fld"><label>الفلوس</label><div class="mkcash">💵 مع شريكك</div><input type="hidden" data-f="v" value="${MKV}"></div>`

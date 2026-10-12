@@ -1118,6 +1118,11 @@ html[data-theme=dark] #p-mkt .il.d-to .money{color:var(--tr)}
 .mtag.inv{background:var(--gold-l);color:var(--gold-d)}.mtag.cs{background:var(--green-l);color:var(--green)}
 html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
 #p-mkt .il .tm{color:var(--gold-d)}
+/* قاعدة: الكلام تحت بعض زي الأرقام. التاج في عمود ثابت العرض فالأسماء والأوقات بتبدأ من نفس الخط */
+#p-mkt .ic .il:not(.cl){gap:12px}
+#p-mkt .ic .il:not(.cl)>.m{flex:1;min-width:0;display:grid;grid-template-columns:84px minmax(0,1fr);gap:10px;align-items:center}
+#p-mkt .ic .il:not(.cl)>.m .mtag{text-align:center;white-space:normal;line-height:1.4;padding:2px 6px}
+#p-mkt .il.cl .m .mtag{min-width:76px;text-align:center}
 @media (min-width:1000px){
   #p-party .acts{flex-wrap:wrap}
   main.split #hAlerts .todo{padding:2px 8px 4px;margin-bottom:6px;border-radius:10px}
@@ -1132,7 +1137,7 @@ html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
 .mkstat{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:8px 12px;margin-bottom:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:var(--f2);font-weight:700;color:var(--ink)}
 .mkstat em.mkbl{font-style:normal;white-space:nowrap}.mkstat em.mkbl b{direction:ltr;unicode-bidi:isolate;color:var(--ink)}.mkstat em.mkbl b.neg{color:var(--red)}
 @media (min-width:1000px){.mkstat em.mkbl,.mkstat em.mkbl+i{display:none}}
-@media (max-width:999.98px){.mkvb{display:none}.mkstat{gap:4px 14px}.mkstat>i{display:none}}
+@media (max-width:999.98px){.mkvb{display:none}.mkstat{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}.mkstat>i{display:none}}
 .mkstat a{cursor:pointer;white-space:nowrap}.mkstat a b{color:var(--red)}.mkstat i{color:var(--sub);font-style:normal}.mkstat span{color:var(--green)}
 #hTabs .hcash{border-style:dashed;border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
 #hTabs .hcash small{font-size:var(--f1)!important;color:var(--gold-d)!important}

@@ -61,9 +61,7 @@ button:focus-visible{outline:3px solid var(--eq-top);outline-offset:2px}
 .row .pct,.row .run{font-size:.85rem;color:var(--lcd-dim)}
 .row.sel{background:rgba(15,35,41,.15)}
 .row.flip .val{font-family:var(--ar);font-size:.9rem}
-.row .was{flex-basis:100%;direction:rtl;text-align:left;font-family:var(--ar);font-size:.78rem;color:var(--lcd-dim);margin-top:-2px}
-.view .row:has(.was),.mtape .row:has(.was){height:auto;flex-wrap:wrap;padding-block:3px;row-gap:0;border-bottom:1px dotted rgba(15,35,41,.25)}
-.row:has(.was) .run{display:none}
+.row .run.tot{min-width:42%;text-align:right;font-size:1.05rem;color:var(--lcd-ink);opacity:.62;border-left:1px solid rgba(15,35,41,.35);padding-left:8px}
 .row.total{font-weight:700;border-top:1px dashed var(--lcd-ink);margin-top:3px}
 .tag{font-size:.7rem;background:var(--lcd-ink);color:var(--lcd-hi);border-radius:5px;padding:1px 6px}
 .rowbar{display:flex;flex-wrap:wrap;gap:6px;direction:rtl;padding:4px 0 6px}
@@ -254,9 +252,8 @@ function tapeHTML(lines,interactive){
     const op=i===0&&!l.op?'':OPS[l.op];
     const pct=l.pct?` <span class="pct">${fmt(l.v)}%${(l.op==='+'||l.op==='-')?' = '+fmt(out[i].amt):''}</span>`:'';
     const shown=l.pct?'':fmt(l.v);
-    const run=i>0&&(l.op==='*'||l.op==='/'||l.pct)?`<span class="run">→ ${fmt(out[i].run)}</span>`:'';
-    const was=(!interactive&&i>0)?`<span class="was">كانت ${fmt(out[i-1].run)} ← بقت ${fmt(out[i].run)}</span>`:'';
-    h+=`<div class="row${interactive&&sel===i?' sel':''}${interactive&&S.editIdx===i?' editrow':''}" data-i="${i}"><span class="op${l.op==='-'?' minus':''}">${op}</span><span class="val">${interactive&&S.editIdx===i&&S.entry?fmtEntry(S.entry):shown}${pct}</span>${run}${was}</div>`;
+    const run=!interactive?`<span class="run tot">${fmt(out[i].run)}</span>`:(i>0&&(l.op==='*'||l.op==='/'||l.pct)?`<span class="run">→ ${fmt(out[i].run)}</span>`:'');
+    h+=`<div class="row${interactive&&sel===i?' sel':''}${interactive&&S.editIdx===i?' editrow':''}" data-i="${i}"><span class="op${l.op==='-'?' minus':''}">${op}</span><span class="val">${interactive&&S.editIdx===i&&S.entry?fmtEntry(S.entry):shown}${pct}</span>${run}</div>`;
     if(interactive&&sel===i)h+=`<div class="rowbar"><button data-act="edit">عدّل الرقم</button><button class="del" data-act="del">امسح السطر</button><button data-act="x">إلغاء</button></div>`;
   });
   if(interactive&&!S.sample&&!S.closed&&S.editIdx<0&&!S.entry&&lines.length&&S.pending){

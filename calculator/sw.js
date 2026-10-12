@@ -1,5 +1,5 @@
 // يخلي الحاسبة تشتغل من غير نت خالص. لما تعدّل أي ملف غيّر رقم النسخة دي.
-const CACHE = 'flash-calc-v12';
+const CACHE = 'flash-calc-v13';
 const FILES = ['./', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f => c.add(new Request(f, {cache: 'reload'}))))).then(() => self.skipWaiting()));

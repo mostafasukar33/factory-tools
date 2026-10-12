@@ -117,7 +117,7 @@ nav .qk{display:none}
 .phd .bal b{font-size:var(--f5);direction:ltr;font-weight:800}
 .phd .bal b.cr{color:var(--red)}
 .en{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;border-right:6px solid var(--line)}
-.en.inv,.en.ppay{border-right-color:var(--ink)}.en.pur,.en.pay{border-right-color:var(--red)}.en.pay{border-right-color:var(--green)}.en.open{border-right-color:var(--gold)}
+.en.inv,.en.ppay{border-right-color:var(--ink)}.en.pur,.en.pay{border-right-color:var(--red)}.en.pay{border-right-color:var(--green)}.en.open{border-right-color:var(--gold)}.en.adj.dn{border-right-color:var(--green)}
 .en .dh{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .en .dh b{font-size:var(--f3);font-weight:800}
 .en .dh span{font-size:var(--f1);color:var(--sub);font-weight:700}
@@ -2259,7 +2259,7 @@ function entryCard(e, runB) {
       ${e.disc ? `<div class="dl"><span>خصم</span><span class="money">- ${fmtP(e.disc)}</span></div>` : ''}
       <div class="dl tot"><span>إجمالي الفاتورة${e.note ? ' — ' + esc(e.note) : ''}</span><span class="money ${side}">${fmtP(amt)}</span></div>${balLine}</div>`;
   }
-  return `<div class="en row1 ${e.kind} ${e.del ? 'x' : ''}" data-id="${esc(e.id)}">
+  return `<div class="en row1 ${e.kind}${e.kind === 'adj' && e.dir === 'dn' ? ' dn' : ''} ${e.del ? 'x' : ''}" data-id="${esc(e.id)}">
     <div class="dh"><b>${e.kind === 'pay' || e.kind === 'ppay' ? '💵 ' : ''}${esc(docTitle(e))}</b><span>${dispDate(e.date)}${flags}</span></div>
     ${e.note && (e.kind === 'pay' || e.kind === 'ppay') ? `<div class="nt">${esc(e.note)}</div>` : ''}
     <div class="dl tot"><span>${e.kind === 'pay' ? 'نزلت من اللي عليه' : e.kind === 'ppay' ? 'نزلت من اللي ليه' : e.cr ? 'دائن' : 'مدين'}</span><span class="money ${side}">${e.cr ? '−' : '+'} ${fmtP(amt)}</span></div>${balLine}</div>`;
@@ -2704,7 +2704,7 @@ function rowsOf(e) {
   if ((e.kind === 'pay' || e.kind === 'ppay') && e.chk) return [{date: e.date, desc: `شيك${e.chk.no ? ' رقم ' + e.chk.no : ''}`, ref: `يستحق ${dispDate(e.chk.due)}${e.chk.bank ? ' — ' + e.chk.bank : ''}`, dr: e.dr || 0, cr: e.cr || 0, pay: true}];
   if (e.kind === 'pay' && isMkPay(e)) return [{date: e.date, desc: 'دفعة', ref: '', dr: e.dr || 0, cr: e.cr || 0, pay: true}];   // دفعة من حركة السوق: "دفعة" وبس من غير تفاصيل (بطلب صاحب المشروع)
   if (e.kind === 'pay' || e.kind === 'ppay') return [{date: e.date, desc: 'دفعة ' + (e.method || 'نقدي'), ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, pay: true}];
-  if (e.kind === 'adj') return [{date: e.date, desc: e.dir === 'dn' ? 'خصم' : 'تسوية', ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, ret: e.dir === 'dn'}];
+  if (e.kind === 'adj') return [{date: e.date, desc: e.dir === 'dn' ? 'خصم' : 'تسوية', ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, pay: e.dir === 'dn'}];
   if (e.kind === 'bnc') return [{date: e.date, desc: `شيك مرتجع${e.chkno ? ' رقم ' + e.chkno : ''}`, ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, bnc: true}];
   return [{date: e.date, desc: e.desc, ref: '', dr: e.dr || 0, cr: e.cr || 0, op: e.kind === 'open'}];
 }

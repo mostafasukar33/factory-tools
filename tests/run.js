@@ -1254,24 +1254,25 @@ const T0 = Date.now();
       cashVault = ''; go('cash'); renderCash(); const r = [vaultsL().some(v => v.id === 'v_mkt'), vaultOpts('').includes('v_mkt'), vaultBal('') === all, !!$('#p-cash .kbk'), +$('#p-cash [data-ck="c:total"]').dataset.cnt === all + vaultBal('v_mkt'), +$('#p-cash [data-ck="c:me"]').dataset.cnt === all,
         vaultMoves('', todayISO(), todayISO()).some(m => m.who === 'كاش من شريك السوق' && m.sign === 1), vaultMoves('', todayISO(), todayISO()).some(m => m.r.vault === 'v_mkt' && m.r.type !== 'tr')];
       go('mkt'); return r; }), [false, false, true, true, true, true, true, false]);
-    eq('الخزنة: كشف خزني وكشف السوق مع بعض، كل نوع لوحده ومقفول، وأول الفترة + المقبوضات − المدفوعات = آخر الفترة، والدوس على خزنة بيفلتر عليها', await A.evaluate(() => {
-      cashMode = 'day'; cashDay = ''; cashVault = ''; cashOpenV = false; cashOpenG.clear(); go('cash'); renderCash();
-      const tx = k => [...$$('#kst-' + k + ' .ksg span')].map(x => x.textContent);
-      const ok = k => { const n = s => { const e = $('#kst-' + k + ' ' + s + ' .n'); return e.dataset.cnt ? +e.dataset.cnt : Math.round(parseFloat(e.textContent.replace(/[,+]/g, '').replace('−', '-')) * 100); }; return n('.ko') + n('.ki') + n('.kx') + ($('#kst-' + k + ' .kadj') ? n('.kadj') : 0) === n('.kc'); };
+    eq('الخزنة: كارت حركتي وكارت السوق مع بعض: دخل/طلع = مجموع الأنواع، مفيش رصيد أول/آخر، والدوس على نوع بيفتح حركاته، والدوس على خزنة بيفلتر عليها', await A.evaluate(() => {
+      cashMode = 'day'; cashDay = ''; cashVault = ''; cashOpenV = false; go('cash'); renderCash();
+      const tx = k => [...$$('#kst-' + k + ' .kty .l')].map(x => x.textContent);
+      const sumOk = k => { const rows = t => [...$$('#kst-' + k + ' .kty.kt' + t + ' .n')].reduce((n, e) => n + Math.round(parseFloat(e.textContent.replace(/,/g, '')) * 100), 0);
+        return +$('#kst-' + k + ' .kin .n').dataset.cnt === rows('in') && +$('#kst-' + k + ' .kout .n').dataset.cnt === rows('out'); };
       const me = tx('me'), mk = tx('mk');
-      const r = [!!$('#kst-mk'), $('#p-cash .kvs').hidden, me.some(x => x.includes('استلام من الشريك')), !me.some(x => x.includes('مصاريف السوق')), mk.some(x => x.includes('تحصيل من العملاء')), mk.some(x => x.includes('دفعات للموردين')), mk.some(x => x.includes('مصاريف السوق')), mk.some(x => x.includes('سلّمها لك')), ok('me'), ok('mk'), $$('#p-cash .ksl:not([hidden])').length];
+      const r = [!!$('#kst-mk'), $('#p-cash .kvs').hidden, me.some(x => x.includes('استلام من الشريك')), !me.some(x => x.includes('مصاريف السوق')), mk.some(x => x.includes('تحصيل من العملاء')), mk.some(x => x.includes('دفعات للموردين')), mk.some(x => x.includes('مصاريف السوق')), mk.some(x => x.includes('سلّمها لك')), sumOk('me'), sumOk('mk'), !/رصيد أول|رصيد آخر/.test($('#p-cash .kss').textContent)];
+      const ty = $('#kst-me .kty'); ty.click();
+      r.push($('#mask').classList.contains('on') && $$('#modal .kit').length === +ty.querySelector('em').textContent); closeModal();
       $('#kMe').click(); r.push($('#p-cash .kvs').hidden);
       const v = $('#p-cash .kv'), id = v.dataset.v; v.click();
-      r.push(cashVault === id, $('#kst-me .ksh').textContent.includes(vName(id)), ok('me'), !$('#p-cash .kday'));
-      const g = $('#kst-me .ksg'); if (g) { g.click(); r.push($$('#p-cash .ksl:not([hidden])').length === 1 && !!$('#p-cash .ksl:not([hidden]) .kmv')); } else r.push(true);
-      cashVault = ''; cashOpenV = false; cashOpenG.clear(); go('mkt'); return r; }), [true, true, true, true, true, true, true, true, true, true, 0, false, true, true, true, true, true]);
-    eq('تسوية الجرد مش في المدفوعات ولا المقبوضات: سطر لوحده قبل رصيد آخر الفترة والحساب مظبوط', await A.evaluate(() => {
+      r.push(cashVault === id, $('#kst-me .ksh').textContent.includes(vName(id)), sumOk('me'));
+      cashVault = ''; cashOpenV = false; go('mkt'); return r; }), [true, true, true, true, true, true, true, true, true, true, true, true, false, true, true, true]);
+    eq('تسوية الجرد: بتظبط الرصيد بس، ومش بتبان في الخزنة ولا في مصروفات الأرباح', await A.evaluate(() => {
+      const y0 = todayISO().slice(0, 4) + '-01-01', p0 = profitOf(y0, todayISO()).exp, b0 = vaultBal('');
       const t = {id: 'x_adjtest', type: 'exp', amt: 12300, vault: vaultsL()[0].id, cat: ensureAdjCat('exp'), note: 'جرد تجربة', date: todayISO(), at: nowS(), upd: nowS(), del: false, hist: []};
       db.txs.push(t); IDX.tx.set(t.id, t); cashVault = ''; cashMode = 'day'; cashDay = ''; go('cash'); renderCash();
-      const n = s => { const e = $('#kst-me ' + s + ' .n'); return e.dataset.cnt ? +e.dataset.cnt : Math.round(parseFloat(e.textContent.replace(/[,+]/g, '').replace('−', '-')) * 100); };
-      const txt = [...$$('#kst-me .ksg:not(.kadj) span')].map(x => x.textContent).join('|');
-      const r = [!!$('#kst-me .kadj'), n('.kadj'), !txt.includes('تسوية'), n('.ko') + n('.ki') + n('.kx') + n('.kadj') === n('.kc')];
-      t.del = true; touch(t); saveDB(); go('mkt'); return r; }), [true, -13300, true, true]);
+      const r = [vaultBal('') === b0 - 12300, profitOf(y0, todayISO()).exp === p0, !$('#p-cash .kss').textContent.includes('تسوية'), !$('#p-cash .kss').textContent.includes('جرد تجربة')];
+      t.del = true; touch(t); saveDB(); go('mkt'); return r; }), [true, true, true, true]);
     /* الشريك كتب مصروف وهو دفعة لمورد: مصطفى بيحوّلها من عنده، وبيرجّعها لو غلط */
     const cv0 = await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(o => o.t === 'exp'); return {id: o.id, mk: vaultBal('v_mkt'), exp: profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp}; });
     await A.evaluate(() => { cashSide = 'mkt'; go('cash'); }); await A.settle(300);   // الصفحة بتفتح بعد تغيير العنوان (وبتقفل أي نافذة)
@@ -1279,7 +1280,7 @@ const T0 = Date.now();
     await A.click('#omS'); await A.settle(150); await A.fill('#spQ', 'مورد تجربة'); await A.settle(100); await A.click('#spL .pt'); await A.settle(300);
     eq('تحويل مصروف الشريك لدفعة مورد: المصروف اتشال، ودفعة مورد من خزنة السوق بنفس المبلغ، ورصيد السوق زي ما هو، والأرباح نزل منها', await A.evaluate(c => {
       const o = db.mkt.ops[c.id], t = IDX.tx.get('t_mk_' + c.id), e = E.get('e_mk_' + c.id);
-      return [t.del, e.kind, e.vault, e.amt, mkT(o), mkState(o), vaultBal('v_mkt') === c.mk, c.exp - profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp, $$('#kst-mk .ksg span').some(x => x.textContent.includes('مصاريف السوق'))]; }, cv0), [true, 'ppay', 'v_mkt', 25000, 'spay', 'done', true, 25000, false]);
+      return [t.del, e.kind, e.vault, e.amt, mkT(o), mkState(o), vaultBal('v_mkt') === c.mk, c.exp - profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp, $$('#kst-mk .kty .l').some(x => x.textContent.includes('مصاريف السوق'))]; }, cv0), [true, 'ppay', 'v_mkt', 25000, 'spay', 'done', true, 25000, false]);
     await A.evaluate(id => mkOpMenu(db.mkt.ops[id]), cv0.id); await A.settle(150); await A.click('#omE'); await A.settle(150); await A.click('#aeOk'); await A.settle(300);
     eq('"رجّعها مصروف" بترجّعها زي ما كانت', await A.evaluate(c => { const o = db.mkt.ops[c.id]; return [IDX.tx.get('t_mk_' + c.id).del, E.get('e_mk_' + c.id).del, mkT(o), mkState(o), vaultBal('v_mkt') === c.mk, profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp === c.exp]; }, cv0), [false, true, 'exp', 'done', true, true]);
     await A.evaluate(() => { cashSide = 'me'; go('mkt'); });
@@ -1716,18 +1717,16 @@ const T0 = Date.now();
 
     sec('قاعدة الأرقام: تحت بعض في عمود واحد (الحسابات والخزنة والسوق)');
     /* كل رقم في القايمة (وإجمالي القسم بتاعها) بيبدأ من نفس الخط على الشمال بالظبط: مفيش رقم داخل ورقم خارج */
-    await A.evaluate(() => { go('cash'); cashMode = 'year'; cashOpenG.clear(); CG_ORD.concat('fyi').forEach(k => { cashOpenG.add('me:' + k); cashOpenG.add('mk:' + k); }); renderCash(); }); await A.settle(300);
-    await colOk('الحسابات — الخزنة (كشف خزني)', A, '#kst-me', '.n');
-    if (await A.$('#kst-mk')) await colOk('الحسابات — الخزنة (كشف السوق)', A, '#kst-mk', '.n');
+    await A.evaluate(() => { go('cash'); cashMode = 'year'; renderCash(); }); await A.settle(300);
+    await colOk('الحسابات — الخزنة (حركتي)', A, '#kst-me', '.kty .n');
+    if (await A.$('#kst-mk')) await colOk('الحسابات — الخزنة (حركة السوق)', A, '#kst-mk', '.kty .n');
     if (await A.evaluate(() => !isWide())) await colOk('الحسابات — الخزنة (الأرصدة فوق)', A, '#p-cash .kb', '.kbm>.n,.kbk>.n,.kbt>.n');
-    await A.evaluate(() => { cashOpenG.clear(); });
     await A.evaluate(() => { cashMode = 'day'; go('home'); }); await A.settle(300);
     await colOk('الحسابات — قايمة العملاء', A, '#hList', '.pt .a b');
     { const X = await D1.page('cash.html'); await X.settle(800);
-      await X.evaluate(() => { home.mode = 'year'; CG_ORD.concat('fyi').forEach(k => { homeOpenG.add('me:' + k); homeOpenG.add('mk:' + k); }); renderHome(); }); await X.settle(200);
-      await colOk('دفتر الخزنة — الرئيسية (كشف خزني)', X, '#kst-me', '.n');
-      if (await X.$('#kst-mk')) await colOk('دفتر الخزنة — الرئيسية (كشف السوق)', X, '#kst-mk', '.n');
-      await X.evaluate(() => { homeOpenG.clear(); renderHome(); });
+      await X.evaluate(() => { home.mode = 'year'; renderHome(); }); await X.settle(200);
+      await colOk('دفتر الخزنة — الرئيسية (حركتي)', X, '#kst-me', '.kty .n');
+      if (await X.$('#kst-mk')) await colOk('دفتر الخزنة — الرئيسية (حركة السوق)', X, '#kst-mk', '.kty .n');
       eq('دفتر الخزنة نفس شكل خزنة الحسابات: نفس الزراير والكروت واختيار الفترة', await X.evaluate(() => [[...document.querySelectorAll('#p-home .cbar .btn')].map(b => b.querySelector('.lg') ? b.querySelector('.lg').textContent : b.textContent.trim()), !!$('#hTots .kbm') && !!$('#hTots .kvs') && !!$('#hTables #kst-me'), [...document.querySelectorAll('#hMode button')].map(b => b.textContent)]),
         [['استلمت من عميل', 'دفعت لمورد', '− مصروف', '+ إيراد'], true, ['يوم', 'شهر', 'سنة', 'من–إلى']]);
       await X.evaluate(() => { rep.mode = 'range'; rep.from = '2000-01-01'; rep.to = todayISO(); rep.detail = true; go('rep'); }); await X.settle(400);

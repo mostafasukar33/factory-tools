@@ -140,11 +140,11 @@ function cashState() {
    app: acc (الحسابات) / mkt (تطبيق الشريك) / cash (الدفتر). full = الصفحة كلها (موبايل بس). go = بيوصل للشاشة */
 const MOB = {width: 390, height: 844}, LAP = {width: 1440, height: 900}, LAP2 = {width: 1100, height: 760};
 const PNAME = 'مؤسسة تجربة';
-const accGo = h => async A => { await A.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); if (typeof cashSide !== 'undefined') { cashSide = 'me'; cashOpenV = false; cashOpenG.clear(); cashVault = ''; } go(h); if (h === 'cash') renderCash(); }, h); };
+const accGo = h => async A => { await A.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); if (typeof cashSide !== 'undefined') { cashSide = 'me'; cashOpenV = false; cashVault = ''; } go(h); if (h === 'cash') renderCash(); }, h); };
 const accEval = code => async A => { await A.evaluate(code => { if ($('#mask').classList.contains('on')) closeModal(); (0, eval)(code); }, code); };
 const party = `liveParties().find(p => p.name.startsWith('${PNAME}'))`;
 const mktGo = h => async M => { await M.evaluate(h => nav(h), h); };
-const cashGo = h => async C => { await C.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); if (typeof homeOpenV !== 'undefined') { homeOpenV = false; homeOpenG.clear(); home.vault = ''; } go(h); }, h); };
+const cashGo = h => async C => { await C.evaluate(h => { if ($('#mask').classList.contains('on')) closeModal(); if (typeof homeOpenV !== 'undefined') { homeOpenV = false; home.vault = ''; } go(h); }, h); };
 /* مساهم تجريبي (أول مرة بس): رأس مال وشحنة بأصنافها ومصروف وسحب، علشان شاشة الجرد وكشف المساهم */
 const IVSHOT = `if (!IDX.ivp.get('ip_shot')) { const t = todayISO(), u = Date.now(), add = (k, r) => { const x = Object.assign({id: r.id, iv: 'ip_shot', k, note: '', at: u, upd: u, del: false, hist: []}, r); db.ivrs.push(x); IDX.ivr.set(x.id, x); };
   const v = {id: 'ip_shot', name: 'مساهم تجربة', mode: 'c', party: ${party}.id, from: addDays(t, -40), note: '', at: u, upd: u, del: false, hist: []}; db.ivps.push(v); IDX.ivp.set(v.id, v);
@@ -179,8 +179,9 @@ const SCREENS = [
   {name: 'acc-mkt-arch-m', app: 'acc', vp: MOB, full: true, go: accEval("mkView = 'arch'; mkDay = ''; go('mkt'); renderMkt()")},
   {name: 'acc-cash-wk-m', app: 'acc', vp: MOB, go: accEval("cashSide = 'me'; cashMode = 'week'; go('cash'); renderCash()")},
   {name: 'acc-cash-rng-m', app: 'acc', vp: MOB, go: accEval("cashSide = 'me'; cashMode = 'range'; go('cash'); renderCash()")},
-  {name: 'acc-cash-open-m', app: 'acc', vp: MOB, full: true, go: accEval(`cashOpenV = true; cashOpenG.clear(); cashOpenG.add('me:exp'); cashOpenG.add('mk:spay'); go('cash'); renderCash()`)},
-  {name: 'acc-cash-open-l', app: 'acc', vp: LAP, go: accEval(`cashOpenV = true; cashOpenG.clear(); cashOpenG.add('me:exp'); go('cash'); renderCash()`)},
+  {name: 'acc-cash-open-m', app: 'acc', vp: MOB, full: true, go: accEval(`cashOpenV = true; cashVault = ''; go('cash'); renderCash()`)},
+  {name: 'acc-cash-open-l', app: 'acc', vp: LAP, go: accEval(`cashOpenV = true; cashVault = ''; go('cash'); renderCash()`)},
+  {name: 'acc-cash-sheet-m', app: 'acc', vp: MOB, go: accEval(`cashOpenV = false; cashVault = ''; go('cash'); renderCash(); [...$$('#kst-me .kty')].pop().click()`)},
   {name: 'acc-cash-l1100', app: 'acc', vp: LAP2, go: accGo('cash')},
   {name: 'acc-list-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval("tab = 'mkt'; go('home'); renderHome()")},
   {name: 'acc-party-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval(`go('p/' + ${party}.id)`)},
@@ -207,7 +208,8 @@ const SCREENS = [
   {name: 'cash-rep-m', app: 'cash', vp: MOB, full: true, go: cashGo('rep')},
   {name: 'cash-set-m', app: 'cash', vp: MOB, full: true, go: cashGo('set')},
   {name: 'cash-exp-m', app: 'cash', vp: MOB, go: async C => { await C.evaluate(() => { go('home'); $('#bExp').click(); document.activeElement && document.activeElement.blur(); }); }},
-  {name: 'cash-home-open-m', app: 'cash', vp: MOB, full: true, go: async C => { await C.evaluate(() => { go('home'); homeOpenV = true; homeOpenG.add('me:exp'); homeOpenG.add('mk:hand'); renderHome(); }); }},
+  {name: 'cash-home-open-m', app: 'cash', vp: MOB, full: true, go: async C => { await C.evaluate(() => { go('home'); homeOpenV = true; renderHome(); }); }},
+  {name: 'cash-home-sheet-m', app: 'cash', vp: MOB, go: async C => { await C.evaluate(() => { go('home'); homeOpenV = false; home.vault = ''; renderHome(); [...$$('#kst-me .kty')].pop().click(); }); }},
   {name: 'cash-home-l', app: 'cash', vp: LAP, go: cashGo('home')},
   {name: 'cash-home-m-dark', app: 'cash', vp: MOB, dark: true, full: true, go: cashGo('home')},
   /* ورق الـ PDF (لازم ميتغيرش): بيتصور آخر حاجة في كل جهاز لأن الورقة بتتحط قدام الصفحة */

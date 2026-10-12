@@ -1428,10 +1428,12 @@ const T0 = Date.now();
     const qp = await A.evaluate(() => (liveParties().find(x => x.name === 'عميل فاتورة سريعة') || {}).id);
     eq('اتنقلت بالإجمالي: الرصيد 4,000 والوارد فاضي وعليها "البنود لسه"', await A.evaluate(([id, pid]) => { const e = E.get('e_mk_' + id); return [e.mkNL, e.party === pid, balance(pid), mkPending().length, nlList().length]; }, [qOp, qp]), [true, true, 400000, 0, 1]);
     await A.evaluate(() => go('home')); await A.settle(300);
-    eq('تنبيه في الرئيسية', (await A.textContent('#nlRem')).includes('من غير بنود'), true);
+    eq('مفيش تنبيه في الرئيسية (في الوارد بس)', (await A.textContent('#nlRem')).includes('من غير بنود'), false);
     await A.evaluate(pid => go('p/' + pid), qp); await A.settle(300);
-    eq('في الحساب: تنبيه وعلامة "البنود لسه" على الفاتورة', [(await A.textContent('#p-party .nlb')).includes('من غير بنود'), (await A.textContent('#p-party .ldg')).includes('البنود لسه')], [true, true]);
-    await A.click('#p-party .nlb'); await A.settle(300);
+    eq('في الحساب: مفيش تنبيه فوق، والعلامة "البنود لسه" على الفاتورة نفسها', [!!(await A.$('#p-party .nlb')), (await A.textContent('#p-party .ldg')).includes('البنود لسه')], [false, true]);
+    await A.evaluate(() => { mkView = 'in'; go('mkt'); renderMkt(); }); await A.settle(300);
+    eq('التنبيه في الوارد', (await A.textContent('#mkBody .nlb')).includes('من غير بنود'), true);
+    await A.click('#mkBody .nlb'); await A.settle(300);
     eq('نافذة البنود بتفتح فاضية وإجمالي الشريك ظاهر', [await A.inputValue('.li [data-f=name]'), (await A.textContent('#dcMk')).includes('الفرق')], ['', true]);
     await A.fill('.li [data-f=name]', 'صنف سريع'); await A.fill('.li [data-f=qty]', '4'); await A.fill('.li [data-f=price]', '1000');
     eq('البنود مطابقة', (await A.textContent('#dcMk')).includes('مطابق'), true);
@@ -1621,7 +1623,7 @@ const T0 = Date.now();
     eq('الخزنة في التابات تحت، والتقارير مش فيها', [await A.evaluate(() => location.hash), await A.isVisible('nav button[data-go=cash]'), await A.isVisible('nav button[data-go=rep]')], ['#cash', true, false]);
     /* المطلوب منك النهارده + الألوان */
     await A.click('nav button[data-go=home]'); await A.settle(200);
-    eq('الرئيسية: فاضل تنبيه الفواتير اللي بنودها لسه بس (مفيش وارد السوق ولا الحد الأحمر ولا النسخة)', await A.evaluate(() => [!!$('#nlRem'), $('#mkRem').textContent.trim(), !!$('#bkRem'), !!$('#tkRows')]), [true, '', false, false]);
+    eq('الرئيسية: مفيش تنبيهات (لا الفواتير اللي بنودها لسه ولا وارد السوق ولا الحد الأحمر ولا النسخة)', await A.evaluate(() => [$('#nlRem').textContent.trim() === '', $('#mkRem').textContent.trim(), !!$('#bkRem'), !!$('#tkRows')]), [true, '', false, false]);
     /* الألوان من نظام الشكل الموحد (lib/ui.css): نفس الأخضر والأزرق والأحمر في التطبيقين */
     const tokC = X => X.evaluate(() => { const d = document.createElement('i'); document.body.appendChild(d); const g = v => (d.style.color = `var(${v})`, getComputedStyle(d).color); const r = [g('--green'), g('--tr'), g('--red')]; d.remove(); return r; });
     const mTok = await tokC(M);

@@ -1921,7 +1921,7 @@ function renderHome() {
   const au = db.cfg.audit;
   if (au && !au.ok) probs.unshift(au.msg);
   const lb = db.cfg.lastBackup || 0, every = db.cfg.sheetOk ? 30 : 7, days = Math.floor((nowS() - lb) / 86400000);
-  $('#nlRem').innerHTML = nlAlert(); if ($('#nlRem [data-nl]')) $('#nlRem [data-nl]').onclick = nlModal;
+  $('#nlRem').innerHTML = '';   // تنبيه الفواتير اللي بنودها لسه: في الوارد بس (بطلب صاحب المشروع)
   $('#chk').innerHTML = chkAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '');
   const bal = allBalances();
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
@@ -2215,7 +2215,6 @@ function renderParty(id) {
       <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}" data-ck="pb:${esc(id)}" data-cnt="${Math.abs(b)}">${fmtP(Math.abs(b))} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
     ${isFwdSrc(p) ? (fwAutoLink(p), fwBar(p)) : ''}
-    ${nlAlert(id)}
     ${p.sec === 'mkt' && mkCreds() ? ((w, g) => w ? `<div class="sync mkwp ${g.paid ? 'ok' : ''}" id="ppWantL">📌 مطلوب من شريكك يحصّل منه <b>${fmtP(w.amt)}</b>${w.note ? ' — ' + esc(w.note) : ''}${g.paid ? ` · ✓ حصّل ${fmtP(g.paid)}` : ' · لسه'} <a>تعديل</a></div>` : '')(mkWants()[id], mkWants()[id] ? mkWantGot(id, mkWants()[id]) : null) : ''}
     <div class="acts">
       <button class="btn" id="ppDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button>
@@ -2386,7 +2385,7 @@ function docModal(p, kind, e, opts = {}) {
   /* nl = فاتورة من السوق اتنقلت بالإجمالي وبنودها لسه: بتفتح فاضية، والإجمالي لازم يطابق، وأول حفظ بيشيل التنبيه */
   const nl = !!(e && e.mkNL), mkT = opts.mk ? opts.mk.amt : nl ? docTotal(e) : null, fill = isNew || nl;
   const lines = e && !nl ? e.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty), price: fmtP(l.price)})) : [{name: '', unit: 'كيلو', qty: '', price: ''}];
-  const book = itemBook(), mine = custItems(p.id, base);
+  let bk = null; const book = {get: k => (bk = bk || itemBook()).get(k)}, mine = custItems(p.id, base);   // كل أصناف كل الفواتير بتتحسب بس لما تحتاجها (كانت بتهنّج فتح الفاتورة)
   const lastDoc = fill ? db.entries.filter(x => x.party === p.id && x.kind === kind && !x.del && !x.mkNL && x.lines && x.lines.length).sort(entCmp).pop() : null;
   modal(`<h3>${isNew ? ttl : nl ? '📝 اكتب بنود الفاتورة' : 'تعديل ' + esc(docTitle(e))} — ${esc(p.name)}</h3>
     ${mkT !== null ? `<div class="sync" style="margin:0 0 10px;display:block">📥 فاتورة من شريكك في السوق${nl ? ' (اتنقلت بالإجمالي)' : ''} — إجمالي: <b class="money">${fmtP(mkT)}</b><br><small>اكتب البنود (كمية وسعر) والإجمالي لازم يطابق ده.</small><div id="dcMk" style="margin-top:4px;font-weight:800"></div></div>` : ''}

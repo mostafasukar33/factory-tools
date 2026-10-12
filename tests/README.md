@@ -39,7 +39,7 @@ node tests/shots.js --list                           # أسامي الشاشات
 | `accounts.html` جوه بلوك وارد السوق بس (آخر `<script>`) | mkt |
 | أي حتة تانية في `accounts.html` | كله |
 | `market.html` | mkt |
-| `cash.html` | acc |
+| `cash.html` (ورقة "الدفتر اتقفل") | acc |
 | `payroll.html` | `tests/payroll.js` |
 | `lib/` أو `sw.js` أو `fonts/` أو ملفات الاختبار نفسها | كله |
 | أي صفحة تانية (`index.html`، `quote.html`، ...) | smoke |

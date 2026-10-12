@@ -342,14 +342,11 @@ const T0 = Date.now();
     await A.click('#cOpen2'); await A.fill('#modal [data-v]', '960'); await A.click('#opOk'); await A.settle(200);
     eq('الجرد سجّل الفرق تسوية', await vbal(A, 'v_main'), 96000);
 
-    sec('٦) دفتر الخزنة متصل بالحسابات');
-    const C = await D1.page('cash.html'); await C.settle(400);
-    eq('الدفتر شايف نفس الرصيد', await C.evaluate(() => Math.round(balance(null) * 100)), 96000);
-    await C.click('#bInc'); await C.fill('#tAmt', '70'); await C.selectOption('#tP', {label: 'عميل تجربة اتنين'}); await C.click('#tSave'); await C.settle(800);
-    eq('دفعة من الدفتر نزلت على العميل', await bal(A, 'عميل تجربة اتنين'), -7000);
+    sec('٦) دفعة عميل بتدخل الخزنة');
+    await openParty(A, 'عميل تجربة اتنين'); await A.click('#fbPay'); await A.fill('#pyAmt', '70'); await A.click('#pyOk'); await closed(A);
+    eq('الدفعة نزلت على العميل', await bal(A, 'عميل تجربة اتنين'), -7000);
     eq('ودخلت خزنة الحسابات', await vbal(A, 'v_main'), 103000);
 
-    await C.close();   // الدفتر خلص دوره هنا، وقفله بيخفف الأقسام الجاية
     sec('٧) كشف الحساب PDF');
     await openParty(A, 'عميل تجربة واحد'); await A.click('#ppStmt');
     await A.evaluate(() => { window.__sh = null; navigator.canShare = () => true; navigator.share = d => { window.__sh = d; return Promise.resolve(); }; });
@@ -599,15 +596,6 @@ const T0 = Date.now();
     await setAmt(B, 66600); await setAmt(A, 66600); await bg(B, 'syncNow()'); await bg(A, 'syncNow()');
     eq('مفيش تعارض غلط: تعديل عادي بعد مزامنة، أو نفس التعديل على الجهازين', [await nCl(A), await nCl(B), await A.evaluate(() => IDX.tx.get('t_cf').amt), await B.evaluate(() => IDX.tx.get('t_cf').amt)], cl0.concat([66600, 66600]));
 
-    sec('١١) شيت دفتر الخزنة مقفول بالمفتاح');
-    const C2 = await D1.page('cash.html'); await C2.click('#bSet:visible, nav button[data-go=set]:visible');
-    await C2.fill('#shUrl', CASH_URL); await C2.click('#shSave'); await C2.settle(300);
-    await C2.click('#shHelp'); await C2.click('#hpCopy'); const cashCode = await C2.evaluate(() => navigator.clipboard.readText()); sheets.cash.load(cashCode); await C2.click('#hpX');
-    await C2.click('#shSave'); await C2.settle(1500);
-    const cKey = await C2.evaluate(() => db.sheetKey);
-    eq('مفتاح الدفتر اتعمل لوحده ومش في الكود، والشيت اتقفل عليه', [cKey.length >= 8, cashCode.includes(cKey), await C2.evaluate(() => db.sheetLocked), JSON.parse(sheets.cash.post(JSON.stringify({key: 'Other-Key-123', action: 'ping'}))).error], [true, false, true, 'key']);
-    eq('شيت الدفتر مقفول', JSON.parse(sheets.cash.get()).ok, false);
-
     sec('١٠ب) رابط الربط مع نت بيقطع أو صفحة بتتعمل لها ريفرش');
     const D4 = await newDevice(browser, base, sheets); D4.netDown = true;
     const J2 = await D4.page('accounts.html' + link.slice(link.indexOf('#')));
@@ -620,83 +608,29 @@ const T0 = Date.now();
     eq('النت رجع: كمّل الربط لوحده ونزّل نفس الأرصدة', [await J2.evaluate(() => [db.cfg.sheetOk, !!db.cfg.joinWait]), await snap(J2)], [[true, false], await snap(A)]);
     eq('رابط مقطوع بيطلع رسالة', await (async () => { const X = await D4.page('accounts.html#join=AAAA'); await X.settle(1200); return (await X.textContent('#toast')).includes('ناقص'); })(), true);
 
-    sec('١١ب) الخزنة واحدة حتى لو الحسابات في تخزين لوحدها (أيقونة الأيفون)');
-    eq('الحسابات بتتزامن مع شيت الدفتر وبتحفظ لينكه كإعداد مشترك', [await bg(A, 'cashSync(true)'), await A.evaluate(() => !!getSet('cashSheet', null))], [true, true]);
-    await bg(A, 'syncNow()'); await A.settle(1200);
-    await bg(B, 'syncNow()'); await B.settle(3500);
-    eq('جهاز الحسابات التاني خد ربط الدفتر لوحده ونفس رصيد الخزنة', [await B.evaluate(() => !!cashCreds()), await B.evaluate(() => vaultBal(''))], [true, await A.evaluate(() => vaultBal(''))]);
-    const cjoin = await B.evaluate(() => { const c = cashCreds(); return 'cash.html#cashjoin=' + b64u(JSON.stringify({u: c.u, k: c.k})); });
-    const Saf = await D3.page(cjoin); await Saf.settle(1500);
-    eq('الدفتر على جهاز جديد اتربط برابط الربط بس', await Saf.evaluate(() => [db.sheetLocked, location.hash]), [true, '']);
-    await Saf.evaluate(() => { const c = db.cats.find(x => x.type === 'exp' && !x.del); db.tx.push({id: 't_from_ledger', type: 'exp', amt: 77, ts: Date.now(), vault: 'v_main', cat: c.id, note: 'من الدفتر', upd: Date.now(), del: false, sy: 0}); saveDB(); return syncNow(true); });
-    await Saf.settle(800);
-    eq('لينك شيت الحسابات أو مفتاح غلط بيطلع رسالة واضحة', [await B.evaluate(u => connectCash(u, 'Wrong-Key-1234'), CASH_URL), await B.evaluate(([u, k]) => connectCash(u, k), [ACC_URL, KEY])],
-      ['المفتاح السري مش بتاع شيت الدفتر ده. استخدم زرار "انسخ رابط الربط" من الدفتر.', 'ده لينك شيت الحسابات، مش شيت دفتر الخزنة.']);
-    await Saf.click('#bSet:visible, nav button[data-go=set]:visible'); await Saf.click('#shAcc'); const cjl = await Saf.evaluate(() => navigator.clipboard.readText());
-    eq('رابط الربط من الدفتر بيتقري في الحسابات', await B.evaluate(t => { const o = parseCashJoin(t); return !!(o && o.u && o.k); }, cjl), true);
-    const vB0 = await B.evaluate(() => vaultBal(''));
-    await bg(B, 'cashSync(true)'); await B.settle(300);
-    eq('مصروف من الدفتر (Safari) ظهر في الحسابات (الأيقونة)', [await B.evaluate(() => !!IDX.tx.get('t_from_ledger')), await B.evaluate(() => vaultBal(''))], [true, vB0 - 7700]);
-    await B.evaluate(() => { const now = Date.now(); const r = {id: 't_from_app', type: 'exp', amt: 3300, vault: 'v_main', to: '', cat: 'c_exp0', note: 'من الحسابات', date: todayISO(), at: now, upd: now, del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); saveDB(); });
-    await bg(B, 'cashSync(true)'); await B.settle(300);
-    await bg(Saf, 'autoPull()'); await Saf.settle(500);
-    eq('مصروف من الحسابات ظهر في الدفتر', await Saf.evaluate(() => !!db.tx.find(t => t.id === 't_from_app' && !t.del)), true);
-
-    /* الدفتر: الاسم هو الكبير، البنود الثابتة من الحسابات ليها اسم، والحركات متقسمة بالأيام */
-    eq('كارت الحركة: اسم العميل كبير والبند والخزنة صغيرين، ومصروف السوق مش "بدون بند"', await Saf.evaluate(() => {
-      const card = t => { const d = document.createElement('div'); d.innerHTML = txCard(t); return [d.querySelector('b').textContent, d.querySelector('small').textContent]; };
-      const now = Date.now();
-      return [card({id: 'x1', type: 'inc', amt: 50, ts: now, vault: 'v_main', cat: 'c_inc0', note: 'عميل تجربة اسم — ملاحظة', party: 'p_x', pnote: 'باقي الحساب', upd: 1, sy: 1}),
-        card({id: 'x2', type: 'exp', amt: 10, ts: now, vault: 'v_main', cat: 'c_mkexp', note: 'تروسيكل', upd: 1, sy: 1}).map(x => x.includes('مصاريف السوق') || x)];
-    }), [['عميل تجربة اسم', `${await Saf.evaluate(() => dispTime(Date.now()))} · تحصيل من عميل · كاش · باقي الحساب`], ['تروسيكل', true]]);
-    eq('قايمة الحركات متقسمة بالأيام (عنوان لكل يوم بصافيه)', await Saf.evaluate(() => { const d = document.createElement('div'), t0 = Date.now(); d.innerHTML = txDays([{id: 'a', type: 'inc', amt: 100, ts: t0 - 86400000, vault: 'v_main', cat: 'c_inc0', note: 'أ'}, {id: 'b', type: 'exp', amt: 30, ts: t0 - 86400000, vault: 'v_main', cat: '', note: 'ب'}, {id: 'c', type: 'exp', amt: 5, ts: t0, vault: 'v_main', cat: '', note: 'ج'}]); return [...d.querySelectorAll('.dayh b')].map(b => b.textContent); }), ['+70', '-5']);
-    eq('الدفتر: نفس تقسيم خزنة الحسابات (عملاء السوق في حركتي، تحصيل السوق كامل وتحته التقسيمة وقصاده "تحويل لمصطفى"، الشركاء والمساهمين لوحدهم)', await Saf.evaluate(() => {
-      const now = Date.now(), mv = (r, sign) => ({r, sign, amt: r.amt, who: 'س', what: '', at: r.ts});
-      const cash = {id: 'e_mk_1', type: 'inc', amt: 1000, ts: now, vault: 'v_mkt', cat: 'c_inc0', party: 'p_mk', note: 'عميل تجربة'}, xf = {id: 'e_mk_2', type: 'inc', amt: 500, ts: now, vault: 'v_main', cat: 'c_inc0', party: 'p_mk', note: 'عميل تجربة'};
-      const site = {id: 'e_3', type: 'inc', amt: 70, ts: now, vault: 'v_main', cat: 'c_inc0', party: 'p_site'}, pt = {id: 't1', type: 'exp', amt: 40, ts: now, vault: 'v_main', cat: 'c_pdraw', pt: 'x'}, iv = {id: 't2', type: 'inc', amt: 30, ts: now, vault: 'v_main', cat: 'c_ivcap', iv: 'y'};
-      const sec0 = accSec; accSec = new Map([['p_mk', 'mkt'], ['p_site', 'site']]);
-      const me = kstHtml('me', '', 'me', [mv(xf, 1), mv(site, 1), mv(pt, -1), mv(iv, 1)], 'me');
-      const mk = kstHtml('mk', '', 'mkt', [mv(cash, 1), mv(xf, 1), Object.assign(mv(xf, -1), {mkOut: true})], 'mk');
-      accSec = new Map(); const fb = [homeGroup(mv(xf, 1), 'me'), homeGroup(mv(site, 1), 'me')]; accSec = sec0;
-      return [Object.keys(me.by).join(','), Object.keys(mk.by).join(','), mk.by.col.length, mk.by.col[0].amt, mk.by.col[0].who, mk.by.col[0].what, mk.by.mkTr[0].amt, me.by.mkcol[0].who, me.html.includes('إيداع مساهمين'), mk.html.includes('سحب'), mk.html.includes('تحويل لمصطفى'), fb.join(',')];
-    }), ['mkcol,col,part,ivcap', 'col,mkTr', 1, 1500, 'عميل تجربة', '500 تحويل لمصطفى و 1,000 عهدة مع أحمد', 500, 'عميل تجربة حوّلك', true, false, true, 'mkcol,col']);
-    eq('الحسابات بتبعت البنود الثابتة (دفعات الموردين) لشيت الدفتر', JSON.stringify(sheets.cash.sheets).includes('c_payout'), true);
-    /* القفل بالرقم السري */
-    await Saf.evaluate(() => go('set')); await Saf.settle(200);
-    await Saf.fill('#pin1', '1357'); await Saf.fill('#pin2', '1357'); await Saf.click('#pinOn');
-    eq('كلمة سر الخزنة: 6 على الأقل زي الحسابات', [await Saf.textContent('#pinE'), await Saf.evaluate(() => localStorage.getItem('fo_cash_lock'))], ['كلمة السر لازم تبقى 6 حروف أو أرقام على الأقل', null]);
-    await Saf.fill('#pin1', '135792'); await Saf.fill('#pin2', '135790'); await Saf.click('#pinOn');
-    eq('كلمة سر الخزنة: الكلمتين لازم زي بعض', await Saf.textContent('#pinE'), 'الكلمتين مش زي بعض');
-    await Saf.fill('#pin2', '135792'); await Saf.click('#pinOn'); await Saf.settle(600);
-    eq('القفل اشتغل: الرقم نفسه مش متخزن، وبيانات الدفتر زي ما هي', await Saf.evaluate(() => { const l = localStorage.getItem('fo_cash_lock'); return [!!JSON.parse(l).h, l.includes('135792'), localStorage.getItem('fo_cash_v1').includes('fo_cash_lock') || 'pin' in JSON.parse(localStorage.getItem('fo_cash_v1')), getComputedStyle($('#bLockNow')).display !== 'none']; }), [true, false, false, true]);
-    await Saf.reload(); await Saf.settle(800);
-    eq('بعد ما يتفتح تاني: مقفول بنفس شاشة قفل الحسابات، ومكتوب إنها الخزنة', await Saf.evaluate(() => [$('#lock').classList.contains('on'), getComputedStyle($('#lock')).display, !!$('#lockBox #lkP') && !!$('#lkGo') && !!$('#lkAbc') && !!$('#lkForgot'), $('#lock .tag').textContent, $('#lock h2').textContent]), [true, 'flex', true, 'الخزنة — مش الحسابات', 'دفتر الخزنة']);
-    await Saf.fill('#lkP', '111111'); await Saf.click('#lkGo'); await Saf.settle(800);
-    eq('كلمة غلط: لسه مقفول وبيقول "كلمة السر غلط" والخانة اتمسحت', [await Saf.evaluate(() => $('#lock').classList.contains('on')), await Saf.textContent('#lkErr'), await Saf.inputValue('#lkP')], [true, 'كلمة السر غلط', '']);
-    await Saf.fill('#lkP', '135792'); await Saf.settle(1200);
-    eq('الرقم الصح: بيفتح لوحده أول ما يكتمل', await Saf.evaluate(() => $('#lock').classList.contains('on')), false);
-    await Saf.click('#bLockNow'); eq('زرار القفل بيقفل على طول', await Saf.evaluate(() => $('#lock').classList.contains('on')), true);
-    await Saf.fill('#lkP', '135792'); await Saf.settle(1200);
-    await Saf.evaluate(() => go('set')); await Saf.settle(200); await Saf.click('#pinOff'); await Saf.fill('#apP', '135792'); await Saf.click('#apOk'); await Saf.settle(600);
-    eq('شيل القفل محتاج الرقم الحالي، وبعدها مفيش قفل', await Saf.evaluate(() => [localStorage.getItem('fo_cash_lock'), !!$('#pin1')]), [null, true]);
-    /* الدفتر أيقونة لوحده: تخزين فاضي بيتربط بلصق الرابط من جوه الإعدادات */
-    const D5 = await newDevice(browser, base, sheets), Ic = await D5.page('cash.html'); await Ic.settle(800);
-    eq('أيقونة جديدة فاضية: بتقول "الصق رابط الربط"', (await Ic.textContent('#syncBox')).includes('الصق رابط الربط'), true);
-    await Ic.click('#syGo'); await Ic.settle(200); await Ic.fill('#jIn', 'كلام غلط'); await Ic.click('#jGo');
-    eq('رابط غلط بيقول كده', (await Ic.textContent('#jErr')).includes('مش رابط ربط'), true);
-    await Ic.fill('#jIn', base + cjoin); await Ic.click('#jGo'); await Ic.settle(2500);
-    eq('لصق الرابط ربط الأيقونة ونزلت حركات الخزنة', await Ic.evaluate(() => [db.sheetLocked, !!db.tx.find(t => t.id === 't_from_app' && !t.del)]), [true, true]);
-    await D5.close();
-    eq('دفتر الخزنة أيقونة لوحده: manifest لوحده ومن غير زرار الرئيسية، ومالوش زرار في الأدوات', [fs.readFileSync(path.join(ROOT, 'cash.html'), 'utf8').includes('href="cash.webmanifest"'), fs.readFileSync(path.join(ROOT, 'cash.html'), 'utf8').includes('href="index.html"'), fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').includes('href="cash.html"'), JSON.parse(fs.readFileSync(path.join(ROOT, 'cash.webmanifest'), 'utf8')).start_url],
-      [true, false, false, './cash.html']);
-    await B.evaluate(() => go('set')); await B.evaluate(() => setOpenAll()); await B.settle(300); await B.click('#scIcon'); await B.settle(150);
-    eq('الحسابات: زرار "الدفتر أيقونة لوحده" بالخطوات ونسخ الرابط', await B.evaluate(() => [$('#modal').textContent.includes('إضافة إلى الشاشة الرئيسية'), $('#modal').textContent.includes('الصق من الحافظة')]), [true, true]);
-    await B.click('#ciCopy'); eq('الرابط اللي اتنسخ هو رابط ربط الدفتر', (await B.evaluate(() => navigator.clipboard.readText())).includes('cash.html#cashjoin='), true); await B.click('#ciX');
+    sec('١١ب) دفتر الخزنة اتشال: مفيش نسخة مكشوفة ولا ربط بشيت الدفتر');
+    eq('الحفظ مبيكتبش نسخة للدفتر، ورابط الربط فيه شيت الحسابات بس، ومفيش قسم الدفتر في الإعدادات', await B.evaluate(async () => {
+      saveDB(); await flushSave(); const o = JSON.parse(unb64u(joinLink().split('#join=')[1]));
+      return [localStorage.getItem('fo_cash_v1'), localStorage.getItem('fo_acc_names'), Object.keys(o).sort().join(','), !!document.querySelector('#sCash')]; }), [null, null, 'k,u', false]);
+    eq('النسخة القديمة اللي كل حركاتها هنا بتتمسح، ولينك شيت الدفتر بيتشال من الإعدادات المشتركة', await B.evaluate(() => {
+      const t = db.txs.find(x => !x.del); localStorage.setItem('fo_cash_v1', JSON.stringify({v: 1, vaults: [], cats: [], tx: [{id: t.id}]})); localStorage.setItem('fo_acc_names', '[]');
+      putSet('cashSheet', {u: 'https://script.google.com/macros/s/OLD/exec', k: 'Old-Key'}); forgetCashBook();
+      return [localStorage.getItem('fo_cash_v1'), localStorage.getItem('fo_acc_names'), getSet('cashSheet', 'x'), IDX.set.get('cashSheet').val]; }), [null, null, 'x', null]);
+    eq('نسخة قديمة فيها حركة مش موجودة هنا مبتتمسحش', await B.evaluate(() => {
+      localStorage.setItem('fo_cash_v1', JSON.stringify({v: 1, vaults: [], cats: [], tx: [{id: 't_not_here'}]})); forgetCashBook();
+      const k = !!localStorage.getItem('fo_cash_v1'); localStorage.removeItem('fo_cash_v1'); return k; }), true);
+    eq('صفحة الدفتر بقت ورقة "اتقفل" فيها زرار للحسابات بس', (() => { const h = fs.readFileSync(path.join(ROOT, 'cash.html'), 'utf8');
+      return [h.includes('href="accounts.html"'), /localStorage\.(setItem|removeItem)|fo_cash_v1|webmanifest/.test(h), fs.existsSync(path.join(ROOT, 'cash.webmanifest'))]; })(), [true, false, false]);
+    /* نفس المصروفين اللي كانوا بييجوا من الدفتر قبل كده، علشان أرقام الأقسام الجاية متتغيرش */
+    await B.evaluate(() => { const now = Date.now(), c = catsL('exp')[0];
+      [['t_from_ledger', 7700, c.id, 'من الدفتر'], ['t_from_app', 3300, 'c_exp0', 'من الحسابات']].forEach(([id, amt, cat, note]) => { const r = {id, type: 'exp', amt, vault: 'v_main', to: '', cat, note, date: todayISO(), at: now, upd: now, del: false, hist: []}; db.txs.push(r); IDX.tx.set(id, r); });
+      saveDB(); });
+    await bg(B, 'syncNow()');
 
     /* الأجهزة دي خلصت دورها: قفلها بيوقف المزامنة اللي شغالة فيها في الخلفية (كانت بتبطّأ كل الأقسام اللي بعدها) */
-    await C2.close(); await D3.close(); await D4.close();
+    await D3.close(); await D4.close();
     sec('١٢) الشركاء: مرتب كل خميس ومسحوبات');
-    await bg(A, 'cashSync(true)');   // ياخد اللي اتسجل في الدفتر من الجهاز التاني الأول
+    await bg(A, 'syncNow()');   // ياخد اللي اتسجل في الجهاز التاني الأول
     const vb0 = await A.evaluate(() => vaultBal(''));
     eq('الموبايل: حركة السوق في الشريط اللي تحت مكان الشركاء، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ["home", "sup", "mkt", "cash"]);
     await A.evaluate(() => go('cash')); await A.click('#cPart'); await A.waitForSelector('#ptBack', {timeout: 3000}).catch(() => {});   // الصفحة بتفتح بعد تغيير العنوان
@@ -712,7 +646,6 @@ const T0 = Date.now();
     eq('المرتب الملغي مبيرجعش يتسجل', [await A.evaluate(() => autoPartners(true)), await autoN(A)], [0, 8]);
     await A.click('#ptNew'); await A.fill('#ptA', '50'); await A.fill('#ptN', 'سلفة'); await A.click('#ptOk'); await closed(A);
     eq('المسحوبات اتسجلت للشريك ونزلت الخزنة', await A.evaluate(() => [db.txs.filter(t => t.cat === 'c_pdraw' && !t.del).map(t => [partName(t.pt), t.amt, t.note]), vaultBal('')]), [[['مصطفى', 5000, 'مسحوبات مصطفى — سلفة']], vb0 - 8000 - 5000]);
-    eq('حركات الشركاء ظاهرة في دفتر الخزنة', await A.evaluate(() => (bridgeOut(), readCash().tx.filter(t => t.pt && !t.del).length)), 9);
     eq('بنود الشركاء مش في قايمة المصروفات العادية', await A.evaluate(() => catsL('exp').some(c => c.id === 'c_psal' || c.id === 'c_pdraw')), false);
 
     sec('١٣) الأرباح ولوحة النهارده والبحث');
@@ -809,7 +742,7 @@ const T0 = Date.now();
     await A.click('#ivDraw'); await A.fill('#imA', '500'); await A.click('#imOk'); await closed(A);
     const pf1 = await A.evaluate(() => profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()));
     eq('السحب من الخزنة: الخزنة نقصت والرصيد قل، ومش مصروف في الأرباح', [await vbal(A), await A.evaluate(id => ivSums(id).bal, (await IV1()).id), pf1.exp === pf0.exp, pf1.after === pf0.after, await A.evaluate(() => catsL('exp').some(c => c.id === 'c_ivdraw'))], [vb1 - 50000, 9950000, true, true, false]);
-    eq('السحب ظاهر في الخزنة ودفتر الخزنة وبيتفتح في نافذة المساهم', await A.evaluate(() => { const t = db.txs.find(x => x.iv && !x.del); bridgeOut(); const c = readCash().tx.find(x => x.id === t.id); ivTxModal(t); const ok = !!$('#imOk') && $('#imA').value === '500'; closeModal(); return [!!c && c.iv === t.iv, ok]; }), [true, true]);
+    eq('السحب ظاهر في الخزنة وبيتفتح في نافذة المساهم', await A.evaluate(() => { const t = db.txs.find(x => x.iv && !x.del); ivTxModal(t); const ok = !!$('#imOk') && $('#imA').value === '500'; closeModal(); return [!!t, ok]; }), [true, true]);
     /* ربح الشهر: الاقتراح من الشهور اللي فاتت */
     const SG = await A.evaluate(() => {
       const v = ivList().find(x => x.name === 'مساهم تجربة شهري'), t = todayISO(), m1 = t.slice(0, 7), [y, mo] = m1.split('-').map(Number), d = new Date(y, mo, 1), m2 = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
@@ -923,6 +856,37 @@ const T0 = Date.now();
     const T = await A.evaluate(() => todayISO().slice(0, 8) + '05');
     eq('أول ما تدوس على اليوم بيتسجل وبيتقفل الكليندر', [await A.inputValue('#txD'), await A.$('.dpo')], [T, null]);
     await A.click('#txX');
+
+    sec('١٤ب) راحة العين واستغلال المساحة (ماتدوسش حاجة مكان حاجة)');
+    await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
+    await openParty(A, 'عميل تجربة واحد');
+    eq('الموبايل: كشف الحساب 5 عواميد، الكمية × السعر تحت البيان، والسنة سطر لوحده مش جنب كل تاريخ', await A.evaluate(() => {
+      const vis = el => getComputedStyle(el).display !== 'none', th = [...$$('#p-party .ldg thead th')].filter(vis).map(x => x.textContent);
+      return [th.join('|'), $$('#p-party .ldg tr.yr').length > 0 && vis($('#p-party .ldg tr.yr')), [...$$('#p-party .ldg td.dt small')].some(vis), [...$$('#p-party .ldg td.l .qp')].some(vis),
+        $('#p-party .ldgw').scrollWidth <= $('#p-party .ldgw').clientWidth + 1]; }), ['التاريخ|البيان|الإجمالي|دفعة|الرصيد', true, false, true, true]);
+    eq('الموبايل: كل زراير صفحة العميل جوه الشاشة', await A.evaluate(() => [...$$('#p-party .acts .btn')].filter(b => b.offsetParent).every(b => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })), true);
+    eq('رسالة التراجع: صغيرة فوق مكان الاسم، مش فوق أي زرار، وبتختفي في أقل من 5 ثواني', await A.evaluate(async () => {
+      toastUndo('اتلغت حركة تجربة طويلة شوية علشان نشوف الاسم بيتقص ولا لأ', () => {});
+      const t = $('#toast').getBoundingClientRect(), hit = [...$$('.top button')].filter(b => b.offsetParent).some(b => { const r = b.getBoundingClientRect(); return r.right > t.left && r.left < t.right && r.bottom > t.top && r.top < t.bottom; });
+      return [t.top < 20, t.height < 50, hit]; }), [true, true, false]);
+    eq('رسالة التراجع اختفت لوحدها في أقل من 5 ثواني', await A.waitForFunction(() => getComputedStyle($('#toast')).display === 'none', null, {timeout: 5000}).then(() => true, () => false), true);
+    await A.evaluate(() => { tab = 'mkt'; go('home'); }); await A.settle(200);
+    eq('الموبايل: مفيش زرار الليلي فوق، وزرار الحساب الجديد مش نفس ＋ بتاع التسجيل السريع، وسطر "آخر دفعة" تحت الاسم', await A.evaluate(() => [!!$('#bTheme').offsetParent, $('#bNewParty').textContent.includes('＋'), !!$('#bNewParty svg'),
+      [...$$('#hList .lpy')].some(x => x.offsetParent && x.textContent.startsWith('آخر دفعة'))]), [false, false, true, true]);
+    await A.fill('#hSearch', 'تجربة'); await A.click('#bSearch'); await A.settle(400);
+    eq('زرار 🔎 بيدوّر في كل الحركات على اللي مكتوب في خانة البحث', await A.evaluate(() => [$('#saQ').value, $$('#saR .cm').length > 0]), ['تجربة', true]);
+    await A.evaluate(() => closeModal()); await A.fill('#hSearch', ''); await A.settle(150);
+    await A.evaluate(() => { go('rep'); repKind = 'profit'; repMode = 'year'; repYear = ''; renderReports(); }); await A.settle(300);
+    eq('تقرير الأرباح: الشهور الفاضية مش ظاهرة، والجدول جوه الشاشة على الموبايل (والـ PDF فيه السنة كلها)', await A.evaluate(() => {
+      const R = buildReport(), tb = $('#p-rep table.pft'), w = tb.closest('.ldgw');
+      return [tb.querySelectorAll('tbody tr').length === R.rows.filter(r => !r.empty).length, R.rows.length, R.rows.some(r => r.empty), w.scrollWidth <= w.clientWidth + 1]; }), [true, 12, true, true]);
+    await A.evaluate(() => go('cash')); await A.settle(200);
+    eq('زرار عدّ الفلوس في الخزنة (مش "جرد" زي صفحة الجرد)', (await A.textContent('#cOpen2')).trim(), '✎ عدّ الفلوس');
+    await A.setViewportSize({width: 1280, height: 760}); await A.settle(300);
+    eq('اللاب: عملاء السوق/المواقع/الموردين مش متكررين في القايمة الجانبية، وآخر زرار فيها بيوصله من غير ما القفل يغطيه', await A.evaluate(() => {
+      const nav = document.querySelector('nav'), last = [...nav.querySelectorAll('button')].filter(b => b.offsetParent).pop(); nav.scrollTop = nav.scrollHeight;
+      const r = last.getBoundingClientRect(), l = $('#bLock').getBoundingClientRect(); return [getComputedStyle(nav.querySelector('.qk')).display, r.bottom <= l.top]; }), ['none', true]);
+    await A.setViewportSize({width: 400, height: 860}); await A.evaluate(() => go('home')); await A.settle(300);
 
 
     }   // نهاية الأقسام اللي بتتخطى في وضع السوق
@@ -1658,7 +1622,7 @@ const T0 = Date.now();
       await A.setViewportSize({width: 1280, height: 860}); await A.settle(400);
       eq('اللاب توب: القايمة الجانبية ظاهرة', await A.evaluate(() => getComputedStyle(document.querySelector('nav')).display !== 'none'), true);
       await A.setViewportSize({width: 400, height: 860});
-      for (const f of ['index.html', 'cash.html', 'market.html', 'quote.html', 'delivery.html', 'cost.html', 'calculator/index.html', 'payroll.html']) { const X = await D1.page(f); await X.settle(800); await X.close(); }
+      for (const f of ['index.html', 'market.html', 'quote.html', 'delivery.html', 'cost.html', 'calculator/index.html', 'payroll.html']) { const X = await D1.page(f); await X.settle(800); await X.close(); }
     }
     sec('٢٣) sw.js: الحسابات والسوق بيفتحوا بسرعة والنت مقطوع أو بطيء، والنسخة الجديدة بتوصل لوحدها');
     {
@@ -1745,7 +1709,7 @@ const T0 = Date.now();
     eq('الحسابات (الرئيسية): الخط بالخمس أحجام بس', await fs5(A), [true, []]);
     await A.evaluate(n => go('p/' + liveParties().find(x => x.name === n).id), 'عميل تجربة واحد'); await A.settle(300);
     eq('الحسابات (صفحة الحساب): الخط بالخمس أحجام بس', await fs5(A), [true, []]);
-    for (const f of ['cash.html', 'market.html']) { const X = await D1.page(f); await X.settle(800); eq(`${f}: الخط بالخمس أحجام بس`, await fs5(X), [true, []]); await X.close(); }
+    for (const f of ['market.html']) { const X = await D1.page(f); await X.settle(800); eq(`${f}: الخط بالخمس أحجام بس`, await fs5(X), [true, []]); await X.close(); }
 
     sec('قاعدة التبويبات: سطر واحد ونفس الارتفاع ومفيش كلام مقطوع');
     /* أي مجموعة تبويبات (.seg) ظاهرة: كل زرار نفس الارتفاع، الكلام مش ملفوف على سطرين ولا متقطع */
@@ -1753,7 +1717,6 @@ const T0 = Date.now();
     await A.evaluate(() => go('cash')); await A.settle(200); await segOk(A, 'الحسابات — الخزنة');
     await A.evaluate(() => { mkView = 'arch'; mkAMode = 'day'; go('mkt'); renderMkt(); }); await A.settle(200); if (await A.$('#maMode')) await segOk(A, 'الحسابات — أرشيف الوارد'); await A.evaluate(() => { mkView = 'in'; });
         await A.evaluate(() => go('set')); await A.settle(200); await segOk(A, 'الحسابات — الإعدادات');
-    { const X = await D1.page('cash.html'); await X.settle(600); await segOk(X, 'دفتر الخزنة — الرئيسية'); await X.evaluate(() => go('rep')); await X.settle(300); await segOk(X, 'دفتر الخزنة — التقارير'); await X.close(); }
     if (DM) { const MX = DM.pages().find(p => p.url().includes('market.html')); if (MX) for (const h of ['', 'a', 's']) { await MX.evaluate(h => nav(h), h); await MX.settle(300); await segOk(MX, 'حركة السوق (' + (h || 'الرئيسية') + ')'); } }
 
     sec('قاعدة الأرقام: تحت بعض في عمود واحد (الحسابات والخزنة والسوق)');
@@ -1766,15 +1729,6 @@ const T0 = Date.now();
     for (const [nm, root] of [['الوارد (جاهزين للنقل)', '#mqReady'], ['الوارد (محتاجين قرارك)', '#mqDec']]) if (await A.evaluate(r => $$(r + ' .mqa>.n').length >= 2, root)) await colOk('الحسابات — ' + nm, A, root, '.mqa>.n');
     await A.evaluate(() => { cashMode = 'day'; go('home'); }); await A.settle(300);
     await colOk('الحسابات — قايمة العملاء', A, '#hList', '.pt .a b');
-    { const X = await D1.page('cash.html'); await X.settle(800);
-      await X.evaluate(() => { home.mode = 'year'; renderHome(); }); await X.settle(200);
-      await colOk('دفتر الخزنة — الرئيسية (حركتي)', X, '#kst-me', '.kty .n');
-      if (await X.$('#kst-mk')) await colOk('دفتر الخزنة — الرئيسية (حركة السوق)', X, '#kst-mk', '.kty .n');
-      eq('دفتر الخزنة نفس شكل خزنة الحسابات: نفس الزراير والكروت واختيار الفترة', await X.evaluate(() => [[...document.querySelectorAll('#p-home .cbar .btn')].map(b => b.querySelector('.lg') ? b.querySelector('.lg').textContent : b.textContent.trim()), !!$('#hTots .kbm') && !!$('#hTots .kvs') && !!$('#hTables #kst-me'), [...document.querySelectorAll('#hMode button')].map(b => b.textContent)]),
-        [['استلمت من عميل', 'دفعت لمورد', '− مصروف', '+ إيراد'], true, ['يوم', 'شهر', 'سنة', 'من–إلى']]);
-      await X.evaluate(() => { rep.mode = 'range'; rep.from = '2000-01-01'; rep.to = todayISO(); rep.detail = true; go('rep'); }); await X.settle(400);
-      await colOk('دفتر الخزنة — التقارير', X, '#rOut', '.tx .a,.dayh b');
-      await X.close(); }
     if (DM) { const MX = DM.pages().find(p => p.url().includes('market.html')); if (MX) { await MX.evaluate(() => nav('')); await MX.settle(400); await colOk('حركة السوق — الرئيسية', MX, '#main', '.gh .money,.row .a .money,.lbl.dh .money'); } }
 
     sec('١٥) المراجعة الداخلية');

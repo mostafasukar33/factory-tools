@@ -1335,6 +1335,37 @@ body{font-size:var(--f3);line-height:1.6}
   #hTabs button small{display:inline;font-size:var(--f1)}
   #hTabs .supt{padding:0 4px}
 }
+/* ====== راحة العين واستغلال المساحة (بطلب صاحب المشروع: "سهل وماأدوسش حاجة مكان حاجة") ====== */
+/* رسالة "تراجع": صغيرة فوق مكان اسم البرنامج على الموبايل، وتحت على الشمال في اللاب. بعيد عن أي زرار */
+#toast.act{display:flex;align-items:center;gap:8px;top:calc(5px + env(safe-area-inset-top));bottom:auto;inset-inline:8px auto;margin:0;width:auto;max-width:calc(100% - 152px);padding:3px;padding-inline-start:10px;border-width:1px;border-radius:10px;font-size:var(--f2);line-height:1.3;text-align:start;box-shadow:var(--shadow2)}
+#toast.act .tm{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast.act button{flex:none;margin:0;padding:6px 10px}
+@media (min-width:1000px){#toast.act{top:auto;bottom:20px;inset-inline:auto 20px;max-width:460px}}
+/* زراير التقارير والجرد: عادية مش بخط متقطع */
+#hTabs .hcash{border-style:solid;border-color:var(--line);background:var(--card)}
+/* سطر "آخر دفعة" تحت اسم العميل في القايمة (الموبايل) */
+.pt .m .lpy{display:none}
+@media (max-width:999.98px){
+  /* الليلي/الفاتح من الإعدادات بس، والمكان فوق للزراير اللي بتتداس كتير */
+  .top #bTheme{display:none}
+  .pt .m .lpy{display:block;font-size:var(--f1);font-weight:600;color:var(--sub);margin-top:2px}
+  .pt .m .lpy.late{color:var(--red)}
+  /* زراير صفحة العميل: كلها ظاهرة في سطر واحد بعرض متساوي، مفيش زرار مستخبي برّه الشاشة */
+  #p-party .acts{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
+  #p-party .acts .btn{min-width:0;gap:4px;padding:6px 2px;white-space:nowrap}
+  /* كشف الحساب: 5 عواميد بدل 7. الكمية × السعر سطر صغير تحت البيان، والسنة سطر لوحده لما تتغير */
+  #p-party .ldg .hq{display:none}
+  #p-party .ldg td.l .qp{display:block;color:var(--sub);font-weight:600}
+  #p-party .ldg td.dt small{display:none}
+  #p-party .ldg tr.yr{display:table-row;cursor:default}
+  #p-party .ldg tr.yr td{background:var(--bg);color:var(--gold-d);font-size:var(--f1);font-weight:800;text-align:right;padding:3px 10px}
+  /* تقرير الأرباح بالشهر: الأرقام كلها جوه الشاشة (الشركاء وقبل الشركاء في الملخص تحت) */
+  table.ldg.rp.wide.pft{min-width:0}
+  .ldg.pft th:nth-child(5),.ldg.pft td:nth-child(5),.ldg.pft th:nth-child(6),.ldg.pft td:nth-child(6){display:none}
+  .ldg.pft td.l{min-width:0}
+}
+/* اللاب: القايمة الجانبية من غير تكرار عملاء السوق/المواقع/الموردين (موجودين فوق القايمة)، وآخر زرار مش مستخبي ورا القفل */
+@media (min-width:1000px){nav .qk{display:none}nav{overflow-y:auto;padding-bottom:64px;scrollbar-width:none}}
 </style>
 <style id="appfeel">html{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}body,body *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}input,textarea,[contenteditable],[contenteditable] *{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}.sync.nlb{display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;padding:4px 10px;min-height:0;margin-bottom:6px;font-size:var(--f2);line-height:1.3}.sync.nlb a{margin-inline-start:auto}
 </style>
@@ -1366,10 +1397,10 @@ body{font-size:var(--f3);line-height:1.6}
   <div id="nlRem"></div></div>
   <div class="tots" id="hTots"></div>
   <div class="srow">
-    <input class="inp" id="hSearch" type="search" placeholder="🔍 دوّر بالاسم أو التليفون" autocomplete="off">
+    <input class="inp" id="hSearch" type="search" placeholder="دوّر بالاسم أو التليفون" autocomplete="off">
     <select class="inp" id="hSort"><option value="bal">الأكبر</option><option value="name">بالاسم</option><option value="last">الأحدث</option></select>
-    <button class="btn line" id="bSearch" type="button" title="دوّر في كل الحركات (مبلغ، صنف، ملاحظة…)">🔎</button>
-    <button class="btn gold" id="bNewParty" type="button" title="حساب جديد">＋</button>
+    <button class="btn line" id="bSearch" type="button" title="دوّر في كل الحركات (مبلغ، صنف، ملاحظة…)" aria-label="دوّر في كل الحركات">🔎</button>
+    <button class="btn gold" id="bNewParty" type="button" title="حساب جديد" aria-label="حساب جديد"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 9.5-4.9M19 14v6M16 17h6"/></svg></button>
   </div>
   <div class="tabs" id="hTabs"></div>
   <div id="hList"></div>
@@ -1410,7 +1441,6 @@ body{font-size:var(--f3);line-height:1.6}
     <h2>النسخة على Google Sheet</h2>
     <div id="sSheet"></div>
   </div>
-  <div class="card" id="sCash"></div>
   <div class="card" id="sMkt"></div>
   <div class="card">
     <h2>بيانات الشركة في الـ PDF</h2>
@@ -1549,9 +1579,9 @@ function toast(msg, ms = 2800) {
   const t = $('#toast'); t.classList.remove('act'); t.textContent = msg; t.style.display = 'block';
   clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms);
 }
-/* رسالة فيها زرار "تراجع" بدل سؤال "متأكد؟" */
-function toastUndo(msg, fn, ms = 7000) {
-  const t = $('#toast'); t.innerHTML = `${esc(msg)} <button id="tUndo" type="button">↩ تراجع</button>`; t.classList.add('act'); t.style.display = 'block';
+/* رسالة فيها زرار "تراجع" بدل سؤال "متأكد؟": صغيرة فوق مكان اسم البرنامج (بعيد عن الزراير) و4 ثواني بس (بطلب صاحب المشروع) */
+function toastUndo(msg, fn, ms = 4000) {
+  const t = $('#toast'); t.innerHTML = `<span class="tm">${esc(msg)}</span><button id="tUndo" type="button">↩ تراجع</button>`; t.classList.add('act'); t.style.display = 'flex';
   clearTimeout(toastT); toastT = setTimeout(() => { t.style.display = 'none'; t.classList.remove('act'); }, ms);
   $('#tUndo').onclick = () => { clearTimeout(toastT); t.style.display = 'none'; t.classList.remove('act'); fn(); };
 }
@@ -1638,7 +1668,6 @@ function flushSave() {
       await idbPut('vault', await seal(key, salt, snap));
       await idbPut('meta', {pending: pendingRecs().length, at: nowS()});
       saveFailed = false;
-      if (snap === db) try { bridgeOut(); } catch (x) { console.error(x); }
     } catch (e) {
       console.error(e);
       if (!saveFailed) toast('تحذير: الجهاز مش قادر يحفظ. اتأكد إن فيه مساحة، ونزّل نسخة احتياطية حالاً.', 7000);
@@ -1841,12 +1870,11 @@ function landingHash() {
 }
 function unlocked() {
   $('#lock').classList.remove('on'); $('#lockBox').innerHTML = '';
-  lastAct = Date.now(); bridgeIn(); kashName();
+  lastAct = Date.now(); kashName(); forgetCashBook();
   /* أول شاشة بعد القفل: الوارد لو فيه حاجة مستنية أو تعارض، وإلا العملاء (أو آخر صفحة كان فيها) */
   try { if (!location.hash) { const h = landingHash(); if (h) location.hash = h; } } catch (e) {}
   route(); flushSave();
   if (pendingJoin) applyJoin(); else setTimeout(() => syncNow(), 600);
-  if (pendingCashJoin) setTimeout(applyCashJoin, 1500); else setTimeout(() => cashSync(true), 2500);
   setTimeout(() => mkSync(), 1800);
 }
 ['pointerdown', 'keydown', 'scroll'].forEach(ev => addEventListener(ev, () => lastAct = Date.now(), {passive: true, capture: true}));
@@ -1854,7 +1882,7 @@ setInterval(() => { if (db && Date.now() - lastAct > LOCK_IDLE) lockNow('اتق�
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { hiddenAt = Date.now(); flushSave(); }
   else if (db && hiddenAt && Date.now() - hiddenAt > LOCK_HIDDEN) lockNow();
-  else if (db) { lastAct = Date.now(); if (bridgeIn() && !$('#mask').classList.contains('on')) route(); syncNow(); }
+  else if (db) { lastAct = Date.now(); syncNow(); }
 });
 addEventListener('pagehide', () => flushSave());
 $('#bLock').onclick = () => lockNow();
@@ -1904,10 +1932,14 @@ function renderList(bal) {
   $('#hList').classList.toggle('srch', !!q);
   /* على اللاب: كلمة "عليه/ليه" مكتوبة مرة واحدة فوق عمود الأرقام (ثابتة)، وجنب الرقم بتظهر بس لو مختلفة عنها */
   const hw = !q && tab === 'sup' ? 'ليه' : 'عليه';
+  /* سطر صغير تحت الاسم "آخر دفعة من كام يوم" (أحمر لو اتأخر عن عادته) علشان تعرف تكلم مين من القايمة (بطلب صاحب المشروع). الدفعات متجمعة مرة واحدة */
+  const pays = new Map(); for (const e of db.entries) if (e.kind === 'pay' && !e.del) (pays.get(e.party) || pays.set(e.party, []).get(e.party)).push(e);
+  const lpy = (p, b) => { const i = p.sec === 'sup' ? null : payInfo(p, pays.get(p.id) || [], b); if (!i) return '';
+    return `<span class="lpy${i.late ? ' late' : ''}">آخر دفعة ${i.ago === 0 ? 'النهارده' : i.ago === 1 ? 'امبارح' : i.ago === 2 ? 'من يومين' : `من ${i.ago} ${i.ago <= 10 ? 'أيام' : 'يوم'}`}</span>`; };
   $('#hList').innerHTML = `<div class="pth"><span>الاسم</span><span>${hw}</span></div>` + ps.map(p => {
     const b = bal.get(p.id) || 0;
     return `<div class="pt ${p.id === curParty ? 'cur' : ''} ${p.sec === 'sup' ? 'sup' : ''} ${b ? '' : 'zero'} ${b < 0 ? 'neg' : ''} ${limitClass(p, b)}" data-id="${esc(p.id)}">
-      <div class="m"><b>${esc(p.name)}</b><small><span class="tag ${p.sec === 'sup' ? 'sup' : ''}">${SEC1[p.sec]}</span>${p.noTot ? '<span class="tag off">خارج الإجمالي</span>' : ''}<span class="ph">${esc(p.phone || '')}</span></small></div>
+      <div class="m"><b>${esc(p.name)}</b>${lpy(p, b)}<small><span class="tag ${p.sec === 'sup' ? 'sup' : ''}">${SEC1[p.sec]}</span>${p.noTot ? '<span class="tag off">خارج الإجمالي</span>' : ''}<span class="ph">${esc(p.phone || '')}</span></small></div>
       <div class="a"><b class="${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b><small${!b || balWord(b) === hw ? ' class="same"' : ''}>${balWord(b)}</small></div></div>`;
   }).join('');
   $$('#hList .pt').forEach(el => el.onclick = () => go('p/' + el.dataset.id));
@@ -1934,7 +1966,7 @@ addEventListener('keydown', e => {
 });
 $('#hSort').addEventListener('change', () => renderList());
 $('#bNewParty').onclick = () => partyModal();
-$('#bSearch').onclick = searchModal;
+$('#bSearch').onclick = () => searchModal($('#hSearch').value.trim());   // اللي مكتوب في خانة الحسابات بيتدور عليه في كل الحركات على طول
 
 /* ====================== حساب جديد / تعديل حساب ====================== */
 function partyModal(p) {
@@ -2617,7 +2649,7 @@ function ledgerTable(p) {
   const s = stmtData(p.id, '', '');
   const over = s.rows.length > LDG_MAX ? s.rows.length - LDG_SHOW : 0, ext = ldgAll.get(p.id) || 0, cut = Math.max(0, over - ext);
   const fw = isFwdSrc(p), fwTag = r => !r.first ? '' : fw && r.e.kind === 'inv' ? `<small class="fwt ${fwState(r.e)}">${FW_SHORT[fwState(r.e)]}</small>` : r.e.fwFrom ? `<small class="fwt from">↩ من ${esc((P.get((E.get(r.e.fwFrom) || {}).party) || {}).name || 'الحساب الفرعي')}</small>` : '';
-  let yPrev = matchMedia('(min-width:1000px)').matches ? '' : null;   // سطر السنة بيظهر بس لما السنة تتغير، على اللاب بس (في الموبايل مبيترسمش علشان ألوان الصفوف متتلخبطش)
+  let yPrev = '';   // سطر السنة بيظهر بس لما السنة تتغير (اللاب والموبايل)، فالسنة متتكتبش جنب كل تاريخ
   if (!s.rows.length) return '<div class="empty">لسه مفيش حركات على الحساب ده.<br><small style="color:var(--sub)">ابدأ بفاتورة أو دفعة من الأزرار اللي فوق.</small></div>';
   return `<div class="sech"><span>كشف الحساب (${s.n} حركة)</span>${s.rows.length > 12 ? '<a id="ppEnd">آخر حركة ↓</a>' : ''}</div>
     <div class="ldgw"><table class="ldg"><thead><tr><th>التاريخ</th><th>البيان</th><th class="hq">الكمية</th><th class="hq">السعر</th><th>الإجمالي</th><th>دفعة</th><th>الرصيد</th></tr></thead><tbody>
@@ -2994,7 +3026,7 @@ function viewOf(kind, r) {
   if (kind === 'party') return ['', cell(r.name), SECS[r.sec] || '', cell(r.phone || ''), '', ''];
   if (kind === 'vault') return ['', cell(r.name), 'خزنة', 'رصيد افتتاحي', (r.open || 0) / 100, ''];
   if (kind === 'cat') return ['', cell(r.name), r.type === 'exp' ? 'بند مصروف' : 'بند إيراد', '', '', ''];
-  if (kind === 'set') return ['', r.id, 'إعداد', r.id === 'cashSheet' ? 'ربط دفتر الخزنة' : cell(JSON.stringify(r.val)), '', ''];
+  if (kind === 'set') return ['', r.id, 'إعداد', cell(JSON.stringify(r.val)), '', ''];
   if (kind === 'ivp') return ['', cell(r.name), 'مساهم', r.mode === 'c' ? 'من حساب عميل' : 'ربح شهري', '', ''];
   if (kind === 'ivr') { const v = IDX.ivp.get(r.iv), a = ivSign(r); return [r.date, cell(v ? v.name : '؟'), 'مساهم: ' + ({cap: 'رأس مال', prof: 'ربح', ship: 'شحنة', exp: 'مصروف', draw: 'سحب'}[r.k] || ''), cell(r.note || ''), a > 0 ? a / 100 : '', a < 0 ? -a / 100 : '']; }
   if (kind === 'stk') return [r.date, 'الجرد', 'جرد', 'المخزون', (r.stock || 0) / 100, ''];
@@ -3095,9 +3127,7 @@ async function syncNow(manual) {
     }
     db.cfg.lastSync = nowS(); lastPullAt = Date.now();
     await flushSave();
-    if (got) bridgeOut();
     if (manual) toast(got ? `اتبعت كل حاجة، ونزل ${got} سجل جديد ✔` : 'كل حاجة متسجلة على الشيت ✔');
-    setTimeout(() => cashSync(true), 800);
     if (typeof tgAfterSync === 'function') setTimeout(() => tgAfterSync(), 2500);   // تليجرام: النسخة اليومية والملخص (آخر script)
   } catch (e) {
     syncErr = e.message === 'key' ? 'key' : String(e.message || e); syncWhy = syncErr === 'key' ? '' : netWhy(e);
@@ -3159,7 +3189,7 @@ const PAGE_LM = Date.parse(document.lastModified), PAGE_AT = Date.now();
 const verText = (lm = PAGE_LM, at = PAGE_AT) => lm && at - lm > 3000 ? `آخر تحديث للبرنامج على الجهاز ده: ${dispDate(isoOf(lm))} ${dispTime(lm)}` : '';
 function renderSettings() {
   bindUI();
-  refreshBio(); renderCashLink(); renderMktSettings();
+  refreshBio(); renderMktSettings();
   $('#sVer').textContent = verText();
   const c = db.cfg;
   const lk = lockDate(), lim = limitsOf();
@@ -3250,7 +3280,7 @@ function accUpdateHelp() {
     <ol class="steps">
       <li>غالباً اسمه <b>جدول بيانات بدون عنوان</b> (Untitled spreadsheet)، وممكن يكون عندك كذا جدول بنفس الاسم. افتحهم واحد واحد.</li>
       <li>الصح: تحت خالص فيه ورقة اسمها <b>السجلات</b> (وجنبها ممكن تلاقي <b>الورقة1</b> فاضية). وأول سطر في <b>السجلات</b> فيه العناوين: <b>id</b>، <b>النوع</b>، <b>آخر تعديل</b>، <b>رقم المزامنة</b>، <b>ملغي</b>، <b>التاريخ</b>، <b>الحساب</b>…</li>
-      <li>مش هو: جدول فيه ورقة اسمها <b>الحركات</b> (ده شيت حركة السوق)، أو جدول دفتر الخزنة.</li>
+      <li>مش هو: جدول فيه ورقة اسمها <b>الحركات</b> (ده شيت حركة السوق)، أو جدول دفتر الخزنة القديم.</li>
       <li><b>متعدّلش ولا تمسح أي حاجة في الورقة نفسها</b>، ولا تغيّر اسم الورقة <b>السجلات</b>. اسم الجدول من فوق تقدر تغيّره عادي لو عاوز (مثلاً: حسابات فلاش أون).</li>
       <li>مش لاقيه خالص؟ غالباً داخل بحساب جوجل تاني: دوس على الصورة الصغيرة فوق في ركن صفحة جوجل واختار الحساب التاني. أو من <b>drive.google.com</b> دوّر على <b>جدول بيانات بدون عنوان</b>.</li>
     </ol></details>
@@ -3303,13 +3333,12 @@ async function testSheet() {
   if (!syncErr) { renderSettings(); setStat('ok', '✅ اتربط واتحفظ كل حاجة. دلوقتي اضغط "ابعت رابط الربط" وابعته لنفسك علشان أي جهاز تاني.'); }
 }
 /* ---------- رابط الربط ----------
-   فيه لينك الشيت ومفتاحه (وشيت دفتر الخزنة لو مربوط) بعد علامة # ، فمبيتبعتش لأي سيرفر.
+   فيه لينك الشيت ومفتاحه بعد علامة # ، فمبيتبعتش لأي سيرفر.
    أول ما يتفتح على جهاز: بيتعمل كلمة سر للجهاز، والبرنامج بيتربط وينزّل كل الحسابات لوحده، ويفضل مربوط على طول. */
 const b64u = str => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const unb64u = str => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
 function joinLink() {
-  const cs = readCash() || {}, o = {u: db.cfg.sheetUrl, k: db.cfg.sheetKey};
-  if (cs.sheetUrl && cs.sheetKey && cs.sheetLocked) { o.cu = cs.sheetUrl; o.ck = cs.sheetKey; }
+  const o = {u: db.cfg.sheetUrl, k: db.cfg.sheetKey};
   return location.origin + location.pathname + '#join=' + b64u(JSON.stringify(o));
 }
 async function shareJoin() {
@@ -3369,10 +3398,6 @@ async function applyJoin() {
   const o = pendingJoin; pendingJoin = null; if (!o || !db) return;
   const c = db.cfg;
   if (c.sheetOk && c.sheetUrl === o.u && c.sheetKey === o.k) { try { sessionStorage.removeItem('fo_join'); } catch (e) {} return toast('الجهاز ده مربوط أصلاً ✔'); }
-  if (o.cu && o.ck) try {
-    const cs = readCash() || {v: 1, vaults: [], cats: [], tx: []};
-    if (!cs.sheetUrl) { Object.assign(cs, {sheetUrl: o.cu, sheetKey: o.ck, sheetLocked: true}); localStorage.setItem('fo_cash_v1', JSON.stringify(cs)); }
-  } catch (e) {}
   if (c.sheetUrl !== o.u) { c.cursor = 0; delete c.accV; delete c.accSheetUrl; Object.values(STORE).forEach(a => db[a].forEach(r => delete r.sy)); }
   Object.assign(c, {sheetUrl: o.u, sheetKey: o.k, sheetOk: false, joinWait: true}); await flushSave();
   await finishJoin(true);
@@ -3589,7 +3614,7 @@ async function backupNow() {
 }
 $('#bBackup').onclick = backupNow;
 $('#bBk').onclick = backupNow;
-$('#nSearch').onclick = searchModal;
+$('#nSearch').onclick = () => searchModal();
 $('#nNew').onclick = () => partyModal();
 /* ---------- تسجيل سريع (زرار ＋): فاتورة أو دفعة أو مصروف من أي مكان، من غير ما تفتح الحساب الأول ----------
    الفاتورة والدفعة: بتختار الحساب (اكتب حرفين من اسمه)، ونوعها بيمشي على القسم (العميل فاتورة بيع/استلمت، والمورد فاتورة شراء/دفعت له) */
@@ -3752,8 +3777,7 @@ function cashStep(n) {
 /* شاشة الخزنة (بطلب صاحب المشروع: "عاوز أسهل وأوضح"): بتجاوب على سؤالين بس، "معايا كام؟" و"دخل وطلع كام؟".
    فوق كارت الأرصدة: "خزني" مقفول بالرقم وبيتفتح على كل خزنة (الدوس على خزنة بيفلتر حركتي عليها)، خزنة السوق بالأزرق، والإجمالي.
    وتحته كارت "حركتي" وكارت "حركة السوق": مربعين كبار دخل/طلع، وتحتهم الأنواع (نقطة خضرا داخل وحمرا خارج). الدوس على نوع بيفتح نافذة بحركاته.
-   مفيش رصيد أول/آخر الفترة، والتحويل بين خزني بيبان بس لما تختار خزنة، وتسوية الجرد مش بتبان خالص (بتظبط الرصيد بس).
-   الدفتر (cash.html) بنفس الشكل والكلاسات (.kb/.kst في lib/ui.css) */
+   مفيش رصيد أول/آخر الفترة، والتحويل بين خزني بيبان بس لما تختار خزنة، وتسوية الجرد مش بتبان خالص (بتظبط الرصيد بس). */
 let cashSide = 'me';   // قديم: النصين بقوا ظاهرين مع بعض
 let cashOpenV = false;
 /* بطلب صاحب المشروع (علشان النقل للدفتر الورق يبقى سهل): كل كارت = صفحة صاحبه في الدفتر، بالأسامي.
@@ -3851,10 +3875,9 @@ function cashTypeSheet(title, k, arr, open, showV) {
 }
 function renderCash() {
   const pg = $('#p-cash');
-  bridgeIn();
   if (!db.vaults.length) {
     pg.innerHTML = `<div class="card"><h2>الخزنة</h2>
-      <p style="font-weight:700;margin:0 0 12px">من هنا هتسجل كل فلوس داخلة أو خارجة. ولما تسجل دفعة من عميل أو لمورد، بتدخل الخزنة أو تطلع منها لوحدها. وكل ده بيظهر كمان في "دفتر الخزنة" اللي في الصفحة الرئيسية.</p>
+      <p style="font-weight:700;margin:0 0 12px">من هنا هتسجل كل فلوس داخلة أو خارجة. ولما تسجل دفعة من عميل أو لمورد، بتدخل الخزنة أو تطلع منها لوحدها.</p>
       <button class="btn gold" id="cNew" type="button">ابدأ الخزنة</button></div>`;
     $('#cNew').onclick = () => { ensureVaults(); renderCash(); };
     return;
@@ -3883,7 +3906,7 @@ function renderCash() {
       <div class="kbt"><span>الإجمالي<small>خزني + السوق</small></span><b class="n${total < 0 ? ' neg' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)}</b></div>` : ''}
     </div>
     <div class="ktools">
-      <button class="btn line" id="cOpen2" type="button" title="جرد الخزنة: اكتب الفلوس اللي معاك فعلاً">✎ <span>جرد</span></button>
+      <button class="btn line" id="cOpen2" type="button" title="عدّ الفلوس: اكتب الفلوس اللي معاك فعلاً">✎ <span>عدّ الفلوس</span></button>
       <button class="btn line" id="cTr" type="button" title="تحويل بين الخزن">⇄ <span>تحويل</span></button>
       <button class="btn line" id="cSet" type="button" title="الخزن والبنود">⚙ <span>الخزن</span></button>
       <button class="btn line mob" id="cPart" type="button">👥 <span>الشركاء</span></button>
@@ -3932,7 +3955,7 @@ function renderCash() {
   $('#cOpen2').onclick = openingModal;
   runCounters(pg);
 }
-/* اسم "خزنة المصنع" بقى "كاش" (بطلب صاحب المشروع). مرة واحدة وبيتزامن لكل الأجهزة والدفتر */
+/* اسم "خزنة المصنع" بقى "كاش" (بطلب صاحب المشروع). مرة واحدة وبيتزامن لكل الأجهزة */
 function kashName() {
   const v = IDX.vault.get('v_main');
   if (v && !v.del && v.name === 'خزنة المصنع') { v.name = 'كاش'; touch(v); saveDB(); }
@@ -4088,12 +4111,7 @@ function editCat(type, c) {
   };
   if (c) $('#ecDel').onclick = () => { c.del = true; touch(c); saveDB(); vaultSettings(); toast('اتشال البند (الحركات القديمة بتفضل باسمه)'); };
 }
-function readCash() { try { const d = JSON.parse(localStorage.getItem('fo_cash_v1')); if (d && Array.isArray(d.tx) && Array.isArray(d.vaults)) return d; } catch (e) {} return null; }
-/* ---------- الربط مع دفتر الخزنة (cash.html) ----------
-   دفتر الخزنة بيفتح من غير كلمة سر، وبيحفظ في fo_cash_v1 بنفس شكله القديم (المبالغ بالجنيه و ts بالوقت).
-   الحسابات بتكتب فيه نسخة من الخزن والبنود والحركات ودفعات العملا والموردين، وبتاخد منه أي حاجة اتسجلت هناك.
-   كل سجل ليه نفس الـ id في المكانين، والأحدث تعديلاً (upd) هو اللي بيكسب، فمفيش تكرار ولا لف في دواير.
-   دفعة العميل/المورد بتبان في الدفتر كحركة فيها party، ولو اتسجلت أو اتعدلت هناك بترجع هنا دفعة على الحساب. */
+/* بنود ثابتة: تحصيل من عميل ودفعات للموردين (دفعة العميل/المورد هي نفسها حركة الخزنة) */
 const PAY_CAT = {pay: 'c_inc0', ppay: 'c_payout'};
 const SPECIAL_CATS = new Set(Object.values(PAY_CAT));
 function ensurePayCats() {
@@ -4271,235 +4289,18 @@ function renderPartners() {
   if ($('#ptYear')) $('#ptYear').onchange = () => { partYear = normDigits($('#ptYear').value).replace(/\D/g, '').slice(0, 4); renderPartners(); };
   $$('#p-part tr[data-i]').forEach(el => el.onclick = () => partnerTxModal(mv[+el.dataset.i]));
 }
-const tsOfDate = (date, at) => { const [y, m, d] = date.split('-').map(Number), t = new Date(at || nowS()); return new Date(y, m - 1, d, t.getHours(), t.getMinutes()).getTime(); };
-function payName(e) { const p = P.get(e.party); return (p ? p.name : '') + (e.note ? ' — ' + e.note : ''); }
-let bridgeBusy = false, lockedFromCash = 0;
-function bridgeOut() {
-  if (!db || bridgeBusy) return;
-  let c = readCash();
-  if (!c) { if (!db.vaults.length) return; c = {v: 1, vaults: [], cats: [], tx: [], sheetUrl: '', lastSync: 0, lastVault: ''}; }
-  if (!Array.isArray(c.cats)) c.cats = [];
-  const idx = {vaults: new Map(c.vaults.map((r, i) => [r.id, i])), cats: new Map(c.cats.map((r, i) => [r.id, i])), tx: new Map(c.tx.map((r, i) => [r.id, i]))};
-  let ch = 0;
-  const put = (arr, rec) => {
-    const i = idx[arr].get(rec.id);
-    if (i === undefined) { idx[arr].set(rec.id, c[arr].length); c[arr].push(Object.assign(rec, {sy: 0})); ch++; return; }
-    if ((c[arr][i].upd || 0) >= rec.upd) return;
-    c[arr][i] = Object.assign(rec, {sy: 0}); ch++;
-  };
-  db.vaults.forEach(v => put('vaults', {id: v.id, name: v.name, open: (v.open || 0) / 100, upd: v.upd, del: !!v.del}));
-  db.cats.forEach(x => put('cats', {id: x.id, type: x.type, name: x.name, ord: x.ord || 0, upd: x.upd, del: !!x.del}));
-  db.txs.forEach(t => put('tx', Object.assign({id: t.id, type: t.type, amt: t.amt / 100, ts: tsOfDate(t.date, t.at), vault: t.vault, note: t.note || '', upd: t.upd, del: !!t.del}, t.type === 'tr' ? {to: t.to} : {cat: t.cat}, t.pt ? {pt: t.pt} : {}, t.iv ? {iv: t.iv, pnote: t.pnote || ''} : {})));
-  db.entries.forEach(e => {
-    if (!isPay(e) || (!e.vault && !idx.tx.has(e.id))) return;
-    put('tx', {id: e.id, type: e.kind === 'pay' ? 'inc' : 'exp', amt: (e.amt || 0) / 100, ts: tsOfDate(vdate(e), e.at), vault: e.vault || '', cat: PAY_CAT[e.kind],
-      note: payName(e), party: e.party, pkind: e.kind, method: e.method || 'نقدي', pnote: e.note || '', upd: e.upd, del: !!e.del || !e.vault});
-  });
-  if (ch) try { localStorage.setItem('fo_cash_v1', JSON.stringify(c)); } catch (x) {}
-  /* أسامي العملا والموردين بس (من غير أرصدة) علشان دفتر الخزنة يقدر يسجل دفعة باسم حد */
-  const names = JSON.stringify(liveParties().map(p => ({id: p.id, name: p.name, sec: p.sec})).sort((a, b) => a.name.localeCompare(b.name, 'ar')));
-  try { if (localStorage.getItem('fo_acc_names') !== names) localStorage.setItem('fo_acc_names', names); } catch (x) {}
-}
-function bridgeIn() {
-  if (!db) return 0;
-  const c = readCash(); if (!c) return 0;
-  const p2 = x => Math.round((+x || 0) * 100);
-  let n = 0;
-  const up = (kind, rec) => {
-    const cur = IDX[kind].get(rec.id);
-    if (cur && (cur.upd || 0) >= rec.upd) return;
-    if (cur) { Object.keys(cur).forEach(k => delete cur[k]); Object.assign(cur, rec); }
-    else { db[STORE[kind]].push(rec); IDX[kind].set(rec.id, rec); }
-    n++;
-  };
-  c.vaults.forEach((v, i) => { const cur = IDX.vault.get(v.id); up('vault', {id: v.id, name: v.name, open: p2(v.open), ord: cur ? cur.ord : i, at: cur ? cur.at : v.upd, upd: v.upd || 1, del: !!v.del}); });
-  (c.cats || []).forEach(x => up('cat', {id: x.id, type: x.type, name: x.name, ord: x.ord || 0, upd: x.upd || 1, del: !!x.del}));
-  c.tx.forEach(t => {
-    if (t.party) {
-      const cur = E.get(t.id);
-      if (cur && (cur.upd || 0) >= t.upd) return;
-      const e = Object.assign({hist: [], at: t.ts}, cur || {}, {id: t.id, party: t.party, kind: t.pkind || (t.type === 'inc' ? 'pay' : 'ppay'), date: isoOf(t.ts), amt: p2(t.amt),
-        method: t.method || 'نقدي', note: t.pnote || '', vault: t.vault || '', upd: t.upd, del: !!t.del});
-      delete e.sy;
-      /* الشيك: الدفتر بيشوف بس يوم الصرف. المسح هناك معناه "لسه متصرفش" مش إلغاء الشيك */
-      if (cur && cur.chk) {
-        e.date = cur.date; e.method = 'شيك';
-        if (t.del || !t.vault) { e.del = cur.del; e.vault = ''; e.chk = Object.assign({}, cur.chk, cur.chk.st === 'c' ? {st: 'p', cdate: ''} : {}); }
-        else e.chk = Object.assign({}, cur.chk, {cdate: isoOf(t.ts)});
-      }
-      if (cur && isLocked(cur.date) || isLocked(e.date)) { if (cur) { touch(cur); lockedFromCash++; } return; }
-      if (cur && !cur.del && (cur.amt !== e.amt || cur.date !== e.date || cur.vault !== e.vault)) e.hist = (cur.hist || []).concat([snapshot(cur)]);
-      applyAmounts(e); e.desc = docDesc(e);
-      up('entry', e);
-    } else {
-      const cur = IDX.tx.get(t.id);
-      if (cur && isLocked(cur.date) || isLocked(isoOf(t.ts))) { if (cur && (cur.upd || 0) < t.upd) { touch(cur); lockedFromCash++; } return; }
-      /* حركة الشريك: نحتفظ بالشريك وملاحظته حتى لو اتعدلت من الدفتر */
-      const pt = t.pt || (cur && cur.pt), keep = pt ? {pt, pnote: cur ? cur.pnote || '' : '', auto: cur ? cur.auto : undefined} : {};
-      if (keep.auto === undefined) delete keep.auto;
-      const iv = t.iv || (cur && cur.iv); if (iv) Object.assign(keep, {iv, pnote: cur ? cur.pnote || '' : t.pnote || ''});   // سحب أو رأس مال مساهم
-      up('tx', Object.assign({id: t.id, type: t.type, amt: p2(t.amt), vault: t.vault, to: t.to || '', cat: t.cat || '', note: t.note || '', date: isoOf(t.ts), at: t.ts, upd: t.upd || 1, del: !!t.del, hist: cur ? cur.hist || [] : []}, keep));
-    }
-  });
-  n += ensurePayCats();
-  if (lockedFromCash) { toast(`فيه ${lockedFromCash} تعديل في دفتر الخزنة على فترة مقفولة، واترفض.`, 6000); lockedFromCash = 0; n++; }
-  if (n) { bridgeBusy = true; try { saveDB(); } finally { bridgeBusy = false; } }
-  return n;
-}
-/* ---------- مزامنة دفتر الخزنة مع شيته من جوه الحسابات ----------
-   تطبيق الحسابات لما يتنزل أيقونة على الأيفون ليه تخزين لوحده غير Safari، فدفتر الخزنة اللي في الأدوات مكانش بيشوفه.
-   علشان كده الحسابات نفسها بتتزامن مع شيت دفتر الخزنة بنفس طريقة الدفتر: بتسحب اللي اتسجل في الدفتر من أي جهاز، وبتبعت اللي اتسجل هنا.
-   لينك شيت الدفتر ومفتاحه بيتحفظوا كإعداد مشترك (cashSheet) في شيت الحسابات، فأي جهاز حسابات بياخدهم لوحده. */
-const writeCash = d => { try { localStorage.setItem('fo_cash_v1', JSON.stringify(d)); } catch (e) {} };
-function cashCreds() {
-  if (!db) return null;
-  const c = readCash() || {}, s = getSet('cashSheet', null);
-  if (c.sheetUrl && c.sheetKey && c.sheetLocked) {
-    if (!s || s.u !== c.sheetUrl || s.k !== c.sheetKey) putSet('cashSheet', {u: c.sheetUrl, k: c.sheetKey});
-    return {u: c.sheetUrl, k: c.sheetKey};
-  }
-  if (s && s.u && s.k) {
-    const d = readCash() || {v: 1, vaults: [], cats: [], tx: [], lastSync: 0, lastVault: ''};
-    Object.assign(d, {sheetUrl: s.u, sheetKey: s.k, sheetLocked: true}); writeCash(d);
-    return {u: s.u, k: s.k};
-  }
-  return null;
-}
-/* نفس دمج الدفتر: الأحدث تعديلاً يكسب */
-function cashMerge(c, rows) {
-  if (!Array.isArray(c.cats)) c.cats = [];
-  const tbl = {vault: c.vaults, cat: c.cats, tx: c.tx}, idx = {};
-  Object.keys(tbl).forEach(k => idx[k] = new Map(tbl[k].map(x => [x.id, x])));
-  let n = 0;
-  rows.forEach(r => {
-    const arr = tbl[r.kind]; if (!arr || !r.data) return;
-    const cur = idx[r.kind].get(r.id);
-    if (cur && cur.upd >= r.upd) { if (cur.upd === r.upd) cur.sy = cur.upd; return; }
-    const rec = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del, sy: r.upd});
-    if (cur) { Object.keys(cur).forEach(k => delete cur[k]); Object.assign(cur, rec); } else { arr.push(rec); idx[r.kind].set(r.id, rec); }
-    n++;
-  });
-  return n;
-}
-function cashView(kind, r, c) {
-  const vn = id => (c.vaults.find(v => v.id === id) || {name: ''}).name, cn = id => ((c.cats || []).find(x => x.id === id) || {name: ''}).name;
-  if (kind === 'tx') { const d = new Date(r.ts); return [isoOf(r.ts), `${pad2(d.getHours())}:${pad2(d.getMinutes())}`, r.type === 'exp' ? 'مصروف' : r.type === 'inc' ? 'إيراد' : 'تحويل', r.amt,
-    r.type === 'tr' ? `${vn(r.vault)} ← ${vn(r.to)}` : vn(r.vault), r.type === 'tr' ? '' : cn(r.cat), cell(r.note || '')]; }
-  if (kind === 'vault') return ['', '', 'خزنة', r.open || 0, cell(r.name), '', 'رصيد افتتاحي'];
-  return ['', '', r.type === 'exp' ? 'بند مصروف' : 'بند إيراد', '', '', cell(r.name), ''];
-}
-let cashSyncing = false, cashSyncAt = 0, cashSyncErr = '';
-const FIXED_CASH_CATS = new Set(['c_payout', 'c_mkexp', 'c_psal', 'c_pdraw']);
-async function cashSync(force) {
-  if (!db || cashSyncing) return false;
-  if (!force && nowS() - cashSyncAt < 60000) return false;
-  const cr = cashCreds(); if (!cr) return false;
-  cashSyncing = true; cashSyncAt = nowS();
+/* دفتر الخزنة (cash.html) اتشال بطلب صاحب المشروع، والخزنة بقت هنا بس. مرة على كل جهاز بعد الفتح:
+   بنمسح النسخة المكشوفة اللي الحسابات كانت بتكتبها للدفتر (لو كل حركاتها موجودة هنا فعلاً)، ولينك شيت الدفتر من الإعدادات المشتركة.
+   شيت الدفتر نفسه على Google Drive مبيتلمسش. */
+function forgetCashBook() {
   try {
-    bridgeOut();
-    const call = body => callSheet(body, cr.u, cr.k);
-    const j = await call({action: 'pull'});
-    if (!j || !j.ok || !Array.isArray(j.rows)) throw new Error(j && j.error === 'key' ? 'key' : 'pull');
-    const c = readCash(); if (!c) throw new Error('local');
-    const got = cashMerge(c, j.rows);
-    /* البنود الثابتة اللي الحسابات بتعملها (upd = 1) بتتبعت كمان، علشان الدفتر يعرف اسمها بدل "بدون بند" */
-    const pend = () => [...c.vaults.map(r => ['vault', r]), ...c.cats.map(r => ['cat', r]), ...c.tx.map(r => ['tx', r])].filter(([k, r]) => r.sy !== r.upd && (r.upd > 1 || k === 'cat' && FIXED_CASH_CATS.has(r.id)));
-    let p = pend();
-    while (p.length) {
-      const batch = p.slice(0, 40);
-      const rows = batch.map(([kind, r]) => { const d = Object.assign({}, r); delete d.sy; return {id: r.id, kind, upd: r.upd, del: !!r.del, view: cashView(kind, r, c), data: d}; });
-      const k = await call({rows});
-      if (!k || !k.ok) throw new Error(k && k.error === 'key' ? 'key' : 'push');
-      batch.forEach(([kk, r], i) => { if (r.upd === rows[i].upd) r.sy = rows[i].upd; });
-      p = pend();
-    }
-    c.lastSync = nowS(); writeCash(c);
-    cashSyncErr = '';
-    const n = bridgeIn(); bridgeOut();
-    if ((got || n) && !$('#mask').classList.contains('on')) route();
-    return true;
-  } catch (e) { cashSyncErr = String(e.message || e); return false; }
-  finally { cashSyncing = false; }
+    const c = JSON.parse(localStorage.getItem('fo_cash_v1') || 'null');
+    const lost = c && Array.isArray(c.tx) ? c.tx.filter(t => t && t.id && !IDX.tx.get(t.id) && !E.get(t.id)).length : 0;
+    if (!lost) ['fo_cash_v1', 'fo_acc_names', 'fo_cash_lock'].forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
+  const r = IDX.set && IDX.set.get('cashSheet');
+  if (r && !r.del) { r.val = null; r.del = true; touch(r); saveDB(); }
 }
-setInterval(() => { if (!document.hidden) cashSync(); }, 120000);   // في الخلفية مبيسحبش، وبيسحب أول ما يتفتح (تحت)
-document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => cashSync(), 1200); });
-addEventListener('online', () => cashSync(true));
-/* بيقرا رابط الربط اللي الدفتر بيعمله (cashjoin=...)، أو لينك + مفتاح مكتوبين */
-function parseCashJoin(txt) {
-  const m = String(txt || '').match(/cashjoin=([\w-]+)/);
-  try { const o = m && JSON.parse(unb64u(m[1])); return o && o.u && o.k ? o : null; } catch (e) { return null; }
-}
-let pendingCashJoin = null;
-if (/^#cashjoin=/.test(location.hash)) { pendingCashJoin = parseCashJoin(location.hash); history.replaceState(null, '', location.pathname); }
-async function connectCash(u, k) {
-  u = normSheetUrl(String(u || '').trim()); k = String(k || '').trim();
-  if (!/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u)) return 'لينك شيت الدفتر مش مظبوط';
-  if (!k) return 'المفتاح السري ناقص';
-  let j; try { j = await callSheet({action: 'ping'}, u, k, 30000); } catch (e) { j = null; }
-  if (!j) return 'معرفتش أوصل لشيت الدفتر. اتأكد من النت ومن اللينك.';
-  if (j.app === 'fo-acc') return 'ده لينك شيت الحسابات، مش شيت دفتر الخزنة.';
-  if (!j.ok) return j.error === 'key' ? 'المفتاح السري مش بتاع شيت الدفتر ده. استخدم زرار "انسخ رابط الربط" من الدفتر.' : 'شيت الدفتر رد بخطأ: ' + (j.error || '');
-  const d = readCash() || {v: 1, vaults: [], cats: [], tx: [], lastSync: 0, lastVault: ''};
-  Object.assign(d, {sheetUrl: u, sheetKey: k, sheetLocked: true}); writeCash(d);
-  putSet('cashSheet', {u, k});
-  await cashSync(true);
-  return '';
-}
-async function applyCashJoin() {
-  const o = pendingCashJoin; pendingCashJoin = null; if (!o || !db) return;
-  const err = await connectCash(o.u, o.k);
-  toast(err ? '❌ ' + err : '✔ اتربطت الخزنة بدفتر الخزنة', 7000); route();
-}
-function renderCashLink() {
-  const box = $('#sCash'); if (!box) return;
-  const cr = cashCreds(), c = readCash() || {};
-  box.innerHTML = `<h2>🔗 دفتر الخزنة اللي في الأدوات</h2>
-    ${cr ? `<div class="sync ${cashSyncErr ? 'warn' : 'ok'}">${cashSyncErr ? '⚠️ آخر مزامنة مع شيت الدفتر فشلت. هتتعاد لوحدها.' : `✔ الحسابات والدفتر حاجة واحدة: أي حركة تتسجل هنا أو هناك بتظهر في المكانين.${c.lastSync ? ' آخر مزامنة: ' + dispTime(c.lastSync) : ''}`}</div>
-      <button class="btn line sm" id="scNow" type="button">زامن الخزنة دلوقتي</button>
-      <button class="btn line sm" id="scShare" type="button" style="margin-top:8px">🔗 ابعت رابط الدفتر لجهاز تاني</button>
-      <button class="btn line sm" id="scIcon" type="button" style="margin-top:8px">📲 الدفتر أيقونة لوحده على الموبايل (الخطوات)</button>`
-    : `<p class="hint" style="margin:0 0 8px">علشان الخزنة هنا والدفتر يبقوا حاجة واحدة: افتح <b>دفتر الخزنة</b> من الأدوات ← <b>الإعدادات</b> ← اضغط <b>"انسخ رابط الربط لبرنامج الحسابات"</b>، وارجع هنا والصقه.</p>
-      <div class="fld"><input class="inp" id="scL" style="direction:ltr;font-size:var(--f2)" placeholder="الصق رابط الربط هنا" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-      <details class="fld"><summary style="font-weight:700;color:var(--sub);cursor:pointer">أو اكتب لينك الشيت والمفتاح بإيدك</summary>
-        <div class="fld" style="margin-top:6px"><label>لينك شيت الدفتر</label><input class="inp" id="scU" style="direction:ltr;font-size:var(--f2)" placeholder="https://script.google.com/macros/s/..../exec" autocomplete="off"></div>
-        <div class="fld"><label>المفتاح السري بتاع الدفتر (مش كلمة سر الحسابات)</label><input class="inp" id="scK" style="direction:ltr;font-size:var(--f3)" autocomplete="off" autocapitalize="off" spellcheck="false"></div></details>
-      <div class="err" id="scE"></div>
-      <button class="btn gold" id="scGo" type="button">اربط</button>`}`;
-  if ($('#scShare')) $('#scShare').onclick = async () => {
-    const url = location.origin + location.pathname.replace(/[^/]*$/, '') + 'cash.html#cashjoin=' + b64u(JSON.stringify({u: cr.u, k: cr.k}));
-    try { if (navigator.share) { await navigator.share({title: 'دفتر الخزنة', text: 'رابط ربط دفتر الخزنة (متبعتوش لحد):', url}); return; } } catch (e) { if (e.name === 'AbortError') return; }
-    try { await navigator.clipboard.writeText(url); toast('اتنسخ ✔ افتحه على الجهاز التاني', 6000); } catch (e) { toast('معرفتش أنسخ الرابط'); }
-  };
-  if ($('#scIcon')) $('#scIcon').onclick = () => cashIconHelp(location.origin + location.pathname.replace(/[^/]*$/, '') + 'cash.html#cashjoin=' + b64u(JSON.stringify({u: cr.u, k: cr.k})));
-  if ($('#scNow')) $('#scNow').onclick = async () => { toast('⏳ بزامن الخزنة…'); const ok = await cashSync(true); toast(ok ? 'الخزنة متزامنة ✔' : 'معرفتش أوصل لشيت الدفتر. اتأكد من النت.'); renderCashLink(); };
-  if ($('#scGo')) $('#scGo').onclick = async () => {
-    const o = parseCashJoin($('#scL').value) || {u: $('#scU').value, k: $('#scK').value};
-    if (!o.u && !o.k) return $('#scE').textContent = 'الصق رابط الربط اللي نسخته من دفتر الخزنة';
-    $('#scGo').disabled = true; $('#scGo').textContent = '⏳ بجرب…'; $('#scE').textContent = '';
-    const err = await connectCash(o.u, o.k);
-    if (err) { $('#scGo').disabled = false; $('#scGo').textContent = 'اربط'; $('#scE').textContent = '❌ ' + err; return; }
-    renderCashLink(); toast('✔ اتربطت الخزنة بدفتر الخزنة', 5000);
-  };
-}
-/* دفتر الخزنة أيقونة لوحده: الأيقونة على الأيفون ليها تخزين لوحدها، فبتتربط بنفس الرابط من جواها (خانة "الصق رابط الربط") */
-function cashIconHelp(url) {
-  modal(`<h3>📲 دفتر الخزنة أيقونة لوحده</h3>
-    <ol class="steps">
-      <li>دوس <b>"انسخ رابط الدفتر"</b> تحت.</li>
-      <li>افتح <b>Safari</b> (على الأيفون) أو <b>كروم</b> (على الأندرويد)، والصق الرابط في خانة العنوان فوق وادخل.</li>
-      <li>الأيفون: زرار المشاركة <b>⬆️</b> ← <b>إضافة إلى الشاشة الرئيسية</b> ← <b>إضافة</b>. الأندرويد: قايمة كروم <b>⋮</b> ← <b>إضافة إلى الشاشة الرئيسية</b>.</li>
-      <li>افتح الأيقونة الجديدة <b>دفتر الخزنة</b>. لو لقيته فاضي ومكتوب "الدفتر لسه مش مربوط": دوس <b>الصق رابط الربط</b> ← <b>📋 الصق من الحافظة</b> (أو الصقه بإيدك ودوس <b>اربط</b>). هتنزل كل حركات الخزنة.</li>
-      <li>من <b>الإعدادات</b> جوه الأيقونة ← <b>🔒 الرقم السري</b>: اكتب رقم مرتين ودوس <b>شغّل القفل</b>.</li>
-    </ol>
-    <p class="hint">الرابط ده فيه مفتاح الشيت، متبعتوش لحد.</p>
-    <div class="stack" style="margin-top:12px"><button class="btn green" id="ciCopy" type="button">انسخ رابط الدفتر</button><button class="btn line" id="ciX" type="button">إغلاق</button></div>`, true);
-  $('#ciX').onclick = closeModal;
-  $('#ciCopy').onclick = async () => { try { await navigator.clipboard.writeText(url); toast('اتنسخ ✔ افتح Safari أو كروم والصقه', 6000); } catch (e) { $('#ciCopy').insertAdjacentHTML('afterend', `<pre class="code">${esc(url)}</pre>`); toast('دوس مطوّل على الرابط وانسخه', 5000); } };
-}
-addEventListener('storage', ev => {
-  if (!db || ev.key !== 'fo_cash_v1') return;
-  if (bridgeIn() && !$('#mask').classList.contains('on')) route();
-});
 
 /* ====================== إعدادات مشتركة بين الأجهزة ====================== */
 /* بتتحفظ كسجلات (kind = set) فبتتزامن زي أي حاجة: lock = تاريخ قفل الفترة، limits = حدود ألوان الرصيد */
@@ -4697,7 +4498,7 @@ function profitReport(f, t) {
     const [y, mo] = m.split('-').map(Number), ms = m + '-01' < f ? f : m + '-01', me0 = m + '-' + pad2(new Date(y, mo, 0).getDate()), me = me0 > t ? t : me0;
     const x = profitOf(ms, me);
     Object.keys(tot).forEach(k => tot[k] += x[k]); x.byCat.forEach((v, k) => cats.set(k, (cats.get(k) || 0) + v));
-    rows.push({raw: {m: MONTHS[mo - 1], s: x.sales, p: x.after}, cells: [`${MONTHS[mo - 1]} ${y}`, fmtP(x.sales), fmtP(x.purch), fmtP(x.exp - x.inc), fmtP(x.before), fmtP(x.part + x.iv), fmtP(x.after)], cls: x.after < 0 ? 'ret' : ''});
+    rows.push({empty: !x.sales && !x.purch && !x.exp && !x.inc && !x.part && !x.iv, raw: {m: MONTHS[mo - 1], s: x.sales, p: x.after}, cells: [`${MONTHS[mo - 1]} ${y}`, fmtP(x.sales), fmtP(x.purch), fmtP(x.exp - x.inc), fmtP(x.before), fmtP(x.part + x.iv), fmtP(x.after)], cls: x.after < 0 ? 'ret' : ''});
     m = mo === 12 ? `${y + 1}-01` : `${y}-${pad2(mo + 1)}`;
   }
   const sum = [['صافي المبيعات', fmtP(tot.sales)], ['صافي المشتريات', fmtP(tot.purch)], ['المصروفات', fmtP(tot.exp)],
@@ -4744,7 +4545,7 @@ function searchAll(q) {
   }
   return out.sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at);
 }
-function searchModal() {
+function searchModal(q0) {
   modal(`<h3>🔎 دوّر في كل الحركات</h3>
     <input class="inp" id="saQ" type="search" placeholder="مبلغ، صنف، ملاحظة، اسم…" autocomplete="off" style="margin-bottom:8px">
     <div id="saR" style="max-height:60vh;overflow:auto"><p class="hint">اكتب حرفين على الأقل. المبلغ لازم يبقى بالظبط (زي 1500).</p></div>
@@ -4761,6 +4562,7 @@ function searchModal() {
   let tm = 0;
   $('#saQ').oninput = () => { clearTimeout(tm); tm = setTimeout(draw, 200); };
   $('#saX2').onclick = closeModal;
+  if (q0) { $('#saQ').value = q0; draw(); }
   setTimeout(() => $('#saQ') && $('#saQ').focus(), 50);
 }
 let repColMode = 'week';   // تقرير التحصيل: أسبوعي (أسابيع الشهر، السبت للجمعة) أو شهري (شهور السنة)
@@ -4896,8 +4698,8 @@ function renderReports() {
     </div>
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
     ${repKind === 'profit' ? profitChart(R.rows) : ''}
-    ${R.rows.length ? `<div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
-      ${R.rows.map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
+    ${R.rows.some(r => !r.empty) ? `<div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''} ${repKind === 'profit' ? 'pft' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
+      ${R.rows.filter(r => !r.empty).map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
     <div class="card" style="margin-top:10px">${R.sum.map(([a, b]) => `<div class="bl"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
     <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>
     <div class="mrow3" style="margin-top:10px;grid-template-columns:1fr 1fr"><button class="btn green" id="rpShare" type="button">📲 ابعت PDF واتساب</button><button class="btn gold" id="rpPdf" type="button">معاينة / تنزيل PDF</button></div>`;
@@ -4998,7 +4800,7 @@ async function pagesToPdf(build, title, fileName) {
    السحب أو رأس المال من خزنة = حركة خزنة عادية (txs) فيها iv وبندها c_ivdraw/c_ivcap، ومش بتدخل الأرباح. أرباح المساهمين بتتخصم في تقرير الأرباح (ivProfit).
    الحسبة كلها بتحصل لما الصفحة تتفتح بس، ومفيش حاجة شغالة في الخلفية. */
 const IV_CATS = {draw: ['c_ivdraw', 'exp', 'سحب مساهمين'], cap: ['c_ivcap', 'inc', 'إيداع مساهمين']};
-SPECIAL_CATS.add('c_ivdraw'); SPECIAL_CATS.add('c_ivcap'); FIXED_CASH_CATS.add('c_ivdraw'); FIXED_CASH_CATS.add('c_ivcap');
+SPECIAL_CATS.add('c_ivdraw'); SPECIAL_CATS.add('c_ivcap');
 function ensureIvCats() { Object.values(IV_CATS).forEach(([id, type, name]) => { if (!IDX.cat.get(id)) { const r = {id, type, name, ord: 96, upd: 1, del: false}; db.cats.push(r); IDX.cat.set(id, r); } }); }
 const ivList = () => db.ivps.filter(x => !x.del).sort((a, b) => (a.at || 0) - (b.at || 0));
 const ivGet = id => { const v = IDX.ivp.get(id); return v && !v.del ? v : null; };

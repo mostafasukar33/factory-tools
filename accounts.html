@@ -5600,7 +5600,7 @@ function opText_(d) {
   if (d.t === 'exp') return 'مصروف' + (d.cat ? ' ' + d.cat : '') + ': ' + a + (d.note ? ' — ' + d.note : '');
   if (d.t === 'spay') return 'دفع للمورد ' + (d.sname || '') + ' ' + a;
   if (d.t === 'hand') return 'سلّمك ' + a + ' كاش';
-  if (d.t === 'cs') return 'بيع كاش من المصنع ' + a + (d.buyer ? ' — ' + d.buyer : '');
+  if (d.t === 'cs') return 'بيع كاش من المصنع ' + a + (d.buyer ? ' — ' + d.buyer : '') + (d.m === 'tr' ? ' (تحويل)' : '');
   return 'حركة ' + a;
 }
 const ICON = {pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭', rt: '↩️'};
@@ -5676,6 +5676,10 @@ function tgTest_() {
 function out_(o) { o.t = Date.now(); return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }   // t = وقت الشيت، التطبيق بيستخدمه بدل ساعة الجهاز`;
 
 const MK_M = {cash: 'كاش', tr: 'تحويل', insta: 'إنستا', voda: 'فودافون'};   // tr = "تحويل لمصطفى" (الشريك بقى عنده كاش أو تحويل بس)
+/* بيع كاش من المصنع اتحوّل لمصطفى على طول (m: 'tr'): بيدخل خزنة تحويلات مش خزنة السوق. القديم من غير m = كاش مع الشريك */
+const mkCsTr = o => o.t === 'cs' && o.m === 'tr';
+const mkCsVault = () => { const v = mkVaultFor('tr'); return v && !isMkv(v) ? v : mkHandTo(); };   // الإيراد لازم يبقى في خزنة
+const mkCsNote = o =>'بيع كاش من المصنع — ' + (o.buyer || '') + (mkCsTr(o) ? ' — تحويل' : '');
 const mkCreds = () => { const s = db && getSet('mktSheet', null); return s && s.u && s.k ? s : null; };
 function mkDb() { return db.mkt = db.mkt || {u: '', cursor: 0, ops: {}, st: {}, cs: {}}; }
 const mkSt = id => mkDb().st['st_' + id];
@@ -5739,7 +5743,7 @@ function mkFollow() {
     else {
       Object.assign(rec, {amt: o.amt, date: day});
       if (o.t === 'exp') rec.note = o.cat + (o.note ? ' — ' + o.note : '');
-      if (o.t === 'cs') rec.note = 'بيع كاش من المصنع — ' + (o.buyer || '');
+      if (o.t === 'cs') { rec.note = mkCsNote(o); if (mkCsTr(o) === isMkv(rec.vault)) rec.vault = mkCsTr(o) ? mkCsVault() : MKV; }
     }
     if (isE) { applyAmounts(rec); rec.desc = docDesc(rec); }
     touch(rec); mkSetSt(o.id, {dv: o.upd}); n++;
@@ -5850,7 +5854,7 @@ function mkMove(o, f) {
     else { const e = addEntry(Object.assign({id: 'e_mk_' + o.id}, x)); applyAmounts(e); e.desc = docDesc(e); }
   } else {
     const x = o.t === 'exp' ? {type: 'exp', amt: f.amt, vault: f.vault, to: '', cat: 'c_mkexp', note: o.cat + (o.note ? ' — ' + o.note : '')}
-      : o.t === 'cs' ? {type: 'inc', amt: f.amt, vault: f.vault, to: '', cat: 'c_inc1', note: 'بيع كاش من المصنع — ' + (o.buyer || '')}
+      : o.t === 'cs' ? {type: 'inc', amt: f.amt, vault: f.vault, to: '', cat: 'c_inc1', note: mkCsNote(o)}
       : {type: 'tr', amt: f.amt, vault: f.vault, to: f.to, cat: '', note: 'كاش من شريكك'};
     if (rec) { Object.assign(rec, x, {date: f.date, at: now, del: false}); delete rec.delAt; touch(rec); }
     else { const r = Object.assign({id: 't_mk_' + o.id, date: f.date, at: now, upd: now, del: false, hist: []}, x); db.txs.push(r); IDX.tx.set(r.id, r); }
@@ -6099,17 +6103,17 @@ function lpAgo(pid) {
 /* ---------- شاشة وارد السوق ---------- */
 const mkTag = m => `<span class="mtag ${m}">${MK_M[m] || m}</span>`;
 /* معنى الألوان زي تطبيق الشريك: d-in فلوس دخلت معاه، d-out طلعت، d-to راحت لمصطفى، d-inv فاتورة/مرتجع */
-const mkDir = o => o.t === 'cs' || (o.t === 'pay' && o.m === 'cash') ? 'd-in' : o.t === 'exp' || o.t === 'spay' ? 'd-out' : o.t === 'inv' || o.t === 'rt' ? 'd-inv' : 'd-to';
-const mkLTag = o => o.t === 'rt' ? '<span class="mtag rt">↩️ مرتجع/شغل</span>' : o.t === 'cs' ? '<span class="mtag cs">بيع كاش</span>' : o.t === 'exp' ? '<span class="mtag exp">مصروف</span>' : o.t === 'inv' ? '<span class="mtag inv">فاتورة</span>' : mkTag(o.m || 'cash');
+const mkDir = o => (o.t === 'cs' && !mkCsTr(o)) || (o.t === 'pay' && o.m === 'cash') ? 'd-in' : o.t === 'exp' || o.t === 'spay' ? 'd-out' : o.t === 'inv' || o.t === 'rt' ? 'd-inv' : 'd-to';
+const mkLTag = o => o.t === 'rt' ? '<span class="mtag rt">↩️ مرتجع/شغل</span>' : o.t === 'cs' ? '<span class="mtag cs">بيع كاش</span>' + (mkCsTr(o) ? ' ' + mkTag('tr') : '') : o.t === 'exp' ? '<span class="mtag exp">مصروف</span>' : o.t === 'inv' ? '<span class="mtag inv">فاتورة</span>' : mkTag(o.m || 'cash');
 const mkCatNote = o => o.cat + (o.note && o.note !== o.cat ? ' — ' + o.note : '');
-const mkWhat = o => o.t === 'rt' ? 'مرتجع/شغل: ' + o.cname + (o.note ? ' — ' + o.note : '') : o.t === 'pay' ? o.cname + ' — ' + (MK_M[o.m] || '') : o.t === 'inv' ? 'فاتورة: ' + o.cname + ' (إجمالي بس)' : o.t === 'exp' ? 'مصروف: ' + mkCatNote(o) : o.t === 'spay' ? 'دفعة لمورد: ' + o.sname : o.t === 'cs' ? 'بيع كاش من المصنع: ' + (o.buyer || '') : 'كاش سلّمه لك';
+const mkWhat = o => o.t === 'rt' ? 'مرتجع/شغل: ' + o.cname + (o.note ? ' — ' + o.note : '') : o.t === 'pay' ? o.cname + ' — ' + (MK_M[o.m] || '') : o.t === 'inv' ? 'فاتورة: ' + o.cname + ' (إجمالي بس)' : o.t === 'exp' ? 'مصروف: ' + mkCatNote(o) : o.t === 'spay' ? 'دفعة لمورد: ' + o.sname : o.t === 'cs' ? 'بيع كاش من المصنع: ' + (o.buyer || '') + (mkCsTr(o) ? ' — تحويل' : '') : 'كاش سلّمه لك';
 /* حصّلت / راح لمصطفى / مصروف / معايا — نفس حسبة شريكك */
 function mkSums(ops) {
   let col = 0, toM = 0, sp = 0, inv = 0;
-  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'cs') col += o.amt; else if (o.t === 'inv') inv += o.amt; else if (o.t === 'rt') return; else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
+  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'cs') { col += o.amt; if (mkCsTr(o)) toM += o.amt; } else if (o.t === 'inv') inv += o.amt; else if (o.t === 'rt') return; else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
   return {col, toM, sp, inv, left: col - toM - sp};
 }
-const mkSign = o => o.t === 'cs' ? 1 : o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'inv' || o.t === 'rt' ? 0 : -1;
+const mkSign = o => o.t === 'cs' ? (mkCsTr(o) ? 0 : 1) : o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'inv' || o.t === 'rt' ? 0 : -1;
 function mkGroups() {
   const al = mkAlias(), g = new Map();
   mkLive().forEach(o => {
@@ -6407,7 +6411,7 @@ function mkBulk() {
   const ops = mkReady(); if (!ops.length) return;
   const al = mkAlias(), by = new Map();
   ops.forEach(o => { const k = o.t === 'cs' ? 'x:cs' : mkPid(o, al); if (!by.has(k)) by.set(k, []); by.get(k).push(o); });
-  const hasTr = ops.some(o => o.t === 'pay' && o.m !== 'cash'), tot = ops.reduce((s, o) => s + o.amt, 0);
+  const isTr = o => (o.t === 'pay' && o.m !== 'cash') || mkCsTr(o), hasTr = ops.some(isTr), tot = ops.reduce((s, o) => s + o.amt, 0);
   modal(`<h3>⚡ انقل كل الجاهز</h3>
     
     <div class="mkbl">${[...by.entries()].map(([k, L]) => `<div class="mkbg"><div class="mkbgh"><b>${k === 'x:cs' ? '💰 بيع كاش من المصنع' : (L[0].t === 'spay' ? '🏭 ' : '') + esc(P.get(k).name)}</b><b class="money">${fmtP(L.reduce((s, o) => s + o.amt, 0))}</b></div>
@@ -6422,7 +6426,7 @@ function mkBulk() {
     let n = 0;
     by.forEach((L, k) => {
       const pays = L.filter(o => o.t === 'pay'), grp = pays.length > 1 ? 'g_' + pays[0].id : '';   // دفعات نفس العميل = "دفعة" واحدة في حسابه
-      L.forEach(o => { if (mkMove(o, {pid: o.t === 'cs' ? '' : k, amt: o.amt, date: isoOf(o.ts), vault: o.t === 'pay' && o.m !== 'cash' ? tv : MKV, to: '', grp: o.t === 'pay' ? grp : ''})) n++; });
+      L.forEach(o => { if (mkMove(o, {pid: o.t === 'cs' ? '' : k, amt: o.amt, date: isoOf(o.ts), vault: isTr(o) ? (mkCsTr(o) && !tv ? mkCsVault() : tv) : MKV, to: '', grp: o.t === 'pay' ? grp : ''})) n++; });
     });
     if (hasTr) db.cfg.mkv = Object.assign({}, db.cfg.mkv, {tr: tv});
     saveDB(); closeModal(); renderMkt(); renderMkHome(); mkSync();
@@ -6431,15 +6435,15 @@ function mkBulk() {
 }
 /* فلوس كاش مع الشريك (دفعة كاش، مصروف، دفعة مورد، بيع كاش، تسليم): بتتسجل في خزنة السوق المخفية لوحدها من غير اختيار.
    التحويلات بس (وصلت لمصطفى على طول) بيختار خزنتها من خزنه هو */
-const mkCashOp = o => o.t !== 'pay' || o.m === 'cash';
+const mkCashOp = o => o.t === 'cs' ? !mkCsTr(o) : o.t !== 'pay' || o.m === 'cash';
 /* شاشة التأكيد (إجبارية قبل أي نقل): المبلغ والتاريخ والخزنة لكل عملية. الخزنة اختيار حر، والدفعات تقدر تبقى من غير خزنة.
    المصروف والكاش المسلَّم لازم يبقوا على خزنة. الكاش المسلَّم = تحويل من خزنة لخزنة */
 function mkConfirm(ops, to) {
   ensureMktVault();
   const kind = ops[0].t, name = to.pid ? P.get(to.pid).name : to.newName;
   const title = kind === 'rt' ? 'تأكيد المرتجع / الشغل (خصم على الحساب)' : kind === 'cs' ? 'تأكيد البيع الكاش' : kind === 'exp' ? 'تأكيد المصروف' : kind === 'hand' ? 'تأكيد الاستلام' : 'تأكيد النقل للحسابات';
-  const who = kind === 'cs' ? '<b>بيع كاش من المصنع</b> (الفلوس مع شريكك)' : kind === 'exp' ? `<b>مصاريف السوق</b>` : kind === 'hand' ? '<b>كاش من شريكك</b> ← بيدخل خزنتك' : `${kind === 'spay' ? 'من' : 'من'} <b>${esc(name)}</b>${to.newName ? ` <span class="nwt">${kind === 'spay' ? 'حساب مورد جديد' : 'حساب جديد في عملاء السوق'}</span>` : ''}`;
-  const key = o => o.t === 'pay' ? o.m : o.t;
+  const who = kind === 'cs' ? '<b>بيع كاش من المصنع</b>' + (ops.every(mkCsTr) ? ' (اتحوّل لك)' : ops.some(mkCsTr) ? '' : ' (الفلوس مع شريكك)') : kind === 'exp' ? `<b>مصاريف السوق</b>` : kind === 'hand' ? '<b>كاش من شريكك</b> ← بيدخل خزنتك' : `${kind === 'spay' ? 'من' : 'من'} <b>${esc(name)}</b>${to.newName ? ` <span class="nwt">${kind === 'spay' ? 'حساب مورد جديد' : 'حساب جديد في عملاء السوق'}</span>` : ''}`;
+  const key = o => o.t === 'pay' ? o.m : mkCsTr(o) ? 'tr' : o.t;
   modal(`<h3>${title}</h3>
     <p style="margin-bottom:8px">${ops.length > 1 ? `${ops.length} عمليات` : 'عملية'} ${kind === 'spay' ? 'دفعة لمورد' : kind === 'pay' ? 'دفعة' : kind === 'rt' ? 'مرتجع/شغل' : ''} ${who}</p>
     ${ops.map((o, i) => `<div class="mvr" data-i="${i}"><div class="mvh">${mkLTag(o)} <small>${o.t === 'exp' ? esc(o.cat) + ' — ' : ''}${(o.t === 'exp' || o.t === 'rt') && o.note && o.note !== o.cat ? esc(o.note) + ' — ' : ''}${o.t === 'cs' && o.buyer ? esc(o.buyer) + ' — ' : ''}اتسجلت ${dispTime(o.ts)}${isoOf(o.ts) !== todayISO() ? ' — ' + dispDate(isoOf(o.ts)) : ''}</small></div>
@@ -6447,7 +6451,7 @@ function mkConfirm(ops, to) {
         ${o.t === 'rt' ? `<div class="fld"><label>الخزنة</label><div class="mkcash">↩️ من غير خزنة</div><input type="hidden" data-f="v" value=""></div>`
           : mkCashOp(o) && o.t !== 'hand' ? `<div class="fld"><label>الفلوس</label><div class="mkcash">💵 مع شريكك</div><input type="hidden" data-f="v" value="${MKV}"></div>`
           : o.t === 'hand' ? `<div class="fld"><label>استلمتها في خزنة</label><select class="inp" data-f="t">${vaultOpts(mkHandTo())}</select><input type="hidden" data-f="v" value="${MKV}"></div>`
-          : `<div class="fld"><label>← الخزنة</label><select class="inp" data-f="v">${vaultOpts(mkVaultFor(key(o)), 'من غير خزنة (في حساب العميل بس)')}</select></div>`}</div>
+          : `<div class="fld"><label>← الخزنة</label><select class="inp" data-f="v">${o.t === 'cs' ? vaultOpts(mkCsVault()) : vaultOpts(mkVaultFor(key(o)), 'من غير خزنة (في حساب العميل بس)')}</select></div>`}</div>
       <div class="fld"><label>التاريخ</label><input class="inp" type="date" data-f="d" value="${isoOf(o.ts)}"></div></div>`).join('')}
     <div id="mvW"></div>
     <div class="mfoot">${ops.length > 1 ? `<div class="dtot"><span>الإجمالي</span><b id="mvT">${fmtP(ops.reduce((s, o) => s + o.amt, 0))}</b></div>` : ''}

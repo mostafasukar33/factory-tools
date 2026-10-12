@@ -809,13 +809,21 @@ function newCustomer() {
 }
 
 /* ---------- شاشة الدفعة (دوسة على الزرار بتحفظ على طول) ---------- */
+/* المبلغ بالجنيه وقرشين: النقطة أو الفاصلة العربي (٫ ،) علامة عشرية، والفاصلة الإنجليزي بتتشال (فاصل الآلاف) */
+const amtClean = v => {
+  const t = normDigits(v).replace(/[٫،]/g, '.').replace(/[^\d.]/g, '');
+  const i = t.indexOf('.');
+  if (i < 0) return {i: t.replace(/^0+(?=\d)/, '').slice(0, 9), d: null};
+  return {i: t.slice(0, i).replace(/^0+(?=\d)/, '').slice(0, 9), d: t.slice(i + 1).replace(/\./g, '').slice(0, 2)};
+};
 function bindAmt(inp) {
+  inp.setAttribute('inputmode', 'decimal'); inp.removeAttribute('pattern');
   inp.addEventListener('input', () => {
-    const s = normDigits(inp.value).replace(/\D/g, '').replace(/^0+/, '').slice(0, 9);
-    inp.value = s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const a = amtClean(inp.value);
+    inp.value = a.i.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (a.d === null ? '' : '.' + a.d);
   });
 }
-const amtOf = el => Math.round(+normDigits(el.value).replace(/\D/g, '') * 100);
+const amtOf = el => { const a = amtClean(el.value); return Math.round(+((a.i || '0') + '.' + ((a.d || '') + '00').slice(0, 2)) * 100); };
 let lastSave = 0;
 /* العميل ممكن ياخد فاتورة (إجمالي بس، مصطفى هو اللي بيكتب البنود) وممكن يدفع. تابين فوق، والمبلغ واحد */
 let pyTab = 'pay';
@@ -825,7 +833,7 @@ function drawPay() {
   lastSave = 0; cShow = 15;
   $('#main').innerHTML = `<div class="cust" id="cBox"></div>
     <div class="seg" id="pyT" style="margin-top:10px;--n:3"><button type="button" data-v="pay" class="${pyTab === 'pay' ? 'on' : ''}">💵 دفعة</button><button type="button" data-v="inv" class="${pyTab === 'inv' ? 'on' : ''}">🧾 فاتورة</button><button type="button" data-v="rt" class="rt ${pyTab === 'rt' ? 'on' : ''}">↩️ مرتجع/شغل</button></div>
-    <label class="amt" for="amt"><input id="amt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>
+    <label class="amt" for="amt"><input id="amt" type="text" inputmode="decimal" autocomplete="off" placeholder="0"><em>جنيه</em></label>
     ${datePick('pyD', today())}
     <div id="pyBtns"></div>
     <div id="tdy"></div>`;
@@ -926,7 +934,7 @@ function editSheet(o) {
     ${s === 'done' ? `<div class="note dn" style="margin:0 0 6px">✓ ${o.t === 'hand' ? 'مصطفى استلمها' : 'اتنقلت لحسابات مصطفى'}. لو عدّلتها أو مسحتها هتتغير عنده لوحدها ويوصله إشعار.</div>` : ''}
     ${o.t === 'spay' ? `<label style="font-size:var(--f1);font-weight:700;color:var(--sub)">اسم المورد</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.sname)}">` : ''}
     ${o.t === 'cs' ? `<label style="font-size:var(--f1);font-weight:700;color:var(--sub)">اسم المشتري</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.buyer)}">` : ''}
-    <label class="amt sm" for="eA" style="margin-top:6px"><input id="eA" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${fmt(o.amt)}"><em>جنيه</em></label>
+    <label class="amt sm" for="eA" style="margin-top:6px"><input id="eA" type="text" inputmode="decimal" autocomplete="off" value="${fmt(o.amt)}"><em>جنيه</em></label>
     ${isCustOp(o) || o.t === 'cs' ? datePick('eD', dayOf(o.ts)) : ''}
     ${o.t === 'rt' ? `<input class="inp2 rt" id="eRt" autocomplete="off" placeholder="ملاحظة: مرتجع إيه أو شغل إيه" value="${esc(o.note || '')}">` : ''}
     ${o.t === 'pay' || o.t === 'cs' ? `<div class="seg" id="eM" style="--n:2;margin-top:10px">${['cash', 'tr'].map(k => `<button type="button" data-m="${k}" class="${k === m || (k === 'tr' && m !== 'cash') ? 'on' : ''}">${{cash: 'فلوس معايا', tr: 'تحويل لمصطفى'}[k]}</button>`).join('')}</div>` : ''}
@@ -1003,7 +1011,7 @@ function drawSpend() {
     <p class="hint">بتتخصم من اللي معاك كاش (${fmtN(cashNow())})</p>`;
   $$('#spT button').forEach(b => b.onclick = () => { spTab = b.dataset.v; $$('#spT button').forEach(x => x.classList.toggle('on', x === b)); body(); drawSpendList(); });
   const body = () => {
-    const amtBox = `<label class="amt ${spTab}" for="amt"><input id="amt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>`;
+    const amtBox = `<label class="amt ${spTab}" for="amt"><input id="amt" type="text" inputmode="decimal" autocomplete="off" placeholder="0"><em>جنيه</em></label>`;
     if (spTab === 'exp') {
       $('#spBody').innerHTML = `${amtBox}<label class="wh" for="nt">المصروف ده إيه؟</label><input class="inp2 exp" id="nt" autocomplete="off" placeholder="اكتب المصروف (مثلاً: بنزين)" style="margin-top:6px">
         <button class="big b-exp" id="spOk" type="button">حفظ المصروف</button>`;
@@ -1060,7 +1068,7 @@ function drawSale() {
   const names = buyerNames();
   $('#main').innerHTML = `<input class="inp2" id="bn" autocomplete="off" placeholder="اسم المشتري" style="margin-top:0">
     ${names.length ? `<div class="chips">${names.map(n => `<button class="chip" type="button" data-n="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}
-    <label class="amt" for="amt"><input id="amt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>
+    <label class="amt" for="amt"><input id="amt" type="text" inputmode="decimal" autocomplete="off" placeholder="0"><em>جنيه</em></label>
     ${datePick('bD', today())}
     ${['cash', 'tr'].map(m => `<button class="big b-${m}" data-m="${m}" type="button">${M_BTN[m]}</button>`).join('')}
     <p class="hint">دوسة على الزرار بتحفظ على طول. مش بتتسجل في العملاء.</p>`;
@@ -1090,13 +1098,13 @@ function handModal() {
   const cn = cashNow();
   modal(`<h3>سلمت لمصطفى كاش</h3>
     <p style="font-size:var(--f2);color:var(--sub);font-weight:600">اكتب الفلوس اللي سلمتها له. مصطفى هيأكد "استلمت" من عنده.</p>
-    <label class="amt sm" for="hAmt" style="margin-top:0"><input id="hAmt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>
+    <label class="amt sm" for="hAmt" style="margin-top:0"><input id="hAmt" type="text" inputmode="decimal" autocomplete="off" placeholder="0"><em>جنيه</em></label>
     ${cn > 0 ? `<button class="sbtn" id="hAll" type="button" style="width:100%;margin-top:8px;height:42px">كل اللي معايا (${fmt(cn)})</button>` : ''}
     <button class="big b-cash" id="hOk" type="button">سلمت</button><button class="big b-home" id="hX" type="button">رجوع</button>`);
   bindAmt($('#hAmt'));
   setTimeout(() => $('#hAmt') && $('#hAmt').focus(), 80);
   $('#hX').onclick = closeModal;
-  if ($('#hAll')) $('#hAll').onclick = () => { $('#hAmt').value = fmt(cn).replace(/[^\d,]/g, ''); };
+  if ($('#hAll')) $('#hAll').onclick = () => { $('#hAmt').value = fmt(cn).replace(/[^\d,.]/g, ''); };
   $('#hOk').onclick = async () => {
     const amt = amtOf($('#hAmt'));
     if (!(amt > 0)) return toast('اكتب المبلغ');
@@ -1115,7 +1123,7 @@ function closeDay() {
   modal(`<h3>🔒 قفّل يومك</h3>
     <div class="kexp"><span>المفروض معاك كاش</span><b class="money ${cn < 0 ? 'neg' : ''}">${fmtN(cn)}</b></div>
     <label class="wh" for="kAmt">عِد الفلوس اللي في جيبك واكتبها</label>
-    <label class="amt sm" for="kAmt" style="margin-top:6px"><input id="kAmt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"><em>جنيه</em></label>
+    <label class="amt sm" for="kAmt" style="margin-top:6px"><input id="kAmt" type="text" inputmode="decimal" autocomplete="off" placeholder="0"><em>جنيه</em></label>
     <div id="kRes"></div>
     <button class="big b-cash" id="kOk" type="button">قفّل</button><button class="big b-home" id="kX" type="button">رجوع</button>
     ${old ? `<p class="hint">قفلته قبل كده النهارده (${timeOf(old.ts)}). القفل الجديد هيتكتب مكانه.</p>` : ''}`);

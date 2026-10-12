@@ -1063,7 +1063,7 @@ const T0 = Date.now();
     eq('الموبايل: زراير التقارير والجرد جنب بعض فوق في العملاء', await A.evaluate(() => { const r = $('#hRep').getBoundingClientRect(), j = $('#hJrd').getBoundingClientRect(); return [Math.abs(r.top - j.top) < 4, r.left !== j.left]; }), [true, true]);
     await A.click('#hJrd'); await A.settle(200);
     eq('زرار الجرد فوق بيفتح الجرد', await A.evaluate(() => location.hash), '#jrd');
-    eq('ساعة الشيت: الوقت المتسجل بيتاخد من وقت الشيت مش من ساعة الجهاز', await A.evaluate(() => { const t0 = Date.now(); srvClock({t: t0 + 5 * 36e5}, t0); const r = {}; touch(r); const d = r.upd - Date.now(); const ok = [Math.abs(d - 5 * 36e5) < 3000, Math.abs(nowS() - Date.now() - 5 * 36e5) < 3000, localStorage.getItem('fo_srvoff') !== null]; srvClock({t: Date.now()}, Date.now()); return ok.concat(Math.abs(nowS() - Date.now()) < 3000); }), [true, true, true, true]);
+    eq('الوقت المتسجل من ساعة الموبايل (حتى لو الشيت رد بوقت مختلف)', await A.evaluate(() => { const t0 = Date.now(); srvClock({t: t0 + 5 * 36e5}, t0); const r = {}; touch(r); return [Math.abs(r.upd - Date.now()) < 3000, Math.abs(nowS() - Date.now()) < 3000]; }), [true, true]);
     await A.click('#bSet'); await A.settle(200);
     eq('ترس الإعدادات فوق بيفتح الإعدادات', await A.evaluate(() => location.hash), '#set');
     await A.click('nav button[data-go=mkt]'); await A.settle(300);

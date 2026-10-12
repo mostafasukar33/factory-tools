@@ -335,17 +335,10 @@ const norm = s => normDigits(s).toLowerCase().replace(/[أإآ]/g, 'ا').replace
 const fmt = p => { const a = Math.round(Math.abs(+p || 0)); return (a / 100).toLocaleString('en-US', {maximumFractionDigits: 2}); };
 const pad2 = n => String(n).padStart(2, '0');
 const dayOf = ms => { const d = new Date(ms); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
-/* ساعة الشيت: الوقت اللي بيتسجل بيتاخد من الشيت مش من ساعة الجهاز. كل رد من الشيت فيه وقته (t)، وبنحفظ الفرق بينه وبين الجهاز (srvOff) ونطبّقه على أي وقت بيتسجل، حتى والنت مقطوع. لو الشيت قديم (من غير t) بنكمّل على آخر فرق محفوظ */
-let srvOff = 0; try { srvOff = +localStorage.getItem('fo_srvoff') || 0; } catch (e) {}
-const nowS = () => Date.now() + srvOff;
-function srvClock(j, t0) {
-  if (!j || typeof j.t !== 'number' || j.t < 1e12) return;
-  const t1 = Date.now(); if (t1 - t0 > 10000) return;   // رد بطيء = الفرق مش دقيق، نسيبه
-  const off = Math.round(j.t - (t0 + t1) / 2);
-  if (Math.abs(off - srvOff) < 2000) return;   // فرق ملّي ثانية من سرعة النت: منغيّرش الفرق علشان ترتيب التعديلات المتقاربة ميتهزّش
-  srvOff = off;
-  try { localStorage.setItem('fo_srvoff', String(srvOff)); } catch (e) {}
-}
+/* الوقت من ساعة الموبايل (بطلب صاحب المشروع رجعنا للنظام القديم). srvOff وsrvClock فاضلين بالاسم بس علشان باقي الكود */
+let srvOff = 0;
+const nowS = () => Date.now();
+function srvClock() {}
 const today = () => dayOf(nowS());
 const timeOf = ms => { const d = new Date(ms), h = d.getHours(); return `${h % 12 || 12}:${pad2(d.getMinutes())} ${h < 12 ? 'ص' : 'م'}`; };
 /* طريقتين بس للدفعة الجديدة: فلوس معايا أو تحويل لمصطفى (إنستا/فودافون القديمة بتفضل تتعرض زي ما هي) */

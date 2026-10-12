@@ -1212,6 +1212,18 @@ body{font-size:var(--f3);line-height:1.6}
   .top #bBellM .nb:empty{display:none}
   .top #bBellM.has{color:var(--gold)}
 }
+
+/* موبايل صفحة العملاء: صف أدوات رفيع واحد + تابات سطر واحد أقصر (اللاب ما يتلمسش) */
+@media (max-width:999.98px){
+  main .srow{grid-template-columns:1fr 78px 38px 38px;gap:5px;margin-bottom:6px}
+  main .srow .inp{min-height:36px;height:36px;font-size:var(--f2);padding:2px 8px;border-radius:9px}
+  html main .srow #bNewParty,html main .srow #bSearch{width:38px;min-height:36px;height:36px;font-size:16px;border-radius:9px}
+  html main .srow #bNewParty{font-size:20px}
+  #hTabs{gap:5px;margin-bottom:6px}
+  #hTabs button{min-height:34px;height:34px;flex-direction:row;gap:6px;padding:2px 6px;border-radius:9px;white-space:nowrap;font-size:var(--f2);overflow:hidden}
+  #hTabs button small{display:inline;font-size:var(--f1)}
+  #hTabs .supt{padding:0 4px}
+}
 </style>
 </head>
 <body>
@@ -1761,7 +1773,7 @@ function renderHome() {
   /* الموبايل: "العملاء" فيها السوق والمواقع بس + زرار الخزنة، و"الموردين" تبويب لوحده تحت (#sup) */
   const wide = isWide(), tabs = wide ? [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']] : tab === 'sup' ? [] : [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع']];
   $('#hTabs').innerHTML = (!wide && tab === 'sup' ? `<div class="supt">🏭 الموردين <small>${cnt('sup')}</small></div>` : tabs.map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small></button>`).join(''))
-    + (!wide && tab !== 'sup' ? '<button class="hcash" id="hRep" type="button">📊 التقارير<small>والأرباح وكشف الحساب</small></button>' + (() => { const w = ivWaiting(); return `<button class="hcash" id="hJrd" type="button">📦 الجرد<small>${w ? w + ' مستني · ' : ''}والمساهمين</small></button>`; })() : '');
+    + (!wide && tab !== 'sup' ? '<button class="hcash" id="hRep" type="button">📊 التقارير</button>' + (() => { const w = ivWaiting(); return `<button class="hcash" id="hJrd" type="button">📦 الجرد${w ? `<small>${w} مستني</small>` : ''}</button>`; })() : '');
   $('#hTabs').classList.toggle('t3', !wide && tab !== 'sup');
   $$('#hTabs button[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
   if ($('#hRep')) $('#hRep').onclick = () => go('rep');

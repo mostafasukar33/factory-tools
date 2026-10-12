@@ -3893,6 +3893,7 @@ function kstHtml(key, title, side, mv, cls) {
 }
 /* نافذة نوع واحد: كل حركاته بخط كبير، والدوس على حركة بيفتحها للتعديل */
 function cashTypeSheet(title, k, arr, open, showV) {
+  if (title === 'حركة السوق') arr = arr.map((m, i) => [m, i]).sort((a, b) => (b[0].at || 0) - (a[0].at || 0) || a[1] - b[1]).map(x => x[0]);   // حركة السوق بترتيب التسجيل (الأحدث فوق) مش بالتاريخ
   const tot = arr.reduce((n, m) => n + m.amt, 0), day = cashMode === 'day';
   modal(`<div class="ksheet ksh-${CG[k][1]}"><div class="ksh2"><span>${CG[k][0]}<small>${esc(title)} · ${esc(cashPerTxt())} · ${arr.length} ${arr.length === 1 ? 'حركة' : arr.length === 2 ? 'حركتين' : 'حركات'}</small></span><b class="n">${fmtP(tot)}</b></div>
     <div class="kits">${arr.map((m, i) => {
@@ -3921,7 +3922,6 @@ function renderCash() {
   const mk0 = hasM ? kstHtml('mk', '<span>🏪 حركة السوق</span>', 'mkt', vaultMoves(MKV, from, to).concat(mkXfers(from, to)), 'mk') : null;
   const mk = mk0 && Object.keys(mk0.by).length ? mk0 : null;   // مفيش حركة سوق في الفترة = الكارت مبيظهرش
   const tiles = vs.map(v => { const b = vaultBal(v.id); return `<div class="kv${cashVault === v.id ? ' on' : ''}${b < 0 ? ' neg' : ''}" data-v="${esc(v.id)}" role="button" tabindex="0"><span>${esc(v.name)}</span><b class="n" data-ck="c:v:${esc(v.id)}" data-cnt="${b}">${fmtP(b)}</b>${b < 0 ? '<a class="kfix">⚠ راجعها</a>' : ''}</div>`; }).join('');
-  const last = hasM ? lastHand() : '';
   pg.innerHTML = `
     <div class="cbar">
       <button class="btn green" id="cRecv" type="button" title="استلمت من عميل">💵 <span class="lg">استلمت من عميل</span><span class="sh">استلمت</span></button>
@@ -3932,7 +3932,7 @@ function renderCash() {
     <div class="kb${hasM ? ' two' : ''}">
       <div class="kbme"><div class="kbm${cashOpenV ? ' on' : ''}" id="kMe" role="button" tabindex="0"><span>🏭 خزني <i class="kch">▾</i><small>${cashOpenV ? 'دوس على خزنة تشوف حركتها' : 'الفلوس اللي معاك' + (nV > 1 ? ' · ' + (nV === 2 ? 'خزنتين' : nV + ' خزن') : '')}</small></span><b class="n${meB < 0 ? ' neg' : ''}" data-ck="c:me" data-cnt="${meB}">${fmtP(meB)}</b></div>
         <div class="kvs"${cashOpenV ? '' : ' hidden'}>${tiles}</div></div>
-      ${hasM ? `<div class="kbk"><span>🏪 خزنة السوق<small>مع الشريك${last ? ' · سلّمك ' + last : ''}</small></span><b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></div>
+      ${hasM ? `<div class="kbk"><span>🏪 خزنة السوق<small>مع الشريك</small></span><b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></div>
       <div class="kbt"><span>الإجمالي<small>خزني + السوق</small></span><b class="n${total < 0 ? ' neg' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)}</b></div>` : ''}
     </div>
     <div class="ktools">

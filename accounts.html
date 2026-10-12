@@ -747,8 +747,10 @@ html[data-theme=dark] .cnet b{color:var(--ink)}html[data-theme=dark] .cnet b.neg
   #p-cash>.card{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px}
   #p-cash>.card .seg{grid-column:1/-1;margin:0}#p-cash>.card #cVault{margin-top:0!important}
   #p-cash>.card #cPick:has(.g2){grid-column:1/-1}
+  #p-cash>.card #cPick:has(.g2)+#cVault{grid-column:1/-1}
 }
 .dnav{display:flex;align-items:center;justify-content:center;gap:6px}
+.cyr{display:flex;align-items:center;gap:8px;margin-top:8px;font-weight:700;font-size:var(--f2);color:var(--sub)}.cyr .inp{flex:1;min-width:0}
 @media (max-width:999.98px){#p-cash #cPick.pkh{display:none}#p-cash #cPick.pkh+#cVault{grid-column:1/-1}}
 .dnav button{width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:22px;font-weight:800;line-height:1;cursor:pointer;color:var(--ink);padding:0}
 .dnav span{min-width:112px;text-align:center;border:1px solid var(--gold);background:var(--gold-l);border-radius:10px;padding:6px 10px;font-weight:800;font-size:var(--f2);color:var(--gold-d);white-space:nowrap}
@@ -3593,6 +3595,7 @@ let cashMode = 'day', cashVault = '', cashDay = '', cashMonth = '', cashYear = '
 function cashRange() {
   const t = todayISO();
   if (cashMode === 'day') { const d = cashDay || t; return [d, d]; }
+  if (cashMode === 'week') { const f = weekStart(cashDay || t); return [f, addDays(f, 6)]; }
   if (cashMode === 'month') { const m = cashMonth || t.slice(0, 7), [y, mo] = m.split('-').map(Number); return [m + '-01', m + '-' + pad2(new Date(y, mo, 0).getDate())]; }
   if (cashMode === 'year') { const y = cashYear || t.slice(0, 4); return [y + '-01-01', y + '-12-31']; }
   return [cashFrom || t.slice(0, 8) + '01', cashTo || t];
@@ -3603,18 +3606,22 @@ function cashTable(title, arr, all, cls) {
   return `<section class="ctab ${cls}"><div class="cth"><span>${title} (${arr.length})</span><b data-ck="c:t:${esc(title)}" data-cnt="${tot}">${fmtP(tot)}</b></div>
     <table class="cmt"><tbody>${arr.length ? arr.map(m => `<tr data-i="${all.indexOf(m)}"><td class="d">${shortDate(m.date)}</td><td class="w"><b>${esc(m.who)}</b>${m.what ? `<small>${esc(m.what)}</small>` : ''}</td><td class="am">${fmtP(m.amt)}</td></tr>`).join('') : '<tr><td class="e" colspan="3">مفيش حركات</td></tr>'}</tbody></table></section>`;
 }
+/* الأسبوع من السبت للجمعة */
+const weekStart = d => addDays(d, -((dowOf(d) + 1) % 7));
 const AR_DAYS = ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت'];
 const AR_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 /* خانة اسم اليوم/الشهر/السنة وأسهم السابق والتالي في الخزنة */
 function cashNavLabel() {
   const t = todayISO();
   if (cashMode === 'day') { const d = cashDay || t; return AR_DAYS[dowOf(d)] + (d === t ? ' · النهارده' : ''); }
+  if (cashMode === 'week') { const [f, l] = cashRange(); const sd = x => x.slice(8) + '/' + x.slice(5, 7); return sd(f) + ' ← ' + sd(l); }
   if (cashMode === 'month') { const [y, m] = (cashMonth || t.slice(0, 7)).split('-'); return AR_MONTHS[+m - 1] + ' ' + y; }
   return cashYear || t.slice(0, 4);
 }
 function cashStep(n) {
   const t = todayISO();
   if (cashMode === 'day') cashDay = addDays(cashDay || t, n);
+  else if (cashMode === 'week') cashDay = addDays(weekStart(cashDay || t), 7 * n);
   else if (cashMode === 'month') { const [y, m] = (cashMonth || t.slice(0, 7)).split('-').map(Number), d = new Date(y, m - 1 + n, 1); cashMonth = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`; }
   else cashYear = String((+cashYear || +t.slice(0, 4)) + n);
   renderCash();
@@ -3692,15 +3699,15 @@ function renderCash() {
       <button class="btn line sm mob" id="cPart" type="button">👥 الشركاء</button>
     </div>
     <div class="card">
-      <div class="seg s4" id="cMode">${[['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${cashMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+      <div class="seg s4" id="cMode">${[['day', 'يوم'], ['week', 'أسبوع'], ['month', 'شهر'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${cashMode === k || (k === 'range' && cashMode === 'year') ? 'on' : ''}">${n}</button>`).join('')}</div>
       ${cashMode === 'range' ? '' : `<div class="dnav"><button type="button" id="cPrev" title="السابق">›</button><span id="cNavL">${cashNavLabel()}</span><button type="button" id="cNext" title="التالي">‹</button></div>`}
-      <div id="cPick"${cashMode === 'range' ? '' : ' class="pkh"'}>${cashMode === 'day' ? `<input class="inp" type="date" id="cDay" value="${cashDay || t}">`
+      <div id="cPick"${cashMode === 'range' ? '' : ' class="pkh"'}>${cashMode === 'day' || cashMode === 'week' ? `<input class="inp" type="date" id="cDay" value="${cashDay || t}">`
         : cashMode === 'month' ? `<input class="inp" type="month" id="cMonth" value="${cashMonth || t.slice(0, 7)}">`
         : cashMode === 'year' ? `<input class="inp num" id="cYear" inputmode="numeric" value="${cashYear || t.slice(0, 4)}">`
-        : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div>`}</div>
+        : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div><label class="cyr">أو سنة كاملة <input class="inp num" id="cYr" inputmode="numeric" placeholder="${t.slice(0, 4)}" value="${from.slice(5) === '01-01' && to === from.slice(0, 4) + '-12-31' ? from.slice(0, 4) : ''}"></label>`}</div>
       <select class="inp" id="cVault" style="margin-top:8px"${side === 'mkt' ? ' disabled' : ''}><option value="">${side === 'mkt' ? 'خزنة السوق' : 'كل الخزن'}</option>${side === 'mkt' ? '' : vs.map(v => `<option value="${esc(v.id)}" ${cashVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
     </div>
-    ${hasM ? `<div class="seg s2 cside" id="cSide"><button type="button" data-s="me" class="${side === 'me' ? 'on' : ''}">🏭 حركتي أنا</button><button type="button" data-s="mkt" class="${side === 'mkt' ? 'on' : ''}">🏪 حركة شريكي</button></div>
+    ${hasM ? `<div class="seg s2 cside" id="cSide"><button type="button" data-s="me" class="${side === 'me' ? 'on' : ''}">🏭 حركتي أنا</button><button type="button" data-s="mkt" class="${side === 'mkt' ? 'on' : ''}">🏪 حركة السوق</button></div>
       <p class="chint">${side === 'mkt' ? 'الفلوس اللي مع شريكك في السوق: اللي حصّله، ودفعه للموردين، ومصاريف السوق، واللي سلّمهولك. <b>معاه دلوقتي: ' + fmtP(mkB) + '</b>' : 'فلوسك انت وخزنك: اللي حصّلته، واللي دفعته للموردين، ومصاريفك. اللي جه من شريكك عليه علامة 🏪.'}</p>` : ''}
     <div class="cnet"><span>${day ? 'صافي اليوم' : 'صافي الفترة'}</span><b class="${tin - tout < 0 ? 'neg' : ''}" data-ck="c:net" data-cnt="${tin - tout}">${fmtP(tin - tout)} ${CUR}</b></div>
     ${cashSideHtml(mv, side, day)}
@@ -3714,11 +3721,12 @@ function renderCash() {
   $('#cExp').onclick = () => txModal('exp');
   $('#cInc').onclick = () => txModal('inc');
   $('#cTr').onclick = () => txModal('tr');
-  $$('#cMode button').forEach(b => b.onclick = () => { cashMode = b.dataset.m; renderCash(); });
+  $$('#cMode button').forEach(b => b.onclick = () => { if (b.dataset.m === 'range' && cashMode !== 'range') { [cashFrom, cashTo] = cashRange(); } cashMode = b.dataset.m; renderCash(); });
   if ($('#cPrev')) { $('#cPrev').onclick = () => cashStep(-1); $('#cNext').onclick = () => cashStep(1); }
   const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); renderCash(); }; };
   bindI('#cDay', v => cashDay = v); bindI('#cMonth', v => cashMonth = v); bindI('#cYear', v => cashYear = normDigits(v).replace(/\D/g, '').slice(0, 4));
   bindI('#cFrom', v => cashFrom = v); bindI('#cTo', v => cashTo = v);
+  bindI('#cYr', v => { const y = normDigits(v).replace(/\D/g, '').slice(0, 4); if (y.length === 4) { cashFrom = y + '-01-01'; cashTo = y + '-12-31'; } });
   $('#cVault').onchange = () => { cashVault = $('#cVault').value; renderCash(); };
   const open = m => {
     const op = isMkRec(m.r) && mkDb().ops[m.r.id.slice(5)];   // حركة جاية من الشريك: نافذتها فيها "دي دفعة لمورد" للمصروف

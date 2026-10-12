@@ -175,6 +175,8 @@ const SCREENS = [
   ...ACC('l', LAP),
   {name: 'acc-party-l1100', app: 'acc', vp: LAP2, go: accEval(`go('p/' + ${party}.id)`)},
   {name: 'acc-mkt-arch-m', app: 'acc', vp: MOB, full: true, go: accEval("mkView = 'arch'; mkDay = ''; go('mkt'); renderMkt()")},
+  {name: 'acc-cash-wk-m', app: 'acc', vp: MOB, go: accEval("cashSide = 'me'; cashMode = 'week'; go('cash'); renderCash()")},
+  {name: 'acc-cash-rng-m', app: 'acc', vp: MOB, go: accEval("cashSide = 'me'; cashMode = 'range'; go('cash'); renderCash()")},
   {name: 'acc-cash-mk-m', app: 'acc', vp: MOB, full: true, go: accEval(`cashSide = 'mkt'; go('cash'); renderCash()`)},
   {name: 'acc-cash-mk-l', app: 'acc', vp: LAP, go: accEval(`cashSide = 'mkt'; go('cash'); renderCash()`)},
   {name: 'acc-cash-l1100', app: 'acc', vp: LAP2, go: accGo('cash')},

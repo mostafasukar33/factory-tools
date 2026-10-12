@@ -396,20 +396,20 @@ nav svg{width:26px;height:26px}
 .pg tr.nt td{background:#F7F2E4 !important;font-weight:800;border-bottom:2px solid #9C7420}
 .pg .sum .l.sub{font-weight:800;border-top:2px solid #111;background:#FBF5E6}
 .pg .note{margin-top:14px;font-size:13.5px;font-weight:600;color:#555;flex:none}
-.pg .coi{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 22px;margin:-4px 0 12px;padding:6px 10px;border-bottom:1px solid #E4DCC8;font-size:13.5px;font-weight:600;color:#555;flex:none}
+.pg .coi{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 22px;margin:-6px 0 10px;padding:3px 10px;border-bottom:1px solid #E4DCC8;font-size:13.5px;font-weight:600;color:#555;flex:none}
 .pg .coi b{color:#111;font-weight:800}.pg .coi b.ltr{direction:ltr;unicode-bidi:isolate}
-.pg tr.ih td{background:#F3EAD3 !important;font-weight:800;color:#7A5A12;padding:4px}
-.pg tr.ih td.l{font-size:16px}
-.pg tr.it td{background:#fff !important;font-weight:600;padding:3px 4px;font-size:15.5px}.pg tr.it td.l{padding-right:22px}
-.pg tr.is td{background:#FBF5E6 !important;font-weight:800;padding:4px}
-.pg td small.dk{display:block;font-size:12.5px;color:#9C7420;font-weight:800;line-height:1.2}
-.pg .tot{display:flex;gap:12px;align-items:stretch;margin-top:14px;flex:none}
-.pg .tot .wd{flex:1;border:2px solid #CBBE9B;border-radius:8px;padding:8px 14px;background:#FBF5E6;display:flex;flex-direction:column;justify-content:center}
+.pg table.st td{padding:3px 4px}
+.pg tr.it td{background:#fff !important;font-weight:600;font-size:15.5px}.pg tr.it td.l{padding-right:18px}
+.pg tr.it.f td{border-top:2px solid #9C7420}
+.pg tr.is td{background:#F3EAD3 !important;font-weight:800;border-bottom:2px solid #9C7420}
+.pg .tot{display:flex;gap:12px;align-items:stretch;margin-top:10px;flex:none}
+.pg .tot .wd{flex:1;border:2px solid #CBBE9B;border-radius:8px;padding:5px 12px;background:#FBF5E6;display:flex;flex-direction:column;justify-content:center}
 .pg .tot .wd span{font-size:13px;font-weight:700;color:#777}
-.pg .tot .wd b{font-size:16px;font-weight:800;line-height:1.5}
-.pg .tot .sum{width:400px;margin-top:0;align-self:auto;display:flex}
-.pg .tot .sum .f{margin-top:0;flex:1;font-size:16px}
-.pg .gen{flex:none;text-align:center;font-size:12px;font-weight:600;color:#888;padding:6px 0}
+.pg .tot .wd b{font-size:15px;font-weight:800;line-height:1.4}
+.pg .tot .sum{width:380px;margin-top:0;align-self:auto;display:flex}
+.pg .tot .sum .f{margin-top:0;flex:1;font-size:16px;padding:6px 14px}
+.pg .tot+.note{margin-top:8px}
+.pg .gen{flex:none;text-align:center;font-size:12px;font-weight:600;color:#888;padding:2px 0 4px}
 .pg .ft{flex:none;background:#111;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 44px;height:44px;font-size:13.5px;font-weight:600;border-top:4px solid #DAAE57}
 .pg .ft span:first-child{color:#DAAE57;font-size:16px;font-weight:700}
 /* ====== تنسيق الموبايل: أصغر وأنضف، من غير ما يتغير أي حاجة في الشغل ====== */
@@ -1355,7 +1355,11 @@ body{font-size:var(--f3);line-height:1.6}
   <div class="card">
     <h2>بيانات الشركة في الـ PDF</h2>
     <div class="fld"><label>رقم التليفون</label><input class="inp" id="sPhone" inputmode="tel" style="direction:ltr;text-align:right" placeholder="01xxxxxxxxx"></div>
-    <button class="btn line sm" id="sPhoneSave" type="button">حفظ الرقم</button>
+    <div class="fld"><label>العنوان</label><input class="inp" id="sCoAddr" placeholder="مثلاً: المنطقة الصناعية — القاهرة"></div>
+    <div class="fld"><label>السجل التجاري</label><input class="inp" id="sCoCr" inputmode="numeric" style="direction:ltr;text-align:right"></div>
+    <div class="fld"><label>البطاقة الضريبية</label><input class="inp" id="sCoTax" style="direction:ltr;text-align:right" placeholder="000-000-000"></div>
+    <p class="hint" style="margin:0 0 10px">بيظهروا في سطر تحت اللوجو في كشف الحساب والفاتورة. اللي تسيبه فاضي مش بيظهر.</p>
+    <button class="btn line sm" id="sPhoneSave" type="button">حفظ البيانات</button>
   </div>
   <div class="card">
     <h2>🔒 قفل الفترة</h2>
@@ -2669,15 +2673,14 @@ const AR100 = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعما
 const ar999 = n => { const r = n % 100; return [AR100[Math.floor(n / 100)], r < 20 ? AR1[r] : (r % 10 ? AR1[r % 10] + ' و' : '') + AR10[Math.floor(r / 10)]].filter(Boolean).join(' و'); };
 /* المعدود بعد العدد: [واحد، اتنين، 3–10، 11–99، الباقي] */
 const AR_K = [[1e9, ['مليار', 'ملياران', 'مليارات', 'ملياراً', 'مليار']], [1e6, ['مليون', 'مليونان', 'ملايين', 'مليوناً', 'مليون']], [1e3, ['ألف', 'ألفان', 'آلاف', 'ألفاً', 'ألف']]];
-const arNoun = (n, f) => { const r = n % 100; return r >= 3 && r <= 10 ? f[2] : r >= 11 ? f[3] : f[4]; };
-const arNum = n => { const out = []; AR_K.forEach(([d, f]) => { const k = Math.floor(n / d); n %= d; if (k) out.push(k === 1 ? f[0] : k === 2 ? f[1] : ar999(k) + ' ' + arNoun(k, f)); }); if (n) out.push(ar999(n)); return out.join(' و'); };
+const arNoun = (n, f, end) => { const r = n % 100; return r >= 3 && r <= 10 ? f[2] : r >= 11 && !end ? f[3] : f[4]; };   // end = آخر كلمة قبل "جنيه": "أحد عشر ألف جنيه" مش "ألفاً"
+const arNum = n => { const out = []; AR_K.forEach(([d, f]) => { const k = Math.floor(n / d); n %= d; if (k) out.push(k === 1 ? f[0] : k === 2 ? f[1] : ar999(k) + ' ' + arNoun(k, f, !n)); }); if (n) out.push(ar999(n)); return out.join(' و'); };
 const arCounted = (n, f) => !n ? '' : n === 1 ? f[0] + ' واحد' : n === 2 ? f[1] : arNum(n) + ' ' + arNoun(n, f);
 function moneyWords(p) {
   p = Math.abs(Math.round(+p || 0));
   if (!p) return 'لا يوجد رصيد مستحق';
   return 'فقط ' + [arCounted(Math.floor(p / 100), ['جنيه', 'جنيهان', 'جنيهات', 'جنيهاً', 'جنيه']), arCounted(p % 100, ['قرش', 'قرشان', 'قروش', 'قرشاً', 'قرش'])].filter(Boolean).join(' و') + ' لا غير';
 }
-const DOC_T = {inv: 'فاتورة مبيعات', pur: 'فاتورة مشتريات', rinv: 'مرتجع مبيعات', rpur: 'مرتجع مشتريات'};
 /* الفترة على الورقة بلغة رسمية (الشاشة لسه بـ periodText) */
 const pdfPeriod = (s, issued) => s.lastInv ? `من آخر فاتورة ${dispDate(s.lastInv.date)}` : s.from ? `من ${dispDate(s.from)} إلى ${dispDate(s.to)}` : `كامل الحساب حتى ${dispDate(s.to || isoOf(issued))}`;
 function buildStmtPages(p, s) {
@@ -2700,26 +2703,24 @@ function buildStmtPages(p, s) {
     box.appendChild(pg);
     return {pg, inn: pg.querySelector('.in')};
   };
-  const over = (inn, el) => el.getBoundingClientRect().bottom > inn.getBoundingClientRect().bottom - 16;
+  const over = (inn, el, m = 16) => el.getBoundingClientRect().bottom > inn.getBoundingClientRect().bottom - m;
   const mkTable = () => {
     const t = document.createElement('table');
     if (s.invOnly) { t.innerHTML = `<colgroup><col style="width:15%"><col style="width:37%"><col style="width:16%"><col style="width:14%"><col style="width:18%"></colgroup>
       <thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody></tbody>`; return t; }
-    t.innerHTML = `<colgroup><col style="width:12.5%"><col style="width:23.5%"><col style="width:14%"><col style="width:10.5%"><col style="width:13%"><col style="width:11.5%"><col style="width:15%"></colgroup>
+    t.className = 'st'; t.innerHTML = `<colgroup><col style="width:12.5%"><col style="width:23.5%"><col style="width:14%"><col style="width:10.5%"><col style="width:13%"><col style="width:11.5%"><col style="width:15%"></colgroup>
       <thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>المدفوع</th><th>الرصيد</th></tr></thead><tbody></tbody>`;
     return t;
   };
   const balCell = b => `<td class="b">${fmtP(b * s.sg)}</td>`;
   let pg = shell(true), tbl = mkTable(); pg.inn.appendChild(tbl);
-  const put = (cls, html) => {
-    const tr = document.createElement('tr'); tr.className = cls; tr.innerHTML = html;
+  const put = (cls, html, d) => {
+    const tr = document.createElement('tr'); tr.className = cls; tr.innerHTML = html; if (d) tr.dataset.d = d;
     tbl.tBodies[0].appendChild(tr);
     if (over(pg.inn, tr) && tbl.tBodies[0].rows.length > 1) {
       tr.remove();
-      const last = tbl.tBodies[0].lastElementChild, carry = last && last.classList.contains('ih') && tbl.tBodies[0].rows.length > 1 ? last : null;   // عنوان الفاتورة مبيفضلش لوحده في آخر الصفحة
-      if (carry) carry.remove();
       pg = shell(false); tbl = mkTable(); pg.inn.appendChild(tbl);
-      if (carry) tbl.tBodies[0].appendChild(carry);
+      if (tr.dataset.d && !tr.cells[0].textContent) tr.cells[0].textContent = tr.dataset.d;   // فاتورة اتقسمت على صفحتين: تاريخها بيتكرر أول الصفحة الجديدة
       tbl.tBodies[0].appendChild(tr);
     }
   };
@@ -2729,19 +2730,19 @@ function buildStmtPages(p, s) {
   if (s.open !== null) put('op', `<td class="dt">${dispDate(s.from)}</td><td class="l">${opLabel(s)}</td><td></td><td></td><td></td><td></td>${balCell(s.open)}`);
   if (s.invOnly) s.rows.forEach(r => put(kindCls(r), `<td class="dt">${dispDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td>${qp(r)}<td class="n">${r.gd ? fmtP(r.gd) : r.pd ? '−' + fmtP(r.pd) : ''}</td>`));
   else {
-    /* الفاتورة اللي فيها أكتر من سطر: عنوان بتاريخها، وتحته أصنافها، وفي آخرها إجماليها والرصيد بعدها */
+    /* الفاتورة اللي فيها أكتر من سطر: أصنافها تحت بعض والتاريخ على أولها بس، وفي آخرها إجماليها والرصيد بعدها (من غير سطر عنوان علشان الصفحات متكترش) */
     const cnt = new Map(); s.rows.forEach(r => r.e && cnt.set(r.e, (cnt.get(r.e) || 0) + 1));
     let g = null;
     s.rows.forEach(r => {
       const doc = r.e && isDoc(r.e), nm = doc ? r.desc.replace(/^مرتجع: /, '') : r.desc;
-      if (doc && r.first && cnt.get(r.e) > 1) { g = {e: r.e, left: cnt.get(r.e), gd: 0, pd: 0}; put('ih', `<td class="dt">${dispDate(r.date)}</td><td class="l" colspan="6">${DOC_T[r.e.kind]}</td>`); }
+      if (doc && r.first && cnt.get(r.e) > 1) g = {e: r.e, left: cnt.get(r.e), gd: 0, pd: 0};
       if (g && r.e === g.e) {
-        put('it' + (r.ret ? ' ret' : ''), `<td></td><td class="l">${esc(nm)}</td>${qp(r)}${nums(r.gd, r.pd)}<td></td>`);
+        put('it' + (r.first ? ' f' : '') + (r.ret ? ' ret' : ''), `<td class="dt">${r.first ? dispDate(r.date) : ''}</td><td class="l">${esc(nm)}</td>${qp(r)}${nums(r.gd, r.pd)}<td></td>`, dispDate(r.date));
         g.gd += r.gd; g.pd += r.pd;
         if (!--g.left) { const net = g.gd - g.pd; put('is', `<td></td><td class="l" colspan="3">${isRet(g.e) ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}</td>${nums(net > 0 ? net : 0, net < 0 ? -net : 0)}${balCell(r.run)}`); g = null; }
         return;
       }
-      put(kindCls(r), `<td class="dt">${dispDate(r.date)}</td><td class="l">${doc ? `<small class="dk">${DOC_T[r.e.kind]}</small>` : ''}${esc(nm)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td>${qp(r)}${nums(r.gd, r.pd)}${balCell(r.run)}`);
+      put(kindCls(r), `<td class="dt">${dispDate(r.date)}</td><td class="l">${esc(r.desc)}${r.ref ? `<small class="rf">${esc(r.ref)}</small>` : ''}</td>${qp(r)}${nums(r.gd, r.pd)}${balCell(r.run)}`);
     });
   }
   if (!s.rows.length) put('', `<td colspan="7">لا توجد حركات خلال هذه الفترة</td>`);
@@ -2751,7 +2752,7 @@ function buildStmtPages(p, s) {
   tot.innerHTML = `<div class="wd"><span>المبلغ بالحروف</span><b>${moneyWords(v)}</b></div><div class="sum"><div class="f"><span>${lbl}</span><b>${fmtP(s.invOnly ? v : Math.abs(v))} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div></div>`;
   const note = document.createElement('div'); note.className = 'note';
   note.textContent = s.invOnly ? 'نشكركم على ثقتكم في فلاش أون. لأي استفسار بخصوص هذه الفاتورة يرجى التواصل معنا.' : 'يرجى مراجعة هذا الكشف وإخطارنا بأي ملاحظات خلال سبعة أيام من تاريخ إصداره، وإلا اعتُبر الرصيد الوارد به صحيحاً ومعتمداً.';
-  [tot, note].forEach(el => { pg.inn.appendChild(el); if (over(pg.inn, el)) { el.remove(); pg = shell(false); pg.inn.appendChild(el); } });
+  [tot, note].forEach(el => { pg.inn.appendChild(el); if (over(pg.inn, el, el === note ? 0 : 16)) { el.remove(); pg = shell(false); pg.inn.appendChild(el); } });   // الجملة الصغيرة اللي تحت مبتفتحش صفحة لوحدها لو فاضل مكان ليها
   const pages = [...box.children];
   pages.forEach((x, i) => x.querySelector('.pn').textContent = `صفحة ${i + 1} من ${pages.length}`);
   return pages;
@@ -3122,6 +3123,7 @@ function renderSettings() {
   $('#sChkSave').onclick = () => { const n = parseInt(normDigits($('#sChkDays').value), 10); if (!(n >= 0 && n <= 60)) return toast('اكتب عدد أيام من 0 لـ 60'); c.chkDays = n; saveDB(); toast('اتحفظ ✔'); };
   $('#sAudit').onclick = auditModal;
   $('#sPhone').value = c.phone || '';
+  $('#sCoAddr').value = c.coAddr || ''; $('#sCoCr').value = c.coCr || ''; $('#sCoTax').value = c.coTax || '';
   if (!c.sheetKey) { c.sheetKey = makeKey(); saveDB(); }   // المفتاح السري بيتعمل لوحده على الجهاز (مش في الكود)
   $('#sSheet').innerHTML = `${c.sheetOk ? `<div class="sync ok">✔ الجهاز ده مربوط بالشيت، وحساباتك بتتحفظ عليه أول بأول.</div><div id="accOldBox"></div>
       <button class="btn green big" id="shJoin" type="button" style="margin-bottom:10px">🔗 ابعت رابط الربط لجهاز تاني</button>
@@ -3383,7 +3385,7 @@ function showHelp() {
     }
   };
 }
-$('#sPhoneSave').onclick = () => { db.cfg.phone = normDigits($('#sPhone').value).trim(); saveDB(); toast('اتحفظ الرقم ✔'); };
+$('#sPhoneSave').onclick = () => { db.cfg.phone = normDigits($('#sPhone').value).trim(); db.cfg.coAddr = $('#sCoAddr').value.trim(); db.cfg.coCr = normDigits($('#sCoCr').value).trim(); db.cfg.coTax = normDigits($('#sCoTax').value).trim(); saveDB(); toast('اتحفظت البيانات ✔'); };
 async function refreshBio() {
   const b = $('#sBio'); if (!b) return;
   if (!bioOk()) { b.style.display = 'none'; return; }

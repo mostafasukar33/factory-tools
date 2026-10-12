@@ -757,6 +757,22 @@ const T0 = Date.now();
     eq('كشف العميل مفيهوش "عميل سوق/مواقع"، والمورد فيه "مورد"', await A.evaluate(() => { const ps = liveParties(), c = ps.find(x => x.sec === 'mkt'), m = ps.find(x => x.sec === 'sup');
       const t = (p) => { const pg = buildStmtPages(p, stmtData(p.id, '', '')); const r = pg[0].querySelector('.cust i'); const v = r ? r.textContent : ''; $('#render').innerHTML = ''; return v; };
       return [t(c), t(m)]; }), ['', 'مورد']);
+    eq('المبلغ بالحروف (تفقيط)', await A.evaluate(() => [12134000, 100, 200, 300000, 1105050, 1100000000, 0].map(moneyWords)),
+      ['فقط مائة وواحد وعشرون ألفاً وثلاثمائة وأربعون جنيهاً لا غير', 'فقط جنيه واحد لا غير', 'فقط جنيهان لا غير', 'فقط ثلاثة آلاف جنيه لا غير', 'فقط أحد عشر ألفاً وخمسون جنيهاً وخمسون قرشاً لا غير', 'فقط أحد عشر مليون جنيه لا غير', 'لا يوجد رصيد مستحق']);
+    eq('كشف احترافي: الفاتورة متجمعة، بيانات الشركة، المبلغ بالحروف، سطر الإصدار', await A.evaluate(() => {
+      const p = liveParties().find(x => x.sec === 'mkt' && partyEntries(x.id).some(e => e.kind === 'inv' && (e.lines || []).length > 1));
+      const inv = partyEntries(p.id).find(e => e.kind === 'inv' && (e.lines || []).length > 1), c = db.cfg, old = [c.coAddr, c.coCr, c.coTax];
+      const run = () => { const pg = buildStmtPages(p, stmtData(p.id, '', '')), all = pg.flatMap(x => [...x.querySelectorAll('tbody tr')]); const r = {pg, all}; return r; };
+      c.coAddr = c.coCr = c.coTax = ''; const a = run(), noBar = !a.pg[0].querySelector('.coi'); $('#render').innerHTML = '';
+      Object.assign(c, {coAddr: 'عنوان تجربة', coCr: '111', coTax: '222'}); const {pg, all} = run();
+      const bar = pg[0].querySelector('.coi').textContent, items = all.filter(tr => tr.classList.contains('it')), firsts = items.filter(tr => tr.classList.contains('f'));
+      const subs = all.filter(tr => tr.classList.contains('is')), last = pg[pg.length - 1], s = stmtData(p.id, '', '');
+      const r = [noBar, bar.includes('عنوان تجربة') && bar.includes('111') && bar.includes('222'), firsts.length === subs.length && subs.length > 0,
+        items.filter(tr => !tr.classList.contains('f')).every(tr => !tr.cells[0].textContent && !tr.cells[6].textContent),
+        subs.some(tr => tr.cells[1].textContent === 'إجمالي الفاتورة' && tr.querySelector('td.b').textContent === fmtP(s.rows.filter(x => x.e === inv).pop().run * s.sg)),
+        last.querySelector('.tot .wd b').textContent === moneyWords(s.close * s.sg), /المستحق (عليكم|لكم)/.test(last.querySelector('.sum .f span').textContent),
+        pg.every(x => x.querySelector('.gen').textContent.startsWith('صدر هذا الكشف إلكترونياً')), last.querySelector('.note').textContent.includes('سبعة أيام'), pg[0].querySelector('thead').textContent.includes('المدفوع')];
+      [c.coAddr, c.coCr, c.coTax] = old; $('#render').innerHTML = ''; return r; }), [true, true, true, true, true, true, true, true, true, true]);
     sec('١٣ب) الجرد والمساهمين');
     eq('الموبايل: مفيش زرار جديد تحت، والجرد زرار جوه التقارير', await A.evaluate(() => { go('rep'); renderReports(); return [getComputedStyle($('nav button[data-go=jrd]')).display, !!$('#rpJrd')]; }), ['none', true]);
     await A.click('#rpJrd'); await A.waitForSelector('#jrS', {timeout: 3000});

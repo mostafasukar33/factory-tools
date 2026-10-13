@@ -96,6 +96,12 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:var(--ink)}
 .row .m small{display:block;color:var(--sub);font-size:var(--f1);font-weight:600}
 .row .a{text-align:left;flex:none}
 .row .a .money{display:block;font-size:var(--f3)}
+/* كارت إجمالي العملاء: نفس لغة قايمة العملاء (شريط دهبي على اليمين، الرقم الأحمر لازق في الشمال) */
+.ctot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow),inset -4px 0 0 var(--gold)}
+.ctot .m{min-width:0}
+.ctot .m span{display:block;font-size:var(--f3);font-weight:800;color:var(--ink)}
+.ctot .m small{display:block;font-size:var(--f1);font-weight:600;color:var(--sub);margin-top:2px}
+.ctot b{flex:none;direction:ltr;font-size:var(--f5);font-weight:800;line-height:1.2;color:var(--red);font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1}
 /* قايمة العملاء: نفس شكل قايمة الحسابات (صندوق واحد، عنوان فوق، سطر لكل عميل، "آخر دفعة" تحت الاسم، والرقم لازق في الشمال) */
 .ctb{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
 .ctb .pth{display:flex;justify-content:space-between;align-items:center;padding:5px 14px;font-size:var(--f1);font-weight:700;color:var(--sub);background:var(--row);border-bottom:1px solid var(--line)}
@@ -732,10 +738,10 @@ function sortCust(all, k) {
 const groups = () => (S.groups = S.groups || []);
 function drawCustomers(q0) {
   const cs = customers();
-  const owed = [...cs.values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0);
+  const owed = [...cs.values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0), owedN = [...cs.values()].filter(c => c.bal > 0).length;
   if (S.cGrp && !groups().some(g => g.id === S.cGrp)) S.cGrp = '';
   const G = groups().find(g => g.id === S.cGrp);
-  $('#main').innerHTML = `<section class="panel" style="margin-bottom:10px"><div class="p1"><span>إجمالي اللي على العملاء</span><b class="money" style="color:var(--red)">${fmt(owed)}</b></div></section>
+  $('#main').innerHTML = `<section class="ctot"><div class="m"><span>إجمالي اللي على العملاء</span><small>${owedN} ${owedN === 1 ? 'عميل' : 'عملاء'} عليهم فلوس</small></div><b class="money">${fmt(owed)}</b></section>
     <div class="sr"><input class="search" id="q" type="search" placeholder="🔍 دوّر على عميل…" autocomplete="off" value="${esc(q0 || '')}"><button class="sbtn" id="bNew" type="button">＋ عميل جديد</button></div>
     <div class="gtabs" id="gTabs"><button type="button" data-g="" class="${G ? '' : 'on'}">كل العملاء</button>${groups().map(g => `<button type="button" data-g="${esc(g.id)}" class="${G === g ? 'on' : ''}">${esc(g.name)}</button>`).join('')}<button type="button" class="add" id="gAdd">＋ قسم</button></div>
     <div id="lists"></div>`;

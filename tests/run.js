@@ -1485,7 +1485,7 @@ const T0 = Date.now();
     eq('اللي معاه كاش زاد 4,500 ومفيش عميل اتضاف', await M.evaluate(([c0]) => [cashNow() - c0, [...customers().values()].some(c => c.name === 'مشتري تجربة')], [csC0]), [450000, false]);
     eq('تاريخ البيع اللي اختاره (إمبارح)', await M.evaluate(() => { const o = liveOps().find(x => x.t === 'cs'); return dayOf(o.ts) === addDays(today(), -1); }), true);
     await M.evaluate(() => nav('c')); await M.settle(200);
-    eq('صفحة العملاء: إجمالي اللي على العملاء ظاهر', await M.evaluate(() => { const t = [...customers().values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0); return $('#main .panel .money').textContent === fmt(t); }), true);
+    eq('صفحة العملاء: إجمالي اللي على العملاء ظاهر', await M.evaluate(() => { const t = [...customers().values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0); return $('#main .ctot .money').textContent === fmt(t); }), true);
     await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(500);
     eq('وصل لمصطفى في الوارد', await A.evaluate(() => mkPending().filter(o => o.t === 'cs').map(o => [o.buyer, o.amt])), [['مشتري تجربة', 450000]]);
     eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 5', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 5]);

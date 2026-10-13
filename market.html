@@ -410,8 +410,14 @@ function load() {
   S = Object.assign({u: '', k: '', dev: '', cursor: 0, ops: {}, st: {}, cust: {}, newc: [], lastOk: 0}, d || {});
   if (!S.dev) S.dev = Array.from(crypto.getRandomValues(new Uint8Array(3)), x => x.toString(36).padStart(2, '0')).join('');
 }
-function save() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) { toast('الموبايل مش قادر يحفظ. كلّم مصطفى.', 6000); } }
+function save() { try { localStorage.setItem(LS, JSON.stringify(S)); stoWarn(); } catch (e) { toast('الموبايل مش قادر يحفظ. كلّم مصطفى.', 6000); } }
 load();
+/* تنبيه المساحة: لو اللي متخزن على الموبايل وصل ~80% من 5 ميجا (حد المتصفح التقريبي) بيظهر تنبيه صغير مرة واحدة في الفتحة. مبيمسحش أي حاجة */
+const STO_MAX = 5 * 1024 * 1024, STO_WARN = 0.8;
+let stoWarned = false;
+function stoUsed() { let n = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); n += k.length + (localStorage.getItem(k) || '').length; } } catch (e) {} return n; }
+function stoWarn() { if (stoWarned || stoUsed() < STO_MAX * STO_WARN) return; stoWarned = true; setTimeout(() => toast('مساحة التطبيق على الموبايل قربت تتملي. كلّم مصطفى.', 6000), 0); }
+setTimeout(stoWarn, 1500);
 /* تخزين دائم: من غيره المتصفح ممكن يمسح بيانات التطبيق لوحده لو مساحة الموبايل قلّت (والحركات اللي لسه متبعتتش تضيع) */
 let stoP = null;
 (async () => { try { const st = navigator.storage; if (st && st.persist) stoP = (st.persisted && await st.persisted()) || await st.persist(); } catch (e) { stoP = false; } })();

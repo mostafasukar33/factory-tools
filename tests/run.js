@@ -1525,6 +1525,14 @@ const T0 = Date.now();
     await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); o.amt = 80000; bump(o); save(); sync(); }); await M.settle(500); await bg(A, 'mkSync()'); await A.settle(400);
     eq('الشريك عدّل بعد ما اتسجلت: الحركة عند مصطفى اتعدلت', await exO('غدا'), [true, 80000, 'done', false]);
     eq('والشريك لسه ينفع يعدّل (مفيش قفل)', await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); editSheet(o); const ok = !!$('#eOk'); closeModal(); return ok; }), true);
+    eq('تنبيه المساحة: تحت 80% مفيش تنبيه، وفوقها تنبيه صغير مرة واحدة، ومفيش حاجة اتمسحت', await M.evaluate(async () => {
+      const before = localStorage.getItem(LS), n0 = Object.keys(S.ops).length; stoWarned = false; $('#toast').textContent = ''; stoWarn(); await new Promise(r => setTimeout(r, 30));
+      const low = $('#toast').textContent.includes('قربت تتملي') || stoWarned;
+      localStorage.setItem('zz_fill_test', 'x'.repeat(4300000)); stoWarn(); await new Promise(r => setTimeout(r, 30));
+      const hi = $('#toast').textContent.includes('قربت تتملي'); $('#toast').textContent = ''; stoWarn(); await new Promise(r => setTimeout(r, 30));
+      const once = !$('#toast').textContent; localStorage.removeItem('zz_fill_test'); stoWarned = false;
+      return [low, hi, once, localStorage.getItem(LS) === before, Object.keys(S.ops).length === n0];
+    }), [false, true, true, true, true]);
     await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); o.del = true; bump(o); save(); sync(); }); await M.settle(500); await bg(A, 'mkSync()'); await A.settle(400);
     eq('الشريك مسحها: اتشالت من الخزنة عند مصطفى', await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(x => x.cat === 'غدا'); return IDX.tx.get('t_mk_' + o.id).del; }), true);
     await exA('تاكسي', 300);

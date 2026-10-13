@@ -580,7 +580,8 @@ const T0 = Date.now();
 
     /* التعارض: نفس الحركة اتعدلت على الجهازين قبل ما يتزامنوا */
     await mkTx(A, 't_cf', {amt: 100}); await bg(A, 'syncNow()'); await bg(B, 'syncNow()');
-    const setAmt = (X, a) => X.evaluate(a => { srvOff = 0; const t = IDX.tx.get('t_cf'); t.amt = a; touch(t); saveDB(); }, a);   // الصفحتين على نفس الجهاز: نثبّت فرق الساعة علشان الترتيب بين تعديلين متقاربين ميتهزّش بفروق ملّي ثانية
+    let lastUpd = 0;   // تعديلين على جهازين في نفس الملّي ثانية بياخدوا نفس الوقت ومبيبانش تعارض (ده اللي كان بيفشّل GitHub لأنه أسرع): كل تعديل بيستنى الساعة تعدّي اللي قبله
+    const setAmt = async (X, a) => { await X.waitForFunction(t => Date.now() > t, lastUpd, {polling: 1}); lastUpd = await X.evaluate(a => { srvOff = 0; const t = IDX.tx.get('t_cf'); t.amt = a; touch(t); saveDB(); return t.upd; }, a); };   // الصفحتين على نفس الجهاز: نثبّت فرق الساعة علشان الترتيب بين تعديلين متقاربين ميتهزّش بفروق ملّي ثانية
     await B.evaluate(() => { closeModal(); go('home'); }); await A.evaluate(() => { closeModal(); go('home'); });
     await setAmt(A, 11100); await bg(A, 'syncNow()');
     await setAmt(B, 22200); await bg(B, 'syncNow()');

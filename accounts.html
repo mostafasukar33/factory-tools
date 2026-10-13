@@ -3906,7 +3906,7 @@ function kstHtml(key, title, side, mv, cls) {
   if (side === 'mkt' && by.col) by.col = mkColMerge(by.col, side);
   if (side === 'me' && by.mkcol) by.mkcol = mkColMerge(by.mkcol, side);
   const ks = CG_ORD.filter(k => by[k]), tot = t => ks.filter(k => CG[k][1] === t).reduce((n, k) => n + sum(by[k]), 0);
-  return {by, in: tot('in'), out: tot('out'), html: `<section class="kst ${cls}" id="kst-${key}"><div class="ksh">${title}<small>${esc(cashPerTxt())}</small><em class="kiot"><b class="n i">+${fmtP(tot('in'))}</b> · <b class="n o">−${fmtP(tot('out'))}</b></em></div>
+  return {by, in: tot('in'), out: tot('out'), html: `<section class="kst ${cls}" id="kst-${key}"><div class="ksh">${title}<small>${esc(cashPerTxt())}</small></div>
     <div class="kio"><div class="kin"><span>⬇ داخل</span><b class="n" data-ck="c:${key}:in" data-cnt="${tot('in')}">${fmtP(tot('in'))}</b></div><div class="kout"><span>⬆ خارج</span><b class="n" data-ck="c:${key}:out" data-cnt="${tot('out')}">${fmtP(tot('out'))}</b></div></div>
     ${ks.length ? ks.map(k => `<div class="kty kt${CG[k][1]}" data-k="${key}:${k}" role="button" tabindex="0"><span class="l"><i class="kdot"></i>${CG[k][0]}<em>${by[k].length}</em></span><span class="r"><b class="n">${fmtP(sum(by[k]))}</b><i class="kgo">›</i></span></div>`).join('')
       : '<div class="kno">مفيش حركة</div>'}</section>`};

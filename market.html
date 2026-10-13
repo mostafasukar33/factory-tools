@@ -96,19 +96,21 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:var(--ink)}
 .row .m small{display:block;color:var(--sub);font-size:var(--f1);font-weight:600}
 .row .a{text-align:left;flex:none}
 .row .a .money{display:block;font-size:var(--f3)}
-.ctb{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
-.ctb th{background:var(--row);color:var(--sub);font-size:var(--f1);font-weight:800;padding:8px 10px;text-align:right}
-.ctb th:last-child,.ctb td.bl{text-align:left}
-.ctb td{padding:12px 10px;border-top:1px solid var(--row);font-size:var(--f3);font-weight:700;line-height:1.35;cursor:pointer}
-.ctb td.no{width:36px;text-align:center;color:var(--sub);font-size:var(--f2);font-variant-numeric:tabular-nums;border-inline-end:1px solid var(--row)}
-.ctb th:first-child{text-align:center;width:36px}
-.ctb td.bl{white-space:nowrap;font-size:var(--f4);font-weight:800;letter-spacing:.2px}.ctb td.bl.z{color:var(--sub);font-weight:600}
-.ctb tr:active td{background:var(--gold-l)}
-.ctb tr.l-y td{background:var(--gold-l)}.ctb tr.l-r td{background:var(--red-l)}
-.ctb tr.l-y td.no,.ctb tr.l-y td{border-top-color:#E9C46A55}.ctb tr.l-r td{border-top-color:#F0B9B3}
-.ctb tr.l-r td.nm{color:var(--red)}
-html[data-theme=dark] .ctb tr.l-y td{background:var(--gold-l)}html[data-theme=dark] .ctb tr.l-r td{background:var(--red-l)}
-html[data-theme=dark] .ctb tr.l-r td.nm{color:var(--red)}
+/* قايمة العملاء: نفس شكل قايمة الحسابات (صندوق واحد، عنوان فوق، سطر لكل عميل، "آخر دفعة" تحت الاسم، والرقم لازق في الشمال) */
+.ctb{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.ctb .pth{display:flex;justify-content:space-between;align-items:center;padding:5px 14px;font-size:var(--f1);font-weight:700;color:var(--sub);background:var(--row);border-bottom:1px solid var(--line)}
+.ctb .psort{display:inline-flex;align-items:center;min-height:30px;padding:2px 12px;border:1px solid var(--line);border-radius:15px;background:var(--card);color:var(--ink);font:inherit;font-size:var(--f1);font-weight:700;cursor:pointer}
+.ctb .pt{display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line);cursor:pointer}
+.ctb .pt:last-child{border-bottom:0}
+.ctb .pt:active{background:var(--gold-l)}
+.ctb .pt .m{flex:1;min-width:0}
+.ctb .pt .m b.nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:var(--f3);font-weight:700;line-height:1.35}
+.ctb .pt .m small.lp{display:block;font-size:var(--f1);font-weight:600;color:var(--sub);margin-top:2px}
+.ctb .pt .a{text-align:left;flex:none}
+.ctb .pt .a b{display:block;font-size:var(--f4);font-weight:800;line-height:1.25;direction:ltr;font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1;letter-spacing:.01em}
+.ctb .pt .a b.z{color:var(--sub);font-weight:600}
+.ctb .pt.l-y{background:var(--gold-l);box-shadow:inset -4px 0 0 var(--gold)}
+.ctb .pt.l-r{background:var(--red-l);box-shadow:inset -4px 0 0 var(--red)}
 .row .bal{font-size:var(--f3);white-space:nowrap;flex:none}
 .row .bal.z{color:var(--sub);font-weight:600;font-size:var(--f2)}
 .nw{font-size:var(--f1);font-weight:800;background:var(--bar);color:var(--gold);border-radius:6px;padding:0 6px;margin-inline-start:6px;vertical-align:middle}
@@ -269,7 +271,6 @@ html[data-theme=dark] .row.d-to .a .money{color:var(--tr)}
 .pn .c-in b{color:var(--green)}.pn .c-out b{color:var(--red)}
 /* ترتيب العملاء وآخر دفعة */
 .seg.cs{margin:0 0 10px}.seg.cs button{font-size:var(--f1);height:38px}
-.ctb td.nm small.lp{display:block;font-size:var(--f1);font-weight:600;color:var(--sub);margin-top:1px}
 .lp.mid{color:var(--gold-d)!important}.lp.old{color:var(--red)!important}
 .ctb .wn{display:inline-block;font-size:var(--f1);font-weight:800;background:var(--gold-l);color:var(--gold-d);border:1px solid var(--gold);border-radius:6px;padding:0 5px;margin-inline-start:6px;vertical-align:middle}
 .cust{flex-wrap:wrap}.cust b small.lp{display:block;font-size:var(--f1);font-weight:600;color:var(--sub)}
@@ -316,7 +317,6 @@ body{font-size:var(--f3);line-height:1.6}
 .row .m b{font-size:var(--f3)}
 /* الأرقام في القوايم لازقة في الشمال تحت بعض (زي الأول)، بس أكبر وأتقل */
 .row .a .money,.want .wr .a b{font-size:var(--f4);line-height:1.3}
-.ctb td.bl{font-size:var(--f4)}
 .wkh .tc .money{font-size:var(--f5)}
 </style>
 <style id="appfeel">html{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}body,body *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}input,textarea,[contenteditable],[contenteditable] *{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}</style>
@@ -717,9 +717,10 @@ function drawHome() {
 /* ---------- العملاء (تبويب لوحده) ---------- */
 let custNo = new Map();
 const limOf = c => c.bal > 0 ? (c.lim || '') : '';
-const custTbl = list => `<table class="ctb"><thead><tr><th>#</th><th>العميل</th><th>الرصيد (عليه)</th></tr></thead><tbody>${list.map(c => `<tr class="${limOf(c) ? 'l-' + limOf(c) : ''}" data-c="${esc(c.id)}"><td class="no">${custNo.get(c.id) || ''}</td><td class="nm">${esc(c.name)}${c.nw ? '<span class="nw">جديد</span>' : ''}${c.want ? '<span class="wn">📌 مطلوب</span>' : ''}</td><td class="bl ${c.bal > 0 ? 'money' : 'z'}">${c.bal > 0 ? fmt(c.bal) : '—'}</td></tr>`).join('')}</tbody></table>`;
+const lpList = c => { const n = daysAgo(c.lp); return n < 0 ? 'مدفعش قبل كده' : n === 0 ? 'آخر دفعة النهارده' : n === 1 ? 'آخر دفعة امبارح' : n === 2 ? 'آخر دفعة من يومين' : `آخر دفعة من ${n} ${n <= 10 ? 'أيام' : 'يوم'}`; };
+const custTbl = list => `<div class="ctb"><div class="pth"><span>الاسم</span><button class="psort" id="cSortB" type="button">⇅ ${esc((C_SORT.find(x => x[0] === (S.cSort || 'owe')) || C_SORT[0])[1])}</button><span>عليه</span></div>${list.map(c => `<div class="pt ${limOf(c) ? 'l-' + limOf(c) : ''}" data-c="${esc(c.id)}"><div class="m"><b class="nm">${esc(c.name)}${c.nw ? '<span class="nw">جديد</span>' : ''}${c.want ? '<span class="wn">📌 مطلوب</span>' : ''}</b><small class="lp ${lpCls(c) === 'old' ? 'old' : ''}">${lpList(c)}</small></div><div class="a"><b class="${c.bal > 0 ? 'money' : 'z'}">${c.bal > 0 ? fmt(c.bal) : '—'}</b></div></div>`).join('')}</div>`;
 /* ترتيب العملاء (بيتحفظ على الموبايل): الأكتر عليه / مدفعش من زمان / بالحروف */
-const C_SORT = [['owe', 'الأكتر عليه'], ['old', 'مدفعش من زمان'], ['abc', 'بالحروف']];
+const C_SORT = [['owe', 'الأكبر'], ['old', 'الأقدم دفعة'], ['abc', 'بالاسم']];
 function sortCust(all, k) {
   const abc = (a, b) => a.name.localeCompare(b.name, 'ar');
   if (k === 'abc') return all.sort(abc);
@@ -743,15 +744,14 @@ function drawCustomers(q0) {
   const draw = () => {
     const q = norm($('#q').value), all = sortCust([...cs.values()], S.cSort || 'owe'), al = aliases(), inG = G ? all.filter(c => G.ids.some(x => x === c.id || al[x] === c.id)) : all;   // العميل الجديد بعد ما مصطفى يربطه بيفضل في قسمه
     custNo = new Map(all.map((c, i) => [c.id, i + 1]));
-    const sortSel = `<label class="csort">↕ <select id="cSort">${C_SORT.map(([k, t]) => `<option value="${k}" ${(S.cSort || 'owe') === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
-    if (q) { const f = all.filter(c => norm(c.name).includes(q)); $('#lists').innerHTML = f.length ? `<div class="lbl"><span>نتيجة البحث</span>${sortSel}</div>${custTbl(f)}` : '<div class="empty">مفيش عميل بالاسم ده.<br>لو جديد دوس "＋ عميل جديد".</div>'; }
+    if (q) { const f = all.filter(c => norm(c.name).includes(q)); $('#lists').innerHTML = f.length ? `<div class="lbl"><span>نتيجة البحث</span></div>${custTbl(f)}` : '<div class="empty">مفيش عميل بالاسم ده.<br>لو جديد دوس "＋ عميل جديد".</div>'; }
     else {
       custNo = new Map(inG.map((c, i) => [c.id, i + 1]));
-      $('#lists').innerHTML = `<div class="lbl"><span>${G ? esc(G.name) : 'كل العملاء'} (${inG.length})${G ? ' <button class="gedit" id="gEdit" type="button">✏️ تعديل القسم</button>' : ''}</span>${sortSel}</div>`
+      $('#lists').innerHTML = `<div class="lbl"><span>${G ? esc(G.name) : 'كل العملاء'} (${inG.length})${G ? ' <button class="gedit" id="gEdit" type="button">✏️ تعديل القسم</button>' : ''}</span></div>`
         + (inG.length ? custTbl(inG) : G ? '<div class="empty">القسم ده فاضي.<br><button class="lnk" id="gFill" type="button" style="margin:0">＋ اختار عملاء القسم</button></div>' : '<div class="empty">لسه العملاء منزلوش. استنى ثواني والنت شغال.</div>');
     }
-    $$('#lists tr[data-c]').forEach(r => r.onclick = () => { pyTab = 'pay'; nav('p/' + r.dataset.c); });
-    $('#cSort') && ($('#cSort').onchange = e => { S.cSort = e.target.value; save(); draw(); });
+    $$('#lists .pt[data-c]').forEach(r => r.onclick = () => { pyTab = 'pay'; nav('p/' + r.dataset.c); });
+    $('#cSortB') && ($('#cSortB').onclick = () => { const k = C_SORT.map(x => x[0]), i = k.indexOf(S.cSort || 'owe'); S.cSort = k[(i + 1) % k.length]; save(); draw(); });
     if ($('#gEdit')) $('#gEdit').onclick = () => groupModal(G);
     if ($('#gFill')) $('#gFill').onclick = () => groupModal(G);
   };

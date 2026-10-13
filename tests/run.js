@@ -1048,7 +1048,7 @@ const T0 = Date.now();
     eq('العملاء: عملاء السوق بس بأرصدتهم', await M.evaluate(() => [...customers().values()].map(c => [c.name, c.bal]).sort()), (await A.evaluate(() => liveParties().filter(p => p.sec === 'mkt').map(p => [p.name, balance(p.id)]))).sort());
     eq('الرئيسية: معاك كاش 0، ومفيهاش قايمة العملاء (ليها تبويب لوحدها) وفيه 4 تبويبات', [await M.textContent('#cashT'), await M.$('#lists'), await M.evaluate(() => document.querySelectorAll('#tabs button').length)], ['0', null, 4]);
     await M.click('#tabs button[data-t=c]'); await M.settle(150);
-    await M.click(`#lists tr[data-c="${pid1}"]`);
+    await M.click(`#lists .pt[data-c="${pid1}"]`);
     eq('شاشة الدفعة: خانة المبلغ مفتوحة على لوحة الأرقام', await M.evaluate(() => [document.activeElement.id, $('#amt').inputMode]), ['amt', 'decimal']);
     eq('خانة المبلغ: الكسور بالقرش (12.5 = 1250 قرش مش 125 جنيه) والفاصلة العربي، والفاصلة الإنجليزي فاصل آلاف', await (async () => { const o = []; for (const v of ['12.5', '12٫5', '١٢٫٧٥', '1,250.5', '7.', '0.05', '12.999', '5000']) { await M.fill('#amt', v); o.push(await M.evaluate(() => [$('#amt').value, amtOf($('#amt'))])); } await M.fill('#amt', ''); return o; })(), [['12.5', 1250], ['12.5', 1250], ['12.75', 1275], ['1,250.5', 125050], ['7.', 700], ['0.05', 5], ['12.99', 1299], ['5,000', 500000]]);
     await M.fill('#amt', '5000'); await M.click('.big[data-m=cash]'); await M.settle(1500);
@@ -1552,21 +1552,21 @@ const T0 = Date.now();
     /* آخر دفعة: بتيجي من الحسابات مع رصيد العميل */
     eq('الحسابات بتبعت تاريخ آخر دفعة مع رصيد عميل السوق', JSON.parse(mkRows('cust').find(r => r[0] === pid1)[10]).lp, await A.evaluate(id => lastPays().get(id) || '', pid1));
     await M.evaluate(() => nav('c', true)); await M.settle(150);
-    eq('العملاء: سهم ترتيب فيه 3 اختيارات والافتراضي "الأكتر عليه"، والجدول أسامي بس', await M.evaluate(() => [[...$('#cSort').options].map(o => o.textContent), $('#cSort').value, !!$('#lists .lp')]), [['الأكتر عليه', 'مدفعش من زمان', 'بالحروف'], 'owe', false]);
-    eq('الأكتر عليه: مترتبين بالرصيد من الكبير للصغير', await M.evaluate(() => { const b = $$('#lists tr[data-c]').map(r => customers().get(r.dataset.c).bal); return b.every((x, i) => !i || b[i - 1] >= x); }), true);
+    eq('العملاء: زرار ترتيب في العنوان والافتراضي "الأكبر"، وتحت كل اسم "آخر دفعة"', await M.evaluate(() => [$('#cSortB').textContent.trim(), $$('#lists .pt[data-c]').length === $$('#lists .pt .lp').length, $('#lists .pth span:last-child').textContent]), ['⇅ الأكبر', true, 'عليه']);
+    eq('الأكتر عليه: مترتبين بالرصيد من الكبير للصغير', await M.evaluate(() => { const b = $$('#lists .pt[data-c]').map(r => customers().get(r.dataset.c).bal); return b.every((x, i) => !i || b[i - 1] >= x); }), true);
     eq('"آخر دفعة" لسه بتظهر في صفحة العميل', await M.evaluate(id => { nav('p/' + id); const t = $('#cBox .lp').textContent; nav('c', true); return t; }, pid1), 'دفع النهارده');
-    await M.selectOption('#cSort', 'abc'); await M.settle(100);
-    eq('بالحروف: بيترتبوا بالاسم والاختيار بيتحفظ', await M.evaluate(() => { const n = $$('#lists tr[data-c] .nm').map(x => x.firstChild.textContent); return [n.every((x, i) => !i || n[i - 1].localeCompare(x, 'ar') <= 0), S.cSort, JSON.parse(localStorage.getItem('fo_mkt_v1')).cSort]; }), [true, 'abc', 'abc']);
-    await M.selectOption('#cSort', 'owe');
+    await M.evaluate(() => { while (S.cSort !== 'abc') $('#cSortB').click(); }); await M.settle(100);
+    eq('بالحروف: بيترتبوا بالاسم والاختيار بيتحفظ', await M.evaluate(() => { const n = $$('#lists .pt[data-c] .nm').map(x => x.firstChild.textContent); return [n.every((x, i) => !i || n[i - 1].localeCompare(x, 'ar') <= 0), S.cSort, JSON.parse(localStorage.getItem('fo_mkt_v1')).cSort]; }), [true, 'abc', 'abc']);
+    await M.evaluate(() => { while (S.cSort !== 'owe') $('#cSortB').click(); });
 
     /* أقسام العملاء عند الشريك (على الموبايل بس) */
     eq('"كل العملاء" أول تبويب ومفيش أقسام', await M.evaluate(() => $$('#gTabs button[data-g]').map(b => b.textContent)), ['كل العملاء']);
     await M.click('#gAdd'); await M.fill('#gN', 'منطقة تجربة'); await M.click(`#gL input[data-c="${pid1}"]`); await M.click('#gOk'); await M.settle(150);
-    eq('قسم جديد: بقى تبويب فوق وفيه العميل اللي اختاره بس', await M.evaluate(() => [$$('#gTabs button[data-g]').map(b => b.textContent), $('#gTabs button.on').textContent, $$('#lists tr[data-c]').length, JSON.parse(localStorage.getItem('fo_mkt_v1')).groups.length]), [['كل العملاء', 'منطقة تجربة'], 'منطقة تجربة', 1, 1]);
+    eq('قسم جديد: بقى تبويب فوق وفيه العميل اللي اختاره بس', await M.evaluate(() => [$$('#gTabs button[data-g]').map(b => b.textContent), $('#gTabs button.on').textContent, $$('#lists .pt[data-c]').length, JSON.parse(localStorage.getItem('fo_mkt_v1')).groups.length]), [['كل العملاء', 'منطقة تجربة'], 'منطقة تجربة', 1, 1]);
     await M.click('#gTabs button[data-g=""]'); await M.settle(100);
-    eq('"كل العملاء" لسه فيه الكل', await M.evaluate(() => $$('#lists tr[data-c]').length === customers().size), true);
+    eq('"كل العملاء" لسه فيه الكل', await M.evaluate(() => $$('#lists .pt[data-c]').length === customers().size), true);
     await M.click('#gTabs button:nth-child(2)'); await M.click('#gEdit'); await M.click('#gDel'); await M.click('#aY'); await M.settle(150);
-    eq('مسح القسم: العملاء فضلوا والتبويب اتشال', await M.evaluate(() => [$$('#gTabs button[data-g]').length, $$('#lists tr[data-c]').length === customers().size]), [1, true]);
+    eq('مسح القسم: العملاء فضلوا والتبويب اتشال', await M.evaluate(() => [$$('#gTabs button[data-g]').length, $$('#lists .pt[data-c]').length === customers().size]), [1, true]);
     eq('الأقسام مبتروحش الشيت ولا الحسابات', sheets.mkt.sheets['الحركات'].rows.some(r => String(r[10]).includes('منطقة تجربة')), false);
     /* حصّل من دول: مصطفى بيعلّم من الحسابات، والشريك بيشوفها في الرئيسية وبتتشطب لما يسجل دفعة */
     await openParty(A, C1); await A.click('#ppWant'); await A.fill('#wqA', '1,000'); await A.fill('#wqN', 'قبل الخميس'); await A.click('#wqOk'); await A.settle(200);

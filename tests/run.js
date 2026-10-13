@@ -280,6 +280,21 @@ const T0 = Date.now();
     eq('كلمة سر غلط وقت الكتابة مفيهاش رسالة ولا بتفتح', [await A.textContent('#lkErr'), await A.evaluate(() => $('#lock').classList.contains('on'))], ['', true]);
     await A.click('#lkGo'); await A.settle(1500);
     eq('كلمة سر غلط بترفض', await A.textContent('#lkErr'), 'كلمة السر غلط');
+    {   // لوحة الأرقام على الموبايل: دوسة عادية بتمسح رقم، ومطوّلة بتمسح ورا بعض
+      const T = await D1.page('accounts.html?nobio');
+      await T.addInitScript(() => { const mm = window.matchMedia.bind(window); window.matchMedia = q => /pointer:\s*coarse/.test(q) ? {matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}} : mm(q); });
+      await T.reload(); await T.waitForSelector('#lkPad .pk');
+      const val = () => T.evaluate(() => $('#lkP').value), key = k => T.click(`#lkPad [data-k="${k}"]`);
+      await key('1'); await key('2'); await key('3'); await key('4'); await key('⌫');
+      const tap = await val();
+      await key('1'); await key('2'); await key('3');
+      const bb = await T.locator('#lkPad [data-k="⌫"]').boundingBox();
+      await T.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await T.mouse.down();
+      await T.waitForFunction(() => $('#lkP').value === '', null, {timeout: 5000}).catch(() => {});
+      const held = await val(); await T.mouse.up(); await T.settle(300);
+      eq('لوحة الأرقام: ⌫ دوسة عادية بتمسح رقم، ومطوّلة بتمسح كله ورا بعض', [tap, held, await val()], ['123', '', '']);
+      await T.close();
+    }
     await unlock(A);
 
     sec('٢) نقل البيانات القديمة');

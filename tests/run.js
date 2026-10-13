@@ -363,7 +363,15 @@ const T0 = Date.now();
     eq('ودخلت خزنة الحسابات', await vbal(A, 'v_main'), 103000);
 
     sec('٧) كشف الحساب PDF');
-    await openParty(A, 'عميل تجربة واحد'); await A.click('#ppStmt');
+    await openParty(A, 'عميل تجربة واحد');
+    eq('الزوم: مقفول على الصفحة (viewport)، ومتاح بقرص إصبعين على جدول الكشف بس', await A.evaluate(() => {
+      const pt = (x, y) => new Touch({identifier: x, target: w, clientX: x, clientY: y}), w = $('.ldgw'), fire = (t, ts, el) => (el || w).dispatchEvent(new TouchEvent(t, {touches: ts, bubbles: true, cancelable: true}));
+      const meta = document.querySelector('meta[name=viewport]').content, lz = () => +getComputedStyle(document.documentElement).getPropertyValue('--lz') || 1;
+      fire('touchstart', [pt(100, 100), pt(200, 100)]); fire('touchmove', [pt(50, 100), pt(250, 100)]); const onTable = lz(); fire('touchend', []);
+      fire('touchstart', [pt(100, 100), pt(200, 100)], document.body); fire('touchmove', [pt(50, 100), pt(250, 100)], document.body); fire('touchend', [], document.body);
+      return [/user-scalable=no/.test(meta), onTable > 1.5 && onTable <= 2.5, lz() === onTable]; }), [true, true, true]);
+    await A.evaluate(() => { location.hash = '#x'; history.back(); }); await A.settle(200);
+    await A.click('#ppStmt');
     await A.evaluate(() => { window.__sh = null; navigator.canShare = () => true; navigator.share = d => { window.__sh = d; return Promise.resolve(); }; });
     await A.click('#smShare'); await A.waitForFunction(() => window.__sh, null, {timeout: 90000});
     eq('الواتساب: الملف بس باسم الشخص ومن غير رسالة مكتوبة', await A.evaluate(() => [Object.keys(__sh), __sh.files[0].name, __sh.files[0].type]), [['files'], 'عميل تجربة واحد.pdf', 'application/pdf']);

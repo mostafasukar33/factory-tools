@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#111111">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -36,7 +36,7 @@ try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', uiAp
 :root{--blue:var(--sub)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0}
-body{font-family:'Cairo',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:var(--f3);line-height:1.5;touch-action:manipulation;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+body{font-family:'Cairo',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:var(--f3);line-height:1.5;touch-action:pan-x pan-y;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 button,input,select,textarea{font-family:inherit;font-size:var(--f3);color:inherit}
 .top{background:var(--bar);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20;border-bottom:3px solid var(--gold)}
 .top img{width:42px;height:42px;border-radius:8px;background:#fff}
@@ -740,6 +740,7 @@ html[data-theme=dark] .pst th{background:var(--row);color:var(--sub)}
 #lock .box{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:14px;padding:18px 18px 14px;box-shadow:var(--shadow);margin-top:18px}
 #lock #lkP,#lock #suP,#lock #suP2{font-size:var(--f4)!important;letter-spacing:.25em;min-height:50px}
 #lock .btn{margin-top:4px}
+@media (pointer:coarse){.ldgw .ldg{zoom:var(--lz,1)}}
 #lkPad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0;direction:ltr}
 #lkPad .pk{font:inherit;font-size:24px;font-weight:700;min-height:54px;border-radius:12px;border:1px solid var(--line);background:#fff;color:inherit;-webkit-tap-highlight-color:transparent}
 #lkPad .pk{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
@@ -5460,6 +5461,17 @@ $('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#m
 showLock();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
 /* النسخة الجديدة (lib/swup.js) بتتفتح لوحدها بس وشاشة القفل ظاهرة وخانة كلمة السر فاضية: مفيش شغل مفتوح يضيع */
+/* مفيش زوم بالصوابع على الصفحة كلها (زي صفحة ويب). الزوم متاح في كشف الحساب والتقارير بس: قرص بإصبعين على الجدول بيكبّره (ويتصغّر بنفس الطريقة) */
+(() => {
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
+  const root = document.documentElement; let z = 1, d0 = 0, z0 = 1, on = false;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const setZ = v => { z = Math.min(2.5, Math.max(1, v)); root.style.setProperty('--lz', z); };
+  document.addEventListener('touchstart', e => { on = e.touches.length === 2 && !!e.target.closest('.ldgw'); if (on) { d0 = dist(e.touches); z0 = z; } }, {passive: true});
+  document.addEventListener('touchmove', e => { if (on && e.touches.length === 2) { e.preventDefault(); setZ(z0 * dist(e.touches) / d0); } }, {passive: false});
+  document.addEventListener('touchend', () => { on = false; }, {passive: true});
+  addEventListener('hashchange', () => setZ(1));
+})();
 window.swSafe = () => !db && $('#lock').classList.contains('on') && !!$('#lkP') && !$('#lkP').value;
 </script>
 <script>

@@ -1772,7 +1772,9 @@ const T0 = Date.now();
     await A.evaluate(() => { go('cash'); cashMode = 'year'; renderCash(); }); await A.settle(300);
     await colOk('الحسابات — الخزنة (حركتي)', A, '#kst-me', '.kty .n');
     if (await A.$('#kst-mk')) await colOk('الحسابات — الخزنة (حركة السوق)', A, '#kst-mk', '.kty .n');
-    if (await A.evaluate(() => !isWide())) await colOk('الحسابات — الخزنة (الأرصدة فوق)', A, '#p-cash .kb', '.kbm>.n,.kbk>.n,.kbt>.n');
+    if (await A.evaluate(() => !isWide() && !$('#p-cash .kb.two'))) await colOk('الحسابات — الخزنة (الأرصدة فوق)', A, '#p-cash .kb', '.kbm>.n,.kbk>.n,.kbt>.n');   // مع خزنة السوق الأرصدة صف واحد جنب بعض
+    if (await A.evaluate(() => !isWide())) { await colOk('الحسابات — الخزنة (الملخص: الخزنة)', A, '#p-cash .ksum', 'td.m'); await colOk('الحسابات — الخزنة (الملخص: السوق)', A, '#p-cash .ksum', 'td.k');
+      eq('الخزنة على الموبايل: الملخص = داخل وخارج كارت حركتي', await A.evaluate(() => { const v = s => $('#p-cash .ksum tr.' + s + ' td.m').textContent; return [v('in') === fmtP(+$('#kst-me .kin .n').dataset.cnt), v('out') === fmtP(+$('#kst-me .kout .n').dataset.cnt)]; }), [true, true]); }
     await A.evaluate(() => { mkView = 'in'; go('mkt'); renderMkt(); }); await A.settle(300);
     for (const [nm, root] of [['الوارد (جاهزين للنقل)', '#mqReady'], ['الوارد (محتاجين قرارك)', '#mqDec']]) if (await A.evaluate(r => $$(r + ' .mqa>.n').length >= 2, root)) await colOk('الحسابات — ' + nm, A, root, '.mqa>.n');
     await A.evaluate(() => { cashMode = 'day'; go('home'); }); await A.settle(300);

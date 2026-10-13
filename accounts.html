@@ -450,7 +450,7 @@ nav svg{width:26px;height:26px}
   .fab2 .btn{min-height:50px;font-size:var(--f3);box-shadow:0 3px 10px #0004}
   #p-party,#p-cash,#p-part,#p-jrd{padding-bottom:84px}
   .cbar{position:fixed;top:auto;inset-inline:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:8px 10px;margin:0;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:25}
-  .cbar .btn{min-height:48px;font-size:var(--f2);box-shadow:0 3px 10px #0004}
+  .cbar .btn{min-height:40px;font-size:var(--f2);box-shadow:0 3px 10px #0004}
   .cbar .lg{display:none}.cbar .sh{display:inline}
   /* صفحة الحساب */
   .phd{padding:12px 14px;border-radius:14px}
@@ -775,6 +775,16 @@ html[data-theme=dark] .dnav button{background:var(--row);border-color:var(--fiel
 html[data-theme=dark] .dnav span{color:var(--ink)}
 @media (max-width:640px){#p-cash>.card .dnav{grid-column:1/-1}}
 @media (min-width:1000px){#p-cash>.card{grid-template-columns:auto auto 1fr 1fr}}
+/* الخزنة على الموبايل: الفترة والتاريخ في سطر واحد صغير */
+@media (max-width:999.98px){
+  #p-cash>#cPer{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;padding:5px;margin-bottom:8px;border-radius:12px}
+  #cPer .seg{flex:1 1 210px;margin:0;padding:2px;gap:2px;border-radius:9px}
+  #cPer .seg button{min-height:30px;font-size:var(--f1);border-radius:7px;padding:0 4px}
+  #cPer .dnav{flex:none;grid-column:auto;gap:4px}
+  #cPer .dnav button{width:28px;height:28px;font-size:18px;border-radius:7px}
+  #cPer .dnav span{min-width:0;padding:2px 8px;font-size:var(--f1);border-radius:7px}
+  #cPer #cPick:not(.pkh){flex:1 1 100%}
+}
 /* ============ وارد السوق ============ */
 #mkBar{position:fixed;top:calc(var(--hh,64px) + 6px);inset-inline:10px;margin:auto;max-width:560px;z-index:125;background:#111;color:#fff;border:2px solid var(--gold);border-radius:12px;padding:10px 14px;font-weight:700;font-size:var(--f2);box-shadow:0 6px 22px #0006;cursor:pointer;display:none;animation:foUp .2s ease-out}
 #mkBar.on{display:block}#mkBar b{color:var(--gold)}#mkBar u{color:var(--gold);margin-inline-start:6px}
@@ -3896,8 +3906,8 @@ function kstHtml(key, title, side, mv, cls) {
   if (side === 'mkt' && by.col) by.col = mkColMerge(by.col, side);
   if (side === 'me' && by.mkcol) by.mkcol = mkColMerge(by.mkcol, side);
   const ks = CG_ORD.filter(k => by[k]), tot = t => ks.filter(k => CG[k][1] === t).reduce((n, k) => n + sum(by[k]), 0);
-  return {by, html: `<section class="kst ${cls}" id="kst-${key}"><div class="ksh">${title}<small>${esc(cashPerTxt())}</small></div>
-    <div class="kio"><div class="kin"><span>⬇ دخل</span><b class="n" data-ck="c:${key}:in" data-cnt="${tot('in')}">${fmtP(tot('in'))}</b></div><div class="kout"><span>⬆ طلع</span><b class="n" data-ck="c:${key}:out" data-cnt="${tot('out')}">${fmtP(tot('out'))}</b></div></div>
+  return {by, in: tot('in'), out: tot('out'), html: `<section class="kst ${cls}" id="kst-${key}"><div class="ksh">${title}<small>${esc(cashPerTxt())}</small><em class="kiot"><b class="n i">+${fmtP(tot('in'))}</b> · <b class="n o">−${fmtP(tot('out'))}</b></em></div>
+    <div class="kio"><div class="kin"><span>⬇ داخل</span><b class="n" data-ck="c:${key}:in" data-cnt="${tot('in')}">${fmtP(tot('in'))}</b></div><div class="kout"><span>⬆ خارج</span><b class="n" data-ck="c:${key}:out" data-cnt="${tot('out')}">${fmtP(tot('out'))}</b></div></div>
     ${ks.length ? ks.map(k => `<div class="kty kt${CG[k][1]}" data-k="${key}:${k}" role="button" tabindex="0"><span class="l"><i class="kdot"></i>${CG[k][0]}<em>${by[k].length}</em></span><span class="r"><b class="n">${fmtP(sum(by[k]))}</b><i class="kgo">›</i></span></div>`).join('')
       : '<div class="kno">مفيش حركة</div>'}</section>`};
 }
@@ -3945,13 +3955,13 @@ function renderCash() {
   const tiles = vs.map(v => { const b = vaultBal(v.id); return `<div class="kv${cashVault === v.id ? ' on' : ''}${b < 0 ? ' neg' : ''}" data-v="${esc(v.id)}" role="button" tabindex="0"><span>${esc(v.name)}</span><b class="n" data-ck="c:v:${esc(v.id)}" data-cnt="${b}">${fmtP(b)}</b>${b < 0 ? '<a class="kfix">⚠ راجعها</a>' : ''}</div>`; }).join('');
   pg.innerHTML = `
     <div class="cbar">
-      <button class="btn green" id="cRecv" type="button" title="استلمت من عميل">💵 <span class="lg">استلمت من عميل</span><span class="sh">استلمت</span></button>
-      <button class="btn" id="cPayS" type="button" title="دفعت لمورد">💸 <span class="lg">دفعت لمورد</span><span class="sh">دفعت</span></button>
-      <button class="btn redf" id="cExp" type="button">− مصروف</button>
-      <button class="btn gold" id="cInc" type="button">+ إيراد</button>
+      <button class="btn green" id="cRecv" type="button" title="استلمت من عميل">💵 <span class="lg">استلمت من عميل</span><span class="sh">تحصيل</span></button>
+      <button class="btn" id="cPayS" type="button" title="دفعت لمورد">💸 <span class="lg">دفعت لمورد</span><span class="sh">سداد</span></button>
+      <button class="btn redf" id="cExp" type="button"><span class="lg">− </span>مصروف</button>
+      <button class="btn gold" id="cInc" type="button"><span class="lg">+ </span>إيراد</button>
     </div>
     <div class="kb${hasM ? ' two' : ''}">
-      <div class="kbme"><div class="kbm${cashOpenV ? ' on' : ''}" id="kMe" role="button" tabindex="0"><span>🏭 خزني <i class="kch">▾</i><small>${cashOpenV ? 'دوس على خزنة تشوف حركتها' : 'الفلوس اللي معاك' + (nV > 1 ? ' · ' + (nV === 2 ? 'خزنتين' : nV + ' خزن') : '')}</small></span><b class="n${meB < 0 ? ' neg' : ''}" data-ck="c:me" data-cnt="${meB}">${fmtP(meB)}</b></div>
+      <div class="kbme"><div class="kbm${cashOpenV ? ' on' : ''}" id="kMe" role="button" tabindex="0"><span>🏭 رصيد الخزن <i class="kch">▾</i><small>${cashOpenV ? 'دوس على خزنة تشوف حركتها' : 'الفلوس اللي معاك' + (nV > 1 ? ' · ' + (nV === 2 ? 'خزنتين' : nV + ' خزن') : '')}</small></span><b class="n${meB < 0 ? ' neg' : ''}" data-ck="c:me" data-cnt="${meB}">${fmtP(meB)}</b></div>
         <div class="kvs"${cashOpenV ? '' : ' hidden'}>${tiles}</div></div>
       ${hasM ? `<div class="kbk" id="kMk" role="button" tabindex="0"><span>🏪 خزنة السوق<small>مع الشريك</small></span><b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></div>
       <div class="kbt"><span>الإجمالي<small>خزني + السوق</small></span><b class="n${total < 0 ? ' neg' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)}</b></div>` : ''}
@@ -3962,7 +3972,7 @@ function renderCash() {
       <button class="btn line" id="cSet" type="button" title="الخزن والبنود">⚙ <span>الخزن</span></button>
       <button class="btn line mob" id="cPart" type="button">👥 <span>الشركاء</span></button>
     </div>
-    <div class="card">
+    <div class="card" id="cPer">
       <div class="seg s4" id="cMode">${[['day', 'يوم'], ['week', 'أسبوع'], ['month', 'شهر'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${cashMode === k || (k === 'range' && cashMode === 'year') ? 'on' : ''}">${n}</button>`).join('')}</div>
       ${cashMode === 'range' ? '' : `<div class="dnav"><button type="button" id="cPrev" title="السابق">›</button><span id="cNavL">${cashNavLabel()}</span><button type="button" id="cNext" title="التالي">‹</button></div>`}
       <div id="cPick"${cashMode === 'range' ? '' : ' class="pkh"'}>${cashMode === 'day' || cashMode === 'week' ? `<input class="inp" type="date" id="cDay" value="${cashDay || t}">`
@@ -3970,6 +3980,11 @@ function renderCash() {
         : cashMode === 'year' ? `<input class="inp num" id="cYear" inputmode="numeric" value="${cashYear || t.slice(0, 4)}">`
         : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div><label class="cyr">أو سنة كاملة <input class="inp num" id="cYr" inputmode="numeric" placeholder="${t.slice(0, 4)}" value="${from.slice(5) === '01-01' && to === from.slice(0, 4) + '-12-31' ? from.slice(0, 4) : ''}"></label>`}</div>
     </div>
+    <div class="ksum"><div class="ksumh">الملخص<small>${esc(cashPerTxt())}</small></div><table>
+      <tr><th>البيان</th><th>${cashVault ? esc(vName(cashVault)) : 'الخزنة'}</th>${mk0 ? '<th class="mk">السوق</th>' : ''}</tr>
+      <tr class="in"><td>داخل</td><td class="n m">${fmtP(me.in)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.in)}</td>` : ''}</tr>
+      <tr class="out"><td>خارج</td><td class="n m">${fmtP(me.out)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.out)}</td>` : ''}</tr>
+      <tr class="net"><td>الصافي</td><td class="n m${me.in < me.out ? ' neg' : ''}">${fmtP(me.in - me.out)}</td>${mk0 ? `<td class="n k${mk0.in < mk0.out ? ' neg' : ''}">${fmtP(mk0.in - mk0.out)}</td>` : ''}</tr></table></div>
     <div class="kss${mk ? ' two' : ''}">${me.html}${mk ? mk.html : ''}</div>
     `;
   const tap = (el, f) => { el.onclick = f; el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); f(ev); } }; };

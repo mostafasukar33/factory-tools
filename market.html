@@ -96,6 +96,17 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:var(--ink)}
 .row .m small{display:block;color:var(--sub);font-size:var(--f1);font-weight:600}
 .row .a{text-align:left;flex:none}
 .row .a .money{display:block;font-size:var(--f3)}
+/* كارت "معاك كاش دلوقتي": رأس بالرصيد وشريط دهبي، وشريط "النهارده" وتحته الأرقام الثلاثة، وزرار التقفيل (نفس لغة قايمة العملاء) */
+.cashc{padding:0;overflow:hidden}
+.cashc .ch{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;box-shadow:inset -4px 0 0 var(--gold)}
+.cashc .ch .m span{display:block;font-size:var(--f3);font-weight:800;color:var(--ink)}
+.cashc .ch .m small{display:block;font-size:var(--f1);font-weight:600;color:var(--sub);margin-top:2px}
+.cashc .ch b{flex:none;direction:ltr;font-size:var(--f5);font-weight:800;line-height:1.2;color:var(--green);font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+.cashc .ch b.neg{color:var(--red)}
+.cashc .cap{margin:0;padding:5px 14px;background:var(--row);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.cashc .pn{margin:0;border:0;padding:8px 6px}
+.cashc .invln{margin:0;padding:8px 14px;border-top:1px solid var(--row)}
+.cashc .kline{width:calc(100% - 28px);margin:2px 14px 12px}
 /* كارت إجمالي العملاء: نفس لغة قايمة العملاء (شريط دهبي على اليمين، الرقم الأحمر لازق في الشمال) */
 .ctot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow),inset -4px 0 0 var(--gold)}
 .ctot .m{min-width:0}
@@ -698,7 +709,7 @@ function drawHome() {
   $('#main').innerHTML = `${bk.length ? `<button class="alert" id="bk" type="button">🔴 مصطفى رجّعلك ${bk.length === 1 ? 'عملية' : bk.length + ' عمليات'} تصلحها — دوس هنا</button>` : ''}
     ${wl.length ? `<section class="want" id="want"><div class="wh2"><b>📌 مطلوب تحصّل من دول</b><span>${wl.filter(x => x.paid).length} من ${wl.length}</span></div>
       ${wl.map(x => `<div class="wr ${x.paid ? 'ok' : ''}" data-c="${esc(x.c.id)}"><div class="m"><b>${esc(x.c.name)}</b><small>${x.paid ? `✓ حصّلت <span class="money">${fmt(x.paid)}</span>` : (x.want.note ? esc(x.want.note) + ' · ' : '') + esc(lpTxt(x.c))}</small></div><div class="a"><b class="money">${fmt(x.want.amt)}</b><small>${x.paid ? 'اتشطب' : 'مطلوب'}</small></div></div>`).join('')}</section>` : ''}
-    <section class="panel"><div class="p1"><span>معاك كاش دلوقتي</span><b class="money ${cn < 0 ? 'neg' : ''}" id="cashT">${fmtN(cn)}</b></div>
+    <section class="panel cashc"><div class="ch"><div class="m"><span>معاك كاش دلوقتي</span><small>الفلوس اللي في إيدك</small></div><b class="money ${cn < 0 ? 'neg' : ''}" id="cashT">${fmtN(cn)}</b></div>
       <div class="cap">النهارده</div>${pnHtml(s, 3, true)}
       ${k ? `<button class="kline ${k.amt === k.sys ? 'ok' : 'bad'}" id="kBtn" type="button">🔒 قفلت يومك ${timeOf(k.ts)}: ${k.amt === k.sys ? 'مظبوط ✓' : `${k.amt < k.sys ? 'ناقص' : 'زيادة'} <span class="money">${fmt(k.amt - k.sys)}</span>`}${k.sys !== cn ? ' <em>· فيه حركات بعد القفل، قفّل تاني</em>' : ''}</button>`
         : `<button class="kline" id="kBtn" type="button">🔒 قفّل يومك (عِد الفلوس اللي معاك)</button>`}</section>

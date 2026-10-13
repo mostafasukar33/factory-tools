@@ -118,6 +118,8 @@ eq('سلفة أقساط من غير قاعدة خصم: مفيش خصم والم�
 eq('القسط بيبان من أول الأسبوع حتى قبل ما يتسجل أيام', (r => [r.oldApplied, r.net, r.carryOut])(rowOf([W1, {id: 'o1', k: 'old', w: 'w1', amt: 100000, eff: '2026-10-15'}, ruleOf('fixed', 25000)], '2026-10-15')), [25000, 0, 25000]);
 eq('تلقائي مبيحوّلش الدين كله لـ"عليه" لو مفيش مرتب', (r => [r.oldApplied, r.carryOut])(rowOf([W1, {id: 'o1', k: 'old', w: 'w1', amt: 100000, eff: '2026-10-15'}, ruleOf('auto')], '2026-10-15')), [0, 0]);
 
+eq('يومين في يوم واحد: الأجر مرتين', (r => [r.units, r.daysPay])(J(E.calcWeek(E.buildIdx([{id: 'w1', k: 'wk', name: 'x', rate: 25000, st: 'on', from: '2026-10-01'}, {id: 'd_w1_2026-10-10', k: 'day', w: 'w1', date: '2026-10-10', u: 2, rate: 25000}, {id: 'd_w1_2026-10-11', k: 'day', w: 'w1', date: '2026-10-11', u: 1.5, rate: 25000}]), '2026-10-15').rows.w1)), [3.5, 87500]);
+
 /* ====================== 2 و 3) الشيت والتطبيق ====================== */
 function serve() {
   const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json'};
@@ -509,6 +511,11 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     eq('يوم الجمعة: النهارده بيفتح على الجمعة نفسها وهي أول الشريط', await A.evaluate(() => [document.querySelector('#main .lbl b').textContent.includes('الجمعة'), document.querySelector('.wk button').textContent.includes('الجمعة')]), [true, true]);
     await A.click('#main .wr:nth-child(1) .ub button[data-u="1"]'); await A.waitForTimeout(150);
     eq('الجمعة اتسجلت في أسبوع الخميس الجاي (مش الأسبوع اللي اتقبض)', await A.evaluate(() => { const r = [...idx().day.values()].find(x => x.date === '2026-10-30'); return [ownerThursday(r.date), calcWeek(idx(), '2026-11-05').rows[r.w].units, calcWeek(idx(), '2026-10-29').rows[r.w] ? calcWeek(idx(), '2026-10-29').rows[r.w].days['2026-10-30'] : undefined]; }), ['2026-11-05', 1, undefined]);
+
+    console.log('\n١٩) خانة "يومين"');
+    eq('الأزرار بالترتيب: غاب، نص، يوم، يوم ونص، يومين', await A.$$eval('#main .wr:nth-child(1) .ub button', b => b.map(x => x.textContent)), ['غاب', 'نص', 'يوم', 'يوم ونص', 'يومين']);
+    await A.click('#main .wr:nth-child(1) .ub button[data-u="2"]'); await A.waitForTimeout(150);
+    eq('يومين اتسجلت والأجر اتحسب مرتين', await A.evaluate(() => { const r = [...idx().day.values()].find(x => x.date === '2026-10-30'); return [r.u, calcWeek(idx(), '2026-11-05').rows[r.w].daysPay === 2 * r.rate]; }), [2, true]);
 
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }

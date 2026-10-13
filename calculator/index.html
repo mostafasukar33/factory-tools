@@ -83,8 +83,8 @@ button:focus-visible{outline:3px solid var(--eq-top);outline-offset:2px}
 .editing{font-family:var(--ar);font-size:.85rem;color:var(--neg)}
 
 /* keys */
-.keys{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:minmax(34px,.4fr) repeat(6,minmax(52px,1fr));gap:12px 12px;direction:ltr}
-.k{position:relative;font-family:var(--ui);font-size:clamp(2.7rem,7.4vh,4.4rem);font-weight:400;color:var(--key-ink);border-radius:9px;border:1.5px solid var(--edge);
+.keys{flex:1;min-height:0;display:grid;grid-template-columns:repeat(20,minmax(0,1fr));grid-template-rows:minmax(34px,.4fr) repeat(5,minmax(56px,1fr));gap:12px 12px;direction:ltr}
+.k{position:relative;font-family:var(--ui);font-size:clamp(2.8rem,8.4vh,5rem);font-weight:400;color:var(--key-ink);border-radius:9px;border:1.5px solid var(--edge);
   background:linear-gradient(180deg,var(--num-top),var(--num-bot));cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;padding:0;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.25),0 3px 4px rgba(0,0,0,.55)}
 .k{transition:transform .06s,filter .06s}
@@ -92,14 +92,14 @@ button:focus-visible{outline:3px solid var(--eq-top);outline-offset:2px}
 .k.op{background:linear-gradient(180deg,var(--op-top),var(--op-bot));border-color:#1a2333}
 .k.op.on{filter:brightness(1.18);box-shadow:inset 0 0 0 3px rgba(255,255,255,.55),0 3px 4px rgba(0,0,0,.55)}
 .k.ac{background:linear-gradient(180deg,var(--ac-top),var(--ac-bot));border-color:#4a1512;font-weight:500;font-size:clamp(1.9rem,5.2vh,3rem)}
-.k.zero{grid-column:span 3}
-.k.zz{grid-column:span 2}
+.k{grid-column:span 5}
+.k.mem{grid-column:span 4}
 .k.eq{background:linear-gradient(180deg,var(--eq-top),var(--eq-bot));border-color:#4d2808;font-weight:500}
 .k.fn{background:linear-gradient(180deg,var(--fn-top),var(--fn-bot));color:var(--fn-ink);font-size:clamp(1.25rem,3vh,1.6rem);font-weight:600;text-shadow:0 -1px 0 rgba(0,0,0,.5)}
 .k.fn.ar{font-family:var(--ar);font-size:clamp(1rem,2.4vh,1.2rem)}
 .k.mem{background:linear-gradient(180deg,#55585d,#36383c);color:var(--fn-ink);font-size:clamp(1.3rem,3.1vh,1.7rem);font-weight:600;text-shadow:0 -1px 0 rgba(0,0,0,.5)}
 .memtag{cursor:pointer;-webkit-tap-highlight-color:transparent;font-family:var(--ui);font-size:.8rem;font-weight:700;color:var(--lcd-ink);direction:ltr;white-space:nowrap;padding-bottom:.6em}
-.k.zeros{font-size:clamp(2.7rem,7.4vh,4.4rem);letter-spacing:-.02em}
+.k.zeros{font-size:clamp(2.2rem,6.4vh,3.8rem);letter-spacing:-.02em}
 .k svg{width:44%;height:auto;display:block;margin:auto}
 
 /* archive sheet */
@@ -162,20 +162,20 @@ button:focus-visible{outline:3px solid var(--eq-top);outline-offset:2px}
     <button class="k mem" data-k="M+">m+</button>
     <button class="k mem" data-k="M-">m-</button>
     <button class="k mem" data-k="MR">mr</button>
+    <button class="k mem pm" data-k="NEG" aria-label="اقلب إشارة النتيجة">±</button>
     <button class="k ac" data-k="C">AC</button>
     <button class="k fn" data-k="BS" aria-label="امسح آخر رقم"><svg viewBox="0 0 48 32" aria-hidden="true"><path d="M14 2h30a2 2 0 0 1 2 2v24a2 2 0 0 1-2 2H14L2 16z" fill="#e9eaec"/><path d="M22 9l14 14M36 9L22 23" stroke="#2b2d30" stroke-width="4" stroke-linecap="round"/></svg></button>
-    <button class="k op" data-k="NEG" aria-label="اقلب إشارة النتيجة">±</button>
     <button class="k op" data-k="%">%</button>
-    <button class="k" data-k="7">7</button><button class="k" data-k="8">8</button><button class="k" data-k="9">9</button>
     <button class="k op" data-k="/">÷</button>
-    <button class="k" data-k="4">4</button><button class="k" data-k="5">5</button><button class="k" data-k="6">6</button>
+    <button class="k" data-k="7">7</button><button class="k" data-k="8">8</button><button class="k" data-k="9">9</button>
     <button class="k op" data-k="*">×</button>
-    <button class="k" data-k="1">1</button><button class="k" data-k="2">2</button><button class="k" data-k="3">3</button>
+    <button class="k" data-k="4">4</button><button class="k" data-k="5">5</button><button class="k" data-k="6">6</button>
     <button class="k op" data-k="-">−</button>
-    <button class="k zero" data-k="0">0</button>
+    <button class="k" data-k="1">1</button><button class="k" data-k="2">2</button><button class="k" data-k="3">3</button>
     <button class="k op" data-k="+">+</button>
     <button class="k" data-k=".">.</button>
-    <button class="k zeros zz" data-k="00">00</button>
+    <button class="k" data-k="0">0</button>
+    <button class="k zeros" data-k="00">00</button>
     <button class="k eq" data-k="=">=</button>
   </div>
 </div>

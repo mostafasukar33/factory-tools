@@ -1,6 +1,6 @@
 // الحاسبة بتفتح فوراً من المحفوظ (من غير ما تستنى النت)، والنسخة الجديدة بتتحمل في الخلفية وتظهر في الفتحة اللي بعدها.
 // لما تعدّل أي ملف غيّر رقم النسخة دي.
-const CACHE = 'flash-calc-v15';
+const CACHE = 'flash-calc-v16';
 const FILES = ['./', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f => c.add(new Request(f, {cache: 'reload'}))))).then(() => self.skipWaiting()));

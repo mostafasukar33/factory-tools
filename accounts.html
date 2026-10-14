@@ -587,6 +587,7 @@ table.cmt{width:100%;border-collapse:collapse}
 @keyframes foUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @keyframes foPop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
 .page.on{animation:foFade .18s ease-out}
+html.popnav .page.on{animation:none}   /* الرجوع بالسحب: الموبايل بيعرض الصفحة اللي قبلها بنفسه، فالظهور التدريجي كان بيعمل رعشة */
 .mask.on{animation:foFade .15s ease-out}
 .mask.on .modal{animation:foPop .18s ease-out}
 #toast{animation:foUp .2s ease-out}
@@ -5556,9 +5557,10 @@ $$('nav .qk button').forEach(b => b.onclick = () => {
 try { history.scrollRestoration = 'manual'; } catch (e) {}
 const scrollMap = {}; let curH = location.hash, scrollHold = false, popNav = false;
 addEventListener('scroll', () => { if (!scrollHold) scrollMap[curH] = window.scrollY; }, {passive: true});
-addEventListener('popstate', () => { popNav = true; });
+addEventListener('popstate', () => { popNav = true; document.documentElement.classList.add('popnav'); });
 addEventListener('hashchange', () => {
   const want = scrollMap[location.hash] || 0, back = popNav && !isWide();
+  if (!popNav) document.documentElement.classList.remove('popnav');   // التنقل العادي بيرجّع الظهور التدريجي
   scrollHold = true; curH = location.hash; closeModal(); route();
   if (location.hash !== lastHash) window.scrollTo(0, back ? want : 0);
   popNav = false; lastHash = location.hash;

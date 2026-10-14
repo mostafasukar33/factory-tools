@@ -103,6 +103,7 @@ const openParty = async (A, name) => { await A.evaluate(n => go('p/' + liveParti
    ممكن أكتر من واحد بفاصلة: --only=acc,mkt = كله
    --dry مع أي واحد منهم = يقول هيشغّل إيه بس */
 const {execSync, spawnSync} = require('child_process');
+let SW_NEED = true;
 function changedModes() {
   const sh = c => { try { return execSync(c, {cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore']}).toString(); } catch (e) { return null; } };
   const files = new Set(((sh('git diff --name-only origin/main') || '') + (sh('git ls-files --others --exclude-standard') || '')).split('\n').filter(Boolean));
@@ -130,6 +131,10 @@ function changedModes() {
     else if (/\.(html|webmanifest)$/.test(f) || /^(icons|calculator)\//.test(f)) m = 'smoke';
     if (m) { modes.add(m); why.push(`${f} → ${m}`); }
   }
+  /* قسم ٢٣ (الفتح السريع والنت البطيء، ~30 ثانية نت بطيء بجد) بيشتغل في --changed بس لو حاجة تخصه اتغيرت. التشغيل الكامل (وGitHub بعد الرفع) بيشغّله دايماً */
+  const pg = ['accounts.html', 'market.html'].filter(f => files.has(f)).map(f => sh('git diff -U0 origin/main -- ' + f) || '').join('\n');
+  SW_NEED = ['sw.js', 'lib/swup.js', 'tests/run.js'].some(f => files.has(f)) || /swSafe|serviceWorker|swup|SHELL/.test(pg);
+  if (!SW_NEED) why.push('قسم ٢٣ (الفتح السريع) متخطّي: مفيش حاجة تخصه اتغيرت');
   console.log('الملفات اللي اتغيرت:\n  ' + (why.join('\n  ') || 'ملفات كلام بس (md وغيره)، ملهاش اختبار'));
   return [...modes];
 }
@@ -146,7 +151,7 @@ if (MODES.includes('payroll')) {
 if (process.argv.includes('--changed') && !MODES.length) { console.log('\n✔ مفيش اختبار مطلوب للتغيير ده'); process.exit(0); }
 if (!MODES.length || MODES.includes('full') || (MODES.includes('acc') && MODES.includes('mkt'))) MODES = ['full'];
 const FULL = MODES.includes('full');
-const RUN = {base: FULL || MODES.includes('acc'), sync: FULL || MODES.includes('acc') || MODES.includes('mkt'), mkt: FULL || MODES.includes('mkt'), smoke: MODES.includes('smoke')};
+const RUN = {sw: SW_NEED, base: FULL || MODES.includes('acc'), sync: FULL || MODES.includes('acc') || MODES.includes('mkt'), mkt: FULL || MODES.includes('mkt'), smoke: MODES.includes('smoke')};
 const MO = MODES.includes('mkt') && !FULL;   // وضع السوق لوحده (بيضيف عميل سوق تجريبي مكان اللي بيتعمل في الأقسام اللي اتخطت)
 console.log('الأقسام:', FULL ? 'كله' : MODES.join(' + '));
 if (process.argv.includes('--dry')) process.exit(0);   // يقول هيشغّل إيه بس من غير ما يشغّل
@@ -160,7 +165,7 @@ if (process.argv.includes('--dry')) process.exit(0);   // يقول هيشغّل 
    كل الصفحات بتتقدم مع بعض بنفس المقدار، فترتيب الحركات بين الأجهزة زي ما هو. */
 const TRACKER = `(() => {
   if (window.__tk) return;
-  const T = window.__tk = {n: 0, last: 0};
+  const T = window.__tk = {n: 0, last: 0}, DBG = ${process.env.SETTLE_DEBUG ? 'true' : 'false'};   // SETTLE_DEBUG=1: بيطبع في الآخر مين اللي خلّى الانتظار يوصل للحد الأقصى
   const RD = Date; let off = null;
   const getOff = () => { if (off === null) { try { off = +sessionStorage.getItem('__tkOff') || +window.__tkOff0 || 0; } catch (e) { off = +window.__tkOff0 || 0; } } return off; };
   window.__tkSetOff = v => { off = v; try { sessionStorage.setItem('__tkOff', String(v)); } catch (e) {} };
@@ -177,11 +182,11 @@ const TRACKER = `(() => {
   const st = window.setTimeout, ct = window.clearTimeout, raf = window.requestAnimationFrame, caf = window.cancelAnimationFrame, pend = new Set(), pr = new Set();
   window.setTimeout = function (fn, ms, ...a) {
     const d = +ms || 0;
-    if (typeof fn !== 'function' || d > 2500) return st.call(window, fn, ms, ...a);
-    inc(); const id = st.call(window, function () { if (pend.delete(id)) dec(); return fn.apply(this, a); }, ms); pend.add(id); return id;
+    if (typeof fn !== 'function' || d >= 1500) return st.call(window, fn, ms, ...a);   // 1.5 ثانية أو أكتر = شغل خلفية (المزامنة وتليجرام) مش بنستناه
+    inc(); const id = st.call(window, function () { if (pend.delete(id)) { dec(); (T.src || {})[id] = undefined; } return fn.apply(this, a); }, ms); pend.add(id); if (DBG) (T.src = T.src || {})[id] = d + 'ms ' + String(fn).slice(0, 90); return id;
   };
-  window.clearTimeout = function (id) { if (pend.delete(id)) dec(); return ct.call(window, id); };
-  window.requestAnimationFrame = function (fn) { inc(); const id = raf.call(window, t => { if (pr.delete(id)) dec(); fn(t); }); pr.add(id); return id; };
+  window.clearTimeout = function (id) { if (pend.delete(id)) { dec(); if (T.src) T.src[id] = undefined; } return ct.call(window, id); };
+  window.requestAnimationFrame = function (fn) { inc(); const id = raf.call(window, t => { if (pr.delete(id)) { dec(); (T.rsrc || {})[id] = undefined; } fn(t); }); pr.add(id); if (DBG) (T.rsrc = T.rsrc || {})[id] = 'raf ' + String(fn).slice(0, 90); return id; };
   window.cancelAnimationFrame = function (id) { if (pr.delete(id)) dec(); return caf.call(window, id); };
   const wrapP = (obj, k) => { const f = obj && obj[k]; if (typeof f !== 'function') return; obj[k] = function (...a) { inc(); let p; try { p = f.apply(this, a); } catch (e) { dec(); throw e; } return Promise.resolve(p).finally(dec); }; };
   wrapP(window, 'fetch');
@@ -227,6 +232,12 @@ async function settle(ms) {
     await new Promise(r => setTimeout(r, 10));
   }
   settleCaps++;
+  if (process.env.SETTLE_DEBUG) {   // مين اللي فضل شغال للآخر، ومن أنهي سطر في الاختبار
+    const who = [];
+    for (const p of BROWSER.contexts().flatMap(c => c.pages())) if (!p.isClosed()) who.push(await p.evaluate(() => (location.pathname.split('/').pop() || '?') + ':' + (window.__tk ? window.__tk.n + ' ' + [...Object.values(window.__tk.src || {}), ...Object.values(window.__tk.rsrc || {})].filter(Boolean).join(' | ') : '-')).catch(() => '?'));
+    const at = (new Error().stack.split('\n').find(l => l.includes('run.js') && !l.includes('settle')) || '').trim().replace(/^at /, '');
+    (global.__caps = global.__caps || []).push({ms, at, who: who.join(' ')});
+  }
 }
 
 /* وقت كل قسم بيتطبع في الآخر */
@@ -682,10 +693,10 @@ const T0 = Date.now();
     const J2 = await D4.page('accounts.html' + link.slice(link.indexOf('#')));
     await J2.fill('#suP', PASS); await J2.fill('#suP2', PASS);
     await J2.reload(); await J2.waitForSelector('#suP');   // ريفرش قبل كلمة السر: الرابط لازم ميضيعش
-    await J2.fill('#suP', PASS); await J2.fill('#suP2', PASS); await J2.click('#suGo'); await J2.settle(9000);
+    await J2.fill('#suP', PASS); await J2.fill('#suP2', PASS); await J2.click('#suGo'); await J2.waitForFunction(() => typeof db !== 'undefined' && db && db.cfg.joinWait && typeof joinErr === 'string' && joinErr.length > 5, null, {timeout: 20000}).catch(() => {}); await J2.settle(300);
     eq('النت واقع وقت الربط: الربط محفوظ ومستني وبيقول السبب', await J2.evaluate(() => [db.cfg.joinWait, db.cfg.sheetOk, !!db.cfg.sheetUrl, joinErr.length > 5]), [true, false, true, true]);
     D4.netDown = false;
-    await bg(J2, 'finishJoin(false)'); await J2.settle(3000);
+    await bg(J2, 'finishJoin(false)'); await J2.waitForFunction(() => db.cfg.sheetOk && !db.cfg.joinWait, null, {timeout: 20000}).catch(() => {}); await J2.settle(500);
     eq('النت رجع: كمّل الربط لوحده ونزّل نفس الأرصدة', [await J2.evaluate(() => [db.cfg.sheetOk, !!db.cfg.joinWait]), await snap(J2)], [[true, false], await snap(A)]);
     eq('رابط مقطوع بيطلع رسالة', await (async () => { const X = await D4.page('accounts.html#join=AAAA'); await X.settle(1200); return (await X.textContent('#toast')).includes('ناقص'); })(), true);
 
@@ -1743,8 +1754,8 @@ const T0 = Date.now();
       await A.setViewportSize({width: 400, height: 860});
       for (const f of ['index.html', 'market.html', 'quote.html', 'delivery.html', 'cost.html', 'calculator/index.html', 'payroll.html']) { const X = await D1.page(f); await X.settle(800); await X.close(); }
     }
-    sec('٢٣) sw.js: الحسابات والسوق بيفتحوا بسرعة والنت مقطوع أو بطيء، والنسخة الجديدة بتوصل لوحدها');
-    {
+    if (RUN.sw) sec('٢٣) sw.js: الحسابات والسوق بيفتحوا بسرعة والنت مقطوع أو بطيء، والنسخة الجديدة بتوصل لوحدها');
+    if (RUN.sw) {
       const SWD = await newDevice(browser, base, sheets), now = () => Date.now();
       /* بنستنى الحاجة نفسها (الصفحة بتتعمل لها reload في النص، فـ waitForFunction بيقع) */
       const until = async (X, fn, arg, ms = 20000) => { const end = now() + ms; while (now() < end) { try { if (await X.evaluate(fn, arg)) return true; } catch (e) {} await new Promise(r => setTimeout(r, 100)); } return false; };
@@ -1865,6 +1876,7 @@ const T0 = Date.now();
   if (secT.length) secT[secT.length - 1].s = (Date.now() - secT[secT.length - 1].t) / 1000;
   console.log('\n— الوقت —');
   secT.forEach(x => console.log(`  ${String(Math.round(x.s || 0)).padStart(4)} ث  ${x.name}`));
+  if (process.env.SETTLE_DEBUG && global.__caps) { const by = {}; global.__caps.forEach(c => { const k = c.who; by[k] = by[k] || {n: 0, ms: 0, at: c.at}; by[k].n++; by[k].ms += c.ms; }); console.log('CAPS', JSON.stringify(Object.entries(by).sort((a, b) => b[1].ms - a[1].ms).slice(0, 15), null, 1)); console.log('CAPMS', global.__caps.reduce((n, c) => n + c.ms, 0)); }
   console.log(`  الإجمالي ${Math.round((Date.now() - T0) / 1000)} ثانية (الانتظار الذكي: ${settleN} مرة، وصل للحد الأقصى ${settleCaps} مرة)`);
   console.log(`\n${fails ? '✖' : '✔'} ${oks} نجح، ${fails} فشل\n`);
   process.exit(fails ? 1 : 0);

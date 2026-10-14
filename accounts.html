@@ -47,6 +47,12 @@ button,input,select,textarea{font-family:inherit;font-size:var(--f3);color:inher
 .lockbtn{background:#222;color:var(--gold);border-color:#444}
 main{padding:12px 12px 0;max-width:680px;margin:0 auto}
 .page{display:none}.page.on{display:block}
+@media (max-width:999.98px){
+  .page.under{display:block}
+  #p-party.on{position:fixed;top:var(--hh,48px);bottom:0;inset-inline:0;margin:0!important;padding:10px 10px calc(160px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;z-index:26;background:var(--bg)}
+  .page.under :is(.cbar,.fab2){display:none}
+}
+@media (max-width:600px){#p-party.on{padding-inline:2px}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
 .card h2{font-size:var(--f3);margin:0 0 10px;font-weight:800;color:var(--gold-d)}
 label{display:block;font-size:var(--f2);font-weight:700;color:var(--sub);margin-bottom:4px}
@@ -1402,7 +1408,7 @@ body{font-size:var(--f3);line-height:1.6}
   #p-party .acts .rare .btn+.btn{border-inline-start:1px solid var(--line)}
   /* عناوين الكشف تفضل ثابتة تحت الشريط وانت نازل (من غير سحب أفقي، وبيرجع يسحب لو كبّرت بالصوابع) */
   html:not([data-lz]) #p-party .ldgw{overflow:visible}
-  #p-party .ldg th{top:var(--hh,48px);z-index:5}
+  #p-party .ldg th{top:-10px;z-index:5}
   html[data-lz] #p-party .ldg th{top:0}
   /* كشف الحساب: 5 عواميد بدل 7. الكمية × السعر سطر صغير تحت البيان، والسنة سطر لوحده لما تتغير */
   #p-party .ldg .hq{display:none}
@@ -1724,8 +1730,9 @@ const STORE = {party: 'parties', entry: 'entries', vault: 'vaults', cat: 'cats',
 let IDX = {}, P = new Map(), E = new Map();          // فهارس سريعة بالـ id
 function reindex() { for (const k in STORE) IDX[k] = new Map((db[STORE[k]] = db[STORE[k]] || []).map(r => [r.id, r])); P = IDX.party; E = IDX.entry; }
 
-let saveT = null, saveChain = Promise.resolve(), saveFailed = false;
+let saveT = null, saveChain = Promise.resolve(), saveFailed = false, dataVer = 0;
 function saveDB(now) {
+  dataVer++;
   clearTimeout(saveT);
   if (now) return flushSave();
   saveT = setTimeout(flushSave, 250);
@@ -1973,8 +1980,10 @@ $('#bLock').onclick = () => lockNow();
 /* ====================== الرئيسية: قايمة الحسابات ====================== */
 const norm = s => normDigits(s).toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
 let tab = 'mkt';
+let homeVer = '', routeKeep = false;
 function renderHome() {
   if (!db) return;
+  homeVer = dataVer + '|' + tab;
   renderSyncBox();
   const probs = selfCheck();
   const au = db.cfg.audit;
@@ -5492,6 +5501,11 @@ function route() {
   /* مرة واحدة: سحب كامل من الشيت علشان أي جرد أو مساهمين اتسجلوا من جهاز تاني قبل التحديث ده ينزلوا */
   if (!db.cfg.ivPull) { db.cfg.ivPull = 1; if (db.cfg.cursor) { db.cfg.cursor = 0; saveDB(); } }
   { const w = ivWaiting(); $('#nbJrd').textContent = w || ''; }
+  /* الموبايل: صفحة الحساب بتفتح فوق الصفحة اللي قبلها (مش مكانها)، فالرجوع بيلاقي القايمة زي ما هي في مكانها من غير ما تترسم تاني (كانت بتبيض) */
+  const mob = !isWide(), was = $$('.page.on').find(x => x.id !== 'p-party'), back = mob && pg !== 'party' && $('#p-' + pg) && $('#p-' + pg).classList.contains('under');
+  if (mob && pg === 'party') { if (was) { $$('.page.under').forEach(x => x.classList.remove('under')); was.classList.add('under'); } }
+  else $$('.page.under').forEach(x => x.classList.remove('under'));
+  routeKeep = mob && (pg === 'party' || back);
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
   document.body.dataset.pg = pg;   // زرار ＋ العايم بيظهر على الموبايل في الرئيسية ووارد السوق والتقارير بس
   const supOn = !isWide() && (pg === 'home' ? tab === 'sup' : pg === 'party' && (P.get(h.slice(2)) || {}).sec === 'sup');
@@ -5510,7 +5524,7 @@ function route() {
       $('#p-party').innerHTML = '<div class="card empty" style="padding:60px 20px;font-size:var(--f3)">لسه مفيش حسابات. اضغط "+ حساب جديد".</div>';
     }
   }
-  if (pg === 'mkt') { $('#mkBar').classList.remove('on'); renderMkt(); } else if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'jrd') renderJrd(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split) renderHome();
+  if (pg === 'mkt') { $('#mkBar').classList.remove('on'); renderMkt(); } else if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'jrd') renderJrd(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split && !(back && homeVer === dataVer + '|' + tab)) renderHome();
 }
 /* شريط أعلى صفحة الحساب ثابت (مبيخبّيش وانت بتنزل): رجوع، فوق، تحت، تعديل */
 function setHdr() { const h = document.querySelector('header.top'); if (h) document.documentElement.style.setProperty('--hh', (getComputedStyle(h).position === 'fixed' ? 0 : h.offsetHeight) + 'px'); }   // على اللاب الشريط في القايمة الجانبية فمفيش مسافة فوق
@@ -5561,8 +5575,10 @@ addEventListener('popstate', () => { popNav = true; document.documentElement.cla
 addEventListener('hashchange', () => {
   const want = scrollMap[location.hash] || 0, back = popNav && !isWide();
   if (!popNav) document.documentElement.classList.remove('popnav');   // التنقل العادي بيرجّع الظهور التدريجي
+  const newParty = location.hash.startsWith('#p/') && location.hash !== curH;
   scrollHold = true; curH = location.hash; closeModal(); route();
-  if (location.hash !== lastHash) window.scrollTo(0, back ? want : 0);
+  if (routeKeep) { if (newParty && $('#p-party')) $('#p-party').scrollTop = 0; }   // صفحة الحساب فوق القايمة: القايمة مكانها زي ما هو
+  else if (location.hash !== lastHash) window.scrollTo(0, back ? want : 0);
   popNav = false; lastHash = location.hash;
   requestAnimationFrame(() => requestAnimationFrame(() => { scrollHold = false; }));
 });

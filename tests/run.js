@@ -1002,6 +1002,8 @@ const T0 = Date.now();
     /* الإرسال اللوحده بعد المزامنة (من غير تاريخ) بيستخدم الساعة الحقيقية، فلو الاختبار اشتغل بعد 8 بالليل كان بيبعت نسخة النهارده في النص. هنا بنجرب بتواريخ ثابتة بس */
     await A.evaluate(() => { window.__tgA = tgAfterSync; window.tgAfterSync = d => d ? window.__tgA(d) : Promise.resolve(); });
     await A.evaluate(() => { putSet('tgOpts', {bk: true, sum: true, al: true, wk: false, mo: false, nl: false}); db.cfg.tg = {}; });
+    /* لو جه وقت إرسال حقيقي (بالساعة الحقيقية) قبل الاختبار، الشيت بيكون علّم إن نسخة اليوم ده اتبعتت فالاختبار بيفشل حسب الساعة. نبدأ من شيت لسه مبعتش */
+    Object.keys(sheets.mkt.props).filter(k => k.startsWith('ONCE_')).forEach(k => delete sheets.mkt.props[k]);
     const d0 = tgDocs().length, m0 = tgTexts().length;
     await bg(A, `tgAfterSync(new Date('${TD}T21:00:00'))`);
     const doc = tgDocs()[d0], bk = doc ? JSON.parse(doc.body.document.data) : {};
@@ -1789,8 +1791,8 @@ const T0 = Date.now();
     await A.evaluate(() => { go('cash'); cashMode = 'year'; renderCash(); }); await A.settle(300);
     await colOk('الحسابات — الخزنة (حركتي)', A, '#kst-me', '.kty .n');
     if (await A.$('#kst-mk')) await colOk('الحسابات — الخزنة (حركة السوق)', A, '#kst-mk', '.kty .n');
-    if (await A.evaluate(() => !isWide() && !$('#p-cash .kb.two'))) await colOk('الحسابات — الخزنة (الأرصدة فوق)', A, '#p-cash .kb', '.kbm>.n,.kbk>.n,.kbt>.n');   // مع خزنة السوق الأرصدة صف واحد جنب بعض
-    if (await A.evaluate(() => !isWide())) { await colOk('الحسابات — الخزنة (الملخص: الخزنة)', A, '#p-cash .ksum', 'td.m'); await colOk('الحسابات — الخزنة (الملخص: السوق)', A, '#p-cash .ksum', 'td.k');
+    if (await A.evaluate(() => !isWide() && !$('#p-cash .kb.two') && $$('#p-cash .kb :is(.kbm,.kbk,.kbt)>.n').length > 1)) await colOk('الحسابات — الخزنة (الأرصدة فوق)', A, '#p-cash .kb', '.kbm>.n,.kbk>.n,.kbt>.n');   // مع خزنة السوق الأرصدة صف واحد جنب بعض
+    if (await A.evaluate(() => !isWide())) { await colOk('الحسابات — الخزنة (الملخص: الخزنة)', A, '#p-cash .ksum', 'td.m'); if (await A.$('#p-cash .ksum td.k')) await colOk('الحسابات — الخزنة (الملخص: السوق)', A, '#p-cash .ksum', 'td.k');   // من غير خزنة سوق (وضع acc لوحده) مفيش عمود سوق
       eq('الخزنة على الموبايل: الملخص = داخل وخارج كارت حركتي', await A.evaluate(() => { const v = s => $('#p-cash .ksum tr.' + s + ' td.m').textContent; return [v('in') === fmtP(+$('#kst-me .kin .n').dataset.cnt), v('out') === fmtP(+$('#kst-me .kout .n').dataset.cnt)]; }), [true, true]); }
     await A.evaluate(() => { mkView = 'in'; go('mkt'); renderMkt(); }); await A.settle(300);
     for (const [nm, root] of [['الوارد (جاهزين للنقل)', '#mqReady'], ['الوارد (محتاجين قرارك)', '#mqDec']]) if (await A.evaluate(r => $$(r + ' .mqa>.n').length >= 2, root)) await colOk('الحسابات — ' + nm, A, root, '.mqa>.n');

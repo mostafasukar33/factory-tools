@@ -67,6 +67,7 @@ textarea.inp{min-height:84px;resize:vertical;line-height:1.7}
 .fld{margin-bottom:10px}
 .acts{display:flex;gap:8px;margin-bottom:10px}
 .acts .btn{flex:1;min-height:44px;font-size:var(--f2);padding:6px 8px;white-space:nowrap;border-radius:12px}
+.acts .rare{display:contents}
 .fab2{display:none}
 .cbar{display:flex;gap:6px;position:sticky;top:var(--hh,64px);z-index:20;background:var(--bg);padding:6px 0;margin-bottom:8px}
 .cbar .btn{flex:1;min-height:42px;font-size:var(--f2);padding:4px 6px;white-space:nowrap;border-radius:11px}
@@ -1391,8 +1392,15 @@ body{font-size:var(--f3);line-height:1.6}
   .pt .m .lpy{display:block;font-size:var(--f1);font-weight:600;color:var(--sub);margin-top:2px}
   .pt .m .lpy.late{color:var(--red)}
   /* زراير صفحة العميل: كلها ظاهرة في سطر واحد بعرض متساوي، مفيش زرار مستخبي برّه الشاشة */
-  #p-party .acts{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
-  #p-party .acts .btn{min-width:0;gap:4px;padding:6px 2px;white-space:nowrap}
+  /* كشف الحساب زرار باين، والنادر (مرتجع، خصم، حصّل منه) شريط رفيع تحته */
+  #p-party .acts{display:grid;grid-template-columns:1fr;gap:6px}
+  #p-party .acts #ppStmt{order:-1;min-height:42px;margin:0}
+  #p-party .acts .rare{display:flex;background:var(--row);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  #p-party .acts .rare .btn{flex:1 1 0;min-width:0;min-height:34px;border:0;border-radius:0;background:none;box-shadow:none;color:var(--sub);font-size:var(--f1);padding:2px 4px;white-space:nowrap}
+  #p-party .acts .rare .btn+.btn{border-inline-start:1px solid var(--line)}
+  /* عناوين الكشف تفضل ثابتة تحت الشريط وانت نازل (من غير سحب أفقي، وبيرجع يسحب لو كبّرت بالصوابع) */
+  html:not([data-lz]) #p-party .ldgw{overflow:visible}
+  #p-party .ldg th{top:var(--hh,48px);z-index:5}
   /* كشف الحساب: 5 عواميد بدل 7. الكمية × السعر سطر صغير تحت البيان، والسنة سطر لوحده لما تتغير */
   #p-party .ldg .hq{display:none}
   #p-party .ldg td.l .qp{display:block;color:var(--sub);font-weight:600}
@@ -2268,10 +2276,12 @@ function renderParty(id) {
     <div class="acts">
       <button class="btn" id="ppDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button>
       <button class="btn green" id="ppPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button>
-      <button class="btn line" id="ppRet" type="button">↩ ${sup ? 'مرتجع شراء' : 'مرتجع بيع'}</button>
-      <button class="btn line" id="ppAdj" type="button">✂ خصم / تسوية</button>
+      <div class="rare">
+        <button class="btn line" id="ppRet" type="button">↩ ${sup ? 'مرتجع شراء' : 'مرتجع بيع'}</button>
+        <button class="btn line" id="ppAdj" type="button">✂ خصم / تسوية</button>
+        ${p.sec === 'mkt' && mkCreds() && !mkWants()[id] ? '<button class="btn line" id="ppWant" type="button">📌 حصّل منه</button>' : ''}
+      </div>
       <button class="btn gold" id="ppStmt" type="button">📄 كشف حساب</button>
-      ${p.sec === 'mkt' && mkCreds() && !mkWants()[id] ? '<button class="btn line" id="ppWant" type="button">📌 حصّل منه</button>' : ''}
     </div>
     <div class="fab2"><button class="btn big" id="fbDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button><button class="btn green big" id="fbPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button></div>
     ${ledgerTable(p)}
@@ -5538,7 +5548,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {upd
   ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
   const root = document.documentElement; let z = 1, d0 = 0, z0 = 1, on = false;
   const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  const setZ = v => { z = Math.min(2.5, Math.max(1, v)); root.style.setProperty('--lz', z); };
+  const setZ = v => { z = Math.min(2.5, Math.max(1, v)); root.style.setProperty('--lz', z); root.toggleAttribute('data-lz', z > 1); };
   document.addEventListener('touchstart', e => { on = e.touches.length === 2 && !!e.target.closest('.ldgw'); if (on) { d0 = dist(e.touches); z0 = z; } }, {passive: true});
   document.addEventListener('touchmove', e => { if (on && e.touches.length === 2) { e.preventDefault(); setZ(z0 * dist(e.touches) / d0); } }, {passive: false});
   document.addEventListener('touchend', () => { on = false; }, {passive: true});

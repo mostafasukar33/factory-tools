@@ -401,13 +401,13 @@ const T0 = Date.now();
         const L = ldgItems('2001-03-01', '2001-03-03'), tx = $('#ldg').textContent, adj = db.txs.filter(t => !t.del && ADJ_CATS.has(t.cat) && t.date >= '2001-03-01' && t.date <= '2001-03-03').reduce((n, t) => n + (t.type === 'inc' ? t.amt : -t.amt), 0);
         const bal = d => vaultBal('', d) + vaultBal('v_mkt', d), col = L.filter(x => x.m.who === 'عميل سوق دفتر تجربة');
         return [!tx.includes('كاش من شريك السوق') && !L.some(x => x.m.r.type === 'tr'), col.length === 1 && col[0].m.amt === 300000 && col[0].dir === 'in', L.some(x => x.m.r.note === 'بنزين دفتر تجربة' && x.dir === 'out'),
-          ldgSum(L, 'in') - ldgSum(L, 'out') === bal('2001-03-04') - bal('2001-03-01') - adj, $('#ldg .ldtt').textContent.includes('المصنع كله'), $('#p-cash .kbt').classList.contains('sel')]; }), [true, true, true, true, true, true]);
-      eq('دفتر عهدة أحمد = كارت حركة السوق، والدوس على المربعات فوق بيغيّر الدفتر', await A.evaluate(() => {
-        $('#kMk').click(); const r = [ldgScope, $('#p-cash .kbk').classList.contains('sel')];
+          ldgSum(L, 'in') - ldgSum(L, 'out') === bal('2001-03-04') - bal('2001-03-01') - adj, $('#ldg .ldtt').textContent.includes('المصنع كله'), $('#ldgS button.on').dataset.v === 'all']; }), [true, true, true, true, true, true]);
+      eq('دفتر عهدة أحمد = كارت حركة السوق، والزراير التلاتة (المصنع كله / خزني / عهدة أحمد) بتغيّر الدفتر، ومربعات الرصيد مبتغيّرهوش', await A.evaluate(() => {
+        $('#ldgS button[data-v=mk]').click(); const r = [ldgScope, $('#ldgS button.on').textContent.includes('عهدة')];
         cashView = 'type'; const k = kstHtml('mk', '', 'mkt', vaultMoves('v_mkt', '2001-03-01', '2001-03-03').concat(mkXfers('2001-03-01', '2001-03-03')), 'mk'); cashView = 'date';
         const L = ldgItems('2001-03-01', '2001-03-03'); r.push(ldgSum(L, 'in') === k.in && ldgSum(L, 'out') === k.out);
-        renderCash(); $('#kMe').click(); r.push(ldgScope, $('#ldg .ldtt').textContent.includes('دفتري')); $('#kAllT').click(); r.push(ldgScope);
-        return r; }), ['mk', true, true, 'me', true, 'all']);
+        renderCash(); $('#ldgS button[data-v=me]').click(); r.push(ldgScope, $('#ldg .ldtt').textContent.includes('دفتري')); $('#ldgS button[data-v=all]').click(); r.push(ldgScope);
+        $('#kMe').click(); r.push(ldgScope, cashOpenV); $('#kMe').click(); return r; }), ['mk', true, true, 'me', true, 'all', 'all', true]);
     }
     eq('دفتر الخزنة: زرار "نقلته" و"اعرض اللي لسه" اتشالوا', await ldgOpen(`[!$('#ldg .ldb'), !$('#ldgRest'), !$('#ldg').textContent.includes('نقلت')]`), [true, true, true]);
     eq('دفتر الخزنة: الفلتر "خارج" مفيهوش سطر داخل، والبند بيفتح نافذة بحركاته', await A.evaluate(() => {

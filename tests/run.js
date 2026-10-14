@@ -1297,6 +1297,14 @@ const T0 = Date.now();
       db.txs.push(t); IDX.tx.set(t.id, t); cashVault = ''; cashMode = 'day'; cashDay = ''; go('cash'); renderCash();
       const r = [vaultBal('') === b0 - 12300, profitOf(y0, todayISO()).exp === p0, !$('#p-cash .kss').textContent.includes('تسوية'), !$('#p-cash .kss').textContent.includes('جرد تجربة')];
       t.del = true; touch(t); saveDB(); go('mkt'); return r; }), [true, true, true, true]);
+    eq('الخزنة: الأدوات شريط جوه كارت الرصيد، "يوم ▾" بيفتح يوم/أسبوع/شهر/من–إلى ويقفل بعد الاختيار، و"↺ النهارده" بيظهر في يوم قديم بس ويرجّع للنهارده', await A.evaluate(() => {
+      cashMode = 'day'; cashDay = ''; cashVault = ''; cashOpenV = false; cashPickM = false; go('cash'); renderCash();
+      const r = [['#cOpen2', '#cTr', '#cSet', '#cPart'].every(s => !!$('#p-cash .kb ' + s)), !$('#p-cash > .ktools'), !!$('#cPer .ksum'), !$('#cToday'), $('#cModeB').textContent.includes('يوم')];
+      $('#cModeB').click(); r.push($('#cPer').classList.contains('pk'));
+      $('#cMode [data-m=week]').click(); r.push(cashMode === 'week', $('#cPer').classList.contains('pk'), $('#cModeB').textContent.includes('أسبوع'));
+      cashMode = 'day'; cashDay = addDays(todayISO(), -3); renderCash(); r.push(!!$('#cToday'));
+      $('#cToday').click(); r.push(cashDay === '', !$('#cToday'), $('#cNavL').textContent.includes('النهارده'));
+      go('mkt'); return r; }), [true, true, true, true, true, true, true, false, true, true, true, true, true]);
     eq('الخزنة: "عملاء السوق" في حركتي (كريم حوّلك وتحته إجمالي الدفعة)، وفي حركة السوق التحصيل كامل سطر لكل عميل وتحته "تحويل لمصطفى و عهدة مع أحمد" وقصاده "تحويل لمصطفى"، والشركاء سطر لوحده، واللي مفيهوش حركة مبيظهرش (حتى كارت السوق)', await A.evaluate(() => {
       const d = todayISO(), now = nowS(), pid = mkEnsureParty('mkt', {newName: 'عميل سوق تجربة التحويل'});
       const e1 = addEntry({party: pid, kind: 'pay', amt: 100000, date: d, vault: 'v_mkt', method: 'نقدي', note: 'حركة السوق'}), e2 = addEntry({party: pid, kind: 'pay', amt: 50000, date: d, vault: 'v_main', method: 'تحويل', note: 'حركة السوق — إنستا'});
@@ -1770,7 +1778,7 @@ const T0 = Date.now();
     sec('قاعدة التبويبات: سطر واحد ونفس الارتفاع ومفيش كلام مقطوع');
     /* أي مجموعة تبويبات (.seg) ظاهرة: كل زرار نفس الارتفاع، الكلام مش ملفوف على سطرين ولا متقطع */
     for (const k of ['profit', 'col', 'debt', 'tot', 'cash', 'item']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
-    await A.evaluate(() => go('cash')); await A.settle(200); await segOk(A, 'الحسابات — الخزنة');
+    await A.evaluate(() => { cashPickM = true; go('cash'); }); await A.settle(200); await segOk(A, 'الحسابات — الخزنة (يوم/أسبوع/شهر مفتوحين)'); await A.evaluate(() => { cashPickM = false; });
     await A.evaluate(() => { mkView = 'arch'; mkAMode = 'day'; go('mkt'); renderMkt(); }); await A.settle(200); if (await A.$('#maMode')) await segOk(A, 'الحسابات — أرشيف الوارد'); await A.evaluate(() => { mkView = 'in'; });
         await A.evaluate(() => go('set')); await A.settle(200); await segOk(A, 'الحسابات — الإعدادات');
     if (DM) { const MX = DM.pages().find(p => p.url().includes('market.html')); if (MX) for (const h of ['', 'a', 's']) { await MX.evaluate(h => nav(h), h); await MX.settle(300); await segOk(MX, 'حركة السوق (' + (h || 'الرئيسية') + ')'); } }

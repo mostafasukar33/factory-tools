@@ -40,7 +40,7 @@
 | وارد السوق (جوه الحسابات) | `accounts.html` (تاب `#mkt`، كود الشيت `marketScript`) |
 | المرتبات / قبض العمال / تطبيق المرتبات | `payroll.html` (+ `payroll.webmanifest`) |
 | الاختبارات | `tests/run.js` (الحسابات/التسليم/السوق)، `tests/payroll.js` (المرتبات) |
-| الخطط | `plans/market-app.md`، `plans/payroll-app.md` |
+| الخطط | `plans/market-app.md`، `plans/payroll-app.md`، `plans/cash-ledger.md` (دفتر الخزنة بالتاريخ) |
 | الشكل / الألوان والخطوط (الحسابات والسوق) | `lib/ui.css` |
 | الفتح السريع والتحديث لوحده (الحسابات والسوق) | `sw.js` + `lib/swup.js` |
 | الأيقونات المرسومة بدل الإيموجي (الحسابات والسوق) | `lib/icons.js` |

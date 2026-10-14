@@ -113,20 +113,21 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
   .kb.two .kvs{grid-column:1/-1;grid-row:2;padding:10px;border-top:1px solid var(--line)}
   .kvs{gap:6px;padding:0 10px 10px}
   .kv{padding:6px 10px;border-radius:10px}.kv span{font-size:var(--f1)}.kv .n{font-size:var(--f3)}
-  .ktools{gap:6px;margin-bottom:8px;grid-template-columns:1.35fr 1fr 1fr 1fr}
-  #p-cash .ktools .btn{flex-direction:row;min-height:36px;padding:2px 4px;white-space:nowrap;gap:4px;font-size:var(--f1);border-radius:10px}
-  #p-cash .ktools .btn i-c{font-size:var(--f2)}
-  .ksum{display:block;background:var(--card);border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:14px;overflow:hidden;margin-bottom:8px}
-  .ksumh{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;font-weight:800;font-size:var(--f2)}
-  .ksumh small{display:inline;font-size:var(--f1)}
+  .kb.two .ktools{grid-column:1/-1;grid-row:3}
+  .kb .ktools{display:flex;gap:0;margin:0;border-top:1px solid var(--line);background:var(--row)}
+  #p-cash .kb .ktools .btn{flex:1 1 0;flex-direction:row;min-height:36px;padding:2px 4px;white-space:nowrap;gap:4px;font-size:var(--f1);border:0;border-radius:0;background:none;color:var(--sub);box-shadow:none}
+  #p-cash .kb .ktools .btn+.btn{border-inline-start:1px solid var(--line)}
+  .kb .ktools i-c{display:inline-block;font-size:var(--f2)}
+  .ksum{display:block;background:var(--card);overflow:hidden}
   .ksum table{width:100%;border-collapse:collapse}
-  .ksum th{font-size:var(--f1);color:var(--sub);font-weight:700;padding:4px 12px;background:var(--row);text-align:start}
+  .ksum th{font-size:var(--f1);color:var(--sub);font-weight:700;padding:6px 12px 2px;text-align:start}
   .ksum th:not(:first-child){text-align:left;width:32%}
   .ksum th.mk{color:var(--tr)}
-  .ksum td{padding:6px 12px;border-top:1px solid var(--line);font-weight:800;font-size:var(--f2);color:var(--ink)}
+  .ksum td{padding:4px 12px;font-weight:800;font-size:var(--f2);color:var(--ink)}
   .ksum td.n{text-align:left;width:32%}
-  .ksum tr.in td:first-child,.ksum tr.in td.n{color:var(--green)}.ksum tr.in td.n{background:var(--green-l)}
-  .ksum tr.out td:first-child,.ksum tr.out td.n{color:var(--red)}.ksum tr.out td.n{background:var(--red-l)}
+  .ksum tr.in td{color:var(--green)}
+  .ksum tr.out td{color:var(--red)}
+  .ksum tr.net td{border-top:1px solid var(--line);padding:7px 12px 8px}
   .kss{gap:8px;margin-bottom:8px}
   .kst{border-radius:14px;border-top-width:3px}
   .kst .ksh{padding:7px 12px;font-size:var(--f2);background:var(--row)}
@@ -148,4 +149,9 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
   .ktools .btn.mob{display:none}
   .ktools .btn{flex-direction:row;min-height:40px;padding:4px 16px;gap:6px}
   .ktools .btn i-c{font-size:var(--f3)}
+  .kb.two .ktools{grid-column:1/-1}
+  .kb .ktools{gap:0;margin:0;border-top:1px solid var(--line);background:var(--row)}
+  .kb .ktools .btn{border:0;border-radius:0;background:none;box-shadow:none;min-height:44px;padding:4px 22px;color:var(--sub)}
+  .kb .ktools .btn+.btn{border-inline-start:1px solid var(--line)}
+  .kb .ktools .btn:hover{color:var(--ink);background:var(--card)}
 }

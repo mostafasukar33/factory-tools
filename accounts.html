@@ -775,16 +775,25 @@ html[data-theme=dark] .dnav button{background:var(--row);border-color:var(--fiel
 html[data-theme=dark] .dnav span{color:var(--ink)}
 @media (max-width:640px){#p-cash>.card .dnav{grid-column:1/-1}}
 @media (min-width:1000px){#p-cash>.card{grid-template-columns:auto auto 1fr 1fr}}
-/* الخزنة على الموبايل: الفترة والتاريخ في سطر واحد صغير */
+/* الخزنة على الموبايل: كارت واحد للفترة والملخص. فوق "‹ اليوم ›" وزرار صغير "يوم ▾" بيفتح يوم/أسبوع/شهر/من–إلى (مش بيتستخدموا كتير)، وتحتهم الملخص */
+.kmode,.ktoday{border:1px solid var(--line);background:var(--row);color:var(--sub);border-radius:999px;padding:3px 12px;font:inherit;font-weight:800;font-size:var(--f1);cursor:pointer;white-space:nowrap;min-height:32px;line-height:1.2}
+.ktoday{border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
+html[data-theme=dark] .ktoday{color:var(--ink)}
+.kmode .kch{font-size:var(--f1)}
+#cPer.pk .kmode .kch{transform:rotate(180deg)}
 @media (max-width:999.98px){
-  #p-cash>#cPer{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;padding:5px;margin-bottom:8px;border-radius:12px}
-  #cPer .seg{flex:1 1 210px;margin:0;padding:2px;gap:2px;border-radius:9px}
-  #cPer .seg button{min-height:30px;font-size:var(--f1);border-radius:7px;padding:0 4px}
-  #cPer .dnav{flex:none;grid-column:auto;gap:4px}
-  #cPer .dnav button{width:28px;height:28px;font-size:18px;border-radius:7px}
-  #cPer .dnav span{min-width:0;padding:2px 8px;font-size:var(--f1);border-radius:7px}
-  #cPer #cPick:not(.pkh){flex:1 1 100%}
+  #p-cash>#cPer{display:flex;flex-direction:column;gap:0;padding:0;margin-bottom:8px;border-radius:14px;overflow:hidden;border-top:3px solid var(--gold)}
+  #cPer .kpr{order:-1;display:flex;align-items:center;gap:6px;padding:7px 10px}
+  #cPer .dnav{flex:none;gap:5px;margin-inline-end:auto}
+  #cPer .dnav button{width:34px;height:34px;font-size:20px;border-radius:9px}
+  #cPer .dnav span{min-width:0;padding:4px 12px;font-size:var(--f2);border-radius:9px}
+  #p-cash>#cPer .seg{display:none;margin:0 10px 8px;padding:3px;gap:3px;border-radius:10px}
+  #p-cash>#cPer.pk .seg{display:grid}
+  #cPer .seg button{min-height:34px;font-size:var(--f2);border-radius:8px;padding:0 4px}
+  #cPer #cPick:not(.pkh){padding:0 10px 8px}
+  #cPer .ksum{border:0;border-radius:0;margin:0;border-top:1px solid var(--line)}
 }
+@media (min-width:1000px){.kmode{display:none}#cPer .kpr{display:flex;align-items:center;gap:8px}}
 /* ============ وارد السوق ============ */
 #mkBar{position:fixed;top:calc(var(--hh,64px) + 6px);inset-inline:10px;margin:auto;max-width:560px;z-index:125;background:#111;color:#fff;border:2px solid var(--gold);border-radius:12px;padding:10px 14px;font-weight:700;font-size:var(--f2);box-shadow:0 6px 22px #0006;cursor:pointer;display:none;animation:foUp .2s ease-out}
 #mkBar.on{display:block}#mkBar b{color:var(--gold)}#mkBar u{color:var(--gold);margin-inline-start:6px}
@@ -3829,6 +3838,9 @@ function cashStep(n) {
    وتحته كارت "حركتي" وكارت "حركة السوق": مربعين كبار دخل/طلع، وتحتهم الأنواع (نقطة خضرا داخل وحمرا خارج). الدوس على نوع بيفتح نافذة بحركاته.
    مفيش رصيد أول/آخر الفترة، والتحويل بين خزني بيبان بس لما تختار خزنة، وتسوية الجرد مش بتبان خالص (بتظبط الرصيد بس). */
 let cashSide = 'me';   // قديم: النصين بقوا ظاهرين مع بعض
+/* يوم/أسبوع/شهر/من–إلى: على الموبايل زرار صغير "يوم ▾" بيفتحهم (مش بيتستخدموا كتير)، وعلى اللاب ظاهرين على طول */
+const CASH_MODES = [['day', 'يوم'], ['week', 'أسبوع'], ['month', 'شهر'], ['range', 'من–إلى']];
+let cashPickM = false;
 let cashOpenV = false;
 /* بطلب صاحب المشروع (علشان النقل للدفتر الورق يبقى سهل): كل كارت = صفحة صاحبه في الدفتر، بالأسامي.
    حركة السوق (أحمد): تحصيل عملاء السوق كامل، سطر لكل عميل في اليوم وتحته "5 تحويل لمصطفى و 5 عهدة مع أحمد"، وقصاده في الطلع "تحويل لمصطفى"،
@@ -3965,26 +3977,28 @@ function renderCash() {
         <div class="kvs"${cashOpenV ? '' : ' hidden'}>${tiles}</div></div>
       ${hasM ? `<div class="kbk" id="kMk" role="button" tabindex="0"><span>🏪 خزنة السوق<small>مع الشريك</small></span><b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></div>
       <div class="kbt"><span>الإجمالي<small>خزني + السوق</small></span><b class="n${total < 0 ? ' neg' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)}</b></div>` : ''}
+      <div class="ktools">
+        <button class="btn line" id="cOpen2" type="button" title="عدّ الفلوس: اكتب الفلوس اللي معاك فعلاً">✎ <span>عدّ الفلوس</span></button>
+        <button class="btn line" id="cTr" type="button" title="تحويل بين الخزن">⇄ <span>تحويل</span></button>
+        <button class="btn line" id="cSet" type="button" title="الخزن والبنود">⚙ <span>الخزن</span></button>
+        <button class="btn line mob" id="cPart" type="button">👥 <span>الشركاء</span></button>
+      </div>
     </div>
-    <div class="ktools">
-      <button class="btn line" id="cOpen2" type="button" title="عدّ الفلوس: اكتب الفلوس اللي معاك فعلاً">✎ <span>عدّ الفلوس</span></button>
-      <button class="btn line" id="cTr" type="button" title="تحويل بين الخزن">⇄ <span>تحويل</span></button>
-      <button class="btn line" id="cSet" type="button" title="الخزن والبنود">⚙ <span>الخزن</span></button>
-      <button class="btn line mob" id="cPart" type="button">👥 <span>الشركاء</span></button>
-    </div>
-    <div class="card" id="cPer">
-      <div class="seg s4" id="cMode">${[['day', 'يوم'], ['week', 'أسبوع'], ['month', 'شهر'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${cashMode === k || (k === 'range' && cashMode === 'year') ? 'on' : ''}">${n}</button>`).join('')}</div>
-      ${cashMode === 'range' ? '' : `<div class="dnav"><button type="button" id="cPrev" title="السابق">›</button><span id="cNavL">${cashNavLabel()}</span><button type="button" id="cNext" title="التالي">‹</button></div>`}
+    <div class="card${cashPickM ? ' pk' : ''}" id="cPer">
+      <div class="seg s4" id="cMode">${CASH_MODES.map(([k, n]) => `<button type="button" data-m="${k}" class="${cashMode === k || (k === 'range' && cashMode === 'year') ? 'on' : ''}">${n}</button>`).join('')}</div>
+      <div class="kpr">${cashMode === 'range' ? '' : `<div class="dnav"><button type="button" id="cPrev" title="السابق">›</button><span id="cNavL">${cashNavLabel()}</span><button type="button" id="cNext" title="التالي">‹</button></div>`}
+        ${cashMode === 'day' && cashDay && cashDay !== t ? '<button type="button" class="ktoday" id="cToday">↺ النهارده</button>' : ''}
+        <button type="button" class="kmode" id="cModeB">${(CASH_MODES.find(([k]) => k === cashMode) || CASH_MODES[3])[1]} <i class="kch">▾</i></button></div>
       <div id="cPick"${cashMode === 'range' ? '' : ' class="pkh"'}>${cashMode === 'day' || cashMode === 'week' ? `<input class="inp" type="date" id="cDay" value="${cashDay || t}">`
         : cashMode === 'month' ? `<input class="inp" type="month" id="cMonth" value="${cashMonth || t.slice(0, 7)}">`
         : cashMode === 'year' ? `<input class="inp num" id="cYear" inputmode="numeric" value="${cashYear || t.slice(0, 4)}">`
         : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div><label class="cyr">أو سنة كاملة <input class="inp num" id="cYr" inputmode="numeric" placeholder="${t.slice(0, 4)}" value="${from.slice(5) === '01-01' && to === from.slice(0, 4) + '-12-31' ? from.slice(0, 4) : ''}"></label>`}</div>
-    </div>
-    <div class="ksum"><div class="ksumh">الملخص<small>${esc(cashPerTxt())}</small></div><table>
+    <div class="ksum"><table>
       <tr><th>البيان</th><th>${cashVault ? esc(vName(cashVault)) : 'الخزنة'}</th>${mk0 ? '<th class="mk">السوق</th>' : ''}</tr>
-      <tr class="in"><td>داخل</td><td class="n m">${fmtP(me.in)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.in)}</td>` : ''}</tr>
-      <tr class="out"><td>خارج</td><td class="n m">${fmtP(me.out)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.out)}</td>` : ''}</tr>
+      <tr class="in"><td>⬇ داخل</td><td class="n m">${fmtP(me.in)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.in)}</td>` : ''}</tr>
+      <tr class="out"><td>⬆ خارج</td><td class="n m">${fmtP(me.out)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.out)}</td>` : ''}</tr>
       <tr class="net"><td>الصافي</td><td class="n m${me.in < me.out ? ' neg' : ''}">${fmtP(me.in - me.out)}</td>${mk0 ? `<td class="n k${mk0.in < mk0.out ? ' neg' : ''}">${fmtP(mk0.in - mk0.out)}</td>` : ''}</tr></table></div>
+    </div>
     <div class="kss${mk ? ' two' : ''}">${me.html}${mk ? mk.html : ''}</div>
     `;
   const tap = (el, f) => { el.onclick = f; el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); f(ev); } }; };
@@ -4011,7 +4025,9 @@ function renderCash() {
   $('#cExp').onclick = () => txModal('exp');
   $('#cInc').onclick = () => txModal('inc');
   $('#cTr').onclick = () => txModal('tr');
-  $$('#cMode button').forEach(b => b.onclick = () => { if (b.dataset.m === 'range' && cashMode !== 'range') { [cashFrom, cashTo] = cashRange(); } cashMode = b.dataset.m; renderCash(); });
+  $$('#cMode button').forEach(b => b.onclick = () => { if (b.dataset.m === 'range' && cashMode !== 'range') { [cashFrom, cashTo] = cashRange(); } cashMode = b.dataset.m; cashPickM = false; renderCash(); });
+  $('#cModeB').onclick = () => { cashPickM = !cashPickM; $('#cPer').classList.toggle('pk', cashPickM); };
+  if ($('#cToday')) $('#cToday').onclick = () => { cashDay = ''; renderCash(); };
   if ($('#cPrev')) { $('#cPrev').onclick = () => cashStep(-1); $('#cNext').onclick = () => cashStep(1); }
   const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); renderCash(); }; };
   bindI('#cDay', v => cashDay = v); bindI('#cMonth', v => cashMonth = v); bindI('#cYear', v => cashYear = normDigits(v).replace(/\D/g, '').slice(0, 4));

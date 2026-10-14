@@ -4043,7 +4043,7 @@ function mkVaultLog(open) {
 }
 /* ============ دفتر الخزنة بالتاريخ (cashView = 'date') ============
    نفس حركات "بالنوع" بالظبط (نفس cashGroup: تسوية الجرد والتحويل بين خزنتين مش بيظهروا، وعملاء السوق سطر مجمّع)، بس مترتبة يوم ورا يوم والأقدم فوق زي الدفتر الورق. مفيش رصيد.
-   ldgDone = إعداد مشترك {d: آخر يوم نقلته للدفتر, at: وقت العلامة}، وأي حركة اتسجلت بعدها بتاريخ قديم بتتعلّم "اتسجلت بعد ما نقلت" */
+   زرار "✓ نقلته" و"اعرض اللي لسه" اتشالوا بطلب صاحب المشروع (كانوا بيلخبطوه). إعداد ldgDone القديم متساب في الشيت ومحدش بيقراه */
 function ldgRange() {
   const t = todayISO();
   if (ldgMode === 'range') return [ldgFrom || addDays(t, -13), ldgTo || t];
@@ -4074,8 +4074,7 @@ function ldgGroups(L) {
   return [...by.values()].map(e => Object.assign(e, {tot: e.arr.reduce((n, m) => n + m.amt, 0)})).sort((a, b) => b.tot - a.tot);
 }
 function ldgHtml(L) {
-  const done = getSet('ldgDone', null), t = todayISO(), nV = vaultsL().length, showV = !cashVault && nV > 1;
-  const late = x => !!done && x.m.date <= done.d && (x.m.at || 0) > done.at;
+  const nV = vaultsL().length, showV = !cashVault && nV > 1;
   const F = ldgFilter === 'all' ? L : L.filter(x => x.dir === ldgFilter);
   ldgItemsL = F;
   const tin = ldgSum(L, 'in'), tout = ldgSum(L, 'out'), G = ldgGroups(L);
@@ -4083,20 +4082,14 @@ function ldgHtml(L) {
   const sum = `<section class="ldsum" id="ldgSum"><div class="kio"><div class="kin"><span>⬇ داخل</span><b class="n">${fmtP(tin)}</b></div><div class="kout"><span>⬆ خارج</span><b class="n">${fmtP(tout)}</b></div></div>
     <button type="button" class="ldsb${ldgSumOpen ? ' on' : ''}" id="ldgSumB">بالبند <i class="kch">▾</i></button>
     <div class="ldsg"${ldgSumOpen ? '' : ' hidden'}>${G.filter(g => g.dir === 'in').map(gRow).join('')}${G.filter(g => g.dir === 'out').map(gRow).join('')}</div></section>`;
-  let bar = '';
-  if (done) {
-    const rest = new Set(ldgItems(addDays(done.d, 1), t).map(x => x.m.date)).size;
-    bar = `<div class="ldbar" id="ldgBar"><span>✓ نقلت للدفتر لحد <b>${AR_DAYS[dowOf(done.d)]} ${dispDate(done.d)}</b></span>${rest ? `<button type="button" class="btn line sm" id="ldgRest">اعرض اللي لسه (${ldgDayWord(rest)})</button>` : '<em>مفيش جديد</em>'}</div>`;
-  }
   const days = ldgDays(F).map(({d, rows, in: di, out: dout}) => {
-    const isDone = !!done && d <= done.d, anyLate = rows.some(late);
-    return `<div class="ldd${isDone && !anyLate ? ' done' : ''}" data-d="${d}"><div class="ldh"><div class="ldw"><b>${AR_DAYS[dowOf(d)]} · ${dispDate(d)}</b><button type="button" class="ldb${isDone ? ' on' : ''}" data-d="${d}">${isDone ? '✓ اتنقل' : '✓ نقلته'}</button></div>
+    return `<div class="ldd" data-d="${d}"><div class="ldh"><div class="ldw"><b>${AR_DAYS[dowOf(d)]} · ${dispDate(d)}</b></div>
       <div class="ldt">${di ? `<b class="n in">+ ${fmtP(di)}</b>` : ''}${dout ? `<b class="n out">− ${fmtP(dout)}</b>` : ''}</div></div>
       ${rows.map(x => { const m = x.m, i = F.indexOf(x), vid = m.r.type === 'tr' ? '' : m.r.vault, bits = [ldgName(x), ldgWhat(m, ldgName(x)), showV && vid ? vName(vid) : ''].filter(Boolean);
-        return `<div class="ldr${late(x) ? ' late' : ''}" data-i="${i}" role="button" tabindex="0"><div class="ldm"><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}${late(x) ? ' <span class="ldlate">اتسجلت بعد ما نقلت</span>' : ''}</small></div><b class="n ${x.dir}">${x.dir === 'in' ? '+' : '−'} ${fmtP(m.amt)}</b></div>`; }).join('')}</div>`;
+        return `<div class="ldr" data-i="${i}" role="button" tabindex="0"><div class="ldm"><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n ${x.dir}">${x.dir === 'in' ? '+' : '−'} ${fmtP(m.amt)}</b></div>`; }).join('')}</div>`;
   }).join('');
   return `${sum}<section class="ldg" id="ldg"><div class="ldtt">${cashVault ? `<span>📅 دفتر ${esc(vName(cashVault))} <a class="kclr" id="kAll">✕ كل خزني</a></span>` : '<span>📅 دفتر خزني</span>'}</div>
-    <div class="seg s3" id="ldgF">${[['all', 'الكل'], ['in', 'داخل'], ['out', 'خارج']].map(([k, n]) => `<button type="button" data-v="${k}" class="${ldgFilter === k ? 'on' : ''}">${n}</button>`).join('')}</div>${bar}
+    <div class="seg s3" id="ldgF">${[['all', 'الكل'], ['in', 'داخل'], ['out', 'خارج']].map(([k, n]) => `<button type="button" data-v="${k}" class="${ldgFilter === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     ${days || '<div class="kno">مفيش حركة في الفترة دي</div>'}
     <div class="ldpdf"><button type="button" class="btn gold" id="ldgPdf">📄 ورقة الدفتر PDF</button></div></section>`;
 }
@@ -4111,12 +4104,6 @@ function ldgReport(L, from, to) {
   return {title: 'دفتر الخزنة', period: (cashVault ? vName(cashVault) : 'كل الخزن') + ' — ' + rangeText(from, to),
     cols: [{h: 'التاريخ', w: 12, c: 'dt'}, {h: 'البيان', w: 30, c: 'l'}, {h: 'التفاصيل', w: 28, c: 'l'}, {h: 'وارد', w: 15, c: 'n'}, {h: 'منصرف', w: 15, c: 'n'}],
     rows, sum: [['الوارد', fmtP(tin)], ['المنصرف', fmtP(tout)], ...G.map(g => ['  ' + g.nm, (g.dir === 'in' ? '+ ' : '− ') + fmtP(g.tot)])], fin: ['الصافي', fmtP(tin - tout)]};
-}
-function ldgMark(d) {
-  const old = getSet('ldgDone', null), isDone = !!old && d <= old.d, nv = isDone ? {d: addDays(d, -1), at: old.at} : {d, at: nowS()};
-  putSet('ldgDone', nv);
-  toastUndo('اتعلّم لحد ' + dispDate(nv.d), () => { putSet('ldgDone', old); renderCash(); });
-  renderCash();
 }
 function renderCash() {
   const pg = $('#p-cash');
@@ -4219,12 +4206,10 @@ function renderCash() {
   if (dv) {
     $$('#ldgF button').forEach(b => b.onclick = () => { ldgFilter = b.dataset.v; renderCash(); });
     $$('#ldg .ldr').forEach(el => tap(el, () => open(ldgItemsL[+el.dataset.i].m)));
-    $$('#ldg .ldb').forEach(b => b.onclick = ev => { ev.stopPropagation(); ldgMark(b.dataset.d); });
     $('#ldgSumB').onclick = () => { ldgSumOpen = !ldgSumOpen; renderCash(); };
     $$('#ldgSum .kty').forEach(el => tap(el, () => { const g = ldgGroups(LD).find(x => x.key === el.dataset.sk); if (g) cashTypeSheet(cashVault ? 'دفتر ' + vName(cashVault) : 'دفتر خزني', g.k, g.arr.slice().reverse(), open, !cashVault && nV > 1, g.nm); }));
-    if ($('#ldgRest')) $('#ldgRest').onclick = () => { const dn = getSet('ldgDone', null); ldgMode = 'range'; ldgFrom = addDays(dn.d, 1); ldgTo = t; ldgScroll = true; renderCash(); };
     $('#ldgPdf').onclick = () => exportReport(ldgReport(LD, from, to), 'preview');
-    if (ldgScroll) { ldgScroll = false; const ds = $$('#ldg .ldd'), first = ds.find(x => !x.classList.contains('done')); if (first && first !== ds[0] && first.scrollIntoView) first.scrollIntoView({block: 'start'}); }
+    ldgScroll = false;
   }
   $('#cSet').onclick = vaultSettings;
   $('#cPart').onclick = () => go('part');

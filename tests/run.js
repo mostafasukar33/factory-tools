@@ -357,7 +357,7 @@ const T0 = Date.now();
     await A.click('#cOpen2'); await A.fill('#modal [data-v]', '960'); await A.click('#opOk'); await A.settle(200);
     eq('الجرد سجّل الفرق تسوية', await vbal(A, 'v_main'), 96000);
 
-    /* دفتر الخزنة بالتاريخ: نفس استبعادات "بالنوع" وإجماليه، الأقدم فوق، "✓ نقلته" و"اعرض اللي لسه" والفلتر والـ PDF */
+    /* دفتر الخزنة بالتاريخ: نفس استبعادات "بالنوع" وإجماليه، الأقدم فوق، والفلتر والـ PDF */
     const ldgSetup = await A.evaluate(() => {
       const D1 = '2001-03-01', D2 = '2001-03-02', D3 = '2001-03-03', now = nowS(), mkp = (sec, name) => { const np = {id: newId('p_'), sec, name, phone: '', note: '', noTot: false, at: now, upd: now, del: false}; db.parties.push(np); P.set(np.id, np); return np.id; };
       const v2 = {id: 'v_ldg2', name: 'بنك تجربة الدفتر', open: 0, ord: 9, upd: now, del: false}; db.vaults.push(v2); reindex();
@@ -384,23 +384,13 @@ const T0 = Date.now();
         const L = ldgItems('2001-03-01', '2001-03-03'); r.push(ldgSum(L, 'in') === k.in && ldgSum(L, 'out') === k.out && k.in > 0 && k.out > 0);
       }
       cashVault = ''; cashView = 'date'; return r; }), [true, true]);
-    eq('دفتر الخزنة: "✓ نقلته" بيحفظ إعداد مشترك ويبهّت الأيام، والتراجع بيرجّع، وحركة جديدة بتاريخ قديم بعد العلامة عليها "اتسجلت بعد ما نقلت"', await ldgOpen(`(() => {
-      const r = []; $('#ldg .ldb[data-d="2001-03-02"]').click();
-      r.push(getSet('ldgDone').d, db.sets.some(s => s.id === 'ldgDone'), $('#ldg .ldd[data-d="2001-03-01"]').classList.contains('done'), $('#ldg .ldd[data-d="2001-03-02"]').classList.contains('done'), !$('#ldg .ldd[data-d="2001-03-03"]').classList.contains('done'), $('#ldg .ldb[data-d="2001-03-02"]').textContent.includes('اتنقل'));
-      $('#tUndo').click(); r.push(getSet('ldgDone', null));
-      $('#ldg .ldb[data-d="2001-03-02"]').click(); const late = { id: newId('t_'), type: 'exp', amt: 5000, vault: 'v_main', to: '', cat: db.cats.find(c => c.type === 'exp' && !ADJ_CATS.has(c.id)).id, date: '2001-03-01', note: 'اتسجلت متأخر', at: nowS() + 5, upd: nowS(), del: false, hist: [] };
-      db.txs.push(late); IDX.tx.set(late.id, late); window.__ldg.mk.push(late); renderCash();
-      r.push([...$$('#ldg .ldr.late')].length === 1, $('#ldg .ldr.late').textContent.includes('اتسجلت بعد ما نقلت'), !$('#ldg .ldd[data-d="2001-03-01"]').classList.contains('done'));
-      $('#ldg .ldb[data-d="2001-03-02"]').click(); r.push(getSet('ldgDone').d);   // دوسة تانية على يوم اتنقل = رجّعه لليوم اللي قبله
-      return r; })()`), ['2001-03-02', true, true, true, true, true, null, true, true, true, '2001-03-01']);
-    eq('دفتر الخزنة: "اعرض اللي لسه" بيخلي الفترة من اليوم اللي بعد العلامة للنهارده، والفلتر "خارج" مفيهوش سطر داخل، والبند بيفتح نافذة بحركاته', await A.evaluate(() => {
-      putSet('ldgDone', {d: '2001-03-01', at: nowS()}); cashView = 'date'; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; go('cash'); renderCash();
-      const r = [!!$('#ldgRest')]; $('#ldgRest').click();
-      r.push(ldgMode, ldgFrom, ldgTo === todayISO());
-      ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'out'; renderCash();
+    eq('دفتر الخزنة: زرار "نقلته" و"اعرض اللي لسه" اتشالوا', await ldgOpen(`[!$('#ldg .ldb'), !$('#ldgRest'), !$('#ldg').textContent.includes('نقلت')]`), [true, true, true]);
+    eq('دفتر الخزنة: الفلتر "خارج" مفيهوش سطر داخل، والبند بيفتح نافذة بحركاته', await A.evaluate(() => {
+      cashView = 'date'; const r = [];
+      ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'out'; go('cash'); renderCash();
       r.push($$('#ldg .ldr .n.in').length === 0, $$('#ldg .ldr .n.out').length > 0);
       ldgFilter = 'all'; ldgSumOpen = true; renderCash(); const g = $('#ldgSum .kty.ktout[data-sk^="exp:"]'); r.push(!!g); g.click(); r.push($$('#modal .kit').length > 0); closeModal();
-      return r; }), [true, 'range', '2001-03-02', true, true, true, true, true]);
+      return r; }), [true, true, true, true]);
     eq('دفتر الخزنة: ورقة الـ PDF عدد عناوين الأيام = الأيام، والمجاميع زي الشاشة', await A.evaluate(() => {
       cashView = 'date'; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; cashVault = ''; go('cash'); renderCash();
       const L = ldgItems('2001-03-01', '2001-03-03'), R = ldgReport(L, '2001-03-01', '2001-03-03');
@@ -409,7 +399,7 @@ const T0 = Date.now();
     await colOk('الحسابات — دفتر الخزنة', A, '#ldg', '.n'); await segOk(A, 'الحسابات — دفتر الخزنة');
     await A.evaluate(() => { cashPickM = true; renderCash(); }); await A.settle(150); await segOk(A, 'الحسابات — دفتر الخزنة (اختيارات الفترة مفتوحة)');
     /* تنضيف بيانات الدفتر والرجوع لـ "بالنوع" */
-    await A.evaluate(() => { const g = window.__ldg; [...g.E, ...g.mk].forEach(x => { x.del = true; touch(x); }); g.ids.forEach(i => { P.get(i).del = true; touch(P.get(i)); }); g.v2.del = true; touch(g.v2); putSet('ldgDone', null); cashView = 'type'; cashPickM = false; cashVault = ''; saveDB(); go('mkt'); });
+    await A.evaluate(() => { const g = window.__ldg; [...g.E, ...g.mk].forEach(x => { x.del = true; touch(x); }); g.ids.forEach(i => { P.get(i).del = true; touch(P.get(i)); }); g.v2.del = true; touch(g.v2); cashView = 'type'; cashPickM = false; cashVault = ''; saveDB(); go('mkt'); });
     sec('٦) دفعة عميل بتدخل الخزنة');
     await openParty(A, 'عميل تجربة اتنين'); await A.click('#fbPay'); await A.fill('#pyAmt', '70'); await A.click('#pyOk'); await closed(A);
     eq('الدفعة نزلت على العميل', await bal(A, 'عميل تجربة اتنين'), -7000);

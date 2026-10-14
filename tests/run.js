@@ -1096,15 +1096,11 @@ const T0 = Date.now();
     eq('تنبيه فوري في الحسابات (شريط فوق)', await A.evaluate(() => $('#mkBar').classList.contains('on')), true);
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('عداد الوارد على زرار حركة السوق تحت (مش سطر في الرئيسية)', [await A.evaluate(() => $('#nbMkt').textContent), (await A.textContent('#mkRem')).trim()], ['3', '']);
-    /* اللاب: العداد على زرار "حركة السوق" في القايمة الجانبية والجرس فوق، ودوسة الجرس بتعرض العمليات وبتفتح الوارد */
+    /* اللاب: العداد على زرار "حركة السوق" في القايمة الجانبية (الجرس اتشال بطلب صاحب المشروع) */
     await A.setViewportSize({width: 1300, height: 800}); await A.settle(200);
-    eq('اللاب: عداد حركة السوق على زرارها وعلى الجرس', await A.evaluate(() => [$('#nbMkt').textContent, $('#bellN').textContent, getComputedStyle($('nav button[data-go=mkt]')).display !== 'none']), ['3', '3', true]);
-    await A.click('#bBell'); await A.settle(150);
-    eq('الجرس: بيعرض العمليات اللي مستنية', await A.evaluate(() => [$('#mkPop').classList.contains('on'), $$('#mkPop .mpi').length]), [true, 3]);
-    await A.click('#mpGo'); await A.settle(250);
-    eq('الجرس ← افتح الوارد، والزرار الجانبي هو اللي متعلّم', await A.evaluate(() => [location.hash, $('#mkPop').classList.contains('on'), $('nav button.on').dataset.go]), ['#mkt', false, 'mkt']);
+    eq('اللاب: عداد حركة السوق على زرارها ومفيش جرس', await A.evaluate(() => [$('#nbMkt').textContent, !$('#bBell'), getComputedStyle($('nav button[data-go=mkt]')).display !== 'none']), ['3', true, true]);
     await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
-    eq('الموبايل: زرار حركة السوق تحت مكان الشركاء (بطلب صاحب المشروع) ومفيش جرس', await A.evaluate(() => [getComputedStyle($('nav button[data-go=mkt]')).display, getComputedStyle($('nav button[data-go=part]')).display, getComputedStyle($('#bBell')).display]), ['flex', 'none', 'none']);
+    eq('الموبايل: زرار حركة السوق تحت مكان الشركاء (بطلب صاحب المشروع) ومفيش جرس', await A.evaluate(() => [getComputedStyle($('nav button[data-go=mkt]')).display, getComputedStyle($('nav button[data-go=part]')).display, !$('#bBell')]), ['flex', 'none', true]);
     eq('الموبايل: الإعدادات ترس فوق (مش تحت) والتقارير والجرد زراير في العملاء', await A.evaluate(() => [getComputedStyle($('#bSet')).display !== 'none', getComputedStyle($('nav button[data-go=set]')).display, getComputedStyle($('nav')).gridTemplateColumns.split(' ').length]), [true, 'none', 4]);
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('الموبايل: زراير التقارير والجرد جنب بعض فوق في العملاء', await A.evaluate(() => { const r = $('#hRep').getBoundingClientRect(), j = $('#hJrd').getBoundingClientRect(); return [Math.abs(r.top - j.top) < 4, r.left !== j.left]; }), [true, true]);
@@ -1117,7 +1113,7 @@ const T0 = Date.now();
     eq('سطر الوارد: المستني نقل ظاهر فوق الوارد', await A.evaluate(() => [!!$('#mkStat'), /مستنياك/.test($('#mkStat').textContent), $('#mkStat').getBoundingClientRect().top < $('#mkBody').getBoundingClientRect().top]), [true, true, true]);
     eq('أول شاشة بعد القفل: الوارد لو فيه حاجة مستنية', await A.evaluate(() => landingHash()), '#mkt');
     await A.setViewportSize({width: 1300, height: 800}); await A.settle(200);
-    eq('اللاب: أول سطرين في القايمة الوارد وبعده الجرس وبعدهم العملاء', await A.evaluate(() => { const b = [...$('nav').children].filter(x => x.tagName === 'BUTTON' && getComputedStyle(x).display !== 'none'); return [b[0].dataset.go, b[1].id, b[2].dataset.go]; }), ['mkt', 'bBell', 'home']);
+    eq('اللاب: أول زرار في القايمة الوارد وبعده العملاء (من غير جرس)', await A.evaluate(() => { const b = [...$('nav').children].filter(x => x.tagName === 'BUTTON' && getComputedStyle(x).display !== 'none'); return [b[0].dataset.go, b[1].dataset.go, b[2].dataset.go]; }), ['mkt', 'home', 'cash']);
     await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('مفيش حاجة دخلت الحسابات لوحدها', [await bal(A, C1), await vbal(A, 'v_mkt'), await A.evaluate(() => db.entries.filter(e => e.id.startsWith('e_mk_')).length)], [bal0, 0, 0]);
@@ -1595,7 +1591,7 @@ const T0 = Date.now();
     await M.evaluate(() => nav('', true)); await M.settle(150);
     eq('سجّل دفعة: اتشطبت عنده "✓ حصّلت"', await M.evaluate(id => { const r = $(`#want .wr[data-c="${id}"]`); return [r.classList.contains('ok'), r.textContent.includes('حصّلت 700')]; }, pid1), [true, true]);
     await sync2(); await A.click('nav button[data-go=home]'); await A.settle(200);
-    eq('الحسابات: كارت "حصّل من دول" في الوارد بيقول "1 من 1"', await A.evaluate(() => { go('mkt'); return new Promise(r => setTimeout(() => r($('#mkBody .mkw .mkwh span').textContent), 300)); }), '1 من 1');
+    eq('الوارد: مفيش كارت "حصّل من دول" ولا "اتنقل النهارده" (التعليم من جوه صفحة العميل)', await A.evaluate(() => { go('mkt'); return new Promise(r => setTimeout(() => r([!$('#mkBody .mkw'), !$('#mkToArch')]), 300)); }), [true, true]);
     eq('بكرة اللي اتحصّل بيتشال من القايمة لوحده', await A.evaluate(() => { const n0 = Date.now, r0 = mkWantPrune(); Date.now = () => n0() + 86400000 * 1.1; let r; try { r = [r0, mkWantPrune(), Object.keys(mkWants()).length]; } finally { Date.now = n0; } return r; }), [false, true, 0]);
 
     /* تقفيل اليوم */

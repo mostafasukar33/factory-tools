@@ -1357,6 +1357,7 @@ body{font-size:var(--f3);line-height:1.6}
   .top .homebtn{height:34px}
   .top #bSyncM{display:inline-flex;margin-inline-start:auto}
   .top #bSet{margin-inline-start:0}
+  #hTots:has(b[data-ck='h:sup']){grid-template-columns:1fr}
   .sdot{width:12px;height:12px;border-radius:50%;background:var(--sub);display:block}
   #bSyncM.ok .sdot{background:var(--green)}#bSyncM.wait .sdot{background:var(--gold)}#bSyncM.bad .sdot{background:var(--red)}
   #syncBox.quiet{display:none}
@@ -1562,7 +1563,6 @@ body{font-size:var(--f3);line-height:1.6}
 
 <nav>
   <button data-go="mkt" class="lap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg>الوارد<i class="nb" id="nbMkt"></i></button>
-  <button class="lap bell" id="bBell" type="button" title="إشعارات الوارد"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>الجرس<i id="bellN" class="nb"></i></button>
   <div class="ngrp">الشغل اليومي</div>
   <button data-go="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg><span class="lbl-l">الحسابات</span><span class="lbl-m">العملاء</span></button>
   <button data-go="sup" class="mob"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l6 4V9l6 4V5h6v16z"/><path d="M7 17h2M12 17h2M17 17h2"/></svg>الموردين</button>
@@ -1984,6 +1984,10 @@ function renderHome() {
   const bal = allBalances();
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
   const net = ly - al;
+  if (tab === 'sup') {   // صفحة الموردين: رقم واحد بس، "ليهم عندي" (بطلب صاحب المشروع)
+    const owe = -liveParties().filter(p => p.sec === 'sup').reduce((n, p) => n + (bal.get(p.id) || 0), 0);
+    $('#hTots').innerHTML = `<div class="k"><span>${owe >= 0 ? 'ليهم عندي' : 'ليا عندهم'}</span><b data-ck="h:sup" data-cnt="${Math.abs(owe)}">${fmtP(Math.abs(owe))} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>`;
+  } else
   $('#hTots').innerHTML = `<div><span>ليا (عند الناس)</span><b data-ck="h:ly" data-cnt="${ly}">${fmtP(ly)}</b></div><div class="cr"><span>عليا (للناس)</span><b data-ck="h:al" data-cnt="${al}">${fmtP(al)}</b></div>
     <div class="k"><span>الصافي ${net >= 0 ? 'ليا' : 'عليا'}</span><b data-ck="h:net" data-cnt="${Math.abs(net)}">${fmtP(Math.abs(net))} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>`;
   const ps = liveParties();
@@ -6140,8 +6144,7 @@ function mkAlert(list) {
 /* اللاب: جرس الإشعارات فوق والعداد على زرار "حركة السوق" في القايمة الجانبية. دوسة على الجرس بتفتح آخر العمليات اللي مستنياك */
 function mkBell() {
   const n = db && mkCreds() ? mkPending().length : 0, t = n > 99 ? '99+' : n || '';
-  $('#bellN').textContent = t; $('#nbMkt').textContent = t;
-  $('#bBell').classList.toggle('has', !!n);
+  $('#nbMkt').textContent = t;
   if ($('#mkPop').classList.contains('on')) mkPop(true);
 }
 function mkPop(keep) {
@@ -6160,8 +6163,7 @@ function mkPop(keep) {
   p.classList.add('on');
 }
 $('#bSyncM').onclick = () => { const b = $('#syncBox'), a = b && b.querySelector('a'); toast(b ? b.textContent.replace(/\s*(شوف|اربطه|جرّب دلوقتي|زامن دلوقتي|حدّثه \(مرة واحدة\)|راجع المفتاح)$/, '') : ''); if (a) a.click(); else syncNow(true); };
-$('#bBell').onclick = e => { e.stopPropagation(); mkPop(); };
-document.addEventListener('click', e => { if (!e.target.closest('#mkPop') && !e.target.closest('#bBell')) $('#mkPop').classList.remove('on'); });
+document.addEventListener('click', e => { if (!e.target.closest('#mkPop') && true) $('#mkPop').classList.remove('on'); });
 /* يفتح الإعدادات على كارت حركة السوق */
 function mkGoSettings() {
   go('set');
@@ -6366,8 +6368,7 @@ function mkInbox() {
   $('#mkBody').innerHTML = `${nlAlert()}${k ? mkCntLine(k, true) : ''}
     ${act.length ? `<div class="mqcols${secReady && secDec ? ' two' : ''}">${secReady}${secDec}</div>${qh('لو حاجة غلط: دوس على السطر ← "رجّعها لشريكك" بملاحظة')}` : `<div class="card empty mkclr">✔ مفيش حاجة مستنياك</div>`}
     ${wait.length ? `<section class="mqsec back"><div class="mqsh"><b>🔴 رجّعتها لشريكك <small>${wait.reduce((s, g) => s + g.ops.length, 0)}</small></b><b class="n">${fmtP(gTot(wait))}</b></div>${wait.map(mkRowBack).join('')}</section>` : ''}
-    ${mv.length ? `<a class="mqlink" id="mkToArch"><span>✓ اتنقل النهارده ${mv.length} ${mv.length === 1 ? 'عملية' : 'عمليات'} (${fmtP(mv.reduce((s, o) => s + o.amt, 0))})</span><span>الأرشيف ←</span></a>` : ''}
-    ${mkWantCard()}`;
+    ${''/* اتشال: "اتنقل النهارده" (الأرشيف تبويب فوق) و"حصّل من دول" (موجودة جوه كل عميل سوق) */}${false && mv.length ? `<a class="mqlink" id="mkToArch"><span>✓ اتنقل النهارده ${mv.length} ${mv.length === 1 ? 'عملية' : 'عمليات'} (${fmtP(mv.reduce((s, o) => s + o.amt, 0))})</span><span>الأرشيف ←</span></a>` : ''}`;
   const tap = (el, f) => { el.onclick = f; el.onkeydown = ev => { if (ev.target === el && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); f(ev); } }; };
   const opOf = id => mkDb().ops[id], grpOf = o => gs.find(x => x.ops.includes(o));
   $$('#mkBody [data-gs]').forEach(el => tap(el, () => { const g = gs.find(x => x.k === el.dataset.gs); if (g) mkGroupSheet(g); }));
@@ -6383,7 +6384,7 @@ function mkInbox() {
   $$('#mkBody [data-nl]').forEach(el => el.onclick = nlModal);
   if ($('#mkAll')) $('#mkAll').onclick = mkBulk;
   if ($('#mkToArch')) $('#mkToArch').onclick = () => { mkView = 'arch'; mkAMode = 'day'; mkDay = todayISO(); renderMkt(); };
-  $('#mkwAdd').onclick = mkWantPick;
+  if ($('#mkwAdd')) $('#mkwAdd').onclick = mkWantPick;
   $$('#mkBody [data-wp]').forEach(el => el.onclick = () => mkWantModal(P.get(el.dataset.wp), renderMkt));
 }
 /* الأرشيف = اللي اتنقل أو اتجاهل بس (اللي لسه بيفضل في الوارد لحد ما تنقله). وقت النقل mvAt (القديم من قبله بياخد upd بتاع الحالة) */

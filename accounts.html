@@ -1401,6 +1401,7 @@ body{font-size:var(--f3);line-height:1.6}
   /* عناوين الكشف تفضل ثابتة تحت الشريط وانت نازل (من غير سحب أفقي، وبيرجع يسحب لو كبّرت بالصوابع) */
   html:not([data-lz]) #p-party .ldgw{overflow:visible}
   #p-party .ldg th{top:var(--hh,48px);z-index:5}
+  html[data-lz] #p-party .ldg th{top:0}
   /* كشف الحساب: 5 عواميد بدل 7. الكمية × السعر سطر صغير تحت البيان، والسنة سطر لوحده لما تتغير */
   #p-party .ldg .hq{display:none}
   #p-party .ldg td.l .qp{display:block;color:var(--sub);font-weight:600}

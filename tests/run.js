@@ -369,11 +369,11 @@ const T0 = Date.now();
       tx({type: 'exp', amt: 20000, vault: 'v_main', cat: exps[0], date: D1}); tx({type: 'exp', amt: 30000, vault: 'v_ldg2', cat: exps[1] || exps[0], date: D3});
       tx({type: 'inc', amt: 40000, vault: 'v_main', cat: 'c_inc2', date: D3}); tx({type: 'tr', amt: 11111, vault: 'v_main', to: 'v_ldg2', date: D2, cat: ''});
       tx({type: 'exp', amt: 999, vault: 'v_main', cat: ensureAdjCat('exp'), date: D2, note: 'جرد تجربة الدفتر'});
-      const hasMk = db.vaults.some(v => v.id === 'v_mkt' && !v.del); if (hasMk) tx({type: 'tr', amt: 77000, vault: 'v_mkt', to: 'v_main', date: D3, cat: ''});
+      const hasMk = db.vaults.some(v => v.id === 'v_mkt' && !v.del); if (hasMk) { tx({type: 'tr', amt: 77000, vault: 'v_mkt', to: 'v_main', date: D3, cat: ''}); tx({type: 'exp', amt: 6000, vault: 'v_mkt', cat: 'c_mkexp', date: D3, note: 'بنزين دفتر تجربة'}); const ce = addEntry({party: pm, kind: 'pay', amt: 200000, date: D2, vault: 'v_mkt', method: 'نقدي'}); applyAmounts(ce); E.push(ce); }
       saveDB(); window.__ldg = {E, mk, v2, ids: [pc, pm, ps], hasMk};
       return hasMk;
     });
-    const ldgOpen = (js) => A.evaluate(js => { cashView = 'date'; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; ldgSumOpen = false; cashVault = ''; cashOpenV = false; cashPickM = false; go('cash'); renderCash(); return eval(js); }, js);
+    const ldgOpen = (js) => A.evaluate(js => { cashView = 'date'; ldgScope = 'me'; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; ldgSumOpen = false; cashVault = ''; cashOpenV = false; cashPickM = false; go('cash'); renderCash(); return eval(js); }, js);
     eq('دفتر الخزنة بالتاريخ: الأيام الأقدم فوق، التحويل بين خزنتين وتسوية الجرد مش ظاهرين، والاستلام من السوق ظاهر، وعميل السوق سطر مجمّع', await ldgOpen(`(() => {
       const ds = [...$$('#ldg .ldd')].map(x => x.dataset.d), tx = $('#ldg').textContent;
       return [ds.join(), !tx.includes('تحويل:'), !tx.includes('جرد تجربة الدفتر'), window.__ldg.hasMk ? tx.includes('كاش من شريك السوق') : true, tx.includes('عميل سوق دفتر تجربة حوّلك'), !!$('#cView button.on') && $('#cView button.on').dataset.v === 'date', !$('#kst-me'), !tx.includes('رصيد')];
@@ -384,6 +384,20 @@ const T0 = Date.now();
         const L = ldgItems('2001-03-01', '2001-03-03'); r.push(ldgSum(L, 'in') === k.in && ldgSum(L, 'out') === k.out && k.in > 0 && k.out > 0);
       }
       cashVault = ''; cashView = 'date'; return r; }), [true, true]);
+    if (ldgSetup) {
+      eq('دفتر المصنع كله: التسليم من أحمد والتحويلات مش ظاهرين، تحصيل عميل السوق سطر واحد (كاش أحمد + تحويلي)، ومصروف أحمد خارج، والصافي = زيادة خزني + عهدة أحمد', await A.evaluate(() => {
+        cashView = 'date'; ldgScope = 'all'; cashVault = ''; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; go('cash'); renderCash();
+        const L = ldgItems('2001-03-01', '2001-03-03'), tx = $('#ldg').textContent, adj = db.txs.filter(t => !t.del && ADJ_CATS.has(t.cat) && t.date >= '2001-03-01' && t.date <= '2001-03-03').reduce((n, t) => n + (t.type === 'inc' ? t.amt : -t.amt), 0);
+        const bal = d => vaultBal('', d) + vaultBal('v_mkt', d), col = L.filter(x => x.m.who === 'عميل سوق دفتر تجربة');
+        return [!tx.includes('كاش من شريك السوق') && !L.some(x => x.m.r.type === 'tr'), col.length === 1 && col[0].m.amt === 300000 && col[0].dir === 'in', L.some(x => x.m.r.note === 'بنزين دفتر تجربة' && x.dir === 'out'),
+          ldgSum(L, 'in') - ldgSum(L, 'out') === bal('2001-03-04') - bal('2001-03-01') - adj, $('#ldg .ldtt').textContent.includes('المصنع كله'), $('#p-cash .kbt').classList.contains('sel')]; }), [true, true, true, true, true, true]);
+      eq('دفتر عهدة أحمد = كارت حركة السوق، والدوس على المربعات فوق بيغيّر الدفتر', await A.evaluate(() => {
+        $('#kMk').click(); const r = [ldgScope, $('#p-cash .kbk').classList.contains('sel')];
+        cashView = 'type'; const k = kstHtml('mk', '', 'mkt', vaultMoves('v_mkt', '2001-03-01', '2001-03-03').concat(mkXfers('2001-03-01', '2001-03-03')), 'mk'); cashView = 'date';
+        const L = ldgItems('2001-03-01', '2001-03-03'); r.push(ldgSum(L, 'in') === k.in && ldgSum(L, 'out') === k.out);
+        renderCash(); $('#kMe').click(); r.push(ldgScope, $('#ldg .ldtt').textContent.includes('دفتري')); $('#kAllT').click(); r.push(ldgScope);
+        return r; }), ['mk', true, true, 'me', true, 'all']);
+    }
     eq('دفتر الخزنة: زرار "نقلته" و"اعرض اللي لسه" اتشالوا', await ldgOpen(`[!$('#ldg .ldb'), !$('#ldgRest'), !$('#ldg').textContent.includes('نقلت')]`), [true, true, true]);
     eq('دفتر الخزنة: الفلتر "خارج" مفيهوش سطر داخل، والبند بيفتح نافذة بحركاته', await A.evaluate(() => {
       cashView = 'date'; const r = [];

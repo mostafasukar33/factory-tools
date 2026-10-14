@@ -3923,6 +3923,9 @@ let cashOpenV = false;
 /* دفتر الخزنة بالتاريخ (cashView = 'date'): كل الخزن مع بعض يوم ورا يوم، الأقدم فوق، من غير أي رصيد. اختيار التبويب بيتفتكر على الجهاز بس */
 let cashView = 'type';
 try { if (localStorage.getItem('fo_cash_view') === 'date') cashView = 'date'; } catch (e) {}
+/* ldgScope: الدفتر بتاع مين (بطلب صاحب المشروع، زي الدفتر الورق): 'all' المصنع كله (خزني + عهدة أحمد، والتسليم بينهم مش داخل ولا خارج)،
+   'me' خزني بس، 'mk' عهدة أحمد بس. الاختيار بالدوس على مربعات الرصيد فوق (الإجمالي / رصيد الخزن / خزنة السوق) */
+let ldgScope = 'all';
 let ldgMode = 'w2', ldgEnd = '', ldgFrom = '', ldgTo = '', ldgFilter = 'all', ldgSumOpen = false, ldgScroll = false, ldgItemsL = [];
 const LDG_MODES = [['w1', 'أسبوع'], ['w2', 'أسبوعين'], ['w3', '3 أسابيع'], ['m1', 'شهر'], ['range', 'من–إلى']], LDG_DAYS = {w1: 7, w2: 14, w3: 21, m1: 30};
 /* بطلب صاحب المشروع (علشان النقل للدفتر الورق يبقى سهل): كل كارت = صفحة صاحبه في الدفتر، بالأسامي.
@@ -4056,12 +4059,26 @@ function ldgStep(n) {
   ldgEnd = e >= t ? '' : e; ldgScroll = true; renderCash();
 }
 function ldgItems(from, to) {
-  const L = [], mkc = [];
-  vaultMoves(cashVault, from, to).map(m => Object.assign(m, {mk: isMkRec(m.r), side: 'me'})).forEach(m => { const g = cashGroup(m, 'me'); if (g === 'mkcol') mkc.push(m); else if (g) L.push({m, g}); });
-  mkColMerge(mkc, 'me').forEach(m => L.push({m, g: 'mkcol'}));
+  const L = [], mkc = [], hasM = db.vaults.some(v => v.id === MKV && !v.del), sc = hasM ? ldgScope : 'me';
+    if (sc === 'me') {
+    vaultMoves(cashVault, from, to).forEach(m => { Object.assign(m, {mk: isMkRec(m.r), side: 'me'}); const g = cashGroup(m, 'me'); if (g === 'mkcol') mkc.push(m); else if (g) L.push({m, g}); });
+    mkColMerge(mkc, 'me').forEach(m => L.push({m, g: 'mkcol'}));
+  } else if (sc === 'mk') {
+    /* نفس كارت "حركة السوق" بالظبط: التحصيل كامل (والتحويلات اللي نزلت عندي) وقصاده "تحويل لمصطفى" والتسليم */
+    vaultMoves(MKV, from, to).concat(mkXfers(from, to)).forEach(m => { Object.assign(m, {mk: isMkRec(m.r), side: 'mkt'}); const g = cashGroup(m, 'mkt'); if (g === 'col') mkc.push(m); else if (g) L.push({m, g}); });
+    mkColMerge(mkc, 'mkt').forEach(m => L.push({m: Object.assign(m, {side: 'mkt'}), g: 'col'}));
+  } else {
+    /* المصنع كله: أي تحويل (بين خزني أو بيني وبين أحمد) فلوس بتتنقل جوه المصنع فمش بيظهر. تحصيل عميل السوق سطر واحد بالكاش اللي مع أحمد والتحويل اللي جالي */
+    vaultMoves('', from, to).forEach(m => { if (m.r.type === 'tr') return; Object.assign(m, {mk: isMkRec(m.r), side: 'me'}); const g = cashGroup(m, 'me'); if (g === 'mkcol') mkc.push(m); else if (g) L.push({m, g}); });
+    vaultMoves(MKV, from, to).forEach(m => { if (m.r.type === 'tr') return; Object.assign(m, {mk: isMkRec(m.r), side: 'mkt'}); const g = cashGroup(m, 'mkt'); if (g === 'col') mkc.push(m); else if (g) L.push({m, g}); });
+    mkColMerge(mkc, 'mkt').forEach(m => L.push({m: Object.assign(m, {side: 'mkt'}), g: 'col'}));
+  }
   L.forEach(x => x.dir = CG[x.g][1]);
   return L.sort((a, b) => a.m.date.localeCompare(b.m.date) || (a.m.at || 0) - (b.m.at || 0));
 }
+/* اسم الدفتر حسب الاختيار */
+const ldgSc = () => db.vaults.some(v => v.id === MKV && !v.del) ? ldgScope : 'me';
+const ldgTitle = () => ldgSc() === 'all' ? 'دفتر المصنع كله' : ldgSc() === 'mk' ? 'عهدة ' + MK_PN : cashVault ? 'دفتر ' + vName(cashVault) : 'دفتري';
 const ldgSum = (L, dir) => L.filter(x => x.dir === dir).reduce((n, x) => n + x.m.amt, 0);
 const ldgName = x => x.g === 'exp' ? cName(x.m.r.cat) : CG[x.g][0];
 const ldgWhat = (m, nm) => { const w = (m.what || '').replace(/حركة السوق( — )?/, '').trim(); return w && w !== m.who && w !== nm ? w : ''; };
@@ -4074,7 +4091,7 @@ function ldgGroups(L) {
   return [...by.values()].map(e => Object.assign(e, {tot: e.arr.reduce((n, m) => n + m.amt, 0)})).sort((a, b) => b.tot - a.tot);
 }
 function ldgHtml(L) {
-  const nV = vaultsL().length, showV = !cashVault && nV > 1;
+  const nV = vaultsL().length, sc0 = ldgSc(), showV = sc0 === 'all' || (sc0 === 'me' && !cashVault && nV > 1);
   const F = ldgFilter === 'all' ? L : L.filter(x => x.dir === ldgFilter);
   ldgItemsL = F;
   const tin = ldgSum(L, 'in'), tout = ldgSum(L, 'out'), G = ldgGroups(L);
@@ -4085,10 +4102,13 @@ function ldgHtml(L) {
   const days = ldgDays(F).map(({d, rows, in: di, out: dout}) => {
     return `<div class="ldd" data-d="${d}"><div class="ldh"><div class="ldw"><b>${AR_DAYS[dowOf(d)]} · ${dispDate(d)}</b></div>
       <div class="ldt">${di ? `<b class="n in">+ ${fmtP(di)}</b>` : ''}${dout ? `<b class="n out">− ${fmtP(dout)}</b>` : ''}</div></div>
-      ${rows.map(x => { const m = x.m, i = F.indexOf(x), vid = m.r.type === 'tr' ? '' : m.r.vault, bits = [ldgName(x), ldgWhat(m, ldgName(x)), showV && vid ? vName(vid) : ''].filter(Boolean);
+      ${rows.map(x => { const m = x.m, i = F.indexOf(x), vid = m.r.type === 'tr' || m.parts || m.side === 'mkt' ? '' : m.r.vault, bits = [ldgName(x), ldgWhat(m, ldgName(x)), showV && vid ? vName(vid) : ''].filter(Boolean);
         return `<div class="ldr" data-i="${i}" role="button" tabindex="0"><div class="ldm"><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n ${x.dir}">${x.dir === 'in' ? '+' : '−'} ${fmtP(m.amt)}</b></div>`; }).join('')}</div>`;
   }).join('');
-  return `${sum}<section class="ldg" id="ldg"><div class="ldtt">${cashVault ? `<span>📅 دفتر ${esc(vName(cashVault))} <a class="kclr" id="kAll">✕ كل خزني</a></span>` : '<span>📅 دفتر خزني</span>'}</div>
+  const sc = ldgSc(), hasM = sc !== 'me' || db.vaults.some(v => v.id === MKV && !v.del), pend = hasM ? mkPending().length : 0;
+  const note = [sc !== 'me' ? `${MK_PN} معاه دلوقتي <b class="n">${fmtP(vaultBal(MKV))}</b>` : '', hasM ? 'دوس على أي رصيد فوق تشوف دفتره' : ''].filter(Boolean).join(' · ');
+  return `${sum}<section class="ldg" id="ldg"><div class="ldtt">${sc === 'me' && cashVault ? `<span>📅 ${esc(ldgTitle())} <a class="kclr" id="kAll">✕ كل خزني</a></span>` : `<span>📅 ${esc(ldgTitle())}</span>`}${note ? `<small class="ldnt">${note}</small>` : ''}</div>
+    ${pend && sc !== 'me' ? `<a class="ldpend" href="#mkt">📥 فيه ${pend} ${pend === 1 ? 'حركة' : pend === 2 ? 'حركتين' : 'حركات'} من ${MK_PN} لسه في الوارد — مش محسوبة هنا</a>` : ''}
     <div class="seg s3" id="ldgF">${[['all', 'الكل'], ['in', 'داخل'], ['out', 'خارج']].map(([k, n]) => `<button type="button" data-v="${k}" class="${ldgFilter === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     ${days || '<div class="kno">مفيش حركة في الفترة دي</div>'}
     <div class="ldpdf"><button type="button" class="btn gold" id="ldgPdf">📄 ورقة الدفتر PDF</button></div></section>`;
@@ -4101,7 +4121,7 @@ function ldgReport(L, from, to) {
     R.forEach(x => rows.push({cells: [dispDate(x.m.date), x.m.who, [ldgName(x), ldgWhat(x.m, ldgName(x)), x.m.mk ? 'من السوق' : ''].filter(Boolean).join(' — '), x.dir === 'in' ? fmtP(x.m.amt) : '', x.dir === 'out' ? fmtP(x.m.amt) : ''], cls: x.dir === 'in' ? 'pay' : 'ret'}));
   });
   const tin = ldgSum(F, 'in'), tout = ldgSum(F, 'out'), G = ldgGroups(F);
-  return {title: 'دفتر الخزنة', period: (cashVault ? vName(cashVault) : 'كل الخزن') + ' — ' + rangeText(from, to),
+  return {title: ldgTitle(), period: rangeText(from, to),
     cols: [{h: 'التاريخ', w: 12, c: 'dt'}, {h: 'البيان', w: 30, c: 'l'}, {h: 'التفاصيل', w: 28, c: 'l'}, {h: 'وارد', w: 15, c: 'n'}, {h: 'منصرف', w: 15, c: 'n'}],
     rows, sum: [['الوارد', fmtP(tin)], ['المنصرف', fmtP(tout)], ...G.map(g => ['  ' + g.nm, (g.dir === 'in' ? '+ ' : '− ') + fmtP(g.tot)])], fin: ['الصافي', fmtP(tin - tout)]};
 }
@@ -4116,7 +4136,7 @@ function renderCash() {
   }
   const vs = vaultsL(), hasM = db.vaults.some(v => v.id === MKV && !v.del), mkB = hasM ? vaultBal(MKV) : 0, meB = vaultBal(''), total = meB + mkB;
   if (cashVault && !vs.some(v => v.id === cashVault)) cashVault = '';
-  if (cashVault) cashOpenV = true;
+  if (cashVault) { cashOpenV = true; ldgScope = 'me'; }
   const [from, to] = cashRange(), t = todayISO(), nV = vs.length, dv = cashView === 'date';
   const LD = dv ? ldgItems(from, to) : null;
   const meTitle = cashVault ? `<span>🏭 حركة ${esc(vName(cashVault))} <a class="kclr" id="kAll">✕ كل خزني</a></span>` : '<span>🏭 حركتي</span>';
@@ -4132,10 +4152,10 @@ function renderCash() {
       <button class="btn gold" id="cInc" type="button"><span class="lg">+ </span>إيراد</button>
     </div>
     <div class="kb${hasM ? ' two' : ''}">
-      <div class="kbme"><div class="kbm${cashOpenV ? ' on' : ''}" id="kMe" role="button" tabindex="0"><span>🏭 رصيد الخزن <i class="kch">▾</i><small>${cashOpenV ? 'دوس على خزنة تشوف حركتها' : 'الفلوس اللي معاك' + (nV > 1 ? ' · ' + (nV === 2 ? 'خزنتين' : nV + ' خزن') : '')}</small></span><b class="n${meB < 0 ? ' neg' : ''}" data-ck="c:me" data-cnt="${meB}">${fmtP(meB)}</b></div>
+      <div class="kbme"><div class="kbm${cashOpenV ? ' on' : ''}${dv && hasM && ldgScope === 'me' ? ' sel' : ''}" id="kMe" role="button" tabindex="0"><span>🏭 رصيد الخزن <i class="kch">▾</i><small>${cashOpenV ? 'دوس على خزنة تشوف حركتها' : 'الفلوس اللي معاك' + (nV > 1 ? ' · ' + (nV === 2 ? 'خزنتين' : nV + ' خزن') : '')}</small></span><b class="n${meB < 0 ? ' neg' : ''}" data-ck="c:me" data-cnt="${meB}">${fmtP(meB)}</b></div>
         <div class="kvs"${cashOpenV ? '' : ' hidden'}>${tiles}</div></div>
-      ${hasM ? `<div class="kbk" id="kMk" role="button" tabindex="0"><span>🏪 خزنة السوق<small>مع الشريك</small></span><b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></div>
-      <div class="kbt"><span>الإجمالي<small>خزني + السوق</small></span><b class="n${total < 0 ? ' neg' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)}</b></div>` : ''}
+      ${hasM ? `<div class="kbk${dv && ldgScope === 'mk' ? ' sel' : ''}" id="kMk" role="button" tabindex="0"><span>🏪 خزنة السوق<small>مع الشريك</small></span><b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></div>
+      <div class="kbt${dv && ldgScope === 'all' ? ' sel' : ''}" id="kAllT"${dv ? ' role="button" tabindex="0"' : ''}><span>الإجمالي<small>خزني + السوق</small></span><b class="n${total < 0 ? ' neg' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)}</b></div>` : ''}
       <div class="ktools">
         <button class="btn line" id="cOpen2" type="button" title="عدّ الفلوس: اكتب الفلوس اللي معاك فعلاً">✎ <span>عدّ الفلوس</span></button>
         <button class="btn line" id="cTr" type="button" title="تحويل بين الخزن">⇄ <span>تحويل</span></button>
@@ -4155,7 +4175,7 @@ function renderCash() {
         : cashMode === 'year' ? `<input class="inp num" id="cYear" inputmode="numeric" value="${cashYear || t.slice(0, 4)}">`
         : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div><label class="cyr">أو سنة كاملة <input class="inp num" id="cYr" inputmode="numeric" placeholder="${t.slice(0, 4)}" value="${from.slice(5) === '01-01' && to === from.slice(0, 4) + '-12-31' ? from.slice(0, 4) : ''}"></label>`}</div>
     <div class="ksum"><table>
-      <tr><th>البيان</th><th>${cashVault ? esc(vName(cashVault)) : 'الخزنة'}</th>${mk0 ? '<th class="mk">السوق</th>' : ''}</tr>
+      <tr><th>البيان</th><th>${dv && hasM && ldgScope !== 'me' ? (ldgScope === 'all' ? 'المصنع كله' : 'عهدة ' + MK_PN) : cashVault ? esc(vName(cashVault)) : 'الخزنة'}</th>${mk0 ? '<th class="mk">السوق</th>' : ''}</tr>
       <tr class="in"><td>⬇ داخل</td><td class="n m">${fmtP(me.in)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.in)}</td>` : ''}</tr>
       <tr class="out"><td>⬆ خارج</td><td class="n m">${fmtP(me.out)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.out)}</td>` : ''}</tr>
       <tr class="net"><td>الصافي</td><td class="n m${me.in < me.out ? ' neg' : ''}">${fmtP(me.in - me.out)}</td>${mk0 ? `<td class="n k${mk0.in < mk0.out ? ' neg' : ''}">${fmtP(mk0.in - mk0.out)}</td>` : ''}</tr></table></div>
@@ -4163,9 +4183,9 @@ function renderCash() {
     ${dv ? ldgHtml(LD) : `<div class="kss${mk ? ' two' : ''}">${me.html}${mk ? mk.html : ''}</div>`}
     `;
   const tap = (el, f) => { el.onclick = f; el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); f(ev); } }; };
-  tap($('#kMe'), () => { cashOpenV = !cashOpenV; if (!cashOpenV) cashVault = ''; renderCash(); });
+  tap($('#kMe'), () => { if (dv && ldgScope !== 'me') { ldgScope = 'me'; ldgScroll = true; return renderCash(); } cashOpenV = !cashOpenV; if (!cashOpenV) cashVault = ''; renderCash(); });
   $$('#p-cash .kv').forEach(el => tap(el, () => {
-    cashVault = cashVault === el.dataset.v ? '' : el.dataset.v; renderCash();
+    cashVault = cashVault === el.dataset.v ? '' : el.dataset.v; ldgScope = 'me'; renderCash();
     if (cashVault) { const k = $('#kst-me'); if (k && k.scrollIntoView) k.scrollIntoView({behavior: 'smooth', block: 'start'}); }
   }));
   $$('#p-cash .kfix').forEach(a => a.onclick = ev => { ev.stopPropagation(); openingModal(); });
@@ -4176,7 +4196,8 @@ function renderCash() {
     if (op && MK_T[op.t] && (m.side === 'mkt' || op.t === 'exp')) return mkOpMenu(op);
     if (m.src === 'tx') m.r.pt ? partnerTxModal(m.r) : m.r.iv && ivGet(m.r.iv) ? ivTxModal(m.r) : txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
   };
-  if ($('#kMk')) tap($('#kMk'), () => mkVaultLog(m => open(Object.assign(m, {side: 'mkt'}))));
+  if ($('#kMk')) tap($('#kMk'), () => { if (dv) { ldgScope = 'mk'; cashVault = ''; cashOpenV = false; ldgScroll = true; return renderCash(); } mkVaultLog(m => open(Object.assign(m, {side: 'mkt'}))); });
+  if (dv && $('#kAllT')) tap($('#kAllT'), () => { ldgScope = 'all'; cashVault = ''; cashOpenV = false; ldgScroll = true; renderCash(); });
   $$('#p-cash .kty').forEach(el => tap(el, () => {
     const [key, k] = el.dataset.k.split(':'), s = key === 'mk' ? mk : me;
     cashTypeSheet(key === 'mk' ? 'حركة السوق' : cashVault ? 'حركة ' + vName(cashVault) : 'حركتي', k, s.by[k], open, key === 'me' && !cashVault && nV > 1);
@@ -4207,7 +4228,7 @@ function renderCash() {
     $$('#ldgF button').forEach(b => b.onclick = () => { ldgFilter = b.dataset.v; renderCash(); });
     $$('#ldg .ldr').forEach(el => tap(el, () => open(ldgItemsL[+el.dataset.i].m)));
     $('#ldgSumB').onclick = () => { ldgSumOpen = !ldgSumOpen; renderCash(); };
-    $$('#ldgSum .kty').forEach(el => tap(el, () => { const g = ldgGroups(LD).find(x => x.key === el.dataset.sk); if (g) cashTypeSheet(cashVault ? 'دفتر ' + vName(cashVault) : 'دفتر خزني', g.k, g.arr.slice().reverse(), open, !cashVault && nV > 1, g.nm); }));
+    $$('#ldgSum .kty').forEach(el => tap(el, () => { const g = ldgGroups(LD).find(x => x.key === el.dataset.sk); if (g) cashTypeSheet(ldgTitle(), g.k, g.arr.slice().reverse(), open, !cashVault && nV > 1, g.nm); }));
     $('#ldgPdf').onclick = () => exportReport(ldgReport(LD, from, to), 'preview');
     ldgScroll = false;
   }

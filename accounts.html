@@ -4045,7 +4045,7 @@ function mkVaultLog(open) {
       return `<div class="kit" data-i="${i}" role="button" tabindex="0"><div><b>${esc(m.who)}</b><small>${esc(bits.join(' · '))}</small></div><b class="n ${m.sign < 0 ? 'out' : 'in'}">${m.sign < 0 ? '−' : '+'} ${fmtP(m.amt)}</b></div>`; }, open, '<div class="kno">مفيش حركة في آخر أسبوعين</div>');
 }
 /* ============ دفتر الخزنة بالتاريخ (cashView = 'date') ============
-   نفس حركات "بالنوع" بالظبط (نفس cashGroup: تسوية الجرد والتحويل بين خزنتين مش بيظهروا، وعملاء السوق سطر مجمّع)، بس مترتبة يوم ورا يوم والأقدم فوق زي الدفتر الورق. مفيش رصيد.
+   نفس حركات "بالنوع" بالظبط (نفس cashGroup: تسوية الجرد والتحويل بين خزنتين مش بيظهروا، وعملاء السوق سطر مجمّع)، بس مترتبة يوم ورا يوم: على الشاشة الأحدث فوق، وفي الـ PDF الأقدم فوق. مفيش رصيد.
    زرار "✓ نقلته" و"اعرض اللي لسه" اتشالوا بطلب صاحب المشروع (كانوا بيلخبطوه). إعداد ldgDone القديم متساب في الشيت ومحدش بيقراه */
 function ldgRange() {
   const t = todayISO();
@@ -4099,10 +4099,10 @@ function ldgHtml(L) {
   const sum = `<section class="ldsum" id="ldgSum"><div class="kio"><div class="kin"><span>⬇ داخل</span><b class="n">${fmtP(tin)}</b></div><div class="kout"><span>⬆ خارج</span><b class="n">${fmtP(tout)}</b></div></div>
     <button type="button" class="ldsb${ldgSumOpen ? ' on' : ''}" id="ldgSumB">بالبند <i class="kch">▾</i></button>
     <div class="ldsg"${ldgSumOpen ? '' : ' hidden'}>${G.filter(g => g.dir === 'in').map(gRow).join('')}${G.filter(g => g.dir === 'out').map(gRow).join('')}</div></section>`;
-  const days = ldgDays(F).map(({d, rows, in: di, out: dout}) => {
+  const days = ldgDays(F).reverse().map(({d, rows, in: di, out: dout}) => {   // الأحدث فوق (بطلب صاحب المشروع)، والـ PDF بيفضل الأقدم فوق زي الدفتر الورق
     return `<div class="ldd" data-d="${d}"><div class="ldh"><div class="ldw"><b>${AR_DAYS[dowOf(d)]} · ${dispDate(d)}</b></div>
       <div class="ldt">${di ? `<b class="n in">+ ${fmtP(di)}</b>` : ''}${dout ? `<b class="n out">− ${fmtP(dout)}</b>` : ''}</div></div>
-      ${rows.map(x => { const m = x.m, i = F.indexOf(x), vid = m.r.type === 'tr' || m.parts || m.side === 'mkt' ? '' : m.r.vault, bits = [ldgName(x), ldgWhat(m, ldgName(x)), showV && vid ? vName(vid) : ''].filter(Boolean);
+      ${rows.slice().reverse().map(x => { const m = x.m, i = F.indexOf(x), vid = m.r.type === 'tr' || m.parts || m.side === 'mkt' ? '' : m.r.vault, bits = [ldgName(x), ldgWhat(m, ldgName(x)), showV && vid ? vName(vid) : ''].filter(Boolean);
         return `<div class="ldr" data-i="${i}" role="button" tabindex="0"><div class="ldm"><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n ${x.dir}">${x.dir === 'in' ? '+' : '−'} ${fmtP(m.amt)}</b></div>`; }).join('')}</div>`;
   }).join('');
   const sc = ldgSc(), hasM = sc !== 'me' || db.vaults.some(v => v.id === MKV && !v.del), pend = hasM ? mkPending().length : 0;

@@ -374,10 +374,10 @@ const T0 = Date.now();
       return hasMk;
     });
     const ldgOpen = (js) => A.evaluate(js => { cashView = 'date'; ldgScope = 'me'; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; ldgSumOpen = false; cashVault = ''; cashOpenV = false; cashPickM = false; go('cash'); renderCash(); return eval(js); }, js);
-    eq('دفتر الخزنة بالتاريخ: الأيام الأقدم فوق، التحويل بين خزنتين وتسوية الجرد مش ظاهرين، والاستلام من السوق ظاهر، وعميل السوق سطر مجمّع', await ldgOpen(`(() => {
+    eq('دفتر الخزنة بالتاريخ: الأيام الأحدث فوق، التحويل بين خزنتين وتسوية الجرد مش ظاهرين، والاستلام من السوق ظاهر، وعميل السوق سطر مجمّع', await ldgOpen(`(() => {
       const ds = [...$$('#ldg .ldd')].map(x => x.dataset.d), tx = $('#ldg').textContent;
       return [ds.join(), !tx.includes('تحويل:'), !tx.includes('جرد تجربة الدفتر'), window.__ldg.hasMk ? tx.includes('كاش من شريك السوق') : true, tx.includes('عميل سوق دفتر تجربة حوّلك'), !!$('#cView button.on') && $('#cView button.on').dataset.v === 'date', !$('#kst-me'), !tx.includes('رصيد')];
-    })()`), ['2001-03-01,2001-03-02,2001-03-03', true, true, true, true, true, true, true]);
+    })()`), ['2001-03-03,2001-03-02,2001-03-01', true, true, true, true, true, true, true]);
     eq('دفتر الخزنة: إجمالي الداخل والخارج = كارت حركتي "بالنوع" (من غير خزنة ومع خزنة مختارة)', await A.evaluate(() => {
       const r = []; for (const v of ['', 'v_ldg2']) {
         cashVault = v; cashView = 'type'; const k = kstHtml('me', '', 'me', vaultMoves(v, '2001-03-01', '2001-03-03').map(m => Object.assign(m, {mk: isMkRec(m.r)})), 'me');

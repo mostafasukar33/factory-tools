@@ -741,7 +741,7 @@ const T0 = Date.now();
         items.filter(tr => !tr.classList.contains('f')).every(tr => !tr.cells[0].textContent && !tr.cells[6].textContent),
         subs.some(tr => tr.cells[1].textContent === 'إجمالي الفاتورة' && tr.querySelector('td.b').textContent === fmtP(s.rows.filter(x => x.e === inv).pop().run * s.sg)),
         last.querySelector('.tot .wd b').textContent === moneyWords(s.close * s.sg), /المستحق (عليكم|لكم)/.test(last.querySelector('.sum .f span').textContent),
-        pg.every(x => x.querySelector('.gen').textContent.startsWith('صدر هذا الكشف إلكترونياً')), last.querySelector('.note').textContent.includes('سبعة أيام'), pg[0].querySelector('thead').textContent.includes('المدفوع')];
+        pg.every(x => x.querySelector('.gen').textContent.startsWith('صدر هذا الكشف إلكترونياً')), !last.querySelector('.note'), pg[0].querySelector('thead').textContent.includes('المدفوع')];
       [c.coAddr, c.coCr, c.coTax] = old; $('#render').innerHTML = ''; return r; }), [true, true, true, true, true, true, true, true, true, true]);
     sec('١٣ب) الجرد والمساهمين');
     eq('الموبايل: مفيش زرار جديد تحت، والجرد زرار جوه التقارير', await A.evaluate(() => { go('rep'); renderReports(); return [getComputedStyle($('nav button[data-go=jrd]')).display, !!$('#rpJrd')]; }), ['none', true]);

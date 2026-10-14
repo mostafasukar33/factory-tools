@@ -2956,7 +2956,8 @@ function buildStmtPages(p, s) {
   tot.innerHTML = `<div class="wd"><span>المبلغ بالحروف</span><b>${moneyWords(v)}</b></div><div class="sum"><div class="f"><span>${lbl}</span><b>${fmtP(s.invOnly ? v : Math.abs(v))} <small style="font-size:15px;color:#DAAE57">${CUR}</small></b></div></div>`;
   const note = document.createElement('div'); note.className = 'note';
   note.textContent = s.invOnly ? 'نشكركم على ثقتكم في فلاش أون. لأي استفسار بخصوص هذه الفاتورة يرجى التواصل معنا.' : 'يرجى مراجعة هذا الكشف وإخطارنا بأي ملاحظات خلال سبعة أيام من تاريخ إصداره، وإلا اعتُبر الرصيد الوارد به صحيحاً ومعتمداً.';
-  [tot, note].forEach(el => { pg.inn.appendChild(el); if (over(pg.inn, el, el === note ? 0 : 16)) { el.remove(); pg = shell(false); pg.inn.appendChild(el); } });   // الجملة الصغيرة اللي تحت مبتفتحش صفحة لوحدها لو فاضل مكان ليها
+  [tot].concat(s.invOnly ? [note] : []).forEach(el => {   // جملة "يرجى مراجعة الكشف" اتشالت بطلب صاحب المشروع (الفاتورة لسه فيها جملة الشكر)
+    pg.inn.appendChild(el); if (over(pg.inn, el, el === note ? 0 : 16)) { el.remove(); pg = shell(false); pg.inn.appendChild(el); } });   // الجملة الصغيرة اللي تحت مبتفتحش صفحة لوحدها لو فاضل مكان ليها
   const pages = [...box.children];
   pages.forEach((x, i) => x.querySelector('.pn').textContent = `صفحة ${i + 1} من ${pages.length}`);
   return pages;

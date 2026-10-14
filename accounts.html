@@ -737,7 +737,8 @@ html[data-theme=dark] .pst th{background:var(--row);color:var(--sub)}
 #p-set>.card.fold{padding:0;margin-bottom:8px;overflow:hidden}
 #p-set>.card.fold>h2{margin:0;padding:14px 16px;font-size:var(--f3)}
 #p-set>.card.fold:not(.shut)>h2{border-bottom:1px solid var(--line)}
-#p-set>.card.fold:not(.shut)>:not(h2){margin-inline:16px}
+#p-set>.card.fold:not(.shut){padding-inline:16px}
+#p-set>.card.fold:not(.shut)>h2{margin-inline:-16px}
 #p-set>.card.fold:not(.shut)>:last-child{margin-bottom:16px}
 #p-set>.card.fold:not(.shut)>h2+*{margin-top:12px}
 .sstat{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:10px}

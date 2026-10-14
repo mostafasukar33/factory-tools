@@ -164,6 +164,7 @@ const SCREENS = [
   {name: 'acc-cash-open-m', app: 'acc', vp: MOB, full: true, go: accEval(`cashOpenV = true; cashVault = ''; go('cash'); renderCash()`)},
   {name: 'acc-cash-open-l', app: 'acc', vp: LAP, go: accEval(`cashOpenV = true; cashVault = ''; go('cash'); renderCash()`)},
   {name: 'acc-cash-sheet-m', app: 'acc', vp: MOB, go: accEval(`cashOpenV = false; cashVault = ''; go('cash'); renderCash(); [...$$('#kst-me .kty')].pop().click()`)},
+  {name: 'acc-set-pass-m', app: 'acc', vp: MOB, full: true, go: accEval("go('set'); renderSettings(); $('#sBio').style.display='block'; $('#sBio').textContent='👆 بصمة الوجه'; $$('#p-set > .card').forEach(c => c.classList.toggle('shut', !/كلمة السر/.test(c.querySelector('h2').textContent)))")},
   {name: 'acc-cash-l1100', app: 'acc', vp: LAP2, go: accGo('cash')},
   {name: 'acc-cash-pick-m', app: 'acc', vp: MOB, go: accEval("cashOpenV = false; cashVault = ''; cashMode = 'day'; cashDay = addDays(todayISO(), -1); cashPickM = true; go('cash'); renderCash()")},
   {name: 'acc-list-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval("tab = 'mkt'; go('home'); renderHome()")},

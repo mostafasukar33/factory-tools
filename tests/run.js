@@ -461,7 +461,7 @@ const T0 = Date.now();
     }
     if (RUN.sync) {   // ← وضع الشكل (smoke) بيتخطى ١٠ لحد ٢٢
     sec('١٠) المزامنة مع الشيت وجهاز تاني');
-    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details.fld summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.settle(300);
+    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.waitForSelector('#sSheet details.adv', {state: 'attached'}); await A.evaluate(() => setOpenAll()); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details.fld summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.settle(300);
     await A.click('#shHelp'); await A.click('#hpCopy'); const accCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.acc.load(accCode); await A.click('#hpX');
     eq('كود الشيت مفيهوش المفتاح', accCode.includes(KEY), false);
     eq('رقم تعريف النشر بيتحول للينك', await A.evaluate(() => normSheetUrl(' AKfycbxTEST1234567890abcdefghij ')), 'https://script.google.com/macros/s/AKfycbxTEST1234567890abcdefghij/exec');
@@ -471,7 +471,7 @@ const T0 = Date.now();
     eq('الشيت بيرفض مفتاح غلط', JSON.parse(sheets.acc.post(JSON.stringify({key: 'x', action: 'pull'}))).error, 'key');
     D2 = await newDevice(browser, base, sheets); B = await D2.page('accounts.html');
     await unlock(B, true);
-    await B.click('#bSet:visible, nav button[data-go=set]:visible'); await B.evaluate(() => setOpenAll()); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details.fld summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.settle(4000);
+    await B.click('#bSet:visible, nav button[data-go=set]:visible'); await B.waitForSelector('#sSheet details.adv', {state: 'attached'}); await B.evaluate(() => setOpenAll()); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details.fld summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.settle(4000);
     if (MO) await A.evaluate(() => { const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name: 'عميل ترتيب تجربة', phone: '', note: '', noTot: false, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p); saveDB(); });
     if (RUN.base) {   // ← وضع السوق بيتخطى باقي ١٠ لحد ١٤
     const snap = X => X.evaluate(() => [liveParties().map(p => balance(p.id)).sort(), vaultBal(''), selfCheck().length]);

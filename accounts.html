@@ -811,12 +811,16 @@ html[data-theme=dark] .ktoday{color:var(--ink)}
 #mkBar.on{display:block}#mkBar b{color:var(--gold)}#mkBar u{color:var(--gold);margin-inline-start:6px}
 .sync.mkrem{cursor:pointer;background:var(--gold-l);border-style:solid;color:var(--ink)}.sync.mkrem b{font-size:var(--f3)}.sync.mkrem.ok{color:var(--green)}
 .ppbar b.tt{font-size:var(--f3);color:var(--ink)}
+.qh{display:block;margin:6px 0}
+.qb{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:var(--row);color:var(--sub);font:inherit;font-weight:800;font-size:var(--f1);cursor:pointer;padding:0;line-height:1}
+.qt{display:block;margin-top:6px;font-size:var(--f2);color:var(--sub);font-weight:600;line-height:1.6}.qt[hidden]{display:none}
+@media (min-width:1000px){#p-party .ppbar b.tt{display:none}}
 /* شريط رجوع رفيع (موبايل بس): رجوع صغير واسم الشاشة جنبه من غير عنوان كبير */
 @media (max-width:999.98px){
   .ppbar.tb{justify-content:flex-start;gap:6px;margin:0 0 6px;padding:0;min-height:32px;border-bottom:1px solid var(--line)}
   .ppbar.tb a{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:32px;font-size:var(--f3)}
   .ppbar.tb a em{display:none}
-  .ppbar.tb b.tt{font-size:var(--f2)}
+  .ppbar.tb b.tt{font-size:var(--f2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .ppbar.tb>:last-child:not(a:first-child):not(b){margin-inline-start:auto}
 }
 .mkdot{font-size:var(--f1);font-weight:700;color:var(--green);display:flex;align-items:center;gap:5px}.mkdot i{width:9px;height:9px;border-radius:50%;background:var(--green)}
@@ -1340,7 +1344,7 @@ body{font-size:var(--f3);line-height:1.6}
 .rchb small{font-size:var(--f1);color:var(--sub);margin-top:3px;white-space:nowrap}
 
 /* موبايل الحسابات: شريط فوق سطر واحد رفيع (اللاب ما يتلمسش) */
-#bBellM{display:none}
+#bBellM,#bSyncM{display:none}
 @media (max-width:999.98px){
   .top{padding:calc(5px + env(safe-area-inset-top)) 10px 5px;gap:6px;flex-wrap:nowrap}
   .top img{width:26px;height:26px;border-radius:6px}
@@ -1350,8 +1354,11 @@ body{font-size:var(--f3);line-height:1.6}
   .top .lt{display:none}
   .top #bTheme,.top #bSet{min-width:34px!important;min-height:34px!important;height:34px;padding:6px 8px!important;line-height:1}
   .top .homebtn{height:34px}
-  .top #bBellM{display:inline-flex;margin-inline-start:auto}
+  .top #bSyncM{display:inline-flex;margin-inline-start:auto}
   .top #bSet{margin-inline-start:0}
+  .sdot{width:12px;height:12px;border-radius:50%;background:var(--sub);display:block}
+  #bSyncM.ok .sdot{background:var(--green)}#bSyncM.wait .sdot{background:var(--gold)}#bSyncM.bad .sdot{background:var(--red)}
+  #syncBox.quiet{display:none}
   .top #bBellM .nb{position:absolute;top:-4px;inset-inline-start:-4px;min-width:16px;height:16px;line-height:16px;font-size:var(--f1);border-radius:8px;padding:0 3px;text-align:center;background:var(--red);color:#fff;font-style:normal}
   .top #bBellM .nb:empty{display:none}
   .top #bBellM.has{color:var(--gold)}
@@ -1434,7 +1441,7 @@ body{font-size:var(--f3);line-height:1.6}
 <header class="top">
   <img src="icons/logo.jpg" alt="فلاش أون">
   <div><h1>فلاش أون</h1><small>الحسابات</small></div>
-  <button class="homebtn lockbtn" id="bBellM" type="button" title="إشعارات الوارد" aria-label="إشعارات الوارد"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><i id="bellNM" class="nb"></i></button>
+  <button class="homebtn lockbtn" id="bSyncM" type="button" title="حالة المزامنة" aria-label="حالة المزامنة"><i class="sdot"></i></button>
   <button class="homebtn lockbtn" id="bTheme" type="button" title="ليلي / فاتح" style="min-width:40px;justify-content:center;padding:8px 10px"></button>
   <button class="homebtn lockbtn" id="bLock" type="button" title="قفل"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span class="lt">قفل</span></button>
   <button class="homebtn lockbtn" id="bSet" type="button" title="الإعدادات" aria-label="الإعدادات" style="min-width:40px;justify-content:center;padding:8px 10px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -1503,12 +1510,12 @@ body{font-size:var(--f3);line-height:1.6}
     <div class="fld"><label>العنوان</label><input class="inp" id="sCoAddr" placeholder="مثلاً: المنطقة الصناعية — القاهرة"></div>
     <div class="fld"><label>السجل التجاري</label><input class="inp" id="sCoCr" inputmode="numeric" style="direction:ltr;text-align:right"></div>
     <div class="fld"><label>البطاقة الضريبية</label><input class="inp" id="sCoTax" style="direction:ltr;text-align:right" placeholder="000-000-000"></div>
-    <p class="hint" style="margin:0 0 10px">بيظهروا في سطر تحت اللوجو في كشف الحساب والفاتورة. اللي تسيبه فاضي مش بيظهر.</p>
+    <span class="qh"><button class="qb" type="button" aria-label="شرح">؟</button><span class="qt" hidden>بيظهروا في سطر تحت اللوجو في كشف الحساب والفاتورة. اللي تسيبه فاضي مش بيظهر.</span></span>
     <button class="btn line sm" id="sPhoneSave" type="button">حفظ البيانات</button>
   </div>
   <div class="card">
     <h2>🔒 قفل الفترة</h2>
-    <p class="hint" style="margin:0 0 10px">بعد ما تراجع شهر وتبعت الكشوف، اقفله: أي حركة تاريخها لحد اليوم ده مش هتتسجل ولا تتعدل ولا تتلغي، على كل الأجهزة.</p>
+    <span class="qh"><button class="qb" type="button" aria-label="شرح">؟</button><span class="qt" hidden>بعد ما تراجع شهر وتبعت الكشوف، اقفله: أي حركة تاريخها لحد اليوم ده مش هتتسجل ولا تتعدل ولا تتلغي، على كل الأجهزة.</span></span>
     <div id="sLock"></div>
   </div>
   <div class="card">
@@ -1538,7 +1545,7 @@ body{font-size:var(--f3);line-height:1.6}
       <button class="btn line" id="bRestore" type="button">استرجاع نسخة احتياطية</button>
       <input type="file" id="fRestore" accept=".json,application/json" hidden>
     </div>
-    <p class="hint">الملف متقفل بكلمة السر بتاعتك، فمحدش يقدر يفتحه من غيرها. احتفظ بيه في مكان آمن. ولو تنبيهات تليجرام شغالة (في حركة السوق)، بتوصلك نسخة كل يوم على تليجرام.</p>
+    <span class="qh"><button class="qb" type="button" aria-label="شرح">؟</button><span class="qt" hidden>الملف متقفل بكلمة السر بتاعتك، فمحدش يقدر يفتحه من غيرها. احتفظ بيه في مكان آمن. ولو تنبيهات تليجرام شغالة (في حركة السوق)، بتوصلك نسخة كل يوم على تليجرام.</span></span>
   </div>
   <p class="hint" id="sVer" style="text-align:center"></p>
 </section>
@@ -2252,7 +2259,7 @@ function renderParty(id) {
   });
   const nX = all.filter(e => e.del).length;
   $('#p-party').innerHTML = `
-    <div class="sech ppbar" style="margin-top:0"><a id="ppBack">→ كل الحسابات</a><span class="jb"><button id="jUp" type="button">↑ فوق</button><button id="jDn" type="button">↓ آخر حركة</button></span><a id="ppEdit">تعديل البيانات</a></div>
+    <div class="sech ppbar tb" style="margin-top:0"><a id="ppBack">→<em> كل الحسابات</em></a><b class="tt">${esc(p.name)}</b><span class="jb"><button id="jUp" type="button">↑ فوق</button><button id="jDn" type="button">↓ آخر حركة</button></span><a id="ppEdit" title="تعديل البيانات">✎<em> تعديل البيانات</em></a></div>
     <div class="phd"><div class="pnm"><h2>${esc(p.name)}</h2>${payRhythm(p, all, b)}${limitChip(p, b)}</div><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}${p.noTot ? ' — <b style="color:var(--gold)">حساب فرعي خارج الإجماليات</b>' : ''}</small>
       <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}" data-ck="pb:${esc(id)}" data-cnt="${Math.abs(b)}">${fmtP(Math.abs(b))} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
@@ -3225,7 +3232,20 @@ function clashModal() {
     <div class="stack"><button class="btn gold" id="clX" type="button">تمام، شفته</button></div>`);
   $('#clX').onclick = () => { L.forEach(c => c.seen = true); saveDB(); closeModal(); renderSyncBox(); };
 }
+/* شرح طويل بيتخبّى ورا علامة "؟" صغيرة، وبيتفتح بدوسة */
+function qh(html) { return `<span class="qh"><button class="qb" type="button" aria-label="شرح">؟</button><span class="qt" hidden>${html}</span></span>`; }
+document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('.qb'); if (b) { const t = b.nextElementSibling; t.hidden = !t.hidden; } });
 function renderSyncBox() {
+  renderSyncBox0(); syncDot();
+}
+/* على الموبايل الشريط الكبير بيظهر بس لما فيه حاجة لازم تعملها (تعارض، سجل كبير، مفتاح مرفوض)، والباقي في النقطة اللي فوق */
+function syncDot() {
+  const b = $('#syncBox'), d = $('#bSyncM'); if (!b || !d) return;
+  const must = !!b.querySelector('#syClash') || /سجل كبير|سجلات كبيرة|رفض المفتاح/.test(b.textContent);
+  b.classList.toggle('quiet', !must);
+  d.className = 'homebtn lockbtn ' + (b.classList.contains('warn') ? 'bad' : b.classList.contains('ok') ? 'ok' : 'wait');
+}
+function renderSyncBox0() {
   const b = $('#syncBox'); if (!b || !db) return;
   const cl = (db.cfg.clash || []).filter(c => !c.seen).length, big = bigRecs().length;
   if (cl) { b.className = 'sync warn'; b.innerHTML = `⚠️ تعارض: ${cl === 1 ? 'حركة اتعدّلت' : cl + ' حركات اتعدّلت'} على جهازين في نفس الوقت <a id="syClash">شوف</a>`; $('#syClash').onclick = clashModal; return; }
@@ -4357,7 +4377,7 @@ function partRange() {
 function renderPartners() {
   const pg = $('#p-part'), s = partners();
   /* على الموبايل الشركاء مالهاش زرار تحت (مكانها بقى حركة السوق)، فبنفتحها من الخزنة وبنرجعلها */
-  const back = isWide() ? '' : '<div class="sech ppbar" style="margin-top:0"><a id="ptBack">→ الخزنة</a><b style="font-size:var(--f3);color:var(--ink)">👥 الشركاء</b><span></span></div>';
+  const back = isWide() ? '' : '<div class="sech ppbar tb" style="margin-top:0"><a id="ptBack">→<em> الخزنة</em></a><b class="tt">👥 الشركاء</b><span></span></div>';
   const bindBack = () => { if ($('#ptBack')) $('#ptBack').onclick = () => go('cash'); };
   if (!s || !s.on) {
     pg.innerHTML = back + `<div class="card"><h2>👥 الشركاء</h2>
@@ -4788,7 +4808,7 @@ function renderReports() {
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
   const needRange = repKind === 'cash' || repKind === 'item' || repKind === 'profit';
   const jw = isWide() ? 0 : ivWaiting();
-  $('#p-rep').innerHTML = (isWide() ? '' : `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b></div><div class="ctools"><button class="btn line sm" id="rpJrd" type="button">📦 الجرد والمساهمون${jw ? ` (${jw})` : ''}</button></div>`) + `
+  $('#p-rep').innerHTML = (isWide() ? '' : `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b></div><div class="tstrip"><button class="btn line sm" id="rpJrd" type="button">📦 الجرد والمساهمون${jw ? ` (${jw})` : ''}</button></div>`) + `
     <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="card">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
@@ -4798,7 +4818,7 @@ function renderReports() {
       ${needRange ? `<div class="seg s4" id="rpM">${[['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']].map(([k, n]) => `<button type="button" data-m="${k}" class="${repMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${repMode === 'day' ? `<input class="inp" type="date" id="rpDay" value="${repDay || t}">` : repMode === 'month' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">`
           : repMode === 'year' ? `<input class="inp num" id="rpYear" inputmode="numeric" value="${repYear || t.slice(0, 4)}">` : `<div class="g2"><input class="inp" type="date" id="rpFrom" value="${f}"><input class="inp" type="date" id="rpTo" value="${to}"></div>`}` : ''}
-      ${repKind === 'profit' ? `<p class="hint">${esc(R.note)}</p>` : ''}
+      ${repKind === 'profit' ? qh(esc(R.note)) : ''}
       ${repKind === 'cash' ? `<select class="inp" id="rpV" style="margin-top:8px"><option value="">كل الخزن</option>${vaultsL().map(v => `<option value="${esc(v.id)}" ${repVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>` : ''}
     </div>
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
@@ -5034,7 +5054,7 @@ function renderJrd() {
     <div class="card">
       <div class="g2"><div class="fld"><label>تاريخ الجرد</label><input class="inp" type="date" id="jrD" value="${d}"></div>
       <div class="fld"><label>قيمة المخزون بالمصنع</label><input class="inp num amt" id="jrS" placeholder="0" value="${stock ? fmtP(stock) : ''}"></div></div>
-      <p class="hint">أدخل قيمة المخزون فقط، أما أرصدة العملاء والموردين والخزن والمساهمين فتُحتسب تلقائياً حتى نهاية التاريخ المحدد.${last ? ` آخر جرد بتاريخ ${dispDate(last.date)} وقيمة المخزون فيه ${fmtP(last.stock)}.` : ''}</p>
+      ${qh(`أدخل قيمة المخزون فقط، أما أرصدة العملاء والموردين والخزن والمساهمين فتُحتسب تلقائياً حتى نهاية التاريخ المحدد.${last ? ` آخر جرد بتاريخ ${dispDate(last.date)} وقيمة المخزون فيه ${fmtP(last.stock)}.` : ''}`)}
     </div>
     <div id="jrBlk">${jrdBlock(n, stock, prev, true)}</div>
     <div class="mrow3" style="grid-template-columns:1fr 1fr"><button class="btn gold" id="jrSave" type="button">💾 ${same ? 'تحديث جرد هذا التاريخ' : 'حفظ الجرد'}</button><button class="btn line" id="jrPdf" type="button">📄 PDF</button></div>
@@ -5066,7 +5086,7 @@ function renderJrdSaved(id) {
   if (!s || s.del) { go('jrd'); return; }
   const prev = jrdBefore(s.date);
   pg.innerHTML = `<div class="sech ppbar tb" style="margin-top:0"><a id="jsBack">→<em> الجرد</em></a><b class="tt">📦 جرد ${dispDate(s.date)}</b><span></span></div>
-    <p class="hint">هذه الأرقام مثبّتة وقت حفظ الجرد، ولا تتغير بتعديل الحسابات لاحقاً.</p>
+    ${qh('هذه الأرقام مثبّتة وقت حفظ الجرد، ولا تتغير بتعديل الحسابات لاحقاً.')}
     ${jrdBlock(s.n, s.stock, prev, false)}
     <div class="mrow3" style="grid-template-columns:1fr 1fr"><button class="btn green" id="jsShare" type="button">📲 إرسال PDF عبر واتساب</button><button class="btn gold" id="jsPdf" type="button">معاينة / تنزيل PDF</button></div>
     <div class="stack" style="margin-top:10px"><button class="btn red sm" id="jsDel" type="button">إلغاء هذا الجرد</button></div>`;
@@ -5087,7 +5107,7 @@ function renderIvList() {
     <section class="ctab"><div class="cth"><span>أرصدة المساهمين (${L.length})</span><b>${fmtP(tot)}</b></div><table class="cmt"><tbody>
       ${L.map(v => { const s = sums.get(v.id); return `<tr data-iv="${esc(v.id)}"><td class="w"><b>${esc(v.name)}</b><small>رأس المال ${fmtP(s.cap)} — الأرباح المستحقة ${fmtP(s.prof - s.draw)}${v.mode === 'c' && P.get(v.party) ? ' — من أعمال ' + esc(P.get(v.party).name) : v.mode === 'm' ? ' — ربح شهري' : ''}</small></td><td class="am">${fmtP(s.bal)}</td></tr>`; }).join('')}
     </tbody></table></section>` : `<div class="card"><h2>💰 المساهمون</h2><p style="font-weight:700;margin:0">يتم هنا تسجيل رأس مال كل مساهم وأرباحه ومسحوباته والرصيد المستحق له، وتظهر أرصدتهم تلقائياً في الجرد ضمن الالتزامات.</p></div>`) + `
-    <div class="ctools" style="margin-top:10px"><button class="btn line sm" id="ivNew" type="button">+ مساهم جديد</button><button class="btn line sm" id="ivImp" type="button">📥 استيراد كشف سابق من ملف</button></div>
+    <div class="tstrip" style="margin-top:10px"><button class="btn line sm" id="ivNew" type="button">+ مساهم جديد</button><button class="btn line sm" id="ivImp" type="button">📥 استيراد كشف سابق من ملف</button></div>
     <input type="file" id="ivFile" accept=".json,application/json" hidden>`;
   jrdBindHead();
   $$('#p-jrd tr[data-iv],#p-jrd [data-ivgo]').forEach(el => el.onclick = () => go('jrd/iv/' + (el.dataset.iv || el.dataset.ivgo)));
@@ -6109,7 +6129,7 @@ function mkAlert(list) {
 /* اللاب: جرس الإشعارات فوق والعداد على زرار "حركة السوق" في القايمة الجانبية. دوسة على الجرس بتفتح آخر العمليات اللي مستنياك */
 function mkBell() {
   const n = db && mkCreds() ? mkPending().length : 0, t = n > 99 ? '99+' : n || '';
-  $('#bellN').textContent = t; $('#bellNM').textContent = t; $('#bBellM').classList.toggle('has', !!n); $('#nbMkt').textContent = t;
+  $('#bellN').textContent = t; $('#nbMkt').textContent = t;
   $('#bBell').classList.toggle('has', !!n);
   if ($('#mkPop').classList.contains('on')) mkPop(true);
 }
@@ -6128,7 +6148,7 @@ function mkPop(keep) {
   $('#mpGo').onclick = () => { p.classList.remove('on'); mkCreds() ? go('mkt') : mkGoSettings(); };
   p.classList.add('on');
 }
-$('#bBellM').onclick = () => go('mkt');
+$('#bSyncM').onclick = () => { const b = $('#syncBox'), a = b && b.querySelector('a'); toast(b ? b.textContent.replace(/\s*(شوف|اربطه|جرّب دلوقتي|زامن دلوقتي|حدّثه \(مرة واحدة\)|راجع المفتاح)$/, '') : ''); if (a) a.click(); else syncNow(true); };
 $('#bBell').onclick = e => { e.stopPropagation(); mkPop(); };
 document.addEventListener('click', e => { if (!e.target.closest('#mkPop') && !e.target.closest('#bBell')) $('#mkPop').classList.remove('on'); });
 /* يفتح الإعدادات على كارت حركة السوق */
@@ -6333,7 +6353,7 @@ function mkInbox() {
   const secDec = decN ? `<section class="mqsec need" id="mqDec"><div class="mqsh"><b>✋ محتاجين قرارك <small>${decN}</small></b><b class="n">${fmtP(decAmt)}</b></div>
       ${dec.map(mkRowDec).join('')}${exps.length > 1 ? `<button class="mqall y" data-mv="x:exp" type="button">⛽ سجّل المصاريف كلها مصروف (${exps.length})</button>` : ''}${exps.map(o => mkRowExp(o, exps.length === 1)).join('')}</section>` : '';
   $('#mkBody').innerHTML = `${nlAlert()}${k ? mkCntLine(k, true) : ''}
-    ${act.length ? `<div class="mqcols${secReady && secDec ? ' two' : ''}">${secReady}${secDec}</div><p class="mqhint">لو حاجة غلط: دوس على السطر ← "رجّعها لشريكك" بملاحظة</p>` : `<div class="card empty mkclr">✔ مفيش حاجة مستنياك</div>`}
+    ${act.length ? `<div class="mqcols${secReady && secDec ? ' two' : ''}">${secReady}${secDec}</div>${qh('لو حاجة غلط: دوس على السطر ← "رجّعها لشريكك" بملاحظة')}` : `<div class="card empty mkclr">✔ مفيش حاجة مستنياك</div>`}
     ${wait.length ? `<section class="mqsec back"><div class="mqsh"><b>🔴 رجّعتها لشريكك <small>${wait.reduce((s, g) => s + g.ops.length, 0)}</small></b><b class="n">${fmtP(gTot(wait))}</b></div>${wait.map(mkRowBack).join('')}</section>` : ''}
     ${mv.length ? `<a class="mqlink" id="mkToArch"><span>✓ اتنقل النهارده ${mv.length} ${mv.length === 1 ? 'عملية' : 'عمليات'} (${fmtP(mv.reduce((s, o) => s + o.amt, 0))})</span><span>الأرشيف ←</span></a>` : ''}
     ${mkWantCard()}`;

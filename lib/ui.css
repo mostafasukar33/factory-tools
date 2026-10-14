@@ -155,3 +155,7 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
   .kb .ktools .btn+.btn{border-inline-start:1px solid var(--line)}
   .kb .ktools .btn:hover{color:var(--ink);background:var(--card)}
 }
+/* شريط أدوات رفيع: الحاجات اللي مش بتستخدمها كتير (زي الخزنة): صف واحد صغير لازق، من غير زراير كبيرة */
+.tstrip{display:flex;background:var(--row);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.tstrip .btn.line{flex:1 1 0;width:auto;min-height:36px;border:0;border-radius:0;background:none;box-shadow:none;color:var(--sub);font-size:var(--f1);padding:2px 6px;white-space:nowrap;margin:0}
+.tstrip .btn.line+.btn.line{border-inline-start:1px solid var(--line)}

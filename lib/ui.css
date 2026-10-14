@@ -87,12 +87,17 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
 .kgo{font-style:normal;color:var(--sub);font-size:var(--f4);font-weight:400}
 .kno{padding:14px 18px;border-top:1px solid var(--line);color:var(--sub);font-size:var(--f3);font-weight:700}
 .ksh2{padding:4px 2px 12px;border-bottom:1px solid var(--line)}
+/* عنوان النافذة ثابت فوق وانت نازل، وفيه زرار رجوع صغير */
+.ksheet .ksh2{position:sticky;top:-14px;z-index:5;background:var(--card);margin:-14px -14px 0;padding:14px 14px 10px}
+.kback{flex:none;width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:var(--row);color:var(--ink);font:inherit;font-weight:800;font-size:var(--f4);line-height:1;cursor:pointer;padding:0}
+.ksh2>span{flex:1;min-width:0}
+#kitsL>.btn{margin:10px 0}
 .ksh2>span{font-weight:800;font-size:var(--f4)}
 .ksh2>.n{font-size:var(--f5)}
 .ksheet.ksh-in .ksh2>span,.ksheet.ksh-in .ksh2>.n{color:var(--green)}
 .ksheet.ksh-out .ksh2>span,.ksheet.ksh-out .ksh2>.n{color:var(--red)}
 .ksheet .btn{margin-top:14px;width:100%}
-.kit{padding:12px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.kit{padding:12px 2px;border-bottom:1px solid var(--line);cursor:pointer;content-visibility:auto;contain-intrinsic-size:auto 64px}
 .kit>div{min-width:0}
 .kit>div>b{display:block;font-size:var(--f3)}
 .kit .n{font-size:var(--f4);color:var(--ink)}

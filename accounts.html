@@ -3983,26 +3983,36 @@ function kstHtml(key, title, side, mv, cls) {
 /* نافذة نوع واحد: كل حركاته بخط كبير، والدوس على حركة بيفتحها للتعديل */
 function cashTypeSheet(title, k, arr, open, showV) {
   const tot = arr.reduce((n, m) => n + m.amt, 0), day = cashMode === 'day';
-  modal(`<div class="ksheet ksh-${CG[k][1]}"><div class="ksh2"><span>${CG[k][0]}<small>${esc(title)} · ${esc(cashPerTxt())} · ${arr.length} ${arr.length === 1 ? 'حركة' : arr.length === 2 ? 'حركتين' : 'حركات'}</small></span><b class="n">${fmtP(tot)}</b></div>
-    <div class="kits">${arr.map((m, i) => {
+  modal(`<div class="ksheet ksh-${CG[k][1]}"><div class="ksh2"><button class="kback" id="kshB" type="button" aria-label="رجوع">→</button><span>${CG[k][0]}<small>${esc(title)} · ${esc(cashPerTxt())} · ${arr.length} ${arr.length === 1 ? 'حركة' : arr.length === 2 ? 'حركتين' : 'حركات'}</small></span><b class="n">${fmtP(tot)}</b></div>
+    <div class="kits" id="kitsL"></div>
+    <button class="btn line" id="kshX" type="button">رجوع</button></div>`);
+  $('#kshX').onclick = $('#kshB').onclick = closeModal;
+  kitsDraw(arr, (m, i) => {
       const what = (m.what || '').replace(/حركة السوق( — )?/, '').trim(), vid = m.r.type === 'tr' ? '' : m.r.vault;
       const bits = [day && m.at ? dispTime(m.at) : dispDate(m.date), what && what !== m.who ? what : '', showV && vid ? vName(vid) : ''].filter(Boolean);
-      return `<div class="kit" data-i="${i}" role="button" tabindex="0"><div><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n">${fmtP(m.amt)}</b></div>`; }).join('')}</div>
-    <button class="btn line" id="kshX" type="button">رجوع</button></div>`);
-  $('#kshX').onclick = closeModal;
-  $$('#modal .kit').forEach(el => el.onclick = () => { closeModal(); open(arr[+el.dataset.i]); });
+      return `<div class="kit" data-i="${i}" role="button" tabindex="0"><div><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n">${fmtP(m.amt)}</b></div>`; }, open);
+}
+/* قايمة حركات النافذة: 60 حركة وزرار "اعرض كمان" (القايمة الطويلة كانت بتهنّج الموبايل) */
+function kitsDraw(arr, row, open, empty) {
+  let shown = 60; const L = $('#kitsL');
+  const draw = () => {
+    L.innerHTML = (arr.length ? arr.slice(0, shown).map(row).join('') : empty || '') + (arr.length > shown ? `<button class="btn line" id="kMore" type="button">اعرض ${Math.min(60, arr.length - shown)} كمان (فاضل ${arr.length - shown})</button>` : '');
+    $$('#kitsL .kit').forEach(el => el.onclick = () => { closeModal(); open(arr[+el.dataset.i]); });
+    if ($('#kMore')) $('#kMore').onclick = () => { shown += 60; draw(); };
+  };
+  draw();
 }
 /* الدوس على خزنة السوق: آخر أسبوعين بترتيب التسجيل (الأحدث فوق) مش بالتاريخ. القديم بيختفي من هنا بس، مش من الخزنة */
 function mkVaultLog(open) {
   const cut = Date.now() - 14 * 864e5, at = m => m.at || Date.parse(m.date + 'T12:00:00');
   const arr = vaultMoves(MKV).filter(m => at(m) >= cut).sort((a, b) => at(b) - at(a));
-  modal(`<div class="ksheet"><div class="ksh2"><span>🏪 خزنة السوق<small>آخر أسبوعين بترتيب التسجيل · ${arr.length} ${arr.length === 1 ? 'حركة' : arr.length === 2 ? 'حركتين' : 'حركات'}</small></span><b class="n">${fmtP(vaultBal(MKV))}</b></div>
-    <div class="kits">${arr.length ? arr.map((m, i) => {
-      const what = (m.what || '').replace(/حركة السوق( — )?/, '').trim(), bits = [dispDate(m.date), m.at ? dispTime(m.at) : '', what && what !== m.who ? what : ''].filter(Boolean);
-      return `<div class="kit" data-i="${i}" role="button" tabindex="0"><div><b>${esc(m.who)}</b><small>${esc(bits.join(' · '))}</small></div><b class="n ${m.sign < 0 ? 'out' : 'in'}">${m.sign < 0 ? '−' : '+'} ${fmtP(m.amt)}</b></div>`; }).join('') : '<div class="kno">مفيش حركة في آخر أسبوعين</div>'}</div>
+  modal(`<div class="ksheet"><div class="ksh2"><button class="kback" id="kshB" type="button" aria-label="رجوع">→</button><span>🏪 خزنة السوق<small>آخر أسبوعين بترتيب التسجيل · ${arr.length} ${arr.length === 1 ? 'حركة' : arr.length === 2 ? 'حركتين' : 'حركات'}</small></span><b class="n">${fmtP(vaultBal(MKV))}</b></div>
+    <div class="kits" id="kitsL"></div>
     <button class="btn line" id="kshX" type="button">رجوع</button></div>`);
-  $('#kshX').onclick = closeModal;
-  $$('#modal .kit').forEach(el => el.onclick = () => { closeModal(); open(arr[+el.dataset.i]); });
+  $('#kshX').onclick = $('#kshB').onclick = closeModal;
+  kitsDraw(arr, (m, i) => {
+      const what = (m.what || '').replace(/حركة السوق( — )?/, '').trim(), bits = [dispDate(m.date), m.at ? dispTime(m.at) : '', what && what !== m.who ? what : ''].filter(Boolean);
+      return `<div class="kit" data-i="${i}" role="button" tabindex="0"><div><b>${esc(m.who)}</b><small>${esc(bits.join(' · '))}</small></div><b class="n ${m.sign < 0 ? 'out' : 'in'}">${m.sign < 0 ? '−' : '+'} ${fmtP(m.amt)}</b></div>`; }, open, '<div class="kno">مفيش حركة في آخر أسبوعين</div>');
 }
 function renderCash() {
   const pg = $('#p-cash');
@@ -5542,7 +5552,18 @@ $$('nav .qk button').forEach(b => b.onclick = () => {
   try { if (f) sessionStorage.setItem('fo_lastp', f.id); } catch (e) {}
   go('home');
 });
-addEventListener('hashchange', () => { closeModal(); route(); if (location.hash !== lastHash) window.scrollTo(0, 0); lastHash = location.hash; });
+/* الرجوع بالسحب: المتصفح كان بيرجّع مكان التمرير لوحده وإحنا بنرسم الصفحة ونطلّع لفوق فتحصل رعشة. دلوقتي إحنا اللي بنحفظ ونرجّع المكان مرة واحدة بعد الرسم */
+try { history.scrollRestoration = 'manual'; } catch (e) {}
+const scrollMap = {}; let curH = location.hash, scrollHold = false, popNav = false;
+addEventListener('scroll', () => { if (!scrollHold) scrollMap[curH] = window.scrollY; }, {passive: true});
+addEventListener('popstate', () => { popNav = true; });
+addEventListener('hashchange', () => {
+  const want = scrollMap[location.hash] || 0, back = popNav && !isWide();
+  scrollHold = true; curH = location.hash; closeModal(); route();
+  if (location.hash !== lastHash) window.scrollTo(0, back ? want : 0);
+  popNav = false; lastHash = location.hash;
+  requestAnimationFrame(() => requestAnimationFrame(() => { scrollHold = false; }));
+});
 $('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk,#dcOk,#pyOk,#txOk,#evOk,#ecOk,#opOk,#adOk,#ccOk,#bcOk,#apOk,#mvOk,#rtOk')) closeModal(); });
 
 showLock();

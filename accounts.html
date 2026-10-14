@@ -734,6 +734,17 @@ html[data-theme=dark] .pst th{background:var(--row);color:var(--sub)}
 .card.fold>h2::after{content:'▾';font-size:var(--f2);color:var(--sub)}
 .card.fold.shut>h2{margin-bottom:0}.card.fold.shut>h2::after{content:'◂'}
 .card.fold.shut>*:not(h2){display:none}
+#p-set>.card.fold{padding:0;margin-bottom:8px;overflow:hidden}
+#p-set>.card.fold>h2{margin:0;padding:14px 16px;font-size:var(--f3)}
+#p-set>.card.fold:not(.shut)>h2{border-bottom:1px solid var(--line)}
+#p-set>.card.fold:not(.shut)>:not(h2){margin-inline:16px}
+#p-set>.card.fold:not(.shut)>:last-child{margin-bottom:16px}
+#p-set>.card.fold:not(.shut)>h2+*{margin-top:12px}
+.sstat{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:10px}
+.sstat b{display:block;font-size:var(--f3)}.sstat small{display:block;font-size:var(--f2);color:var(--sub);font-weight:600}
+.sstat.ok b{color:var(--green)}.sstat.no b{color:var(--red)}
+.sstat .btn{width:auto;flex:none;padding:0 14px;min-height:38px;font-size:var(--f2)}
+details.adv{margin:4px 0 8px}details.adv>summary{font-weight:700;color:var(--sub);cursor:pointer;padding:6px 0;font-size:var(--f2)}
 /* شاشة القفل: كارت نضيف وخفيف */
 #lock img{width:84px;border-radius:16px;box-shadow:0 2px 12px #0002}
 #lock h2{font-size:var(--f4);margin:10px 0 0}
@@ -1471,6 +1482,7 @@ body{font-size:var(--f3);line-height:1.6}
 
 <!-- ============== الإعدادات ============== -->
 <section class="page" id="p-set">
+  <div class="sstat" id="sStat"></div>
   <div class="card">
     <h2>المظهر</h2>
     <label>اللون</label>
@@ -3251,6 +3263,11 @@ function renderSettings() {
   refreshBio(); renderMktSettings();
   $('#sVer').textContent = verText();
   const c = db.cfg;
+  { const n = pendingRecs().length, st = $('#sStat'), openSheet = () => { const k = $('#sSheet').parentNode; k.classList.remove('shut'); k.scrollIntoView({block: 'start', behavior: 'smooth'}); };
+    st.className = 'sstat ' + (c.sheetOk ? 'ok' : 'no');
+    st.innerHTML = c.sheetOk ? `<div><b>✔ متزامن مع الشيت</b><small>${c.lastSync ? 'آخر مزامنة ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة'}${n ? ' · ' + n + ' مستني' : ''}</small></div><button class="btn line" id="sStatGo" type="button">زامن دلوقتي</button>`
+      : `<div><b>الشيت مش مربوط</b><small>البيانات على الجهاز ده بس</small></div><button class="btn gold" id="sStatGo" type="button">اربطه</button>`;
+    $('#sStatGo').onclick = () => { if (c.sheetOk && $('#shNow')) $('#shNow').click(); else openSheet(); }; }
   const lk = lockDate(), lim = limitsOf();
   $('#sLock').innerHTML = lk ? `<div class="sync ok">🔒 مقفول لحد ${dispDate(lk)}</div><div class="g2"><input class="inp" type="date" id="sLockD" value="${lk}"><button class="btn gold sm" id="sLockGo" type="button">غيّر يوم القفل</button></div><button class="btn line sm" id="sUnlock" type="button" style="margin-top:8px">افتح الفترة (محتاج كلمة السر)</button>`
     : `<div class="g2"><input class="inp" type="date" id="sLockD" value="${todayISO().slice(0, 8)}01"><button class="btn gold sm" id="sLockGo" type="button">اقفل لحد اليوم ده</button></div>`;
@@ -3281,6 +3298,7 @@ function renderSettings() {
     : `<p class="hint" style="margin:0 0 10px">اربط البرنامج بجدول Google بتاعك مرة واحدة، فحساباتك تتحفظ عليه أول بأول، وبعد كده أي جهاز تفتحه برابط الربط تظهر عليه حساباتك كلها.</p>
       <div class="fld"><label>عندك رابط ربط من جهاز تاني؟ الصقه هنا</label><div class="krow" style="grid-template-columns:1fr auto"><input class="inp" id="shJoinIn" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:var(--f2)" placeholder="https://…#join=…">
       <button class="btn green" id="shJoinGo" type="button" style="width:auto;padding:0 16px">اربط</button></div></div>`}
+    <details class="adv"><summary>⚙ متقدم (لينك الشيت، المفتاح، الفحص والتنزيل)</summary>
     <div class="fld"><label>لينك الشيت (Web app URL)</label><input class="inp" id="shUrl" style="direction:ltr;font-size:var(--f2)" placeholder="https://script.google.com/macros/s/..../exec" value="${esc(c.sheetUrl)}"></div>
     <details class="fld"><summary style="font-weight:700;color:var(--sub);cursor:pointer">المفتاح السري (بيتعمل لوحده — مش محتاج تلمسه)</summary>
       <div class="krow" style="margin-top:6px"><input class="inp" id="shKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:var(--f3)" value="${esc(c.sheetKey)}">
@@ -3288,14 +3306,17 @@ function renderSettings() {
       
     </details>
     <div class="stack">
-      <button class="btn gold" id="shSave" type="button">حفظ واختبار الاتصال</button>
-      <button class="btn line" id="shNow" type="button">زامن دلوقتي (${pendingRecs().length} مستني)</button>
       <button class="btn line" id="shAll" type="button">نزّل كل البيانات من الشيت تاني</button>
       <button class="btn line" id="shAudit" type="button">راجع الجهاز ده مع الشيت</button>
       <button class="btn line" id="shHelp" type="button">إزاي أعمل شيت الحسابات؟ (خطوة بخطوة)</button>
       ${c.sheetOk ? '<button class="btn line" id="shUpd" type="button">🛠 تحديث كود شيت الحسابات</button>' : ''}
+      <button class="btn line sm" id="shBk" type="button">💾 نسخة احتياطية يومية على Drive (اختياري)</button>
     </div>
-    <button class="btn line sm" id="shBk" type="button" style="margin-top:8px">💾 نسخة احتياطية يومية على Drive (اختياري)</button>
+    </details>
+    <div class="stack" style="margin-top:10px">
+      <button class="btn gold" id="shSave" type="button">حفظ واختبار الاتصال</button>
+      <button class="btn line" id="shNow" type="button">زامن دلوقتي (${pendingRecs().length} مستني)</button>
+    </div>
     <div id="shStat" class="sync" style="display:none;margin:10px 0 0"></div>
     <p class="hint">${c.lastSync ? 'آخر مزامنة ناجحة: ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة ناجحة.'}</p>`;
   $('#shEye').onclick = () => { const k = $('#shKey'); k.type = k.type === 'password' ? 'text' : 'password'; };
@@ -5458,20 +5479,19 @@ function jumpTo(toEnd) {
   if (inBox) box.scrollTo({top: toEnd ? box.scrollHeight : 0, behavior: 'smooth'});
   else { const t = toEnd ? Math.max(document.documentElement.scrollHeight, document.body.scrollHeight) : 0; window.scrollTo({top: t, behavior: 'smooth'}); }
 }
-/* الإعدادات: كل كارت يتطوي بدوسة على عنوانه، والحالة بتتحفظ على الجهاز. أول كارتين مفتوحين لأول مرة */
+/* الإعدادات: قايمة نضيفة، كل كارت سطر واحد بعنوانه وبيتفتح بدوسة، والحالة بتتحفظ على الجهاز. كله مقفول لأول مرة.
+   الدوس متسجل على الصفحة كلها (مش على كل عنوان) علشان كارت زي حركة السوق بيتعاد رسم عنوانه */
+function setKey(c) { if (c.id === 'sMkt') return 'sMkt'; const h = c.querySelector('h2'); return h ? h.textContent.trim() : ''; }
 function initSetCards() {
   let st = null; try { st = JSON.parse(localStorage.getItem('fo_setopen') || 'null'); } catch (e) {}
-  $$('#p-set > .card').forEach((c, i) => {
-    const h = c.querySelector('h2'); if (!h) return;
-    const key = h.textContent.trim();
-    c.classList.add('fold'); c.classList.toggle('shut', st && key in st ? !st[key] : i > 1);
-    h.onclick = () => {
-      c.classList.toggle('shut');
-      try { const o = JSON.parse(localStorage.getItem('fo_setopen') || '{}'); o[key] = !c.classList.contains('shut'); localStorage.setItem('fo_setopen', JSON.stringify(o)); } catch (e) {}
-    };
+  $$('#p-set > .card').forEach(c => { const key = setKey(c); if (!key) return; c.classList.add('fold'); c.classList.toggle('shut', !(st && st[key])); });
+  $('#p-set').addEventListener('click', ev => {
+    const h = ev.target.closest('#p-set > .card.fold > h2'); if (!h) return;
+    const c = h.parentNode; c.classList.toggle('shut');
+    try { const o = JSON.parse(localStorage.getItem('fo_setopen') || '{}'); o[setKey(c)] = !c.classList.contains('shut'); localStorage.setItem('fo_setopen', JSON.stringify(o)); } catch (e) {}
   });
 }
-function setOpenAll() { $$('#p-set > .card').forEach(c => c.classList.remove('shut')); }
+function setOpenAll() { $$('#p-set > .card').forEach(c => c.classList.remove('shut')); $$('#p-set details.adv').forEach(d => d.open = true); }
 initSetCards();
 let lastHash = '', wasWide = isWide();
 addEventListener('resize', () => { if (isWide() !== wasWide) { wasWide = isWide(); route(); } });

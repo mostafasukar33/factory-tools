@@ -461,7 +461,7 @@ const T0 = Date.now();
     }
     if (RUN.sync) {   // ← وضع الشكل (smoke) بيتخطى ١٠ لحد ٢٢
     sec('١٠) المزامنة مع الشيت وجهاز تاني');
-    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.settle(300);
+    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details.fld summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.settle(300);
     await A.click('#shHelp'); await A.click('#hpCopy'); const accCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.acc.load(accCode); await A.click('#hpX');
     eq('كود الشيت مفيهوش المفتاح', accCode.includes(KEY), false);
     eq('رقم تعريف النشر بيتحول للينك', await A.evaluate(() => normSheetUrl(' AKfycbxTEST1234567890abcdefghij ')), 'https://script.google.com/macros/s/AKfycbxTEST1234567890abcdefghij/exec');
@@ -471,7 +471,7 @@ const T0 = Date.now();
     eq('الشيت بيرفض مفتاح غلط', JSON.parse(sheets.acc.post(JSON.stringify({key: 'x', action: 'pull'}))).error, 'key');
     D2 = await newDevice(browser, base, sheets); B = await D2.page('accounts.html');
     await unlock(B, true);
-    await B.click('#bSet:visible, nav button[data-go=set]:visible'); await B.evaluate(() => setOpenAll()); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.settle(4000);
+    await B.click('#bSet:visible, nav button[data-go=set]:visible'); await B.evaluate(() => setOpenAll()); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details.fld summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.settle(4000);
     if (MO) await A.evaluate(() => { const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name: 'عميل ترتيب تجربة', phone: '', note: '', noTot: false, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p); saveDB(); });
     if (RUN.base) {   // ← وضع السوق بيتخطى باقي ١٠ لحد ١٤
     const snap = X => X.evaluate(() => [liveParties().map(p => balance(p.id)).sort(), vaultBal(''), selfCheck().length]);
@@ -1775,6 +1775,11 @@ const T0 = Date.now();
     eq('الحسابات (صفحة الحساب): الخط بالخمس أحجام بس', await fs5(A), [true, []]);
     for (const f of ['market.html']) { const X = await D1.page(f); await X.settle(800); eq(`${f}: الخط بالخمس أحجام بس`, await fs5(X), [true, []]); await X.close(); }
 
+    eq('الإعدادات: قايمة مقفولة أول مرة، كارت الحالة فوق، والدوس على العنوان بيفتح ويقفل (حتى حركة السوق)', await A.evaluate(() => {
+      localStorage.removeItem('fo_setopen'); $$('#p-set > .card').forEach(c => c.classList.add('shut')); go('set'); renderSettings();
+      const cards = $$('#p-set > .card.fold'), r = [cards.length >= 8, cards.every(c => c.classList.contains('shut')), !!$('#sStat b'), !!$('#sStatGo')];
+      const m = $('#sMkt h2'); m.click(); r.push(!$('#sMkt').classList.contains('shut')); renderMktSettings(); $('#sMkt h2').click(); r.push($('#sMkt').classList.contains('shut'));
+      go('mkt'); return r; }), [true, true, true, true, true, true]);
     sec('قاعدة التبويبات: سطر واحد ونفس الارتفاع ومفيش كلام مقطوع');
     /* أي مجموعة تبويبات (.seg) ظاهرة: كل زرار نفس الارتفاع، الكلام مش ملفوف على سطرين ولا متقطع */
     for (const k of ['profit', 'col', 'debt', 'tot', 'cash', 'item']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }

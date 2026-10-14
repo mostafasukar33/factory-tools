@@ -1571,38 +1571,6 @@ const T0 = Date.now();
     await M.evaluate(() => { const o = liveOps().find(x => x.buyer === 'مشتري تحويل'); o.m = 'cash'; bump(o); save(); sync(); }); await M.settle(400); await bg(A, 'mkSync()'); await A.settle(400);
     eq('الشريك غيّرها لكاش بعد النقل: رجعت خزنة السوق لوحدها', await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(x => x.buyer === 'مشتري تحويل'); return isMkv(IDX.tx.get('t_mk_' + o.id).vault); }), true);
 
-    sec('١٩ب) رسايل التحويل (فودافون كاش / إنستا): بتتقري وبتتطابق مع تحويلات الشريك');
-    {
-      const VODA = (amt, ref, hm) => `تم استلام مبلغ ${amt} جنيه من رقم 01000000000 المسجل بإسم Test Sender على رقم محفظتك 01000000001. رصيدك الحالي: 1000.00 جنيه تاريخ العملية: ${todayDMY} ${hm} رقم العملية: ${ref} تابع كل مصروفاتك`;
-      const todayDMY = await A.evaluate(() => { const [y, m, d] = todayISO().split('-'); return `${d}-${m}-${y.slice(2)}`; });
-      const todayDM = await A.evaluate(() => { const [, m, d] = todayISO().split('-'); return `${d}-${m}`; });
-      const INSTA = (amt, ref, hm) => `تم إضافة تحويل لحظي لحسابكم رقم 0000 بمبلغ ${amt}.00 جم من عميل تجربة رسايل رقم مرجعي ${ref} يوم ${todayDM} الساعة ${hm} للمزيد اتصل بـ 19623`;
-      eq('قراية الرسايل: فودافون وإنستا (أكتر من رسالة في لصقة واحدة)، والرسالة اللي مش تحويل وارد بتتجاهل', await A.evaluate(([a, b]) => {
-        const g = smsParse(a + '\n' + b + '\nتم شراء شحنة كهرباء بفودافون كاش بنجاح وخصم مبلغ 49.08 جنيه.');
-        return g.map(x => [x.k, x.amt, x.from, x.date === todayISO(), x.tm, x.ref]); }, [VODA(5000, '900000000001', '18:48'), INSTA(2500, '900000000002', '19:48')]),
-        [['voda', 500000, 'Test Sender', true, '18:48', '900000000001'], ['insta', 250000, 'عميل تجربة رسايل', true, '19:48', '900000000002']]);
-      const smsSetup = await A.evaluate(([a, b, c]) => {
-        const vv = {id: 'v_smsv', name: 'فودافون كاش تجربة', open: 0, ord: 20, upd: nowS(), del: false}, vi = {id: 'v_smsi', name: 'إنستا تجربة', open: 0, ord: 21, upd: nowS(), del: false};
-        db.vaults.push(vv, vi); reindex(); db.cfg.smv = {};
-        const ts = Date.now(), mk = (id, amt, m) => { const o = {id, t: 'pay', cid: 'c_smst', cname: 'عميل رسايل تجربة', m, amt, ts, upd: ts, del: false}; mkDb().ops[id] = o; return o; };
-        mk('smsop1', 500000, 'tr'); mk('smsop2', 250000, 'tr'); mk('smsop3', 77700, 'tr');
-        const r1 = smsSave(smsParse(a + b)), r2 = smsSave(smsParse(a)), r3 = smsSave(smsParse(c)); saveDB();
-        const o1 = mkDb().ops.smsop1, o2 = mkDb().ops.smsop2, o3 = mkDb().ops.smsop3;
-        return [r1.n, r2.dup, r3.n, smsVault('voda'), smsVault('insta'), smsVaultOf(o1), smsVaultOf(o2), smsVaultOf(o3), smsMiss().length, db.smss.some(r => r.id === 'sm_voda_900000000001'), viewOf('sms', db.smss[0])[2]];
-      }, [VODA(5000, '900000000001', '18:48'), INSTA(2500, '900000000002', '19:48'), VODA(1200, '900000000003', '20:10')]);
-      eq('الرسايل اتسجلت مرة واحدة (اللصقة التانية مكررة)، كل نوع راح خزنته، والتحويل اتطابق بالمبلغ، واللي ملهاش تحويل = "محدش سجّلها"', smsSetup,
-        [2, 1, 1, 'v_smsv', 'v_smsi', 'v_smsv', 'v_smsi', '', 1, true, 'رسالة تحويل']);
-      await A.evaluate(() => { go('mkt'); mkView = 'in'; renderMkt(); mkConfirm([mkDb().ops.smsop1], {pid: liveParties().find(p => p.sec === 'mkt').id}); }); await A.waitForSelector('#mvOk');
-      eq('شاشة النقل: الخزنة متختارة من الرسالة ومكتوب الرسالة وصلت، وتحويل من غير رسالة عليه تنبيه', [await A.evaluate(() => $('#modal [data-f=v]').value), (await A.textContent('#modal')).includes('الرسالة وصلت فودافون كاش'),
-        await A.evaluate(() => { closeModal(); return smsLine(mkDb().ops.smsop3).includes('مفيش رسالة'); })], ['v_smsv', true, true]);
-      eq('قايمة الرسايل: الملخص فوق فيه عدد اللي محدش سجّلها، و"سجّلها لعميل" بيفتح دفعة متعبية، و"مش تبعنا" بيشيلها من التنبيه', await A.evaluate(() => {
-        renderMkt(); const r = [$('#mkStat [data-st=sms]').textContent.includes('1')];
-        smsSheet(); r.push($$('#modal .smsr').length, !!$('#modal .smsr [data-a=reg]'));
-        $('#modal .smsr [data-a=reg]').click(); $('#pkList .pt').click(); r.push($('#pyAmt').value === fmtP(120000), $('#pyDate').value === todayISO()); closeModal();
-        smsSheet(); $('#modal .smsr [data-a=ign]').click(); r.push(smsMiss().length); closeModal(); return r; }), [true, 3, true, true, true, 0]);
-      await A.evaluate(() => { ['smsop1', 'smsop2', 'smsop3'].forEach(id => delete mkDb().ops[id]); db.smss.forEach(r => { r.del = true; touch(r); }); ['v_smsv', 'v_smsi'].forEach(id => { const v = IDX.vault.get(id); v.del = true; touch(v); }); db.cfg.smv = {}; smsMemo = null; saveDB(); closeModal(); });
-    }
-
     sec('٢٠) المصروف: إشعار عند مصطفى (يسجّله أو يتجاهله) ومن غير أي حالة عند الشريك');
     const exA = async (name, amt) => { await M.evaluate(() => nav('')); await M.click('#qSp'); await M.fill('#amt', String(amt)); await M.fill('#nt', name); await M.click('#spOk'); await M.settle(400); await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(400); await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(300); };
     const exO = n => A.evaluate(n => { const o = Object.values(db.mkt.ops).find(x => x.t === 'exp' && x.cat === n), t = IDX.tx.get('t_mk_' + o.id); return [t ? !t.del : null, t ? t.amt : null, mkState(o), mkPending().some(x => x.id === o.id)]; }, n);

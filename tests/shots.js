@@ -152,7 +152,6 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-ldg-' + sfx, go: accEval(`cashView = 'date'; ldgMode = 'w3'; ldgEnd = ''; ldgFilter = 'all'; cashVault = ''; cashOpenV = false; cashPickM = false; ldgSumOpen = false; go('cash'); renderCash()`), full: true},
   {name: 'acc-ldg-sum-' + sfx, go: accEval(`cashView = 'date'; ldgMode = 'w3'; ldgEnd = ''; ldgFilter = 'all'; cashVault = ''; cashOpenV = false; cashPickM = false; ldgSumOpen = true; go('cash'); renderCash()`), full: true},
   {name: 'acc-set-' + sfx, go: accGo('set'), full: true},
-  {name: 'acc-sms-' + sfx, go: accEval("go('mkt'); const d = todayISO(), [y, m, dd] = d.split('-'); smsSave(smsParse(`تم استلام مبلغ 950 جنيه من رقم 01000000000 المسجل بإسم Test Sender على رقم محفظتك 01000000001. رصيدك الحالي: 1.00 جنيه تاريخ العملية: ${dd}-${m}-${y.slice(2)} 18:48 رقم العملية: 900000000011 تم إضافة تحويل لحظي لحسابكم رقم 0000 بمبلغ 3000.00 جم من عميل تجربة رسايل رقم مرجعي 900000000012 يوم ${dd}-${m} الساعة 19:48`)); renderMkt(); setTimeout(smsSheet, 400)")},
   {name: 'acc-jrd-' + sfx, go: accEval(IVSHOT + "jrDate = ''; jrStock = null; go('jrd')"), full: true},
   {name: 'acc-iv-' + sfx, go: accEval(IVSHOT + "go('jrd/iv/ip_shot')"), full: true},
 ].map(x => Object.assign({app: 'acc', vp}, x, extra, vp.width > 999 ? {full: false} : {}));

@@ -1730,7 +1730,7 @@ function defaults() {
 }
 let db = null, cryptoKey = null, saltU8 = null;
 /* كل نوع سجل ومكانه في القاعدة. أي نوع جديد بيتضاف هنا بس، والمزامنة والنسخة الاحتياطية بيشتغلوا عليه لوحدهم */
-const STORE = {party: 'parties', entry: 'entries', vault: 'vaults', cat: 'cats', tx: 'txs', set: 'sets', ivp: 'ivps', ivr: 'ivrs', stk: 'stks'};
+const STORE = {party: 'parties', entry: 'entries', vault: 'vaults', cat: 'cats', tx: 'txs', set: 'sets', ivp: 'ivps', ivr: 'ivrs', stk: 'stks', sms: 'smss'};
 let IDX = {}, P = new Map(), E = new Map();          // فهارس سريعة بالـ id
 function reindex() { for (const k in STORE) IDX[k] = new Map((db[STORE[k]] = db[STORE[k]] || []).map(r => [r.id, r])); P = IDX.party; E = IDX.entry; }
 
@@ -2631,7 +2631,7 @@ function payModal(p, kind, e, opts = {}) {
   ensureVaults();
   const v0 = e ? e.vault || '' : (opts.vault || defVault(method));
   modal(`<h3>💵 ${isNew ? (rec ? 'دفعة استلمتها من' : 'دفعة دفعتها لـ') : 'تعديل دفعة —'} ${esc(p.name)}</h3>
-    <div class="fld"><label>المبلغ</label><div class="amtrow"><input class="inp num amt" id="pyAmt" placeholder="0" value="${e ? fmtP(e.amt) : ''}">${isNew && (rec ? balance(p.id) > 0 : balance(p.id) < 0) ? '<button class="btn line sm" id="pyAll" type="button">كل الرصيد</button>' : ''}</div>
+    <div class="fld"><label>المبلغ</label><div class="amtrow"><input class="inp num amt" id="pyAmt" placeholder="0" value="${e ? fmtP(e.amt) : opts.amt ? fmtP(opts.amt) : ''}">${isNew && (rec ? balance(p.id) > 0 : balance(p.id) < 0) ? '<button class="btn line sm" id="pyAll" type="button">كل الرصيد</button>' : ''}</div>
       <div class="hint" style="margin-top:4px">الرصيد الحالي: ${fmtP(Math.abs(balance(p.id)))} ${balWord(balance(p.id))}</div></div>
     <div class="fld"><label>طريقة الدفع</label><div class="seg ${CHECKS_ON || method === 'شيك' ? 's3' : 's2'}" id="pyM">${METHODS.filter(m => CHECKS_ON || m !== 'شيك' || m === method).map(m => `<button type="button" data-v="${m}" class="${m === method ? 'on' : ''}">${m}</button>`).join('')}</div></div>
     <div id="pyChk" class="card" style="background:var(--gold-l);margin:0 0 10px">
@@ -2641,8 +2641,8 @@ function payModal(p, kind, e, opts = {}) {
       <p class="hint" style="margin:0">${ck.st === 'c' ? `✔ الشيك اتصرف يوم ${dispDate(ck.cdate)} في ${esc(vName(e.vault))}.` : ck.st === 'b' ? '✖ الشيك ده رجع.' : `الشيك ${rec ? 'بينزل من رصيد العميل' : 'بينزل من اللي ليه'} من دلوقتي، ومبيدخلش الخزنة غير لما يتصرف (من تبويب الشيكات).`}</p>
     </div>
     <div class="g2"><div class="fld" id="pyVW"><label>${rec ? 'دخلت خزنة' : 'طلعت من خزنة'}</label><select class="inp" id="pyV">${vaultOpts(v0, 'مش داخل خزنة (حركة قديمة)')}</select></div>
-      <div class="fld"><label>التاريخ</label><input class="inp" id="pyDate" type="date" value="${e ? e.date : todayISO()}"></div></div>
-    <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="pyNote" value="${esc(e ? e.note || '' : '')}" placeholder="مثلاً: رقم الشيك أو التحويل" autocomplete="off"></div>
+      <div class="fld"><label>التاريخ</label><input class="inp" id="pyDate" type="date" value="${e ? e.date : opts.date || todayISO()}"></div></div>
+    <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="pyNote" value="${esc(e ? e.note || '' : opts.note || '')}" placeholder="مثلاً: رقم الشيك أو التحويل" autocomplete="off"></div>
     <div id="pyWarn"></div>
     ${e ? histHtml(e) : ''}
     <div class="mfoot">${isNew ? '' : '<div class="msec"><button class="btn red sm" id="pyDel" type="button">إلغاء الدفعة</button></div>'}
@@ -3142,6 +3142,7 @@ function viewOf(kind, r) {
   if (kind === 'ivp') return ['', cell(r.name), 'مساهم', r.mode === 'c' ? 'من حساب عميل' : 'ربح شهري', '', ''];
   if (kind === 'ivr') { const v = IDX.ivp.get(r.iv), a = ivSign(r); return [r.date, cell(v ? v.name : '؟'), 'مساهم: ' + ({cap: 'رأس مال', prof: 'ربح', ship: 'شحنة', exp: 'مصروف', draw: 'سحب'}[r.k] || ''), cell(r.note || ''), a > 0 ? a / 100 : '', a < 0 ? -a / 100 : '']; }
   if (kind === 'stk') return [r.date, 'الجرد', 'جرد', 'المخزون', (r.stock || 0) / 100, ''];
+  if (kind === 'sms') return [r.date, cell(r.from || ''), 'رسالة تحويل', SMS_K[r.k] || r.k, (r.amt || 0) / 100, r.ign ? 'مش تبعنا' : ''];
   if (kind === 'tx') return [r.date, cell(r.type === 'tr' ? vName(r.vault) + ' ← ' + vName(r.to) : vName(r.vault)), 'خزنة: ' + TXT[r.type], cell((r.type === 'tr' ? '' : cName(r.cat)) + (r.note ? ' — ' + r.note : '')), r.type === 'inc' ? r.amt / 100 : '', r.type === 'inc' ? '' : r.amt / 100];
   const p = P.get(r.party);
   return [r.date, cell(p ? p.name : '؟'), p ? SECS[p.sec] : '', cell(noRef(r.desc)), (r.dr || 0) / 100, (r.cr || 0) / 100];
@@ -6402,12 +6403,134 @@ function mkStatParts() {
   const cash = db.vaults.some(v => v.id === MKV && !v.del) ? Math.max(0, vaultBal(MKV)) : 0;
   return {wait: mkPending().length, clash: (db.cfg.clash || []).filter(c => !c.seen).length, late: mkLate().length, cash};
 }
+/* ====================== رسايل التحويل (فودافون كاش والبنك الأهلي / إنستا) ======================
+   بطلب صاحب المشروع: أحمد بيسجّل "تحويل لمصطفى" بالليل ومبيبقاش فاكر جت فودافون ولا إنستا. مصطفى بينسخ رسالة التحويل أول ما توصله ويلصقها هنا،
+   البرنامج بيقرا المبلغ والنوع والوقت، وبيطابقها بالمبلغ (نفس اليوم أو يوم قبل/بعد) مع تحويلات أحمد اللي في الوارد ومع الدفعات المتسجلة.
+   المطابقة بتتحسب كل مرة (مش متخزنة). سجل sms: {k: voda|insta, amt, from, date, tm, ref, ign}، والـ id ثابت من رقم العملية فمفيش تكرار.
+   برنامج الشريك والشيت بتاعه مبيتلمسوش. */
+const SMS_K = {voda: 'فودافون كاش', insta: 'إنستا (البنك الأهلي)'};
+function smsParse(text) {
+  const t = normDigits(String(text || '')).replace(/‏|‎/g, '').replace(/[ \t\r\n]+/g, ' '), out = [], today = todayISO();
+  const yr = (d, m) => { let y = +today.slice(0, 4), iso = `${y}-${pad2(m)}-${pad2(d)}`; if (iso > addDays(today, 1)) iso = `${y - 1}-${pad2(m)}-${pad2(d)}`; return iso; };
+  const amt = v => Math.round(parseFloat(String(v).replace(/,/g, '')) * 100);
+  const vr = /تم استلام مبلغ ([\d.,]+) جنيه من رقم \d*(?: المسجل (?:بإسم|باسم|بأسم) (.+?) على رقم محفظتك)?.*?تاريخ العملية: ?(\d{1,2})-(\d{1,2})-(\d{2,4}) (\d{1,2}):(\d{2}).*?رقم العملية: ?(\d+)/g;
+  for (let m; (m = vr.exec(t));) { const y = m[5].length === 2 ? 2000 + +m[5] : +m[5]; out.push({k: 'voda', amt: amt(m[1]), from: (m[2] || '').trim(), date: `${y}-${pad2(m[4])}-${pad2(m[3])}`, tm: pad2(m[6]) + ':' + m[7], ref: m[8]}); }
+  const br = /تم (?:إ|ا)ضافة تحويل لحظي.*?بمبلغ ([\d.,]+) جم من (.+?) رقم مرجعي (\d+) يوم (\d{1,2})-(\d{1,2}) الساعة (\d{1,2}):(\d{2})/g;
+  for (let m; (m = br.exec(t));) out.push({k: 'insta', amt: amt(m[1]), from: m[2].trim(), date: yr(+m[4], +m[5]), tm: pad2(m[6]) + ':' + m[7], ref: m[3]});
+  return out.filter(x => x.amt > 0 && /^\d{4}-\d{2}-\d{2}$/.test(x.date));
+}
+const smsList = () => db.smss.filter(r => !r.del);
+/* الخزنة اللي كل نوع بيدخلها: آخر اختيار، وإلا خزنة اسمها شبهه */
+function smsVault(k) {
+  const ok = id => id && IDX.vault.get(id) && !IDX.vault.get(id).del && !isMkv(id);
+  const r = (db.cfg.smv || {})[k]; if (ok(r)) return r;
+  const re = k === 'voda' ? /فودافون|vodafone|voda/i : /انستا|إنستا|insta|أهلي|اهلي|بنك/i, v = vaultsL().find(x => !isMkv(x.id) && re.test(x.name));
+  return v ? v.id : '';
+}
+/* المطابقة: كل رسالة مع حاجة واحدة بس بنفس المبلغ (تحويل من أحمد لسه في الوارد، أو دفعة/إيراد متسجل في خزنة من خزني). نفس اليوم الأول، وبعدين يوم قبل/بعد */
+let smsMemo = null;
+function smsMatch() {
+  const key = dataVer + '|' + db.smss.length + '|' + Object.keys(mkDb().ops).length;
+  if (smsMemo && smsMemo.key === key) return smsMemo;
+  const L = smsList().filter(r => !r.ign).sort((a, b) => (a.date + a.tm).localeCompare(b.date + b.tm));
+  const T = [], bySms = new Map(), byOp = new Map(), d0 = L.length ? addDays(L[0].date, -1) : '', d1 = L.length ? addDays(L[L.length - 1].date, 1) : '';
+  if (L.length) {
+    mkPending().forEach(o => { if ((o.t === 'pay' && o.m !== 'cash') || mkCsTr(o)) { const d = isoOf(o.ts); if (d >= d0 && d <= d1) T.push({op: o, amt: o.amt, date: d}); } });
+    db.entries.forEach(e => { if (!e.del && e.kind === 'pay' && e.vault && !isMkv(e.vault) && e.date >= d0 && e.date <= d1) T.push({e, amt: e.amt, date: e.date, v: e.vault}); });
+    db.txs.forEach(x => { if (!x.del && x.type === 'inc' && x.vault && !isMkv(x.vault) && x.date >= d0 && x.date <= d1) T.push({e: x, amt: x.amt, date: x.date, v: x.vault}); });
+  }
+  const used = new Set();
+  [0, 1].forEach(pass => L.forEach(r => {
+    if (bySms.has(r.id)) return;
+    const sv = smsVault(r.k), c = T.filter(x => !used.has(x) && x.amt === r.amt && (pass ? x.date >= addDays(r.date, -1) && x.date <= addDays(r.date, 1) : x.date === r.date))
+      .sort((a, b) => (a.v === sv ? 0 : a.v ? 2 : 1) - (b.v === sv ? 0 : b.v ? 2 : 1))[0];
+    if (c) { used.add(c); bySms.set(r.id, c); if (c.op) byOp.set(c.op.id, r); }
+  }));
+  return (smsMemo = {key, bySms, byOp});
+}
+const smsOf = o => db && db.smss && db.smss.length ? smsMatch().byOp.get(o.id) || null : null;
+const smsVaultOf = o => { const r = smsOf(o); return r ? smsVault(r.k) : ''; };
+/* السطر اللي بيظهر في شاشة النقل تحت التحويل */
+function smsLine(o) {
+  if (!((o.t === 'pay' && o.m !== 'cash') || mkCsTr(o)) || !db.smss.length) return '';
+  const r = smsOf(o);
+  if (r) return `<div class="smln ok">📩 الرسالة وصلت ${esc(SMS_K[r.k])} ${dispDate(r.date)} ${esc(r.tm)}${r.from ? ' من ' + esc(r.from) : ''}</div>`;
+  return smsList().some(x => !x.ign && x.date === isoOf(o.ts)) ? '<div class="smln no">⚠ مفيش رسالة تحويل بالمبلغ ده في اليوم ده — اتأكد قبل ما تختار الخزنة</div>' : '';
+}
+/* الرسايل اللي محدش سجّلها (أقدم من 3 أيام بتسقط من التنبيه، وبتفضل في القايمة) */
+const smsMiss = () => { if (!db || !db.smss || !db.smss.length) return []; const M = smsMatch(), cut = addDays(todayISO(), -3); return smsList().filter(r => !r.ign && !M.bySms.has(r.id) && r.date >= cut); };
+function smsSave(list) {
+  const now = nowS(); let n = 0, dup = 0;
+  list.forEach(x => {
+    const id = 'sm_' + x.k + '_' + x.ref, old = IDX.sms.get(id);
+    if (old && !old.del) { dup++; return; }
+    const r = Object.assign(old || {id}, x, {ign: false, at: now, del: false}); if (!old) { db.smss.push(r); IDX.sms.set(id, r); }
+    touch(r); n++;
+  });
+  if (n) saveDB();
+  return {n, dup};
+}
+/* "الصق رسالة": بيقرا الحافظة على طول (الآيفون بيطلع زرار "لصق")، ولو مقدرش بيفتح خانة تلصق فيها بإيدك */
+async function smsPaste() {
+  let txt = '';
+  try { txt = navigator.clipboard && navigator.clipboard.readText ? await navigator.clipboard.readText() : ''; } catch (e) { txt = ''; }
+  const got = smsParse(txt);
+  if (got.length) return smsAdded(got);
+  modal(`<h3>📩 الصق رسالة التحويل</h3>
+    <p class="hint">دوس دوسة طويلة على رسالة فودافون كاش أو البنك الأهلي ← نسخ، وبعدين الصقها هنا. ينفع أكتر من رسالة مع بعض.</p>
+    <textarea class="inp" id="smT" rows="6" placeholder="تم استلام مبلغ … / تم إضافة تحويل لحظي …"></textarea>
+    <div class="mrow"><button class="btn green" id="smOk" type="button">سجّل</button><button class="btn line" id="smX" type="button">رجوع</button></div>`, true);
+  $('#smX').onclick = closeModal;
+  $('#smOk').onclick = () => { const g = smsParse($('#smT').value); if (!g.length) return toast('مش فاهم الرسالة دي. انسخ رسالة "تم استلام مبلغ" من فودافون كاش أو "تم إضافة تحويل لحظي" من البنك.', 6000); closeModal(); smsAdded(g); };
+}
+function smsAdded(got) {
+  const {n, dup} = smsSave(got), k0 = got[0].k;
+  if (n && !smsVault(k0)) return smsVaultPick(k0, () => smsAdded([]));   // أول مرة: النوع ده بيدخل أنهي خزنة
+  if (got.length) toast(n ? `📩 اتسجلت: ${got.length === 1 ? SMS_K[got[0].k] + ' ' + fmtP(got[0].amt) + (got[0].from ? ' من ' + got[0].from : '') : n + ' رسايل'}${dup ? ` (${dup} كانت متسجلة)` : ''}` : 'الرسالة دي متسجلة قبل كده ✔', 4500);
+  if ($('#p-mkt.on') || $('#p-mkt')) renderMkt();
+}
+function smsVaultPick(k, then) {
+  modal(`<h3>📩 تحويلات ${esc(SMS_K[k])} بتدخل أنهي خزنة؟</h3><p class="hint">مرة واحدة بس، وتقدر تغيّرها بعدين من قايمة الرسايل.</p>
+    <select class="inp" id="smV">${vaultOpts(smsVault(k) || '')}</select>
+    <div class="mrow" style="margin-top:10px"><button class="btn green" id="smVOk" type="button">تمام</button></div>`);
+  $('#smVOk').onclick = () => { db.cfg.smv = Object.assign({}, db.cfg.smv, {[k]: $('#smV').value}); smsMemo = null; saveDB(); closeModal(); if (then) then(); };
+}
+/* قايمة الرسايل: آخر أسبوعين، الأحدث فوق، وجنب كل رسالة اتسجلت فين أو "محدش سجّلها" وزرارين */
+function smsSheet() {
+  const M = smsMatch(), cut = addDays(todayISO(), -14), L = smsList().filter(r => r.date >= cut).sort((a, b) => (b.date + b.tm).localeCompare(a.date + a.tm)), t = todayISO();
+  const st = r => {
+    if (r.ign) return '<small class="sms0">مش تبعنا</small>';
+    const c = M.bySms.get(r.id);
+    if (!c) return `<small class="smsx">${r.date === t ? '⏳ لسه محدش سجّلها' : '⚠ محدش سجّلها'}</small>`;
+    if (c.op) return `<small class="smsk">✓ ${esc(MK_PN)} سجّلها: ${esc(c.op.cname || '')} — لسه في الوارد</small>`;
+    const p = c.e.party && P.get(c.e.party), sv = smsVault(r.k), wrong = sv && c.v && c.v !== sv;
+    return `<small class="smsk">✓ متسجلة${p ? ': ' + esc(p.name) : ''} في ${esc(vName(c.v))}</small>${wrong ? `<small class="smsx">⚠ الرسالة ${esc(SMS_K[r.k])} والدفعة متسجلة في ${esc(vName(c.v))}</small>` : ''}`;
+  };
+  modal(`<div class="ksheet"><div class="ksh2"><button class="kback" id="smB" type="button" aria-label="رجوع">→</button><span>📩 رسايل التحويل<small>آخر أسبوعين · ${L.length} ${L.length === 1 ? 'رسالة' : 'رسايل'}</small></span></div>
+    <button class="btn green" id="smAdd" type="button">📩 الصق رسالة تحويل</button>
+    <div class="smvs">${['voda', 'insta'].map(k => `<a class="lnk" data-smv="${k}">${esc(SMS_K[k])} ← ${esc(smsVault(k) ? vName(smsVault(k)) : 'اختار خزنة')}</a>`).join('')}</div>
+    <div class="kits">${L.length ? L.map(r => `<div class="kit smsr" data-id="${esc(r.id)}"><div><b>${esc(r.from || SMS_K[r.k])}</b><small>${esc(SMS_K[r.k])} · ${dispDate(r.date)} ${esc(r.tm)}</small>${st(r)}
+      ${!M.bySms.has(r.id) ? `<span class="smsb">${r.ign ? '<a class="lnk" data-a="un">رجّعها</a>' : '<a class="lnk" data-a="reg">سجّلها لعميل</a><a class="lnk" data-a="ign">مش تبعنا</a>'}</span>` : ''}</div><b class="n in">${fmtP(r.amt)}</b></div>`).join('')
+      : '<div class="kno">لسه مفيش رسايل. أول ما يوصلك تحويل انسخ الرسالة ودوس "الصق".</div>'}</div>
+    <button class="btn line" id="smX" type="button">رجوع</button></div>`);
+  $('#smX').onclick = $('#smB').onclick = closeModal;
+  $('#smAdd').onclick = () => { closeModal(); smsPaste(); };
+  $$('#modal [data-smv]').forEach(a => a.onclick = () => smsVaultPick(a.dataset.smv, smsSheet));
+  $$('#modal .smsr [data-a]').forEach(a => a.onclick = ev => {
+    ev.stopPropagation();
+    const r = IDX.sms.get(a.closest('.smsr').dataset.id);
+    if (a.dataset.a === 'reg') { closeModal(); return pickParty('pay', {method: 'تحويل', vault: smsVault(r.k), amt: r.amt, date: r.date, note: SMS_K[r.k] + (r.from ? ' — ' + r.from : '')}); }
+    r.ign = a.dataset.a === 'ign'; touch(r); saveDB(); smsMemo = null; smsSheet(); if ($('#p-mkt')) renderMkt();
+  });
+}
 /* الملخص فوق: عدد اللي مستنياك ومبلغه كبير، وتحته علامات صغيرة للي محتاج تاخد بالك منه (مع الشريك، تعارض، اتأخروا). اللي صفر مبيظهرش */
 function mkStat() {
   const s = mkStatParts(), bal = mkLive().reduce((x, o) => x + mkSign(o) * o.amt, 0), amt = mkPending().reduce((x, o) => x + o.amt, 0);
   const ch = [`<a class="mqc g" data-st="cash">💵 مع الشريك <b class="${bal < 0 ? 'neg' : ''}">${fmtP(bal)}</b></a>`];
   if (s.clash) ch.push(`<a class="mqc r" data-st="clash">⚠️ <b>${s.clash}</b> تعارض</a>`);
   if (s.late) ch.push(`<a class="mqc" data-st="late">🕒 <b>${s.late}</b> اتأخروا عن الدفع</a>`);
+  const sm = smsMiss().length;
+  ch.push(sm ? `<a class="mqc r" data-st="sms">📩 <b>${sm}</b> ${sm === 1 ? 'تحويل' : 'تحويلات'} محدش سجّلها</a>` : `<a class="mqc" data-st="sms">📩 رسايل التحويل</a>`);
   return `<div class="mqs" id="mkStat"><div class="mqsb">${s.wait ? `<b class="c">${s.wait} <span>${s.wait === 1 ? 'عملية مستنياك' : 'عمليات مستنياك'}</span></b><b class="n">${fmtP(amt)}</b>` : '<b class="c ok">✔ <span>مفيش حاجة مستنياك</span></b>'}</div>
     <div class="mqcs">${ch.join('')}</div></div>`;
 }
@@ -6415,6 +6538,7 @@ function mkStatBind() {
   $$('#mkStat [data-st]').forEach(el => el.onclick = () => {
     const k = el.dataset.st;
     if (k === 'clash') clashModal();
+    else if (k === 'sms') smsSheet();
     else if (k === 'cash') go('cash');
     else if (k === 'late') {
       const l = mkLate();
@@ -6775,8 +6899,8 @@ function mkBulk() {
   modal(`<h3>⚡ انقل كل الجاهز</h3>
     
     <div class="mkbl">${[...by.entries()].map(([k, L]) => `<div class="mkbg"><div class="mkbgh"><b>${k === 'x:cs' ? '💰 بيع كاش من المصنع' : (L[0].t === 'spay' ? '🏭 ' : '') + esc(P.get(k).name)}</b><b class="money">${fmtP(L.reduce((s, o) => s + o.amt, 0))}</b></div>
-      ${L.map(o => `<div class="mkbr"><span>${mkLTag(o)}${o.t === 'exp' ? ' <small>' + esc(o.cat) + '</small>' : ''}${o.t === 'cs' && o.buyer ? ' <small>' + esc(o.buyer) + '</small>' : ''}</span><span><b class="money">${fmtP(o.amt)}</b> <small class="tm">${dispDate(isoOf(o.ts))}</small></span></div>`).join('')}</div>`).join('')}</div>
-    ${hasTr ? `<div class="fld"><label>التحويلات تدخل خزنة</label><select class="inp" id="mbV">${vaultOpts(mkVaultFor('tr'), 'من غير خزنة (في حساب العميل بس)')}</select></div>` : ''}
+      ${L.map(o => `<div class="mkbr"><span>${mkLTag(o)}${smsVaultOf(o) ? ` <small class="smok">📩 ${esc(vName(smsVaultOf(o)))}</small>` : ''}${o.t === 'exp' ? ' <small>' + esc(o.cat) + '</small>' : ''}${o.t === 'cs' && o.buyer ? ' <small>' + esc(o.buyer) + '</small>' : ''}</span><span><b class="money">${fmtP(o.amt)}</b> <small class="tm">${dispDate(isoOf(o.ts))}</small></span></div>`).join('')}</div>`).join('')}</div>
+    ${hasTr ? `<div class="fld"><label>${ops.some(o => isTr(o) && smsVaultOf(o)) ? 'التحويلات اللي ملهاش رسالة تدخل خزنة' : 'التحويلات تدخل خزنة'}</label><select class="inp" id="mbV">${vaultOpts(mkVaultFor('tr'), 'من غير خزنة (في حساب العميل بس)')}</select></div>` : ''}
     <div class="mfoot"><div class="dtot"><span>الإجمالي</span><b>${fmtP(tot)}</b></div>
       <div class="mrow"><button class="btn green" id="mbOk" type="button">انقلهم كلهم</button><button class="btn line" id="mbX" type="button">إلغاء</button></div></div>`, true);
   $('#mbX').onclick = closeModal;
@@ -6786,7 +6910,7 @@ function mkBulk() {
     let n = 0;
     by.forEach((L, k) => {
       const pays = L.filter(o => o.t === 'pay'), grp = pays.length > 1 ? 'g_' + pays[0].id : '';   // دفعات نفس العميل = "دفعة" واحدة في حسابه
-      L.forEach(o => { if (mkMove(o, {pid: o.t === 'cs' ? '' : k, amt: o.amt, date: isoOf(o.ts), vault: isTr(o) ? (mkCsTr(o) && !tv ? mkCsVault() : tv) : MKV, to: '', grp: o.t === 'pay' ? grp : ''})) n++; });
+      L.forEach(o => { if (mkMove(o, {pid: o.t === 'cs' ? '' : k, amt: o.amt, date: isoOf(o.ts), vault: isTr(o) ? smsVaultOf(o) || (mkCsTr(o) && !tv ? mkCsVault() : tv) : MKV, to: '', grp: o.t === 'pay' ? grp : ''})) n++; });
     });
     if (hasTr) db.cfg.mkv = Object.assign({}, db.cfg.mkv, {tr: tv});
     saveDB(); closeModal(); renderMkt(); renderMkHome(); mkSync();
@@ -6811,8 +6935,8 @@ function mkConfirm(ops, to) {
         ${o.t === 'rt' ? `<div class="fld"><label>الخزنة</label><div class="mkcash">↩️ من غير خزنة</div><input type="hidden" data-f="v" value=""></div>`
           : mkCashOp(o) && o.t !== 'hand' ? `<div class="fld"><label>الفلوس</label><div class="mkcash">💵 مع شريكك</div><input type="hidden" data-f="v" value="${MKV}"></div>`
           : o.t === 'hand' ? `<div class="fld"><label>استلمتها في خزنة</label><select class="inp" data-f="t">${vaultOpts(mkHandTo())}</select><input type="hidden" data-f="v" value="${MKV}"></div>`
-          : `<div class="fld"><label>← الخزنة</label><select class="inp" data-f="v">${o.t === 'cs' ? vaultOpts(mkCsVault()) : vaultOpts(mkVaultFor(key(o)), 'من غير خزنة (في حساب العميل بس)')}</select></div>`}</div>
-      <div class="fld"><label>التاريخ</label><input class="inp" type="date" data-f="d" value="${isoOf(o.ts)}"></div></div>`).join('')}
+          : `<div class="fld"><label>← الخزنة</label><select class="inp" data-f="v">${smsVaultOf(o) ? vaultOpts(smsVaultOf(o)) : o.t === 'cs' ? vaultOpts(mkCsVault()) : vaultOpts(mkVaultFor(key(o)), 'من غير خزنة (في حساب العميل بس)')}</select></div>`}</div>
+      ${smsLine(o)}<div class="fld"><label>التاريخ</label><input class="inp" type="date" data-f="d" value="${isoOf(o.ts)}"></div></div>`).join('')}
     <div id="mvW"></div>
     <div class="mfoot">${ops.length > 1 ? `<div class="dtot"><span>الإجمالي</span><b id="mvT">${fmtP(ops.reduce((s, o) => s + o.amt, 0))}</b></div>` : ''}
       <div class="mrow"><button class="btn green" id="mvOk" type="button">${kind === 'hand' ? 'استلمت' : 'سجّل'}</button><button class="btn line" id="mvX" type="button">إلغاء</button></div></div>`, true);
@@ -6831,7 +6955,7 @@ function mkConfirm(ops, to) {
     if (kind === 'pay' || kind === 'spay' || kind === 'rt') pid = mkEnsureParty(kind === 'spay' ? 'sup' : 'mkt', to);
     let n = 0;
     const grp = kind === 'pay' && rows.length > 1 ? 'g_' + ops[0].id : '';   // دفعات نفس العميل اللي اتنقلت مع بعض = "دفعة" واحدة في حسابه
-    rows.forEach(r => { if (mkMove(r.o, {pid, amt: r.amt, date: r.date, vault: r.vault, to: r.to, grp})) n++; db.cfg.mkv = Object.assign({}, db.cfg.mkv, {[key(r.o)]: r.vault}, r.o.t === 'hand' ? {handTo: r.to} : {}); });
+    rows.forEach(r => { if (mkMove(r.o, {pid, amt: r.amt, date: r.date, vault: r.vault, to: r.to, grp})) n++; if (!smsVaultOf(r.o)) db.cfg.mkv = Object.assign({}, db.cfg.mkv, {[key(r.o)]: r.vault}, r.o.t === 'hand' ? {handTo: r.to} : {}); });   // الخزنة اللي جت من رسالة مبتبقاش الاقتراح الجاي
     saveDB(); closeModal(); renderMkt(); renderMkHome(); mkSync();
     toast(n ? `اتنقلت ✔ (${n === 1 ? 'عملية' : n + ' عمليات'})` : 'اتنقلت قبل كده ✔');
   };

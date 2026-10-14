@@ -11,7 +11,7 @@ const WAIT = 3000;
 const FONTS = [400, 600, 700, 800].flatMap(w => ['arabic', 'latin'].map(l => `fonts/cairo-${l}-${w}-normal.woff2`));
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'accounts.html', 'accounts.webmanifest', 'market.html', 'market.webmanifest',
   'lib/ui.css', 'lib/datepick.js', 'lib/swup.js', 'lib/icons.js', 'fonts/fonts.css', ...FONTS,
-  'icons/logo.jpg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'];
+  'icons/logo.jpg', 'icons/logo-pdf.jpg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'];
 const FAST = /^(accounts\.html|market\.html|lib\/(ui\.css|datepick\.js|swup\.js|icons\.js)|fonts\/fonts\.css)$/;
 const STATIC = /^(fonts\/[^/]+\.woff2|icons\/[^/]+|[^/]+\.webmanifest)$/;
 

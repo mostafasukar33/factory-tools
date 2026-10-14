@@ -353,7 +353,7 @@ nav svg{width:26px;height:26px}
 .pg .strip{height:12px;background:linear-gradient(90deg,#111 0 30%,#DAAE57 30% 100%);flex:none}
 .pg .in{flex:1;min-height:0;display:flex;flex-direction:column;padding:18px 30px 0;overflow:hidden}
 .pg .hd{display:flex;align-items:center;gap:16px;padding-bottom:10px;border-bottom:4px solid #DAAE57;margin-bottom:10px;flex:none}
-.pg .hd img{width:84px;height:84px;object-fit:contain}
+.pg .hd img{width:112px;height:112px;object-fit:contain}
 .pg .co b{display:block;font-size:36px;font-weight:800;line-height:1.2}
 .pg .co span{display:block;font-size:17px;font-weight:600;color:#444}
 .pg .co em{display:block;font-style:normal;font-size:17px;font-weight:700;margin-top:6px;color:#9C7420;direction:ltr;text-align:right}
@@ -2896,7 +2896,7 @@ function buildStmtPages(p, s) {
   const shell = first => {
     const pg = document.createElement('div'); pg.className = 'pg';
     pg.innerHTML = `<div class="strip"></div><div class="in">` + (first
-      ? `<div class="hd"><img src="icons/logo.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${web ? `<i class="web" data-url="${esc(webUrl(web))}">🌐 ${esc(web)}</i>` : ''}${phone && !info.length ? `<em>${esc(phone)}</em>` : ''}</div>
+      ? `<div class="hd"><img src="icons/logo-pdf.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${web ? `<i class="web" data-url="${esc(webUrl(web))}">🌐 ${esc(web)}</i>` : ''}${phone && !info.length ? `<em>${esc(phone)}</em>` : ''}</div>
          <div class="ti"><h3>${s.invOnly ? (p.sec === 'sup' ? 'فاتورة مشتريات' : 'فاتورة') : 'كشف حساب'}</h3><div>تاريخ الإصدار: <span>${dispDate(isoOf(issued))}</span></div><div>${s.invOnly ? 'تاريخ الفاتورة' : 'الفترة'}: <span>${esc(per)}</span></div></div></div>
          ${info.length ? `<div class="coi">${info.map(([k, v]) => `<span>${k}: <b${k === 'العنوان' ? '' : ' class="ltr"'}>${esc(v)}</b></span>`).join('')}</div>` : ''}
          <div class="cust"><span>السادة / <b>${esc(p.name)}</b></span>${p.sec === 'sup' ? `<i>${SEC1[p.sec]}</i>` : ''}</div>
@@ -4890,7 +4890,7 @@ function buildReportPages(R) {
   const shell = first => {
     const pg = document.createElement('div'); pg.className = 'pg';
     pg.innerHTML = `<div class="strip"></div><div class="in">` + (first
-      ? `<div class="hd"><img src="icons/logo.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${phone ? `<em>${esc(phone)}</em>` : ''}</div>
+      ? `<div class="hd"><img src="icons/logo-pdf.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${phone ? `<em>${esc(phone)}</em>` : ''}</div>
          <div class="ti"><h3>${esc(R.title)}</h3><div>تاريخ الإصدار: <span>${dispDate(todayISO())}</span></div><div><span>${esc(R.period)}</span></div></div></div>`
       : `<div class="mini"><b>فلاش أون</b><span>${esc(R.title)} — ${esc(R.period)}</span></div>`) +
       `</div><div class="ft"><span>عالم متكامل من احتياجاتك الكهربائية</span><span class="pn"></span></div>`;

@@ -149,6 +149,8 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-mkt-' + sfx, go: accGo('mkt'), full: true},
   {name: 'acc-rep-' + sfx, go: accGo('rep'), full: true},
   {name: 'acc-col-' + sfx, go: async A => { await accGo('rep')(A); await A.evaluate(() => { repKind = 'col'; repColMode = 'month'; renderReports(); }); }, full: true},
+  {name: 'acc-ldg-' + sfx, go: accEval(`cashView = 'date'; ldgMode = 'w3'; ldgEnd = ''; ldgFilter = 'all'; cashVault = ''; cashOpenV = false; cashPickM = false; ldgSumOpen = false; go('cash'); renderCash()`), full: true},
+  {name: 'acc-ldg-sum-' + sfx, go: accEval(`cashView = 'date'; ldgMode = 'w3'; ldgEnd = ''; ldgFilter = 'all'; cashVault = ''; cashOpenV = false; cashPickM = false; ldgSumOpen = true; go('cash'); renderCash()`), full: true},
   {name: 'acc-set-' + sfx, go: accGo('set'), full: true},
   {name: 'acc-jrd-' + sfx, go: accEval(IVSHOT + "jrDate = ''; jrStock = null; go('jrd')"), full: true},
   {name: 'acc-iv-' + sfx, go: accEval(IVSHOT + "go('jrd/iv/ip_shot')"), full: true},
@@ -192,6 +194,7 @@ const SCREENS = [
   {name: 'mkt-arch-m-dark', app: 'mkt', vp: MOB, dark: true, go: mktGo('a')},
   /* ورق الـ PDF (لازم ميتغيرش): بيتصور آخر حاجة في كل جهاز لأن الورقة بتتحط قدام الصفحة */
   {name: 'pdf-stmt', app: 'acc', vp: LAP, el: '#render .pg', go: accEval(`go('p/' + ${party}.id); buildStmtPages(${party}, stmtData(${party}.id, '', '')); Object.assign($('#render').style, {left: '0', zIndex: 9999})`)},
+  {name: 'pdf-ldg', app: 'acc', vp: LAP, el: '#render .pg', go: accEval(`cashView = 'date'; ldgMode = 'w3'; ldgEnd = ''; ldgFilter = 'all'; cashVault = ''; cashOpenV = false; cashPickM = false; ldgMode = 'w3'; go('cash'); renderCash(); buildReportPages(ldgReport(ldgItems(ldgRange()[0], ldgRange()[1]), ldgRange()[0], ldgRange()[1])); Object.assign($('#render').style, {left: '0', zIndex: 9999})`)},
   {name: 'pdf-rep', app: 'acc', vp: LAP, el: '#render .pg', go: accEval(`go('rep'); buildReportPages(buildReport()); Object.assign($('#render').style, {left: '0', zIndex: 9999})`)},
 ];
 

@@ -367,9 +367,9 @@ nav svg{width:26px;height:26px}
 .pg .cust b{font-size:22px;font-weight:800;margin-right:8px}
 .pg .cust i{font-style:normal;font-weight:700;color:#9C7420;font-size:15px}
 .pg table{width:100%;border-collapse:collapse;font-size:17px;table-layout:fixed;flex:none}
-.pg th{background:#111;color:#DAAE57;padding:7px 3px;font-weight:800;font-size:16px;text-align:center}
+.pg th{background:#F4E6C2;color:#111;padding:7px 3px;font-weight:800;font-size:16px;text-align:center}
 .pg td{padding:5px 4px;text-align:center;border:1px solid #CBBE9B;word-wrap:break-word;vertical-align:middle;line-height:1.3;font-weight:600}
-.pg th{border:1px solid #333}
+.pg th{border:1px solid #D9C79A;border-bottom:2px solid #DAAE57}
 .pg td.b{background:#F7F2E4 !important;border-inline-start:2px solid #9C7420}
 .pg .sbox{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px;margin-bottom:14px;flex:none}
 .pg .sbox div{border:2px solid #CBBE9B;border-radius:8px;padding:6px 8px;text-align:center}
@@ -417,9 +417,10 @@ nav svg{width:26px;height:26px}
 .pg .tot .sum .f{margin-top:0;flex:1;font-size:16px;padding:6px 14px}
 .pg .tot+.note{margin-top:8px}
 .pg .gen{flex:none;text-align:center;font-size:12px;font-weight:600;color:#888;padding:2px 0 4px}
-.pg .ft{flex:none;background:#111;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 44px;height:44px;font-size:13.5px;font-weight:600;border-top:4px solid #DAAE57}
-.pg .ft span:first-child{color:#DAAE57;font-size:16px;font-weight:700}
-.pg .ft .web{color:#E8C676;font-size:15px;font-weight:800;direction:ltr;letter-spacing:.4px}
+.pg .ft{flex:none;background:#FBF5E6;color:#5a4a1f;display:flex;justify-content:space-between;align-items:center;padding:0 44px;height:40px;font-size:13.5px;font-weight:600;border-top:3px solid #DAAE57}
+.pg .ft span:first-child{color:#9C7420;font-size:16px;font-weight:700}
+.pg .ft .web{color:#9C7420;font-size:15px;font-weight:800;direction:ltr;letter-spacing:.4px}
+.pg .co .al{font-style:normal;color:#E5AF28}
 .pg .co .web{display:block;width:fit-content;font-style:normal;font-size:15px;font-weight:800;margin-top:8px;padding:4px 14px 5px;border-radius:20px;background:#111;color:#E8C676;direction:ltr;text-align:right;letter-spacing:.4px;line-height:1.4}
 /* ====== تنسيق الموبايل: أصغر وأنضف، من غير ما يتغير أي حاجة في الشغل ====== */
 @media (max-width:640px){
@@ -2896,7 +2897,7 @@ function buildStmtPages(p, s) {
   const shell = first => {
     const pg = document.createElement('div'); pg.className = 'pg';
     pg.innerHTML = `<div class="strip"></div><div class="in">` + (first
-      ? `<div class="hd"><img src="icons/logo-pdf.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${web ? `<i class="web" data-url="${esc(webUrl(web))}">🌐 ${esc(web)}</i>` : ''}${phone && !info.length ? `<em>${esc(phone)}</em>` : ''}</div>
+      ? `<div class="hd"><img src="icons/logo-pdf.jpg" alt=""><div class="co"><b>فلاش <i class="al">أ</i>ون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${web ? `<i class="web" data-url="${esc(webUrl(web))}">🌐 ${esc(web)}</i>` : ''}${phone && !info.length ? `<em>${esc(phone)}</em>` : ''}</div>
          <div class="ti"><h3>${s.invOnly ? (p.sec === 'sup' ? 'فاتورة مشتريات' : 'فاتورة') : 'كشف حساب'}</h3><div>تاريخ الإصدار: <span>${dispDate(isoOf(issued))}</span></div><div>${s.invOnly ? 'تاريخ الفاتورة' : 'الفترة'}: <span>${esc(per)}</span></div></div></div>
          ${info.length ? `<div class="coi">${info.map(([k, v]) => `<span>${k}: <b${k === 'العنوان' ? '' : ' class="ltr"'}>${esc(v)}</b></span>`).join('')}</div>` : ''}
          <div class="cust"><span>السادة / <b>${esc(p.name)}</b></span>${p.sec === 'sup' ? `<i>${SEC1[p.sec]}</i>` : ''}</div>
@@ -4890,7 +4891,7 @@ function buildReportPages(R) {
   const shell = first => {
     const pg = document.createElement('div'); pg.className = 'pg';
     pg.innerHTML = `<div class="strip"></div><div class="in">` + (first
-      ? `<div class="hd"><img src="icons/logo-pdf.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${phone ? `<em>${esc(phone)}</em>` : ''}</div>
+      ? `<div class="hd"><img src="icons/logo-pdf.jpg" alt=""><div class="co"><b>فلاش <i class="al">أ</i>ون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${phone ? `<em>${esc(phone)}</em>` : ''}</div>
          <div class="ti"><h3>${esc(R.title)}</h3><div>تاريخ الإصدار: <span>${dispDate(todayISO())}</span></div><div><span>${esc(R.period)}</span></div></div></div>`
       : `<div class="mini"><b>فلاش أون</b><span>${esc(R.title)} — ${esc(R.period)}</span></div>`) +
       `</div><div class="ft"><span>عالم متكامل من احتياجاتك الكهربائية</span><span class="pn"></span></div>`;

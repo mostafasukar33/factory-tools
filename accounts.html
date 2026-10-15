@@ -1981,7 +1981,7 @@ async function forgotFlow() {
 }
 function lockNow(msg) {
   if (!db) return;
-  flushSave().then(() => { db = null; cryptoKey = null; P = new Map(); E = new Map(); $('#p-party').innerHTML = ''; $('#hList').innerHTML = ''; showLock(msg); });
+  flushSave().then(() => { db = null; cryptoKey = null; P = new Map(); E = new Map(); $('#p-party').innerHTML = ''; $('#hList').innerHTML = ''; homeVer = ''; showLock(msg); });   // homeVer فاضي = القايمة اللي اتمسحت لازم تترسم تاني بعد الفتح حتى في الرجوع من حساب
 }
 function landingHash() {
   if (mkCreds() && (mkPending().length || (db.cfg.clash || []).some(c => !c.seen))) return '#mkt';

@@ -1043,6 +1043,12 @@ const T0 = Date.now();
 
     sec('١٤ب) راحة العين واستغلال المساحة (ماتدوسش حاجة مكان حاجة)');
     await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
+    {   // القفل وانت جوه حساب، وبعد ما تفتح ترجع: القايمة لازم تترسم تاني (كانت بتطلع فاضية والإجماليات بس)
+      await A.evaluate(() => go('')); await A.settle(150); await openParty(A, 'عميل تجربة واحد');
+      await A.evaluate(() => lockNow()); await A.waitForSelector('#lock.on', {state: 'attached'}); await unlock(A); await A.settle(200);
+      await A.evaluate(() => history.back()); await A.waitForFunction(() => !location.hash.startsWith('#p/')); await A.settle(200);
+      eq('قفل جوه حساب وفتح ورجوع: قايمة العملاء مش فاضية', await A.evaluate(() => $$('#hList .pt').length > 0), true);
+    }
     await openParty(A, 'عميل تجربة واحد');
     eq('الموبايل: كشف الحساب 5 عواميد، الكمية × السعر تحت البيان، والسنة سطر لوحده مش جنب كل تاريخ', await A.evaluate(() => {
       const vis = el => getComputedStyle(el).display !== 'none', th = [...$$('#p-party .ldg thead th')].filter(vis).map(x => x.textContent);

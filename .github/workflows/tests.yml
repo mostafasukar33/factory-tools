@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+permissions:
+  contents: write   # علشان يعلّم "النسخة السليمة" (tag) بس
 concurrency:
   group: tests
   cancel-in-progress: true
@@ -26,3 +28,12 @@ jobs:
       - name: المرتبات
         if: always()
         run: node tests/payroll.js
+      # النسخة السليمة: كل تعديل على main الاختبارات كلها نجحت عليه بيتعلّم safe (بيتحرك لآخر نسخة سليمة)،
+      # وأول نسخة سليمة في كل شهر بتتعلّم safe-سنة-شهر وبتفضل ثابتة. الرجوع ليها مكتوب في CLAUDE.md.
+      - name: علّم النسخة السليمة
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          git tag -f safe
+          git push -f origin refs/tags/safe
+          M="safe-$(date -u +%Y-%m)"
+          if ! git ls-remote --exit-code --tags origin "refs/tags/$M" >/dev/null; then git tag "$M" && git push origin "refs/tags/$M"; fi

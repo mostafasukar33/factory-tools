@@ -250,6 +250,7 @@ table.ldg.rp.wide{min-width:520px}.ldg.rp td{white-space:nowrap}.ldg.rp td.l{whi
 .sync{display:flex;align-items:center;gap:8px;font-weight:700;font-size:var(--f2);padding:8px 12px;border-radius:10px;background:var(--gold-l);border:1.5px dashed var(--gold);margin-bottom:12px;flex-wrap:wrap}
 .sync.ok{background:var(--green-l);border-color:#A9DDB8;color:var(--green)}
 .sync.warn{background:var(--red-l);border-color:#F0B9B3;color:var(--red)}
+@media (max-width:999px){#bReader{display:none}}
 .sync a{margin-inline-start:auto;text-decoration:underline;cursor:pointer;color:var(--gold-d)}
 .sync.warn a{color:var(--red)}
 .krow{display:grid;grid-template-columns:1fr 46px;gap:6px;align-items:center}
@@ -1564,6 +1565,7 @@ body{font-size:var(--f3);line-height:1.6}
     <div class="stack">
       <button class="btn gold" id="bBackup" type="button">تنزيل نسخة احتياطية</button>
       <button class="btn line" id="bRestore" type="button">استرجاع نسخة احتياطية</button>
+      <button class="btn line" id="bReader" type="button">نزّل قارئ النسخ</button>
       <input type="file" id="fRestore" accept=".json,application/json" hidden>
     </div>
     <span class="qh"><button class="qb" type="button" aria-label="شرح">؟</button><span class="qt" hidden>الملف متقفل بكلمة السر بتاعتك، فمحدش يقدر يفتحه من غيرها. احتفظ بيه في مكان آمن. ولو تنبيهات تليجرام شغالة (في حركة السوق)، بتوصلك نسخة كل يوم على تليجرام.</span></span>
@@ -1994,7 +1996,7 @@ function renderHome() {
   if (au && !au.ok) probs.unshift(au.msg);
   const lb = db.cfg.lastBackup || 0, every = db.cfg.sheetOk ? 30 : 7, days = Math.floor((nowS() - lb) / 86400000);
   $('#nlRem').innerHTML = '';   // تنبيه الفواتير اللي بنودها لسه: في الوارد بس (بطلب صاحب المشروع)
-  $('#chk').innerHTML = chkAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '');
+  $('#chk').innerHTML = chkAlertHtml() + safeAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '');
   const bal = allBalances();
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
   const net = ly - al;
@@ -3788,6 +3790,14 @@ $('#fabNew').onclick = quickModal;
 $('#nQuick').onclick = quickModal;
 addEventListener('keydown', e => { if (e.key === 'F4' && db && !$('#lock').classList.contains('on') && !$('#mask').classList.contains('on')) { e.preventDefault(); quickModal(); } });
 $('#bRestore').onclick = () => $('#fRestore').click();
+/* قارئ النسخ (اللاب بس، بطلبه): بينزّل reader.html نفسه ملف لوحده يتحفظ على فلاشة جنب النسخ، ويفتح أي نسخة بكلمة السر من غير نت ومن غير البرنامج */
+$('#bReader').onclick = async () => {
+  try {
+    const r = await fetch('reader.html', {cache: 'no-store'}); if (!r.ok) throw 0;
+    downloadBlob(new Blob([await r.text()], {type: 'text/html'}), 'flash-on-accounts-reader.html');
+    toast('✔ نزل "قارئ نسخ الحسابات". حطه على الفلاشة جنب ملفات النسخ: بيفتح أي نسخة بكلمة السر من غير نت ومن غير البرنامج.', 7000);
+  } catch (e) { toast('معرفتش أنزّله دلوقتي. اتأكد من النت وجرّب تاني.'); }
+};
 $('#fRestore').addEventListener('change', async ev => {
   const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
   let box; try { box = JSON.parse(await f.text()); if (box.app !== 'flash-on-accounts-backup' || !box.ct) throw 0; } catch (x) { return toast('الملف ده مش نسخة احتياطية بتاعة الحسابات'); }
@@ -6979,8 +6989,44 @@ async function tgBackup(once, t = todayISO()) {
   const data = await backupData();
   const j = await tgCall('tgdoc', {name: `flash-on-accounts-${t}.json`, text: JSON.stringify(data),
     caption: `💾 نسخة الحسابات ${dispDate(t)} (${data.parties} حساب، ${data.entries} حركة).\nمتقفلة بكلمة السر. علشان ترجّعها: الإعدادات ← استرجاع نسخة احتياطية.`, once: once ? {k: 'bk', v: t} : undefined});
-  if (j && j.sent && db) { db.cfg.lastBackup = nowS(); flushSave(); }
+  if (j && (j.sent || j.dup) && db) { db.cfg.lastBackup = nowS(); flushSave(); }   // dup = جهاز تاني بعت نسخة النهارده
   return j;
+}
+/* ---------- حزمة الأمان: إنذار مبكر وتجربة استرجاع النسخة ----------
+   - bkBad: من إمتى النسخة اليومية بتفشل تتبعت على تليجرام (بيتصفّر أول ما تتبعت). يومين = تنبيه تليجرام وسطر أحمر في الرئيسية.
+   - ciBad: الاختبارات على GitHub فشلت على آخر تعديل اتنشر (بنسأل GitHub مرة في اليوم، والرسالة مرة واحدة لكل تعديل بـ once).
+   - rt: تجربة الاسترجاع الشهرية (bkVerify): نفس ملف النسخة بيتفك في الذاكرة بس ويتقارن بالموجود سجل بسجل. مبتلمسش البيانات ولا بتظهر حاجة،
+     ونتيجتها سطر في ملخص الشهر، ولو فيه فرق تنبيه لوحده. */
+const BK_LATE = 2 * 86400000;
+const CI_RUNS = 'https://api.github.com/repos/mostafasukar33/factory-tools/actions/workflows/tests.yml/runs?branch=main&status=completed&per_page=10';
+function safeAlertHtml() {
+  const c = db.cfg.tg || {}, L = [];
+  if (c.bkBad && tgOpts().bk && nowS() - c.bkBad >= BK_LATE) L.push(`النسخة الاحتياطية اليومية مبتتبعتش على تليجرام من ${Math.floor((nowS() - c.bkBad) / 86400000)} يوم. نزّل نسخة بإيدك من الإعدادات، وقول لـ Claude يشوف السبب.`);
+  if (c.ciBad) L.push('آخر تعديل في البرنامج الاختبارات فشلت عليه. بياناتك سليمة، بس قول لـ Claude: "رجّع للنسخة السليمة" أو "صلّح الاختبارات".');
+  return L.map(t => `<div class="sync warn">⚠️ ${esc(t)}</div>`).join('');
+}
+function bkWatch(ok) {
+  const c = tgCfg();
+  if (ok) { if (c.bkBad) { c.bkBad = 0; flushSave(); } return; }
+  if (!c.bkBad) { c.bkBad = nowS(); flushSave(); }
+  if (nowS() - c.bkBad >= BK_LATE) tgAlarm('bk', `⚠️ الحسابات: النسخة الاحتياطية اليومية مبتتبعتش على تليجرام من ${Math.floor((nowS() - c.bkBad) / 86400000)} يوم.\nبياناتك على الجهاز سليمة. نزّل نسخة بإيدك (الإعدادات ← تنزيل نسخة احتياطية)، وقول لـ Claude يشوف السبب.`, 24 * 3600000);
+}
+async function bkVerify() {
+  const want = Object.values(STORE).map(a => JSON.stringify(db[a].map(stripLocal)));   // نفس اللحظة اللي backupData بياخد فيها البيانات
+  const data = await backupData();
+  let got = null; try { got = await unseal(cryptoKey, data); } catch (e) {}
+  const ok = !!got && data.salt === b64(saltU8) && Object.values(STORE).every((a, i) => JSON.stringify(got[a] || []) === want[i]);
+  return {ok, p: data.parties, e: data.entries};
+}
+async function ciCheck(t, chat) {
+  const c = tgCfg(), d0 = db; c.ci = t;
+  let run;
+  try { const r = await fetch(CI_RUNS, {cache: 'no-store'}); if (!r.ok) throw 0; run = ((await r.json()).workflow_runs || []).find(x => x.conclusion === 'success' || x.conclusion === 'failure'); }
+  catch (e) { if (db === d0) c.ci = ''; return; }   // GitHub مردش: نجرب المرة الجاية
+  if (db !== d0 || !run) return;
+  const bad = run.conclusion === 'failure' ? run.id : 0;
+  if (bad !== (c.ciBad || 0)) { c.ciBad = bad; flushSave(); renderHome(); }
+  if (bad && chat && tgOpts().al) await tgCall('tgmsg', {text: `⚠️ برنامج الحسابات: آخر تعديل اتنشر (${dispDate(String(run.created_at || '').slice(0, 10))}) الاختبارات فشلت عليه.\nبياناتك سليمة. قول لـ Claude: "رجّع للنسخة السليمة" أو "صلّح الاختبارات".`, once: {k: 'ci', v: String(run.id)}});
 }
 let tgBusy = false;
 async function tgAfterSync(now = new Date(nowS())) {
@@ -6991,18 +7037,28 @@ async function tgAfterSync(now = new Date(nowS())) {
   const needBk = o.bk && c.bk !== t, needSum = o.sum && (c.sum || '') < day;
   const W = weekDone(now), M = monthDone(now);
   const needWk = o.wk && (c.wk || '') < W.to, needMo = o.mo && (c.mo || '') < M.m, needNl = o.nl && now.getHours() >= 7 && c.nl !== t;
-  if (!needBk && !needSum && !needWk && !needMo && !needNl) return;
+  const mo = t.slice(0, 7), needRt = (c.rt || {}).m !== mo, needCi = c.ci !== t;
+  if (!needBk && !needSum && !needWk && !needMo && !needNl && !needRt && !needCi) return;
   tgBusy = true;
   try {
     /* الأول نسأل الشيت (سؤال صغير): الكود جديد؟ والبوت شغال؟ علشان منبعتش ملف النسخة على الفاضي */
     const st = await tgCall('tgstate');
     if (!st || db !== d0) return;
     if (!st.v || st.v < 3) { c.old = nowS(); return; }
-    if (!st.chat) { c.bk = t; c.sum = day; c.wk = W.to; c.mo = M.m; c.nl = t; return; }   // مفيش بوت شغال: نجرب بكره
+    if (needCi) { await ciCheck(t, st.chat); if (db !== d0) return; }
+    if (!st.chat) { c.bk = t; c.sum = day; c.wk = W.to; c.mo = M.m; c.nl = t; if (needRt) c.rt = {m: mo, skip: 1}; return; }   // مفيش بوت شغال: نجرب بكره
     if (needBk) {
       const j = await tgBackup(true, t);
       if (db !== d0) return;
       if (j && j.ok) c.bk = t;
+      bkWatch(!!(j && (j.sent || j.dup)));
+    }
+    if (needRt) {
+      const r = await bkVerify();
+      if (db !== d0) return;
+      c.rt = {m: mo, ok: r.ok, at: now.getTime(), p: r.p, e: r.e};
+      if (!r.ok) await tgAlarm('rt', '⚠️ الحسابات: تجربة استرجاع النسخة الاحتياطية الشهرية فشلت (الملف اللي بيتبعت مش مطابق للي على الجهاز).\nبياناتك على الجهاز سليمة. نزّل نسخة بإيدك من الإعدادات، وقول لـ Claude يشوف السبب.', 0);
+      if (db !== d0) return;
     }
     if (needSum) {
       const S = daySum(day);
@@ -7016,7 +7072,11 @@ async function tgAfterSync(now = new Date(nowS())) {
       if (db === d0 && j && j.ok) c[k] = v;
     };
     if (needWk) await one('wk', W.to, rangeSum(W.f, W.to, `🗓 ملخص الأسبوع من ${dispDate(W.f)} لـ ${dispDate(W.to)}`, 'آخر الأسبوع', true));
-    if (needMo && db === d0) await one('mo', M.m, rangeSum(M.f, M.to, `📅 ملخص شهر ${AR_MONTHS[+M.m.slice(5) - 1]} ${M.m.slice(0, 4)}`, 'آخر الشهر', true));
+    if (needMo && db === d0) {
+      const S = rangeSum(M.f, M.to, `📅 ملخص شهر ${AR_MONTHS[+M.m.slice(5) - 1]} ${M.m.slice(0, 4)}`, 'آخر الشهر', true);
+      if (c.rt && c.rt.ok) S.text += `\n✔ النسخة الاحتياطية اتجربت ${dispDate(isoOf(c.rt.at))} واترجعت سليمة (${c.rt.p} حساب، ${c.rt.e} حركة)`;
+      await one('mo', M.m, S);
+    }
     if (needNl && db === d0) await one('nl', t, nlSum());
   } finally { tgBusy = false; if (db === d0) flushSave(); }
 }

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>قارئ نسخ الحسابات</title>
+<!-- قارئ النسخ: ملف واحد لوحده (من غير أي ملف تاني ولا نت) بيفتح ملف النسخة الاحتياطية بتاع الحسابات بكلمة السر ويعرضه ويطلّعه إكسيل.
+     بيتحفظ على فلاشة جنب النسخ، فلازم يفضل شغال لوحده لسنين: متربطوش بأي ملف تاني، ومتخليهوش يكتب أو يقرا أي حاجة محفوظة في المتصفح.
+     طريقة فك التشفير لازم تفضل زي الحسابات بالظبط (PBKDF2-SHA256 250000 مرة ← AES-GCM 256). اختبار "قارئ النسخ" بيقارن أرقامه بالحسابات. -->
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f6f4ef;color:#1d1d1d;font:16px/1.6 system-ui,"Segoe UI",Tahoma,Arial,sans-serif}
+main{max-width:980px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 12px}
+h2{font-size:18px;margin:22px 0 8px}
+.card{background:#fff;border:1px solid #e3ded3;border-radius:12px;padding:14px;margin-bottom:12px}
+label{display:block;font-weight:600;margin:8px 0 4px}
+input[type=password],input[type=file]{width:100%;font:inherit;padding:10px;border:1px solid #cfc8b8;border-radius:8px;background:#fff}
+button{font:inherit;font-weight:700;padding:10px 16px;border-radius:8px;border:1px solid #b88a1e;background:#e8b730;color:#1d1d1d;cursor:pointer;margin:10px 0 0 6px}
+button.ln{background:#fff}
+.err{color:#b3261e;font-weight:600;min-height:1.6em}
+.hint{color:#666;font-size:14px}
+table{width:100%;border-collapse:collapse;background:#fff}
+th,td{padding:7px 8px;border-bottom:1px solid #ece7dc;text-align:right;vertical-align:top}
+th{background:#f0ebe0;font-size:14px}
+td.n,th.n{text-align:left;direction:ltr;white-space:nowrap;font-variant-numeric:tabular-nums}
+tr.p{cursor:pointer}tr.p:hover{background:#fbf6e8}
+tr.tot td{font-weight:700;background:#faf7f0}
+.neg{color:#b3261e}
+.del{color:#999;text-decoration:line-through}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.top h1{margin-inline-end:auto}
+@media print{button,.noprint{display:none!important}body{background:#fff}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><h1>قارئ نسخ الحسابات</h1><button class="ln noprint" id="again" type="button" hidden>افتح ملف تاني</button></div>
+  <section class="card" id="open">
+    <p class="hint">بيفتح ملف النسخة الاحتياطية (flash-on-accounts-....json) من غير نت ومن غير برنامج الحسابات. مبيغيرش أي حاجة في الملف.</p>
+    <label for="file">ملف النسخة</label>
+    <input type="file" id="file" accept=".json,application/json">
+    <label for="pass">كلمة السر</label>
+    <input type="password" id="pass" autocomplete="off">
+    <div class="err" id="err"></div>
+    <button id="go" type="button">افتح</button>
+  </section>
+  <section id="out" hidden></section>
+</main>
+<script>
+'use strict';
+const SECS = {mkt: 'عملاء السوق', site: 'عملاء المواقع', sup: 'الموردين'};
+const TXT = {inc: 'إيراد', exp: 'مصروف', tr: 'تحويل'};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const money = q => (q < 0 ? '-' : '') + (Math.abs(q) / 100).toLocaleString('en-US', {minimumFractionDigits: Math.abs(q) % 100 ? 2 : 0, maximumFractionDigits: 2});
+const noRef = t => String(t || '').replace(/ رقم \d+/g, '');
+let D = null, meta = null;
+
+async function unlock(box, pass) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({name: 'PBKDF2', salt: unb64(box.salt), iterations: 250000, hash: 'SHA-256'}, base, {name: 'AES-GCM', length: 256}, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({name: 'AES-GCM', iv: unb64(box.iv)}, key, unb64(box.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+/* نفس حسبة الحسابات: رصيد الحساب = مدين − دائن للحركات الشغالة، ورصيد أول المدة أول سطر */
+const live = a => (D[a] || []).filter(r => !r.del);
+const entCmp = (a, b) => (b.kind === 'open') - (a.kind === 'open') || (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.at || 0) - (b.at || 0) || (a.id < b.id ? -1 : 1));
+const parties = () => live('parties');
+const entriesOf = pid => live('entries').filter(e => e.party === pid).sort(entCmp);
+const balOf = pid => entriesOf(pid).reduce((b, e) => b + (e.dr || 0) - (e.cr || 0), 0);
+const vName = id => ((D.vaults || []).find(v => v.id === id) || {name: '؟'}).name;
+const cName = id => ((D.cats || []).find(c => c.id === id) || {name: 'بدون بند'}).name;
+const isPay = e => e.kind === 'pay' || e.kind === 'ppay';
+/* حركات خزنة واحدة (زي vaultBal في الحسابات): الافتتاحي + إيراد − مصروف ± تحويل ± الدفعات اللي عليها */
+function vaultRows(vid) {
+  const v = (D.vaults || []).find(x => x.id === vid) || {}, rows = [];
+  for (const t of live('txs')) {
+    if (t.nv) continue;
+    let a = 0;
+    if (t.type === 'inc' && t.vault === vid) a = t.amt;
+    else if (t.type === 'exp' && t.vault === vid) a = -t.amt;
+    else if (t.type === 'tr') a = (t.to === vid ? t.amt : 0) - (t.vault === vid ? t.amt : 0);
+    if (a) rows.push({date: t.date, what: t.type === 'tr' ? vName(t.vault) + ' ← ' + vName(t.to) : TXT[t.type] + ': ' + cName(t.cat), note: t.note || '', a});
+  }
+  const P = new Map((D.parties || []).map(p => [p.id, p]));
+  for (const e of live('entries')) {
+    if (!isPay(e) || e.vault !== vid) continue;
+    const d = e.chk && e.chk.st === 'c' && e.chk.cdate ? e.chk.cdate : e.date;
+    rows.push({date: d, what: (e.kind === 'pay' ? 'استلمت من ' : 'دفعت لـ ') + ((P.get(e.party) || {}).name || '؟'), note: noRef(e.desc), a: e.kind === 'pay' ? e.amt : -e.amt});
+  }
+  rows.sort((x, y) => x.date < y.date ? -1 : x.date > y.date ? 1 : 0);
+  return {open: v.open || 0, rows};
+}
+const vaultBal = vid => { const r = vaultRows(vid); return r.rows.reduce((b, x) => b + x.a, r.open); };
+
+function home() {
+  window.scrollTo(0, 0);
+  const bal = new Map(parties().map(p => [p.id, balOf(p.id)]));
+  let h = `<div class="card"><b>النسخة بتاريخ ${esc((meta.exportedAt || '').slice(0, 10))}</b> — ${parties().length} حساب، ${live('entries').length} حركة.
+    <div class="noprint"><button id="xAcc" type="button">نزّل كل الحسابات إكسيل</button><button class="ln" id="xVlt" type="button">نزّل الخزن إكسيل</button><button class="ln" type="button" onclick="print()">اطبع</button></div>
+    <p class="hint">الموجب = ليك عنده، والسالب = ليه عندك. دوس على أي حساب تشوف كشفه.</p></div>`;
+  for (const [sec, name] of Object.entries(SECS)) {
+    const ps = parties().filter(p => p.sec === sec).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+    if (!ps.length) continue;
+    const tot = ps.filter(p => !p.noTot).reduce((s, p) => s + bal.get(p.id), 0);
+    h += `<h2>${name} (${ps.length})</h2><table><tr><th>الحساب</th><th class="n">الرصيد</th></tr>` +
+      ps.map(p => `<tr class="p" data-id="${esc(p.id)}"><td>${esc(p.name)}${p.noTot ? ' <span class="hint">(خارج الإجمالي)</span>' : ''}</td><td class="n ${bal.get(p.id) < 0 ? 'neg' : ''}">${money(bal.get(p.id))}</td></tr>`).join('') +
+      `<tr class="tot"><td>الإجمالي</td><td class="n">${money(tot)}</td></tr></table>`;
+  }
+  const vs = live('vaults');
+  if (vs.length) h += `<h2>الخزن</h2><table><tr><th>الخزنة</th><th class="n">الرصيد</th></tr>` + vs.map(v => `<tr class="p" data-v="${esc(v.id)}"><td>${esc(v.name)}</td><td class="n">${money(vaultBal(v.id))}</td></tr>`).join('') + '</table>';
+  $('#out').innerHTML = h;
+  $('#out').querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => party(tr.dataset.id));
+  $('#out').querySelectorAll('tr[data-v]').forEach(tr => tr.onclick = () => vault(tr.dataset.v));
+  $('#xAcc').onclick = csvAccounts; $('#xVlt').onclick = csvVaults;
+}
+function back() { return `<button class="ln noprint" id="bk" type="button">رجوع</button><button class="ln noprint" type="button" onclick="print()">اطبع</button>`; }
+function party(pid) {
+  window.scrollTo(0, 0);
+  const p = parties().find(x => x.id === pid); let b = 0;
+  $('#out').innerHTML = `${back()}<h2>${esc(p.name)} — ${SECS[p.sec] || ''}</h2><table><tr><th>التاريخ</th><th>البيان</th><th class="n">مدين</th><th class="n">دائن</th><th class="n">الرصيد</th></tr>` +
+    entriesOf(pid).map(e => { b += (e.dr || 0) - (e.cr || 0); return `<tr><td class="n">${esc(e.date)}</td><td>${esc(noRef(e.desc))}</td><td class="n">${e.dr ? money(e.dr) : ''}</td><td class="n">${e.cr ? money(e.cr) : ''}</td><td class="n ${b < 0 ? 'neg' : ''}">${money(b)}</td></tr>`; }).join('') +
+    `<tr class="tot"><td colspan="4">الرصيد</td><td class="n">${money(b)}</td></tr></table>`;
+  $('#bk').onclick = home;
+}
+function vault(vid) {
+  window.scrollTo(0, 0);
+  const r = vaultRows(vid); let b = r.open;
+  $('#out').innerHTML = `${back()}<h2>خزنة ${esc(vName(vid))}</h2><table><tr><th>التاريخ</th><th>الحركة</th><th>البيان</th><th class="n">المبلغ</th><th class="n">الرصيد</th></tr>` +
+    `<tr><td></td><td>رصيد افتتاحي</td><td></td><td></td><td class="n">${money(b)}</td></tr>` +
+    r.rows.map(x => { b += x.a; return `<tr><td class="n">${esc(x.date)}</td><td>${esc(x.what)}</td><td>${esc(x.note)}</td><td class="n ${x.a < 0 ? 'neg' : ''}">${money(x.a)}</td><td class="n">${money(b)}</td></tr>`; }).join('') + '</table>';
+  $('#bk').onclick = home;
+}
+
+/* إكسيل: ملف CSV بيتفتح في إكسيل بالعربي (BOM)، والمبالغ بالجنيه */
+const cell = v => { const s = String(v ?? ''); const t = /^[=+\-@]/.test(s) && isNaN(+s) ? "'" + s : s; return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+function saveCsv(name, rows) {
+  const blob = new Blob(['﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n')], {type: 'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+const day = () => (meta.exportedAt || '').slice(0, 10);
+function csvAccounts() {
+  const rows = [['القسم', 'الحساب', 'التاريخ', 'البيان', 'مدين', 'دائن', 'الرصيد']];
+  for (const p of parties().sort((a, b) => (a.sec + a.name).localeCompare(b.sec + b.name, 'ar'))) {
+    let b = 0;
+    for (const e of entriesOf(p.id)) { b += (e.dr || 0) - (e.cr || 0); rows.push([SECS[p.sec] || '', p.name, e.date, noRef(e.desc), (e.dr || 0) / 100, (e.cr || 0) / 100, b / 100]); }
+  }
+  saveCsv(`الحسابات-${day()}.csv`, rows);
+}
+function csvVaults() {
+  const rows = [['الخزنة', 'التاريخ', 'الحركة', 'البيان', 'المبلغ', 'الرصيد']];
+  for (const v of live('vaults')) {
+    const r = vaultRows(v.id); let b = r.open;
+    rows.push([v.name, '', 'رصيد افتتاحي', '', '', b / 100]);
+    for (const x of r.rows) { b += x.a; rows.push([v.name, x.date, x.what, x.note, x.a / 100, b / 100]); }
+  }
+  saveCsv(`الخزن-${day()}.csv`, rows);
+}
+
+$('#go').onclick = async () => {
+  const f = $('#file').files[0], pass = $('#pass').value;
+  $('#err').textContent = '';
+  if (!f) return $('#err').textContent = 'اختار ملف النسخة الأول';
+  let box;
+  try { box = JSON.parse(await f.text()); if (box.app !== 'flash-on-accounts-backup' || !box.ct) throw 0; } catch (e) { return $('#err').textContent = 'الملف ده مش نسخة احتياطية بتاعة الحسابات'; }
+  if (!pass) return $('#err').textContent = 'اكتب كلمة السر';
+  $('#go').disabled = true; $('#err').textContent = '⏳ بفتح…';
+  try { D = await unlock(box, pass); meta = box; }
+  catch (e) { $('#go').disabled = false; return $('#err').textContent = 'كلمة السر غلط'; }
+  $('#go').disabled = false; $('#err').textContent = ''; $('#pass').value = '';
+  $('#open').hidden = true; $('#out').hidden = false; $('#again').hidden = false;
+  home();
+};
+$('#pass').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
+$('#again').onclick = () => { D = meta = null; $('#out').innerHTML = ''; $('#out').hidden = true; $('#again').hidden = true; $('#open').hidden = false; $('#file').value = ''; };
+</script>
+</body>
+</html>

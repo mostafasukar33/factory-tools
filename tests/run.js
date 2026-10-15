@@ -13,6 +13,7 @@ const ROOT = path.join(__dirname, '..');
 const CHROME = process.env.PW_CHROMIUM || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find(f => fs.existsSync(f));
 const ACC_URL = 'https://script.google.com/macros/s/TEST-ACC/exec', CASH_URL = 'https://script.google.com/macros/s/TEST-CASH/exec', MKT_URL = 'https://script.google.com/macros/s/TEST-MKT/exec';
 const PASS = '246810', KEY = 'Test-Key-2026';
+let CI_MOCK = [{id: 1, conclusion: 'success', created_at: '2026-10-01T10:00:00Z'}];
 
 let fails = 0, oks = 0;
 function eq(name, got, want) {
@@ -69,6 +70,8 @@ async function newDevice(browser, base, sheets) {
     if (!g.ctx.doPost) return r.fulfill({status: 200, contentType: 'text/html', body: '<html>no script</html>'});
     r.fulfill({status: 200, contentType: 'application/json', body: q.method() === 'POST' ? g.post(q.postData()) : g.get()});
   });
+  /* GitHub (نتيجة الاختبارات بعد آخر تعديل، للإنذار المبكر): CI_MOCK بيتغير من الاختبار */
+  await ctx.route('https://api.github.com/**', r => r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: JSON.stringify({workflow_runs: CI_MOCK})}));
   /* تليجرام من الجهاز نفسه (getMe): نفس الردود بتاعة الشيت التجريبي */
   await ctx.route('https://api.telegram.org/**', r => {
     const tok = (r.request().url().match(/bot([^/]+)\//) || [])[1] || '', v = sheets.mkt.tg.valid;
@@ -1118,6 +1121,74 @@ const T0 = Date.now();
       eq('تليجرام: ملخص الأسبوع بالمصروفات وتنبيه الفواتير اللي بنودها متكتبتش، مرة واحدة حتى من جهاز تاني', [got.length, got.some(x => x.startsWith('🗓 ملخص الأسبوع') && x.includes('تحصيل من العملاء') && x.includes('رصيد الخزن آخر الأسبوع')), got.some(x => x.startsWith('📝 فواتير بنودها لسه متكتبتش: 1')), tgTexts().length - w0], [2, true, true, 2]);
       await A.evaluate(id => { delete db.entries.find(e => e.id === id).mkNL; }, nlId);
       eq('تليجرام: الصبح مفيش فواتير ناقصة = مفيش رسالة', await A.evaluate(() => nlSum().empty || nlSum().text.startsWith('📥')), true);
+    }
+    {
+      /* حزمة الأمان: تجربة الاسترجاع الشهرية، إنذار النسخة اللي مبتتبعتش، إنذار الاختبارات اللي فشلت، وقارئ النسخ */
+      const clearOnce = () => Object.keys(sheets.mkt.props).filter(k => k.startsWith('ONCE_')).forEach(k => delete sheets.mkt.props[k]);
+      const v0 = await A.evaluate(() => dataVer);
+      eq('تجربة الاسترجاع: النسخة اتفكت في الذاكرة واتطابقت سجل بسجل، ومن غير ما البيانات تتلمس', [await bg(A, 'bkVerify().then(r => r.ok)'), await A.evaluate(() => dataVer) - v0], [true, 0]);
+      const nm = await A.evaluate(d => { const x = new Date(d.slice(0, 7) + '-01T10:00:00'); x.setMonth(x.getMonth() + 1); return isoOf(x.getTime()); }, TD);
+      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: true, wk: false, mo: true, nl: false}); db.cfg.tg = {}; });
+      clearOnce();
+      let t0 = tgTexts().length;
+      await bg(A, `tgAfterSync(new Date('${nm}T10:00:00'))`);
+      let got = tgTexts().slice(t0);
+      eq('تجربة الاسترجاع: سليمة = سطر في ملخص الشهر بس، ومفيش رسالة لوحدها', [got.length, got[0] && got[0].startsWith('📅 ملخص شهر'), got[0] && got[0].includes('✔ النسخة الاحتياطية اتجربت'), await A.evaluate(m => [db.cfg.tg.rt.m, db.cfg.tg.rt.ok], nm.slice(0, 7))], [1, true, true, [nm.slice(0, 7), true]]);
+      /* النسخة اللي بتتبعت مش مطابقة (كأنها بايظة) = تنبيه لوحده */
+      await A.evaluate(() => { window.__bd = backupData; backupData = async () => Object.assign({app: 'flash-on-accounts-backup'}, await seal(cryptoKey, saltU8, {parties: []})); db.cfg.tg = {}; });
+      clearOnce(); t0 = tgTexts().length;
+      await bg(A, `tgAfterSync(new Date('${TD}T10:00:00'))`);
+      got = tgTexts().slice(t0);
+      await A.evaluate(() => { backupData = window.__bd; });
+      eq('تجربة الاسترجاع: لو النسخة مش مطابقة بيوصل تنبيه لوحده', [got.length, !!got[0] && got[0].includes('تجربة استرجاع النسخة الاحتياطية الشهرية فشلت'), await A.evaluate(() => db.cfg.tg.rt.ok)], [1, true, false]);
+      /* النسخة اليومية مبتتبعتش بقالها يومين = تنبيه تليجرام وسطر أحمر في الرئيسية، وأول ما تتبعت بيختفي */
+      await A.evaluate(() => { putSet('tgOpts', {bk: true, sum: false, al: true, wk: false, mo: false, nl: false}); db.cfg.tg = {rt: {m: '2000-01'}, ci: 'x', bkBad: nowS() - 3 * 86400000}; window.__tb = tgBackup; tgBackup = async () => null; });
+      clearOnce(); t0 = tgTexts().length;
+      await bg(A, `tgAfterSync(new Date('2001-03-05T21:00:00'))`);
+      got = tgTexts().slice(t0);
+      await A.evaluate(() => go('')); await A.settle(150);
+      eq('إنذار: النسخة اليومية مبتتبعتش من 3 أيام = رسالة وسطر في الرئيسية', [got.length, !!got[0] && got[0].includes('مبتتبعتش على تليجرام من 3 يوم'), (await A.textContent('#chk')).includes('النسخة الاحتياطية اليومية مبتتبعتش')], [1, true, true]);
+      await A.evaluate(() => { tgBackup = window.__tb; db.cfg.tg.rt = {m: '2001-03'}; }); clearOnce();
+      await bg(A, `tgAfterSync(new Date('2001-03-06T21:00:00'))`);
+      await A.evaluate(() => renderHome());
+      eq('إنذار: أول ما النسخة تتبعت السطر بيختفي', [await A.evaluate(() => db.cfg.tg.bkBad), (await A.textContent('#chk')).includes('مبتتبعتش')], [0, false]);
+      eq('إنذار: النسخة اللي جهاز تاني بعتها النهارده محسوبة (مش إنذار على اللاب)', await A.evaluate(() => { const c = tgCfg(); c.bkBad = nowS() - 3 * 86400000; bkWatch(true); return c.bkBad; }), 0);
+      /* الاختبارات على GitHub فشلت على آخر تعديل = رسالة مرة واحدة من كل الأجهزة، وسطر في الرئيسية لحد ما تنجح تاني */
+      CI_MOCK = [{id: 7, conclusion: 'cancelled'}, {id: 6, conclusion: 'failure', created_at: '2026-10-14T10:00:00Z'}, {id: 5, conclusion: 'success'}];
+      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: true, wk: false, mo: false, nl: false}); db.cfg.tg = {rt: {m: '2001-04'}}; });
+      clearOnce(); t0 = tgTexts().length;
+      await bg(A, `tgAfterSync(new Date('2001-04-02T10:00:00'))`);
+      await A.evaluate(() => { db.cfg.tg = {rt: {m: '2001-04'}}; });   // جهاز تاني
+      await bg(A, `tgAfterSync(new Date('2001-04-02T11:00:00'))`);
+      got = tgTexts().slice(t0);
+      eq('إنذار: الاختبارات فشلت على آخر تعديل = رسالة مرة واحدة حتى من جهاز تاني، وسطر في الرئيسية', [got.length, !!got[0] && got[0].includes('الاختبارات فشلت عليه') && got[0].includes('رجّع للنسخة السليمة'), await A.evaluate(() => db.cfg.tg.ciBad), (await A.textContent('#chk')).includes('الاختبارات فشلت عليه')], [1, true, 6, true]);
+      CI_MOCK = [{id: 8, conclusion: 'success'}, {id: 6, conclusion: 'failure'}];
+      await bg(A, `tgAfterSync(new Date('2001-04-03T10:00:00'))`);
+      eq('إنذار: لما الاختبارات تنجح تاني السطر بيختفي', [await A.evaluate(() => db.cfg.tg.ciBad), (await A.textContent('#chk')).includes('الاختبارات فشلت')], [0, false]);
+      CI_MOCK = [{id: 1, conclusion: 'success'}];
+
+      /* قارئ النسخ: ملف لوحده بيفتح النسخة بكلمة السر ويطلع نفس أرصدة الحسابات بالظبط */
+      const src = fs.readFileSync(path.join(ROOT, 'reader.html'), 'utf8');
+      eq('قارئ النسخ: ملف لوحده (مفيش ملفات تانية ولا نت) ومبيلمسش أي حاجة محفوظة', [/<script[^>]+src|<link[^>]+href|@import|url\(/.test(src), /localStorage|sessionStorage|indexedDB|serviceWorker/.test(src)], [false, false]);
+      eq('قارئ النسخ: زرار تنزيله في الإعدادات على اللاب بس (مستخبي على الموبايل)', await A.evaluate(() => getComputedStyle($('#bReader')).display), 'none');
+      const [rdl] = await Promise.all([A.waitForEvent('download', {timeout: 30000}), A.evaluate(() => $('#bReader').click())]);
+      eq('قارئ النسخ: الزرار بينزّل الملف نفسه', [rdl.suggestedFilename(), fs.readFileSync(await rdl.path(), 'utf8') === src], ['flash-on-accounts-reader.html', true]);
+      const bkFile = path.join(require('os').tmpdir(), 'fo-reader-test.json');
+      fs.writeFileSync(bkFile, await bg(A, 'backupData().then(d => JSON.stringify(d))'));
+      const R = await D1.newPage(); await R.goto('file://' + path.join(ROOT, 'reader.html'));
+      await R.setInputFiles('#file', bkFile); await R.fill('#pass', '000000'); await R.click('#go');
+      await R.waitForFunction(() => document.querySelector('#err').textContent === 'كلمة السر غلط', null, {timeout: 30000});
+      await R.fill('#pass', PASS); await R.click('#go');
+      await R.waitForSelector('#out:not([hidden])', {timeout: 30000});
+      const want = await A.evaluate(() => ({p: liveParties().map(p => [p.name, balance(p.id)]).sort(), v: db.vaults.filter(v => !v.del).map(v => [v.name, vaultBal(v.id)]).sort(), n: liveEntries().filter(e => P.get(e.party) && !P.get(e.party).del).length}));
+      eq('قارئ النسخ: كل أرصدة الحسابات والخزن زي البرنامج بالقرش (من الملف والفلاشة من غير نت)', await R.evaluate(() => ({p: parties().map(p => [p.name, balOf(p.id)]).sort(), v: live('vaults').map(v => [v.name, vaultBal(v.id)]).sort(), n: live('entries').filter(e => parties().some(p => p.id === e.party)).length})), want);
+      const [cdl] = await Promise.all([R.waitForEvent('download', {timeout: 30000}), R.click('#xAcc')]);
+      const csv = fs.readFileSync(await cdl.path(), 'utf8');
+      eq('قارئ النسخ: إكسيل الحسابات (عربي بيتفتح في إكسيل، سطر لكل حركة)', [csv.charCodeAt(0), csv.split('\r\n').length, csv.includes('عميل تجربة واحد')], [0xfeff, want.n + 1, true]);
+      await R.click('tr[data-id]'); await R.waitForSelector('#bk');
+      eq('قارئ النسخ: كشف الحساب بيوصل لنفس الرصيد', await R.evaluate(() => document.querySelector('tr.tot td.n').textContent === money(balOf(parties().find(p => p.name === document.querySelector('h2').textContent.split(' — ')[0]).id))), true);
+      await R.close(); fs.unlinkSync(bkFile);
+      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: false, wk: false, mo: false, nl: false}); db.cfg.tg = {}; });
     }
     eq('تليجرام: مفيش أي سطر اتكتب في شيت الحركات بتاع الشريك', sheets.mkt.sheets['الحركات'].rows.length, mkRows0);
     eq('آخر تحديث للبرنامج: بيظهر بوقت النشر، ومبيظهرش لو المتصفح معرفوش', await A.evaluate(() => { const lm = new Date('2026-10-11T15:40:00').getTime(); return [verText(lm, lm + 60000).includes(dispDate('2026-10-11')), verText(lm, lm + 500)]; }), [true, '']);

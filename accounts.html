@@ -4043,18 +4043,7 @@ function kitsDraw(arr, row, open, empty) {
   };
   draw();
 }
-/* الدوس على خزنة السوق: آخر أسبوعين بترتيب التسجيل (الأحدث فوق) مش بالتاريخ. القديم بيختفي من هنا بس، مش من الخزنة */
-function mkVaultLog(open) {
-  const cut = Date.now() - 14 * 864e5, at = m => m.at || Date.parse(m.date + 'T12:00:00');
-  const arr = vaultMoves(MKV).filter(m => at(m) >= cut).sort((a, b) => at(b) - at(a));
-  modal(`<div class="ksheet"><div class="ksh2"><button class="kback" id="kshB" type="button" aria-label="رجوع">→</button><span>🏪 خزنة السوق<small>آخر أسبوعين بترتيب التسجيل · ${arr.length} ${arr.length === 1 ? 'حركة' : arr.length === 2 ? 'حركتين' : 'حركات'}</small></span><b class="n">${fmtP(vaultBal(MKV))}</b></div>
-    <div class="kits" id="kitsL"></div>
-    <button class="btn line" id="kshX" type="button">رجوع</button></div>`);
-  $('#kshX').onclick = $('#kshB').onclick = closeModal;
-  kitsDraw(arr, (m, i) => {
-      const what = (m.what || '').replace(/حركة السوق( — )?/, '').trim(), bits = [dispDate(m.date), m.at ? dispTime(m.at) : '', what && what !== m.who ? what : ''].filter(Boolean);
-      return `<div class="kit" data-i="${i}" role="button" tabindex="0"><div><b>${esc(m.who)}</b><small>${esc(bits.join(' · '))}</small></div><b class="n ${m.sign < 0 ? 'out' : 'in'}">${m.sign < 0 ? '−' : '+'} ${fmtP(m.amt)}</b></div>`; }, open, '<div class="kno">مفيش حركة في آخر أسبوعين</div>');
-}
+/* خزنة السوق فوق رقم بس ومبتتداسش (بطلبه 15/10/2026): حركتها ظاهرة تحت في كارت "حركة السوق" */
 /* ============ دفتر الخزنة بالتاريخ (cashView = 'date') ============
    نفس حركات "بالنوع" بالظبط (نفس cashGroup: تسوية الجرد والتحويل بين خزنتين مش بيظهروا، وعملاء السوق سطر مجمّع)، بس مترتبة يوم ورا يوم: على الشاشة الأحدث فوق، وفي الـ PDF الأقدم فوق. مفيش رصيد.
    زرار "✓ نقلته" و"اعرض اللي لسه" اتشالوا بطلب صاحب المشروع (كانوا بيلخبطوه). إعداد ldgDone القديم متساب في الشيت ومحدش بيقراه */
@@ -4165,7 +4154,7 @@ function renderCash() {
     <div class="kb${hasM ? ' two' : ''}">
       <div class="kbme"><div class="kbm${cashOpenV ? ' on' : ''}" id="kMe" role="button" tabindex="0"><span>🏭 رصيد الخزن <i class="kch">▾</i><small>${cashOpenV ? 'دوس على خزنة تشوف حركتها' : 'الفلوس اللي معاك' + (nV > 1 ? ' · ' + (nV === 2 ? 'خزنتين' : nV + ' خزن') : '')}</small></span><b class="n${meB < 0 ? ' neg' : ''}" data-ck="c:me" data-cnt="${meB}">${fmtP(meB)}</b></div>
         <div class="kvs"${cashOpenV ? '' : ' hidden'}>${tiles}</div></div>
-      ${hasM ? `<div class="kbk" id="kMk" role="button" tabindex="0"><span>🏪 خزنة السوق<small>مع الشريك</small></span><b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></div>
+      ${hasM ? `<div class="kbk" id="kMk"><span>🏪 خزنة السوق<small>مع الشريك</small></span><b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></div>
       <div class="kbt"><span>الإجمالي<small>خزني + السوق</small></span><b class="n${total < 0 ? ' neg' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)}</b></div>` : ''}
       <div class="ktools">
         <button class="btn line" id="cOpen2" type="button" title="عدّ الفلوس: اكتب الفلوس اللي معاك فعلاً">✎ <span>عدّ الفلوس</span></button>
@@ -4208,7 +4197,6 @@ function renderCash() {
     if (op && MK_T[op.t] && (m.side === 'mkt' || op.t === 'exp')) return mkOpMenu(op);
     if (m.src === 'tx') m.r.pt ? partnerTxModal(m.r) : m.r.iv && ivGet(m.r.iv) ? ivTxModal(m.r) : txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
   };
-  if ($('#kMk')) tap($('#kMk'), () => mkVaultLog(m => open(Object.assign(m, {side: 'mkt'}))));
   $$('#ldgS button').forEach(b => b.onclick = () => { ldgScope = b.dataset.v; cashVault = ''; cashOpenV = false; ldgScroll = true; renderCash(); });
   $$('#p-cash .kty').forEach(el => tap(el, () => {
     const [key, k] = el.dataset.k.split(':'), s = key === 'mk' ? mk : me;

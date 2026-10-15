@@ -56,7 +56,7 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
 .kbk{padding:14px 18px;background:var(--tr-l);border-top:1px solid var(--line)}
 .kbk>span{font-weight:800;font-size:var(--f3);color:var(--tr)}
 .kbk>.n{font-size:var(--f4);color:var(--tr)}
-.kbk{cursor:pointer}.kit .n.in{color:var(--green)}.kit .n.out{color:var(--red)}
+.kit .n.in{color:var(--green)}.kit .n.out{color:var(--red)}
 .kbt{padding:14px 18px;background:var(--bar);border-top:2px solid var(--gold)}
 .kbt>span{font-weight:800;font-size:var(--f3);color:var(--gold)}
 .kbt>span small{color:var(--gold);opacity:.75}

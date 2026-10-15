@@ -1433,11 +1433,9 @@ const T0 = Date.now();
       cashVault = ''; go('cash'); renderCash(); const r = [vaultsL().some(v => v.id === 'v_mkt'), vaultOpts('').includes('v_mkt'), vaultBal('') === all, !!$('#p-cash .kbk'), +$('#p-cash [data-ck="c:total"]').dataset.cnt === all + vaultBal('v_mkt'), +$('#p-cash [data-ck="c:me"]').dataset.cnt === all,
         vaultMoves('', todayISO(), todayISO()).some(m => m.who === 'كاش من شريك السوق' && m.sign === 1), vaultMoves('', todayISO(), todayISO()).some(m => m.r.vault === 'v_mkt' && m.r.type !== 'tr')];
       go('mkt'); return r; }), [false, false, true, true, true, true, true, false]);
-    eq('الدوس على خزنة السوق: آخر أسبوعين بترتيب التسجيل (الأحدث فوق)، ومفيش "سلّمك"', await A.evaluate(() => {
+    eq('خزنة السوق فوق رقم بس: الدوس عليها مبيفتحش حاجة، ومفيش "سلّمك"', await A.evaluate(() => {
       cashVault = ''; go('cash'); renderCash(); const k = $('#kMk'), noHand = !k.textContent.includes('سلّمك'); k.click();
-      const at = m => m.at || Date.parse(m.date + 'T12:00:00'), exp = vaultMoves('v_mkt').filter(m => at(m) >= Date.now() - 14 * 864e5).sort((a, b) => at(b) - at(a));
-      const rows = [...$$('#modal .kit b:first-child')].map(b => b.textContent), ok = rows.length === exp.length && rows.length > 0 && rows.every((w, i) => w === exp[i].who);
-      closeModal(); go('mkt'); return [noHand, ok]; }), [true, true]);
+      const r = [noHand, $('#mask').classList.contains('on'), k.hasAttribute('role')]; closeModal(); go('mkt'); return r; }), [true, false, false]);
     eq('الخزنة: كارت حركتي وكارت السوق مع بعض: دخل/طلع = مجموع الأنواع، مفيش رصيد أول/آخر، والدوس على نوع بيفتح حركاته، والدوس على خزنة بيفلتر عليها', await A.evaluate(() => {
       cashMode = 'day'; cashDay = ''; cashVault = ''; cashOpenV = false; go('cash'); renderCash();
       const tx = k => [...$$('#kst-' + k + ' .kty .l')].map(x => x.textContent);

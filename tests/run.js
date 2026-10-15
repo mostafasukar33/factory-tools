@@ -1022,38 +1022,8 @@ const T0 = Date.now();
       await A.evaluate(() => [ivList().length, db.ivrs.filter(r => !r.del).length, jrdSaved().length, ivSums('ip_imp_t').bal]));
     await A.evaluate(() => go('home')); await A.settle(200);
 
-    sec('١٣ج) اسأل الحسابات (الشات): كل إجابة = رقم التقارير بالقرش، ومبيغيّرش أي حاجة');
-    await A.evaluate(() => go('ask')); await A.waitForFunction(() => window.askAnswer && document.querySelector('#aqI'));
-    const ASK = await A.evaluate(() => {
-      const t = todayISO(), y = t.slice(0, 4) + '-01-01', m = t.slice(0, 8) + '01', p1 = liveParties().find(x => x.name === 'عميل تجربة واحد');
-      const pays = partyEntries(p1.id).filter(isPay).reverse();
-      const colM = db.entries.filter(e => { const p = P.get(e.party); return !e.del && e.kind === 'pay' && e.date >= m && e.date <= t && p && !p.noTot && (p.sec === 'mkt' || p.sec === 'site'); }).reduce((n, e) => n + e.amt, 0);
-      const v0 = dataVer, n0 = JSON.stringify([db.entries.length, db.txs.length, db.parties.length]);
-      /* [السؤال، الرقم الصح من حسابات البرنامج نفسه] */
-      const T = [
-        ['مبيعات السنه دي', tradeSums(y, t).sales], ['مشتريات الشهر ده', tradeSums(m, t).purch], ['شوفلي ارباح السنادي', Math.abs(profitOf(y, t).after)],
-        ['عميل تجربة واحد عليه كام', Math.abs(allBalances().get(p1.id) || 0)], ['اخر دفعه دفعها عميل تجربة واحد', pays[0] ? pays[0].amt : 0],
-        ['الخزنة فيها كام', vaultBal('v_main')],
-        ['مجموع بيع احمد السنه دي', db.entries.filter(e => { const p = P.get(e.party); return !e.del && p && !p.noTot && p.sec === 'mkt' && SALE_K.has(e.kind) && e.date >= y && e.date <= t; }).reduce((n, e) => n + (e.dr || 0) - (e.cr || 0), 0)], ['حصلنا كام الشهر ده', colM],
-        ['عميل تجربه واحد خد بضاعه بكام السنه دي', partyEntries(p1.id).filter(e => !e.del && e.kind === 'inv' && e.date >= y && e.date <= t).reduce((n, e) => n + (e.dr || 0), 0)]];
-      const got = T.map(([q, w]) => { const r = askAnswer(q, {}), v = r.cards.flatMap(c => (c.rows || []).map(x => x.v)); return v.includes(w) ? 'ok' : q + ' = ' + w + ' ← ' + v.slice(0, 6).join(','); });
-      const miss = askAnswer('الدنيا فيها مطر', {}).cards.length, lost = askAnswer('الفلانيه عليها كام', {}).cards[0];
-      return [got.filter(x => x !== 'ok'), miss, /مش لاقي/.test(lost.h || ''), dataVer === v0 && JSON.stringify([db.entries.length, db.txs.length, db.parties.length]) === n0];
-    });
-    eq('الشات: الأرقام = التقارير، والاسم اللي مش موجود بيقول كده، والمش مفهوم ميطلعش رقم، ومبيغيّرش البيانات', ASK, [[], 0, true, true]);
-    await A.fill('#aqI', 'مبيعات الشهر ده'); await A.press('#aqI', 'Enter'); await A.waitForSelector('#p-ask .aqb');
-    eq('الشات: السؤال بيترد عليه في الشاشة', await A.evaluate(() => [document.querySelectorAll('#p-ask .aqm').length, document.querySelectorAll('#p-ask .aqb').length > 0]), [1, true]);
-    eq('الشات: الخط بالخمس أحجام بس', await fs5(A), [true, []]);
-    eq('الشات (الآيفون): لمسة واحدة على ابعت بتبعت والخانة تفضل مفتوحة، ولمسة بتمرر الاقتراحات مبتبعتش', await A.evaluate(() => {
-      const I = $('#aqI'), n = () => $$('#p-ask .aqm').length, n0 = n();
-      const tap = (el, dx) => { const r = el.getBoundingClientRect(), x = r.left + 5, y = r.top + 5, T = x => new Touch({identifier: 1, target: el, clientX: x, clientY: y});
-        el.dispatchEvent(new TouchEvent('touchstart', {touches: [T(x)], changedTouches: [T(x)], bubbles: true, cancelable: true}));
-        el.dispatchEvent(new TouchEvent('touchend', {touches: [], changedTouches: [T(x + dx)], bubbles: true, cancelable: true})); };
-      I.focus(); I.value = 'مبيعات السنه دي'; tap($('#aqF button'), 0);
-      const r = [n() - n0, document.activeElement === I, I.value];
-      tap($('#p-ask .aqk button'), 40); r.push(n() - n0);
-      return r; }), [1, true, '', 1]);
-    await A.click('#aqCl'); await A.waitForSelector('#clGo');
+    sec('١٣ج) اسأل Claude: ملف الحسابات = أرقام البرنامج بالقرش، ومبيغيّرش أي حاجة');
+    await A.click('#bCl:visible, #nCl:visible'); await A.waitForSelector('#clGo');
     eq('اسأل Claude: الملف = أرقام البرنامج بالقرش، فيه الشرح وكل الحركات، وبيتبعت بالمشاركة من غير ما يغيّر البيانات', await A.evaluate(async () => {
       const v0 = dataVer, n0 = JSON.stringify([db.entries.length, db.txs.length, db.parties.length]), {text, n} = claudeBuild('all'), L = text.split('\n'), bal = allBalances();
       const cell = (name, i) => { const l = L.find(x => x.startsWith(name + ' | ')); return l ? l.split(' | ')[i] : null; };
@@ -1067,6 +1037,11 @@ const T0 = Date.now();
       return [text.includes('## اقراني الأول'), badBal, L.find(x => x.startsWith('إجمالي خزن ')).split(' | ')[1] === fmtP(vaultBal('')), pl[8] === fmtP(profitOf(first, todayISO()).after), n === nEnt + nTx,
         !!got && /^flashon-accounts-.*\.txt$/.test(got.files[0].name) && shared.length > 1000, !$('#clGo'), dataVer === v0 && JSON.stringify([db.entries.length, db.txs.length, db.parties.length]) === n0];
     }), [true, [], true, true, true, true, true, true]);
+    eq('اسأل Claude "كل حاجة": فيه الملغي وسجل التعديلات زيادة، والأرصدة زي "من الأول"، والشات القديم اتشال', await A.evaluate(() => {
+      const a = claudeBuild('all').text, f = claudeBuild('full').text, del = db.entries.find(e => e.del && P.get(e.party));
+      const part = (x, h) => x.slice(x.indexOf(h), x.indexOf('\n## ', x.indexOf(h) + 3));
+      return [f.includes('## الحركات الملغية'), f.includes('## سجل التعديلات'), !a.includes('## الحركات الملغية'), !!del && part(f, '## الحركات الملغية').includes(P.get(del.party).name),
+        part(f, '## الأرصدة النهارده') === part(a, '## الأرصدة النهارده'), !document.getElementById('p-ask') && !window.askAnswer && ![...document.scripts].some(s => /ask\.js/.test(s.src))]; }), [true, true, true, true, true, true]);
     await A.evaluate(() => go('home')); await A.settle(150);
 
     sec('١٤) التاريخ ورصيد أول المدة');
@@ -2031,8 +2006,10 @@ const T0 = Date.now();
       let [X, ms] = await open('market.html');
       eq('النت مقطوع: السوق بيفتح من المحفوظ في أقل من 2 ثانية', [ms < 2000, await X.evaluate(() => $('#main').children.length > 0)], [true, true]);
       await X.close();
-      [X, ms] = await open('accounts.html');
-      eq('النت مقطوع: الحسابات بتفتح من المحفوظ في أقل من 2 ثانية (شاشة إنشاء كلمة السر)', [ms < 2000, await X.evaluate(() => !!$('#suP'))], [true, true]);
+      {   // الوقت لحد ما شاشة كلمة السر تظهر فعلاً (بتترسم بعد ما الصفحة تفتح بلحظة، فالقراية على طول كانت بتقع أحياناً)
+        const t0 = now(); [X] = await open('accounts.html'); const ok = await X.waitForSelector('#suP', {timeout: 5000}).then(() => true, () => false); ms = now() - t0;
+        eq('النت مقطوع: الحسابات بتفتح من المحفوظ في أقل من 2 ثانية (شاشة إنشاء كلمة السر)', [ms < 2000, ok], [true, true]);
+      }
       [X, ms] = await open('quote.html');
       eq('النت مقطوع: باقي الأدوات (عرض السعر) بتفتح من المحفوظ زي الأول', await X.evaluate(() => document.body.children.length > 0), true);
       await X.close();

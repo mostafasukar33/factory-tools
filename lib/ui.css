@@ -118,26 +118,24 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
   .kb.two .kvs{grid-column:1/-1;grid-row:2;padding:10px;border-top:1px solid var(--line)}
   .kvs{gap:6px;padding:0 10px 10px}
   .kv{padding:6px 10px;border-radius:10px}.kv span{font-size:var(--f1)}.kv .n{font-size:var(--f3)}
-  .kb.two .ktools{grid-column:1/-1;grid-row:3}
-  .kb .ktools{display:flex;gap:0;margin:0;border-top:1px solid var(--line);background:var(--row)}
-  #p-cash .kb .ktools .btn{flex:1 1 0;flex-direction:row;min-height:36px;padding:2px 4px;white-space:nowrap;gap:4px;font-size:var(--f1);border:0;border-radius:0;background:none;color:var(--sub);box-shadow:none}
-  #p-cash .kb .ktools .btn+.btn{border-inline-start:1px solid var(--line)}
-  .kb .ktools i-c{display:inline-block;font-size:var(--f2)}
-  .ksum{display:block;background:var(--card);overflow:hidden}
-  .ksum table{width:100%;border-collapse:collapse}
-  .ksum th{font-size:var(--f1);color:var(--sub);font-weight:700;padding:6px 12px 2px;text-align:start}
-  .ksum th:not(:first-child){text-align:left;width:32%}
-  .ksum th.mk{color:var(--tr)}
-  .ksum td{padding:4px 12px;font-weight:800;font-size:var(--f2);color:var(--ink)}
-  .ksum td.n{text-align:left;width:32%}
-  .ksum tr.in td{color:var(--green)}
-  .ksum tr.out td{color:var(--red)}
-  .ksum tr.net td{border-top:1px solid var(--line);padding:7px 12px 8px}
+  /* أدوات الخزنة ورا زرار ⋯ في عمود رفيع جنب الأرصدة (بطلبه 15/10/2026) */
+  .kb{display:grid;grid-template-columns:1fr 44px}
+  .kb.two{grid-template-columns:1.15fr 1fr 1.15fr 40px}
+  .kb .kbme{grid-column:1;grid-row:1;min-width:0}
+  .kb .ktools{display:flex;grid-column:-2;grid-row:1;margin:0;border-inline-start:1px solid var(--line);background:var(--row)}
+  .kb.two .ktools{grid-column:4}
+  .kb .ktools .btn:not(.kmore){display:none}
+  #p-cash .kb .ktools .kmore{flex:1;width:auto;min-height:0;margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;color:var(--ink);font-size:var(--f4);font-weight:800;line-height:1}
+  /* الجدول الصغير (داخل/خارج/الصافي) اتشال من الموبايل بطلبه 15/10/2026: داخل وخارج بقوا سطر صغير فوق كل كارت (.kio) زي اللاب */
   .kss{gap:8px;margin-bottom:8px}
   .kst{border-radius:14px;border-top-width:3px}
   .kst .ksh{padding:7px 12px;font-size:var(--f2);background:var(--row)}
   .kst.mk .ksh{background:var(--tr-l)}
-  .kst .ksh>small,.kst .kio{display:none}
+  .kst .ksh>small{display:none}
+  .kst .kio{gap:8px;padding:8px 12px}
+  .kst .kio>div{display:flex;justify-content:space-between;align-items:center;gap:6px;border-radius:10px;padding:6px 10px}
+  .kst .kio span{font-size:var(--f1)}
+  .kst .kio .n{font-size:var(--f3);line-height:1.3}
   .kty{min-height:42px;padding:4px 12px}
   .kty .l{gap:8px;font-size:var(--f2)}.kty .l em{font-size:var(--f1)}
   .kty .n{font-size:var(--f2)}.kty.ktin .n{color:var(--green)}.kty.ktout .n{color:var(--red)}
@@ -151,7 +149,7 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
   .kb.two .kbt{border-inline-start:2px solid var(--gold)}
   .kss.two{grid-template-columns:1fr 1fr;align-items:start}
   .ktools{display:flex;justify-content:flex-start}
-  .ktools .btn.mob{display:none}
+  .ktools .btn.mob,.ktools .kmore{display:none}
   .ktools .btn{flex-direction:row;min-height:40px;padding:4px 16px;gap:6px}
   .ktools .btn i-c{font-size:var(--f3)}
   .kb.two .ktools{grid-column:1/-1}
@@ -192,3 +190,7 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
 .ldtt small.ldnt{display:block;font-size:var(--f2);font-weight:600;color:var(--sub);margin-top:2px}
 .ldtt small.ldnt .n{display:inline;font-weight:800;color:var(--ink);direction:ltr;unicode-bidi:isolate}
 .ldpend{display:block;margin:0 14px 10px;padding:8px 12px;border-radius:12px;background:var(--gold-l);color:var(--gold-d);font-size:var(--f2);font-weight:800;text-decoration:none}
+
+/* قايمة أدوات الخزنة (⋯ على الموبايل) */
+.kmenu{display:grid;gap:8px}
+.kmenu .btn{width:100%;margin:0;justify-content:flex-start;text-align:start;font-weight:800}

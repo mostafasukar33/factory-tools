@@ -334,6 +334,8 @@ nav svg{width:26px;height:26px}
 .modal{background:var(--card);border-radius:16px;padding:16px;width:100%;max-width:460px;max-height:92vh;overflow:auto}
 .modal.wide{max-width:600px}
 .modal h3{margin:0 0 12px;font-size:var(--f4);font-weight:800}
+/* عنوان النافذة: نوع الحركة متوسط واسم الحساب تحته صغير (بطلبه 15/10/2026) */
+.modal h3 small.mnm{display:block;margin-top:2px;font-size:var(--f2);font-weight:600;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .modal p{margin:0 0 14px;font-size:var(--f3);font-weight:700;line-height:1.7}
 .modal img{width:100%;border:1px solid var(--line);margin-bottom:8px;display:block}
 .amt{font-size:var(--f5);min-height:62px}
@@ -455,10 +457,11 @@ nav svg{width:26px;height:26px}
   .pt .m b{font-size:var(--f3)}.pt .a b{font-size:var(--f3)}
   .pt .m small,.pt .a small{font-size:var(--f1)}
   /* صفحة الحساب: فاتورة ودفعة عايمين تحت، والباقي في صف واحد صغير */
-  #ppDoc,#ppPay{display:none}
+  /* كشف الحساب تالت زرار عايم جنب الفاتورة والدفعة (بطلبه 15/10/2026) */
+  #ppDoc,#ppPay,#ppStmt{display:none}
   .acts{gap:6px}.acts .btn{min-height:42px;font-size:var(--f2);padding:4px 4px}
-  .fab2{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:fixed;inset-inline:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:8px 10px;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:25}
-  .fab2 .btn{min-height:50px;font-size:var(--f3);box-shadow:0 3px 10px #0004}
+  .fab2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;position:fixed;inset-inline:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:8px 10px;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:25}
+  .fab2 .btn{min-height:50px;font-size:var(--f2);box-shadow:0 3px 10px #0004;white-space:nowrap;padding:4px 6px;overflow:hidden;text-overflow:ellipsis}
   #p-party,#p-cash,#p-part,#p-jrd{padding-bottom:84px}
   .cbar{position:fixed;top:auto;inset-inline:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:8px 10px;margin:0;background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:25}
   .cbar .btn{min-height:40px;font-size:var(--f2);box-shadow:0 3px 10px #0004}
@@ -682,6 +685,9 @@ html[data-theme=dark] .fab2,html[data-theme=dark] .cbar{background:linear-gradie
 .mrow3{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}
 .msec{display:flex;gap:6px;margin-bottom:8px}.msec .btn{flex:1}
 .mtools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.mtools .btn{width:auto;flex:1;white-space:nowrap}
+/* الفاتورة أنضف (بطلبه 15/10/2026): "+ صنف كمان" عريض تحت البنود، و"زي آخر فاتورة" و"من عرض سعر" زراير رفيعة صغيرة جنب بعض */
+#modal .mtools #dcAdd{flex:1 1 100%;min-height:44px;border:1.5px dashed var(--gold);background:var(--gold-l);color:var(--gold-d);font-weight:800;font-size:var(--f2)}
+#modal .mtools :is(#dcLast,#dcQuote){min-height:34px;font-size:var(--f1);color:var(--sub);border-color:var(--line);background:var(--row);overflow:hidden;text-overflow:ellipsis}
 .mkvb{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 10px;background:var(--gold-l);border:1.5px solid var(--gold);border-radius:12px;padding:10px 14px;margin-bottom:10px}
 .mkvb span{font-weight:800;font-size:var(--f2)}.mkvb b{font-size:var(--f4);direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums lining-nums;white-space:nowrap}.mkvb b small{font-size:var(--f1);color:var(--gold-d)}
 .mkvb i{grid-column:1/-1;font-style:normal;font-size:var(--f1);color:var(--gold-d);font-weight:700}
@@ -746,6 +752,10 @@ html[data-theme=dark] .pst th{background:var(--row);color:var(--sub)}
 .card.fold>h2::after{content:'▾';font-size:var(--f2);color:var(--sub)}
 .card.fold.shut>h2{margin-bottom:0}.card.fold.shut>h2::after{content:'◂'}
 .card.fold.shut>*:not(h2){display:none}
+/* الإعدادات: اللي بيستخدم كل يوم فوق، والمتقدم مستخبي تحت زرار (بطلبه 15/10/2026) */
+#p-set:not(.advon)>.card.sadv{display:none}
+.sadvT{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:14px 0 10px;padding:12px;border:1px dashed var(--line);border-radius:12px;background:none;color:var(--sub);font:inherit;font-weight:800;font-size:var(--f2);cursor:pointer}
+.sadvT i{font-style:normal;display:inline-block;transition:transform .2s}#p-set.advon .sadvT i{transform:rotate(180deg)}
 #p-set>.card.fold{padding:0;margin-bottom:8px;overflow:hidden}
 #p-set>.card.fold>h2{margin:0;padding:14px 16px;font-size:var(--f3)}
 #p-set>.card.fold:not(.shut)>h2{border-bottom:1px solid var(--line)}
@@ -779,6 +789,11 @@ html[data-theme=dark] #lock label{color:var(--sub)}
   #p-cash>.card{display:grid;grid-template-columns:auto 1fr 1fr;gap:10px;align-items:center;padding:10px 12px}
   #p-cash>.card .seg{margin:0;min-width:300px}#p-cash>.card #cVault{margin-top:0!important}
   .ctools{justify-content:flex-start}.ctools .btn{flex:0 0 auto}
+  /* خانة التاريخ على قد التاريخ مش بعرض الكارت (بطلبه 15/10/2026) */
+  #p-cash>.card #cPick:not(:has(.g2)){justify-self:start}
+  #p-cash>.card #cPick:not(:has(.g2))>.inp{width:200px}
+  #p-cash>.card #cPick .cyr{white-space:nowrap;margin-top:0}
+  #p-cash>.card #cPick .cyr .inp{width:200px;flex:none}
 }
 .cnet{display:flex;justify-content:space-between;align-items:center;background:var(--gold-l);border:1px solid var(--gold);border-radius:10px;padding:9px 14px;margin-bottom:12px;font-weight:800;color:var(--gold-d)}
 .cnet b{font-size:var(--f4);color:var(--ink);direction:ltr;font-variant-numeric:tabular-nums}.cnet b.neg{color:var(--red)}
@@ -833,6 +848,8 @@ html[data-theme=dark] .ktoday{color:var(--ink)}
   .ppbar.tb a{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:32px;font-size:var(--f3)}
   .ppbar.tb a em{display:none}
   .ppbar.tb b.tt{font-size:var(--f2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* صفحة الحساب: الاسم في الكارت بس مش مكرر في الشريط (بطلبه 15/10/2026) */
+  #p-party .ppbar.tb b.tt{visibility:hidden}
   .ppbar.tb>:last-child:not(a:first-child):not(b){margin-inline-start:auto}
 }
 .mkdot{font-size:var(--f1);font-weight:700;color:var(--green);display:flex;align-items:center;gap:5px}.mkdot i{width:9px;height:9px;border-radius:50%;background:var(--green)}
@@ -984,11 +1001,15 @@ html[data-theme=dark] .ifoot .btn.off,html[data-theme=dark] .ifoot .btn:disabled
   /* الأزرار: شريط أدوات صغير */
   #p-party .acts{gap:6px;margin-bottom:8px}
   #p-party .acts .btn{width:auto;flex:0 0 auto;min-height:34px;font-size:var(--f2);padding:4px 14px;border-radius:8px;border-width:1px}
-  #p-party .acts #ppStmt{margin-inline-start:auto}
+  /* كشف الحساب جنب الفاتورة والدفعة (بطلبه 15/10/2026)، والنادر (مرتجع، خصم، حصّل) أصغر علشان الكل يدخل في سطر */
+  #p-party div.acts>.btn{padding-inline:12px}
+  #p-party div.acts .rare .btn{padding-inline:8px}
   #ppDoc::after,#ppPay::after{font-size:var(--f1);opacity:.6;margin-inline-start:6px;font-weight:700}
   #ppDoc::after{content:'F2'}#ppPay::after{content:'F3'}
   /* الجدول: سطر لكل حركة */
   #p-party .ldgw{border-radius:10px;border-width:1px}
+  /* رأس الجدول كان لازق جوه الجدول نفسه (overflow:hidden من ui.css) فكان بيغطي أول سطر ويسيب فراغ فوقه. كده بيلزق تحت الشريط وانت نازل (15/10/2026) */
+  #p-party table.ldg{overflow:visible}
   #p-party table.ldg{font-size:var(--f2)}
   #p-party .ldg th{background:var(--row);color:#5d5442;border:0;border-bottom:1px solid var(--line);padding:7px 6px;font-size:var(--f1);top:40px}
   #p-party .ldg td{border:0;border-bottom:1px solid var(--rowl);padding:5px 8px;font-variant-numeric:tabular-nums}
@@ -1403,10 +1424,12 @@ body{font-size:var(--f3);line-height:1.6}
   .top #bTheme{display:none}
   .pt .m .lpy{display:block;font-size:var(--f1);font-weight:600;color:var(--sub);margin-top:2px}
   .pt .m .lpy.late{color:var(--red)}
+  /* الاسم الطويل سطر واحد بـ "..." (بطلبه 15/10/2026)، والاسم كامل في صفحة الحساب */
+  .pt .m{min-width:0}
+  #hList .pt .m>b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-line-clamp:none}
   /* زراير صفحة العميل: كلها ظاهرة في سطر واحد بعرض متساوي، مفيش زرار مستخبي برّه الشاشة */
   /* كشف الحساب زرار باين، والنادر (مرتجع، خصم، حصّل منه) شريط رفيع تحته */
   #p-party .acts{display:grid;grid-template-columns:1fr;gap:6px}
-  #p-party .acts #ppStmt{order:-1;min-height:42px;margin:0}
   #p-party .acts .rare{display:flex;background:var(--row);border:1px solid var(--line);border-radius:10px;overflow:hidden}
   #p-party .acts .rare .btn{flex:1 1 0;min-width:0;min-height:34px;border:0;border-radius:0;background:none;box-shadow:none;color:var(--sub);font-size:var(--f1);padding:2px 4px;white-space:nowrap}
   #p-party .acts .rare .btn+.btn{border-inline-start:1px solid var(--line)}
@@ -1513,20 +1536,37 @@ body{font-size:var(--f3);line-height:1.6}
 <section class="page" id="p-set">
   <div class="sstat" id="sStat"></div>
   <div class="card">
-    <h2>المظهر</h2>
+    <h2>🌙 المظهر</h2>
     <label>اللون</label>
     <div class="seg s3" id="uiTheme"><button type="button" data-v="auto">تلقائي</button><button type="button" data-v="light">فاتح</button><button type="button" data-v="dark">ليلي</button></div>
     <label>حجم الخط</label>
     <div class="seg s3" id="uiFs"><button type="button" data-v="1">عادي</button><button type="button" data-v="1.12">كبير</button><button type="button" data-v="1.25">أكبر</button></div>
     
   </div>
-  <div class="card">
-    <h2>النسخة على Google Sheet</h2>
-    <div id="sSheet"></div>
-  </div>
   <div class="card" id="sMkt"></div>
   <div class="card">
-    <h2>بيانات الشركة في الـ PDF</h2>
+    <h2>🔑 كلمة السر</h2>
+    
+    <button class="btn line" id="sPass" type="button">تغيير كلمة السر</button>
+    <button class="btn line" id="sBio" type="button" style="display:none;margin-top:8px"></button>
+  </div>
+  <div class="card">
+    <h2>💾 النسخة الاحتياطية (ملف)</h2>
+    <div class="stack">
+      <button class="btn gold" id="bBackup" type="button">تنزيل نسخة احتياطية</button>
+      <button class="btn line" id="bRestore" type="button">استرجاع نسخة احتياطية</button>
+      <button class="btn line" id="bReader" type="button">نزّل قارئ النسخ</button>
+      <input type="file" id="fRestore" accept=".json,application/json" hidden>
+    </div>
+    <span class="qh"><button class="qb" type="button" aria-label="شرح">؟</button><span class="qt" hidden>الملف متقفل بكلمة السر بتاعتك، فمحدش يقدر يفتحه من غيرها. احتفظ بيه في مكان آمن. ولو تنبيهات تليجرام شغالة (في حركة السوق)، بتوصلك نسخة كل يوم على تليجرام.</span></span>
+  </div>
+  <button class="sadvT" id="sAdvT" type="button">⚙ إعدادات متقدمة <i>▾</i></button>
+  <div class="card sadv">
+    <h2>🔗 النسخة على Google Sheet</h2>
+    <div id="sSheet"></div>
+  </div>
+  <div class="card sadv">
+    <h2>📄 بيانات الشركة في الـ PDF</h2>
     <div class="fld"><label>رقم التليفون</label><input class="inp" id="sPhone" inputmode="tel" style="direction:ltr;text-align:right" placeholder="01xxxxxxxxx"></div>
     <div class="fld"><label>العنوان</label><input class="inp" id="sCoAddr" placeholder="مثلاً: المنطقة الصناعية — القاهرة"></div>
     <div class="fld"><label>السجل التجاري</label><input class="inp" id="sCoCr" inputmode="numeric" style="direction:ltr;text-align:right"></div>
@@ -1535,40 +1575,24 @@ body{font-size:var(--f3);line-height:1.6}
     <span class="qh"><button class="qb" type="button" aria-label="شرح">؟</button><span class="qt" hidden>بيظهروا في سطر تحت اللوجو في كشف الحساب والفاتورة. اللي تسيبه فاضي مش بيظهر.</span></span>
     <button class="btn line sm" id="sPhoneSave" type="button">حفظ البيانات</button>
   </div>
-  <div class="card">
+  <div class="card sadv">
     <h2>🔒 قفل الفترة</h2>
     <span class="qh"><button class="qb" type="button" aria-label="شرح">؟</button><span class="qt" hidden>بعد ما تراجع شهر وتبعت الكشوف، اقفله: أي حركة تاريخها لحد اليوم ده مش هتتسجل ولا تتعدل ولا تتلغي، على كل الأجهزة.</span></span>
     <div id="sLock"></div>
   </div>
-  <div class="card">
-    <h2>حدود ألوان رصيد العملا</h2>
+  <div class="card sadv">
+    <h2>🟡 حدود ألوان رصيد العملا</h2>
     <div class="g2"><div class="fld"><label>🟡 أصفر لما يعدّي</label><input class="inp num" id="sLimY"></div><div class="fld"><label>🔴 أحمر لما يعدّي</label><input class="inp num" id="sLimR"></div></div>
     <button class="btn line sm" id="sLimSave" type="button">حفظ الحدود</button>
   </div>
-  <div class="card">
+  <div class="card sadv">
     <h2>تنبيه الشيكات</h2>
     <div class="fld"><label>نبّهني قبل ميعاد الشيك بكام يوم</label><input class="inp num" id="sChkDays" inputmode="numeric"></div>
     <button class="btn line sm" id="sChkSave" type="button">حفظ</button>
   </div>
-  <div class="card">
-    <h2>سجل التعديلات</h2>
+  <div class="card sadv">
+    <h2>📝 سجل التعديلات</h2>
     <button class="btn line" id="sAudit" type="button">اعرض كل التعديلات والإلغاء</button>
-  </div>
-  <div class="card">
-    <h2>كلمة السر</h2>
-    
-    <button class="btn line" id="sPass" type="button">تغيير كلمة السر</button>
-    <button class="btn line" id="sBio" type="button" style="display:none;margin-top:8px"></button>
-  </div>
-  <div class="card">
-    <h2>النسخة الاحتياطية (ملف)</h2>
-    <div class="stack">
-      <button class="btn gold" id="bBackup" type="button">تنزيل نسخة احتياطية</button>
-      <button class="btn line" id="bRestore" type="button">استرجاع نسخة احتياطية</button>
-      <button class="btn line" id="bReader" type="button">نزّل قارئ النسخ</button>
-      <input type="file" id="fRestore" accept=".json,application/json" hidden>
-    </div>
-    <span class="qh"><button class="qb" type="button" aria-label="شرح">؟</button><span class="qt" hidden>الملف متقفل بكلمة السر بتاعتك، فمحدش يقدر يفتحه من غيرها. احتفظ بيه في مكان آمن. ولو تنبيهات تليجرام شغالة (في حركة السوق)، بتوصلك نسخة كل يوم على تليجرام.</span></span>
   </div>
   <p class="hint" id="sVer" style="text-align:center"></p>
 </section>
@@ -2297,20 +2321,20 @@ function renderParty(id) {
     <div class="acts">
       <button class="btn" id="ppDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button>
       <button class="btn green" id="ppPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button>
+      <button class="btn gold" id="ppStmt" type="button">📄 كشف حساب</button>
       <div class="rare">
         <button class="btn line" id="ppRet" type="button">↩ ${sup ? 'مرتجع شراء' : 'مرتجع بيع'}</button>
         <button class="btn line" id="ppAdj" type="button">✂ خصم / تسوية</button>
         ${p.sec === 'mkt' && mkCreds() && !mkWants()[id] ? '<button class="btn line" id="ppWant" type="button">📌 حصّل منه</button>' : ''}
       </div>
-      <button class="btn gold" id="ppStmt" type="button">📄 كشف حساب</button>
     </div>
-    <div class="fab2"><button class="btn big" id="fbDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button><button class="btn green big" id="fbPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button></div>
+    <div class="fab2"><button class="btn big" id="fbDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button><button class="btn green big" id="fbPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button><button class="btn gold big" id="fbStmt" type="button">📄 كشف حساب</button></div>
     ${ledgerTable(p)}
     ${nX ? `<div class="sech" style="margin-top:6px"><span></span><a id="ppX">${showX ? 'إخفاء الملغي' : `إظهار الملغي (${nX})`}</a></div>` : ''}
     ${showX && nX ? `<div class="sech"><span>الحركات الملغية</span></div>${all.filter(e => e.del).reverse().map(e => entryCard(e, 0)).join('')}` : ''}`;
   $('#ppBack').onclick = () => go(!isWide() && sup ? 'sup' : 'home'); bindBar();
   $('#ppEdit').onclick = () => partyModal(p);
-  $('#ppStmt').onclick = () => stmtModal(p);
+  $('#ppStmt').onclick = $('#fbStmt').onclick = () => stmtModal(p);
   $('#ppDoc').onclick = $('#fbDoc').onclick = () => docModal(p, sup ? 'pur' : 'inv');
   $('#ppPay').onclick = $('#fbPay').onclick = () => payModal(p, sup ? 'ppay' : 'pay');
   $('#ppRet').onclick = () => docModal(p, sup ? 'rpur' : 'rinv');
@@ -2348,7 +2372,7 @@ function entryCard(e, runB) {
 function lineModal(p, e, i) {
   if (!e || e.del || !isDoc(e) || e.mkNL || isLocked(e.date) || !(e.lines || [])[i]) return openEntry(p, e);
   const l = e.lines[i], ret = isRet(e), many = e.lines.length > 1;
-  modal(`<h3>تعديل بند — ${esc(p.name)}</h3>
+  modal(`<h3>تعديل بند<small class="mnm">${esc(p.name)}</small></h3>
     <p class="hint" style="margin:-6px 0 10px">${esc(docTitle(e))} — ${dispDate(e.date)}</p>
     <div class="fld"><label>اسم الصنف</label><input class="inp" id="lnName" value="${esc(l.name)}" autocomplete="off"></div>
     <div class="g4"><div><label>الوحدة</label><select class="inp" id="lnUnit">${[...new Set(UNITS.concat(l.unit ? [l.unit] : []))].map(u => `<option ${u === l.unit ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select></div>
@@ -2395,7 +2419,7 @@ function openEntry(p, e) {
 function mkGrpModal(p, ids) {
   const L = ids.map(id => E.get(id)).filter(e => e && !e.del);
   if (L.length === 1) return openEntry(p, L[0]);
-  modal(`<h3>💵 دفعة — ${esc(p.name)}</h3>
+  modal(`<h3>💵 دفعة<small class="mnm">${esc(p.name)}</small></h3>
     
     ${L.map(e => `<div class="pt" data-e="${esc(e.id)}"><div class="m"><b>${esc(e.method || 'نقدي')}${e.note && e.note !== 'حركة السوق' ? ' — ' + esc(e.note.replace(/^حركة السوق — /, '')) : ''}</b><small>${dispDate(e.date)}${e.vault ? ' — ' + esc(vName(e.vault)) : ''}</small></div><div class="a"><b>${fmtP(e.amt)}</b></div></div>`).join('')}
     <div class="dtot"><span>الإجمالي</span><b>${fmtP(L.reduce((s, e) => s + (e.amt || 0), 0))}</b></div>
@@ -2467,7 +2491,7 @@ function docModal(p, kind, e, opts = {}) {
   const lines = e && !nl ? e.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty), price: fmtP(l.price)})) : [{name: '', unit: 'كيلو', qty: '', price: ''}];
   let bk = null; const book = {get: k => (bk = bk || itemBook()).get(k)}, mine = custItems(p.id, base);   // كل أصناف كل الفواتير بتتحسب بس لما تحتاجها (كانت بتهنّج فتح الفاتورة)
   const lastDoc = fill ? db.entries.filter(x => x.party === p.id && x.kind === kind && !x.del && !x.mkNL && x.lines && x.lines.length).sort(entCmp).pop() : null;
-  modal(`<h3>${isNew ? ttl : nl ? '📝 اكتب بنود الفاتورة' : 'تعديل ' + esc(docTitle(e))} — ${esc(p.name)}</h3>
+  modal(`<h3>${isNew ? ttl : nl ? '📝 اكتب بنود الفاتورة' : 'تعديل ' + esc(docTitle(e))}<small class="mnm">${esc(p.name)}</small></h3>
     ${mkT !== null ? `<div class="sync" style="margin:0 0 10px;display:block">📥 فاتورة من شريكك في السوق${nl ? ' (اتنقلت بالإجمالي)' : ''} — إجمالي: <b class="money">${fmtP(mkT)}</b><br><small>اكتب البنود (كمية وسعر) والإجمالي لازم يطابق ده.</small><div id="dcMk" style="margin-top:4px;font-weight:800"></div></div>` : ''}
     ${e && kind === 'inv' && isFwdSrc(p) ? `<div class="fwbox ${fwState(e)}"><span>${FW_TAG[fwState(e)]}${fwState(e) !== 'no' && fwdMain(p) ? ` <small>(في حساب ${esc(fwdMain(p).name)})</small>` : ''}</span>${fwState(e) !== 'ok' && fwdMain(p) ? `<button class="btn gold sm" id="fwOne" type="button">📤 ${fwState(e) === 'chg' ? 'انقل التعديل' : 'انقلها للحساب الأساسي'}</button>` : ''}${fwState(e) === 'no' ? '<button class="btn line sm" id="fwMk" type="button">✓ دي متنقلة بالفعل</button>' : ''}${e.fwMan && !fwCopyOf(e) ? '<button class="btn line sm" id="fwUn" type="button">↩ رجّعها متنقلتش</button>' : ''}</div>` : ''}
     ${e && e.fwFrom ? `<div class="fwbox from"><span>↩ الفاتورة دي منقولة من حساب ${esc((P.get((E.get(e.fwFrom) || {}).party) || {}).name || 'فرعي')}. التعديل يكون هناك وبعدين "انقل التعديل".</span></div>` : ''}
@@ -2480,8 +2504,6 @@ function docModal(p, kind, e, opts = {}) {
     <details class="mmore" ${(e && (e.disc || e.note)) ? 'open' : ''}><summary>+ خصم أو ملاحظة</summary>
       <div class="g2"><div class="fld"><label>خصم على الفاتورة</label><input class="inp num" id="dcDisc" placeholder="0" value="${e && e.disc ? fmtP(e.disc) : ''}"></div>
         <div class="fld"><label>ملاحظة</label><input class="inp" id="dcNote" value="${esc(e ? e.note || '' : '')}"></div></div></details>
-    ${isNew && !ret && !opts.mk ? `<div class="g2"><div class="fld"><label>${sale ? 'العميل دفع دلوقتي (اختياري)' : 'دفعت للمورد دلوقتي (اختياري)'}</label><input class="inp num" id="dcPaid" placeholder="0"></div>
-      <div class="fld"><label>${sale ? 'دخلت خزنة' : 'من خزنة'}</label><select class="inp" id="dcPV">${(ensureVaults(), vaultOpts(defVault()))}</select></div></div>` : ''}
     ${e ? histHtml(e) : ''}
     <div id="dcWarn"></div>
     <div class="mfoot">
@@ -2553,7 +2575,6 @@ function docModal(p, kind, e, opts = {}) {
   };
   draw(lines);
   bindMoney($('#dcDisc')); $('#dcDisc').addEventListener('input', calc);
-  if ($('#dcPaid')) bindMoney($('#dcPaid'));
   $('#dcAdd').onclick = () => { const ls = readLines(); const last = ls[ls.length - 1]; ls.push({name: '', unit: last ? last.unit : 'كيلو', qty: '', price: ''}); draw(ls); const n = $$('#dcLines [data-f=name]'); n[n.length - 1].focus(); };
   $('#dcX').onclick = closeModal;
   if ($('#dcLast')) $('#dcLast').onclick = () => { draw(lastDoc.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty), price: fmtP(l.price)}))); toast('اتنسخت أصناف آخر ' + (ret ? 'مرتجع' : 'فاتورة') + '. راجع الكميات والأسعار.', 3000); };
@@ -2601,15 +2622,14 @@ function docModal(p, kind, e, opts = {}) {
       const w = [];
       if (isNew && db.entries.some(x => !x.del && x.party === p.id && x.kind === kind && x.date === date && docTotal(x) === docTotal(doc))) w.push(`فيه ${KIND[kind]} بنفس المبلغ (${fmtP(docTotal(doc))}) لنفس الحساب في نفس اليوم. متأكد إنها مش متكررة؟`);
       if (mkT !== null && docTotal(doc) !== mkT) w.push(`إجمالي البنود (${fmtP(docTotal(doc))}) مش مساوي لإجمالي شريكك (${fmtP(mkT)}). متأكد؟`);
-      if (isNew && kind === 'inv') { const nb = balance(p.id) + docTotal(doc) - toP(($('#dcPaid') || {}).value), lim = limitsOf(p); if (nb >= lim.r) w.push(`رصيد العميل هيبقى ${fmtP(nb)}، وده فوق الحد الأحمر (${fmtP(lim.r)}).`); }
+      if (isNew && kind === 'inv') { const nb = balance(p.id) + docTotal(doc), lim = limitsOf(p); if (nb >= lim.r) w.push(`رصيد العميل هيبقى ${fmtP(nb)}، وده فوق الحد الأحمر (${fmtP(lim.r)}).`); }
       if (w.length) { warned = true; $('#dcWarn').innerHTML = `<div class="sync warn">${w.map(esc).join('<br>')}</div>`; $('#dcOk').textContent = 'متأكد، احفظ برضه'; return; }
     }
     doc.desc = docDesc(doc);
     if (isNew) {
       const ne = addEntry(Object.assign({party: p.id}, opts.mk ? {id: 'e_mk_' + opts.mk.id} : {}, doc)); applyAmounts(ne);
       if (opts.mk) mkSetSt(opts.mk.id, {done: true, dv: opts.mk.upd, back: '', bv: 0, pid: p.id});
-      const paid = $('#dcPaid') ? toP($('#dcPaid').value) : 0;
-      if (paid > 0) { const pe = addEntry({party: p.id, kind: sale ? 'pay' : 'ppay', date, amt: paid, method: 'نقدي', vault: $('#dcPV').value, note: `مع ${docTitle(ne)}`, at: ne.at + 1}); rememberVault('نقدي', pe.vault); pe.desc = docDesc(pe); applyAmounts(pe); }
+      /* خانة "دفع دلوقتي" اتشالت من الفاتورة بطلبه 15/10/2026: الفاتورة للبنود بس، والدفعة من زرارها */
       toast(ret ? 'اتسجل المرتجع ✔' : 'اتسجلت الفاتورة ✔');
     } else {
       const same = JSON.stringify([e.date, e.no, e.lines, e.disc || 0, e.note || '']) === JSON.stringify([date, no, ls, disc, note]);
@@ -2632,7 +2652,7 @@ function payModal(p, kind, e, opts = {}) {
   const ck = e && e.chk || {};
   ensureVaults();
   const v0 = e ? e.vault || '' : (opts.vault || defVault(method));
-  modal(`<h3>💵 ${isNew ? (rec ? 'دفعة استلمتها من' : 'دفعة دفعتها لـ') : 'تعديل دفعة —'} ${esc(p.name)}</h3>
+  modal(`<h3>💵 ${isNew ? (rec ? 'استلمت دفعة' : 'دفعت دفعة') : 'تعديل دفعة'}<small class="mnm">${esc(p.name)}</small></h3>
     <div class="fld"><label>المبلغ</label><div class="amtrow"><input class="inp num amt" id="pyAmt" placeholder="0" value="${e ? fmtP(e.amt) : ''}">${isNew && (rec ? balance(p.id) > 0 : balance(p.id) < 0) ? '<button class="btn line sm" id="pyAll" type="button">كل الرصيد</button>' : ''}</div>
       <div class="hint" style="margin-top:4px">الرصيد الحالي: ${fmtP(Math.abs(balance(p.id)))} ${balWord(balance(p.id))}</div></div>
     <div class="fld"><label>طريقة الدفع</label><div class="seg ${CHECKS_ON || method === 'شيك' ? 's3' : 's2'}" id="pyM">${METHODS.filter(m => CHECKS_ON || m !== 'شيك' || m === method).map(m => `<button type="button" data-v="${m}" class="${m === method ? 'on' : ''}">${m}</button>`).join('')}</div></div>
@@ -2705,7 +2725,7 @@ function entryModal(p, e) {
     $('#emBack').onclick = () => { e.del = false; delete e.delAt; touch(e); saveDB(); closeModal(); route(); toast('رجعت الحركة ✔'); };
     return;
   }
-  modal(`<h3>${isNew ? 'حركة على حساب' : 'تعديل حركة'} — ${esc(p.name)}</h3>
+  modal(`<h3>${isNew ? 'حركة على حساب' : 'تعديل حركة'}<small class="mnm">${esc(p.name)}</small></h3>
     <div class="seg dir" id="emDir"><button type="button" data-v="dr" class="${dir === 'dr' ? 'on' : ''}">مدين +<br><small>عليه (زوّد اللي ليا)</small></button><button type="button" data-v="cr" class="${dir === 'cr' ? 'on' : ''}">دائن −<br><small>ليه (قلّل اللي ليا)</small></button></div>
     <div class="g2"><div class="fld"><label>المبلغ</label><input class="inp num amt" id="emAmt" placeholder="0" value="${e ? fmtP(e.dr || e.cr) : ''}"></div>
       <div class="fld"><label>التاريخ</label><input class="inp" id="emDate" type="date" value="${e ? e.date : todayISO()}"></div></div>
@@ -2825,7 +2845,7 @@ function stmtModal(p) {
   let mode = lastInv ? 'last' : 'all';
   /* آخر شهر = من نفس اليوم الشهر اللي فات لحد آخر حركة النهارده (من غير ما يسيب حاجة) */
   const pm0 = new Date(+y, +t.slice(5, 7) - 2, 1), pmS = isoOf(new Date(pm0.getFullYear(), pm0.getMonth(), Math.min(+t.slice(8), new Date(pm0.getFullYear(), pm0.getMonth() + 1, 0).getDate())).getTime());
-  modal(`<h3>كشف حساب — ${esc(p.name)}</h3>
+  modal(`<h3>كشف حساب<small class="mnm">${esc(p.name)}</small></h3>
     <div class="seg s4" id="smMode">${[['last', 'آخر فاتورة'], ['prev', 'آخر شهر'], ['all', 'الحساب كله'], ['range', 'من – إلى']].map(([k, l]) => `<button type="button" data-m="${k}" class="${k === mode ? 'on' : ''}"${k === 'last' && !lastInv ? ' disabled' : ''}>${l}</button>`).join('')}</div>
     ${lastInv ? `<button type="button" class="btn line" id="smInv" style="min-height:40px;font-size:var(--f2);margin:-2px 0 10px">🧾 ابعت آخر فاتورة بس (من غير الرصيد اللي قبلها)</button>` : ''}
     <div class="g2" id="smRange" style="display:none;margin-bottom:6px"><div><label>من</label><input class="inp" type="date" id="smFrom" value="${y}-01-01"></div><div><label>إلى</label><input class="inp" type="date" id="smTo" value="${t}"></div></div>
@@ -2859,7 +2879,7 @@ function invOnlyData(p, e) {
 }
 function invOnlyModal(p, e) {
   const s = invOnlyData(p, e), tot = docTotal(e);
-  modal(`<h3>آخر فاتورة بس — ${esc(p.name)}</h3>
+  modal(`<h3>آخر فاتورة بس<small class="mnm">${esc(p.name)}</small></h3>
     <div class="stm"><div><span>تاريخ الفاتورة</span><b>${dispDate(e.date)}</b></div><div><span>عدد البنود</span><b>${(e.lines || []).length}</b></div>
       <div class="k"><span>إجمالي الفاتورة</span><b>${fmtP(tot)}</b></div></div>
     
@@ -3319,7 +3339,7 @@ function renderSettings() {
   refreshBio(); renderMktSettings();
   $('#sVer').textContent = verText();
   const c = db.cfg;
-  { const n = pendingRecs().length, st = $('#sStat'), openSheet = () => { const k = $('#sSheet').parentNode; k.classList.remove('shut'); k.scrollIntoView({block: 'start', behavior: 'smooth'}); };
+  { const n = pendingRecs().length, st = $('#sStat'), openSheet = () => { const k = $('#sSheet').parentNode; $('#p-set').classList.add('advon'); k.classList.remove('shut'); k.scrollIntoView({block: 'start', behavior: 'smooth'}); };
     st.className = 'sstat ' + (c.sheetOk ? 'ok' : 'no');
     st.innerHTML = c.sheetOk ? `<div><b>✔ متزامن مع الشيت</b><small>${c.lastSync ? 'آخر مزامنة ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة'}${n ? ' · ' + n + ' مستني' : ''}</small></div><button class="btn line" id="sStatGo" type="button">زامن دلوقتي</button>`
       : `<div><b>الشيت مش مربوط</b><small>البيانات على الجهاز ده بس</small></div><button class="btn gold" id="sStatGo" type="button">اربطه</button>`;
@@ -4157,6 +4177,7 @@ function renderCash() {
       ${hasM ? `<div class="kbk" id="kMk"><span>🏪 خزنة السوق<small>مع الشريك</small></span><b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></div>
       <div class="kbt"><span>الإجمالي<small>خزني + السوق</small></span><b class="n${total < 0 ? ' neg' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)}</b></div>` : ''}
       <div class="ktools">
+        <button class="btn line kmore" id="cMore" type="button" title="أدوات الخزنة" aria-label="أدوات الخزنة">⋯</button>
         <button class="btn line" id="cOpen2" type="button" title="عدّ الفلوس: اكتب الفلوس اللي معاك فعلاً">✎ <span>عدّ الفلوس</span></button>
         <button class="btn line" id="cTr" type="button" title="تحويل بين الخزن">⇄ <span>تحويل</span></button>
         <button class="btn line" id="cSet" type="button" title="الخزن والبنود">⚙ <span>الخزن</span></button>
@@ -4175,11 +4196,6 @@ function renderCash() {
         : cashMode === 'month' ? `<input class="inp" type="month" id="cMonth" value="${cashMonth || t.slice(0, 7)}">`
         : cashMode === 'year' ? `<input class="inp num" id="cYear" inputmode="numeric" value="${cashYear || t.slice(0, 4)}">`
         : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div><label class="cyr">أو سنة كاملة <input class="inp num" id="cYr" inputmode="numeric" placeholder="${t.slice(0, 4)}" value="${from.slice(5) === '01-01' && to === from.slice(0, 4) + '-12-31' ? from.slice(0, 4) : ''}"></label>`}</div>
-    <div class="ksum"><table>
-      <tr><th>البيان</th><th>${dv && hasM && ldgScope !== 'me' ? (ldgScope === 'all' ? 'المصنع كله' : 'عهدة ' + MK_PN) : cashVault ? esc(vName(cashVault)) : 'الخزنة'}</th>${mk0 ? '<th class="mk">السوق</th>' : ''}</tr>
-      <tr class="in"><td>⬇ داخل</td><td class="n m">${fmtP(me.in)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.in)}</td>` : ''}</tr>
-      <tr class="out"><td>⬆ خارج</td><td class="n m">${fmtP(me.out)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.out)}</td>` : ''}</tr>
-      <tr class="net"><td>الصافي</td><td class="n m${me.in < me.out ? ' neg' : ''}">${fmtP(me.in - me.out)}</td>${mk0 ? `<td class="n k${mk0.in < mk0.out ? ' neg' : ''}">${fmtP(mk0.in - mk0.out)}</td>` : ''}</tr></table></div>
     </div>
     ${dv ? ldgHtml(LD) : `<div class="kss${mk ? ' two' : ''}">${me.html}${mk ? mk.html : ''}</div>`}
     `;
@@ -4235,6 +4251,12 @@ function renderCash() {
   $('#cSet').onclick = vaultSettings;
   $('#cPart').onclick = () => go('part');
   $('#cOpen2').onclick = openingModal;
+  /* الموبايل: عدّ الفلوس والتحويل والخزن والشركاء في زرار واحد ⋯ جنب الأرصدة (بطلبه 15/10/2026) */
+  $('#cMore').onclick = () => {
+    modal(`<div class="kmenu">${[['cOpen2', '✎', 'عدّ الفلوس'], ['cTr', '⇄', 'تحويل بين الخزن'], ['cSet', '⚙', 'الخزن والبنود'], ['cPart', '👥', 'الشركاء']].map(([id, ic, n]) => `<button class="btn line" type="button" data-b="${id}">${ic} ${n}</button>`).join('')}<button class="btn line" id="kmX" type="button">رجوع</button></div>`);
+    $('#kmX').onclick = closeModal;
+    $$('#modal .kmenu [data-b]').forEach(b => b.onclick = () => { const t = $('#' + b.dataset.b); closeModal(); t.click(); });
+  };
   runCounters(pg);
 }
 /* اسم "خزنة المصنع" بقى "كاش" (بطلب صاحب المشروع). مرة واحدة وبيتزامن لكل الأجهزة */
@@ -4624,7 +4646,7 @@ function adjModal(p, e) {
   if (e && isLocked(e.date)) return lockedView(p, e);
   const isNew = !e, sup = p.sec === 'sup';
   let dir = e ? e.dir : 'dn';
-  modal(`<h3>✂ ${isNew ? 'خصم / تسوية' : 'تعديل خصم / تسوية'} — ${esc(p.name)}</h3>
+  modal(`<h3>✂ ${isNew ? 'خصم / تسوية' : 'تعديل خصم / تسوية'}<small class="mnm">${esc(p.name)}</small></h3>
     <div class="seg dir" id="adDir"><button type="button" data-v="dn" class="${dir === 'dn' ? 'on' : ''}">خصم −<br><small>${sup ? 'ينزّل اللي ليه' : 'ينزّل اللي عليه'}</small></button><button type="button" data-v="up" class="${dir === 'up' ? 'on' : ''}">تسوية +<br><small>${sup ? 'يزوّد اللي ليه' : 'يزوّد اللي عليه'}</small></button></div>
     <div class="g2"><div class="fld"><label>المبلغ</label><input class="inp num amt" id="adAmt" placeholder="0" value="${e ? fmtP(e.amt) : ''}"></div>
       <div class="fld"><label>التاريخ</label><input class="inp" id="adDate" type="date" value="${e ? e.date : todayISO()}"></div></div>
@@ -5680,7 +5702,7 @@ function jumpTo(toEnd) {
 }
 /* الإعدادات: قايمة نضيفة، كل كارت سطر واحد بعنوانه وبيتفتح بدوسة، والحالة بتتحفظ على الجهاز. كله مقفول لأول مرة.
    الدوس متسجل على الصفحة كلها (مش على كل عنوان) علشان كارت زي حركة السوق بيتعاد رسم عنوانه */
-function setKey(c) { if (c.id === 'sMkt') return 'sMkt'; const h = c.querySelector('h2'); return h ? h.textContent.trim() : ''; }
+function setKey(c) { if (c.id === 'sMkt') return 'sMkt'; const h = c.querySelector('h2'); return h ? h.textContent.replace(/^[^\u0600-\u06FFA-Za-z]+/, '').trim() : ''; }   // من غير الأيقونة اللي في الأول، علشان المفتوح يفضل مفتوح
 function initSetCards() {
   let st = null; try { st = JSON.parse(localStorage.getItem('fo_setopen') || 'null'); } catch (e) {}
   $$('#p-set > .card').forEach(c => { const key = setKey(c); if (!key) return; c.classList.add('fold'); c.classList.toggle('shut', !(st && st[key])); });
@@ -5689,8 +5711,9 @@ function initSetCards() {
     const c = h.parentNode; c.classList.toggle('shut');
     try { const o = JSON.parse(localStorage.getItem('fo_setopen') || '{}'); o[setKey(c)] = !c.classList.contains('shut'); localStorage.setItem('fo_setopen', JSON.stringify(o)); } catch (e) {}
   });
+  $('#sAdvT').onclick = () => { const on = $('#p-set').classList.toggle('advon'); if (on) $('#sAdvT').scrollIntoView({block: 'start', behavior: 'smooth'}); };
 }
-function setOpenAll() { $$('#p-set > .card').forEach(c => c.classList.remove('shut')); $$('#p-set details.adv').forEach(d => d.open = true); }
+function setOpenAll() { $('#p-set').classList.add('advon'); $$('#p-set > .card').forEach(c => c.classList.remove('shut')); $$('#p-set details.adv').forEach(d => d.open = true); }
 initSetCards();
 let lastHash = '', wasWide = isWide();
 addEventListener('resize', () => { if (isWide() !== wasWide) { wasWide = isWide(); route(); } });

@@ -336,12 +336,14 @@ const T0 = Date.now();
 
     if (RUN.base) {   // ← وضع السوق (mkt) ووضع الشكل (smoke) بيتخطوا ٣ لحد ٩
     sec('٣) فاتورة ودفعة ومرتجع وخصم');
-    await A.evaluate(() => go('cash')); await A.click('#cNew'); await A.click('#cOpen2'); await A.fill('#modal [data-v]', '1000'); await A.click('#opOk'); await A.settle(200);
+    await A.evaluate(() => go('cash')); await A.click('#cNew'); await A.click('#cMore'); await A.click('#modal [data-b=cOpen2]'); await A.fill('#modal [data-v]', '1000'); await A.click('#opOk'); await A.settle(200);
     eq('رصيد بداية الخزنة', await vbal(A, 'v_main'), 100000);
     await openParty(A, 'عميل تجربة واحد');
     await A.click('#fbDoc'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.dispatchEvent('.li [data-f=name]', 'change');
     eq('آخر سعر للعميل بيتكتب لوحده', await A.inputValue('.li [data-f=price]'), '350');
-    await A.fill('.li [data-f=qty]', '4'); await A.click('.mmore summary'); await A.fill('#dcDisc', '50'); await A.fill('#dcPaid', '400'); await A.click('#dcOk'); await closed(A);
+    await A.fill('.li [data-f=qty]', '4'); await A.click('.mmore summary'); await A.fill('#dcDisc', '50');
+    eq('الفاتورة للبنود بس: مفيش خانة "دفع دلوقتي"', !!(await A.$('#dcPaid')), false); await A.click('#dcOk'); await closed(A);
+    await A.click('#fbPay'); await A.fill('#pyAmt', '400'); await A.click('#pyOk'); await closed(A);
     eq('بعد فاتورة 1400−50 ودفع 400', await bal(A, 'عميل تجربة واحد'), 270000 + 135000 - 40000);
     eq('الدفعة دخلت الخزنة', await vbal(A, 'v_main'), 140000);
     await A.click('#ppRet'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.fill('.li [data-f=qty]', '1'); await A.fill('.li [data-f=price]', '350'); await A.click('#dcOk'); await closed(A);
@@ -353,7 +355,7 @@ const T0 = Date.now();
 
     sec('٤) الشيكات مقفولة واختيارات كشف الحساب');
     eq('مفيش زرار شيكات ولا طريقة دفع شيك', [!!(await A.$('nav button[data-go=chk]')), (await A.click('#fbPay'), !!(await A.$('#pyM button[data-v=شيك]')))], [false, false]); await A.click('#pyX');
-    await A.click('#ppStmt'); await A.settle(150);
+    await A.click('#fbStmt'); await A.settle(150);
     eq('الكشف بيفتح على آخر فاتورة والرصيد قبلها', [await A.getAttribute('#smMode .on', 'data-m'), (await A.textContent('#smOut')).includes('الرصيد قبل الفاتورة')], ['last', true]);
     eq('آخر فاتورة: الرصيد قبل وبعد', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), l = partyEntries(p.id).filter(e => e.kind === 'inv').pop(), s = stmtData(p.id, '', '', l.id); return [s.open, s.close, s.rows[0].kind || s.lastInv.kind]; }), [270000, 318500, 'inv']);
     await A.click('#smMode button[data-m=prev]'); await A.settle(100);
@@ -379,7 +381,7 @@ const T0 = Date.now();
     await A.click('#cPayS'); await A.click('#pkList .pt'); await A.fill('#pyAmt', '500'); await A.click('#pyOk'); await closed(A);
     eq('مصروف 30 ودفعة مورد 500', await vbal(A, 'v_main'), 150000 - 3000 - 50000);
     eq('رصيد المورد نزل', await bal(A, 'مورد تجربة'), -2950000 + 50000);
-    await A.click('#cOpen2'); await A.fill('#modal [data-v]', '960'); await A.click('#opOk'); await A.settle(200);
+    await A.click('#cMore'); await A.click('#modal [data-b=cOpen2]'); await A.fill('#modal [data-v]', '960'); await A.click('#opOk'); await A.settle(200);
     eq('الجرد سجّل الفرق تسوية', await vbal(A, 'v_main'), 96000);
 
     /* دفتر الخزنة بالتاريخ: نفس استبعادات "بالنوع" وإجماليه، الأقدم فوق، والفلتر والـ PDF */
@@ -453,19 +455,19 @@ const T0 = Date.now();
       fire('touchstart', [pt(100, 100), pt(200, 100)], document.body); fire('touchmove', [pt(50, 100), pt(250, 100)], document.body); fire('touchend', [], document.body);
       return [/user-scalable=no/.test(meta), onTable > 1.5 && onTable <= 2.5, lz() === onTable]; }), [true, true, true]);
     await A.evaluate(() => { location.hash = '#x'; history.back(); }); await A.settle(200);
-    await A.click('#ppStmt');
+    await A.click('#fbStmt');
     await A.evaluate(() => { window.__sh = null; navigator.canShare = () => true; navigator.share = d => { window.__sh = d; return Promise.resolve(); }; });
     await A.click('#smShare'); await A.waitForFunction(() => window.__sh, null, {timeout: 90000});
     eq('الواتساب: الملف بس باسم الشخص ومن غير رسالة مكتوبة', await A.evaluate(() => [Object.keys(__sh), __sh.files[0].name, __sh.files[0].type]), [['files'], 'عميل تجربة واحد.pdf', 'application/pdf']);
     await A.evaluate(() => { navigator.canShare = () => false; });
-    await A.settle(300); if (!(await A.$('#smShare'))) await A.click('#ppStmt');
+    await A.settle(300); if (!(await A.$('#smShare'))) await A.click('#fbStmt');
     await A.evaluate(() => { window.__dn = ''; const o = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dn = this.download; return o.call(this); }; });
     const [dl] = await Promise.all([A.waitForEvent('download', {timeout: 90000}), A.click('#smShare')]);
     eq('لو الجهاز مبيدعمش المشاركة الملف بينزل باسم الشخص', await A.evaluate(() => __dn), 'عميل تجربة واحد.pdf');
     const pdf = fs.readFileSync(await dl.path());
     eq('الـ PDF اتعمل', pdf.slice(0, 4).toString(), '%PDF');
     /* آخر فاتورة بس: بنودها والإجمالي من غير الرصيد اللي قبلها، والكشف زي ما هو */
-    await A.evaluate(() => closeModal()); await A.click('#ppStmt'); await A.settle(150);
+    await A.evaluate(() => closeModal()); await A.click('#fbStmt'); await A.settle(150);
     eq('الكشف لسه بيفتح على آخر فاتورة بالرصيد اللي قبلها', [await A.getAttribute('#smMode .on', 'data-m'), (await A.textContent('#smOut')).includes('الرصيد قبل الفاتورة')], ['last', true]);
     await A.click('#smInv'); await A.settle(150);
     eq('آخر فاتورة بس: إجماليها = إجمالي آخر فاتورة', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), l = partyEntries(p.id).filter(e => e.kind === 'inv').pop(); return $('#modal .stm .k b').textContent === fmtP(docTotal(l)); }), true);
@@ -741,7 +743,7 @@ const T0 = Date.now();
     await bg(A, 'syncNow()');   // ياخد اللي اتسجل في الجهاز التاني الأول
     const vb0 = await A.evaluate(() => vaultBal(''));
     eq('الموبايل: حركة السوق في الشريط اللي تحت مكان الشركاء، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ["home", "sup", "mkt", "cash"]);
-    await A.evaluate(() => go('cash')); await A.click('#cPart'); await A.waitForSelector('#ptBack', {timeout: 3000}).catch(() => {});   // الصفحة بتفتح بعد تغيير العنوان
+    await A.evaluate(() => go('cash')); await A.click('#cMore'); await A.click('#modal [data-b=cPart]'); await A.waitForSelector('#ptBack', {timeout: 3000}).catch(() => {});   // الصفحة بتفتح بعد تغيير العنوان
     eq('الشركاء من الخزنة: الخزنة متعلّمة تحت وفيه رجوع', [await A.evaluate(() => $('nav button.on').dataset.go), !!await A.$('#ptBack')], ['cash', true]);
     await A.click('#psGo'); await A.fill('#psA', '10');
     await A.fill('#psS', await A.evaluate(() => addDays(lastThu(), -14))); await A.click('#psOk'); await A.settle(200);
@@ -1457,7 +1459,7 @@ const T0 = Date.now();
       t.del = true; touch(t); saveDB(); go('mkt'); return r; }), [true, true, true, true]);
     eq('الخزنة: الأدوات شريط جوه كارت الرصيد، "يوم ▾" بيفتح يوم/أسبوع/شهر/من–إلى ويقفل بعد الاختيار، و"↺ النهارده" بيظهر في يوم قديم بس ويرجّع للنهارده', await A.evaluate(() => {
       cashMode = 'day'; cashDay = ''; cashVault = ''; cashOpenV = false; cashPickM = false; go('cash'); renderCash();
-      const r = [['#cOpen2', '#cTr', '#cSet', '#cPart'].every(s => !!$('#p-cash .kb ' + s)), !$('#p-cash > .ktools'), !!$('#cPer .ksum'), !$('#cToday'), $('#cModeB').textContent.includes('يوم')];
+      const r = [['#cOpen2', '#cTr', '#cSet', '#cPart'].every(s => !!$('#p-cash .kb ' + s)), !$('#p-cash > .ktools'), !$('#cPer .ksum'), !$('#cToday'), $('#cModeB').textContent.includes('يوم')];
       $('#cModeB').click(); r.push($('#cPer').classList.contains('pk'));
       $('#cMode [data-m=week]').click(); r.push(cashMode === 'week', $('#cPer').classList.contains('pk'), $('#cModeB').textContent.includes('أسبوع'));
       cashMode = 'day'; cashDay = addDays(todayISO(), -3); renderCash(); r.push(!!$('#cToday'));
@@ -1974,8 +1976,9 @@ const T0 = Date.now();
     await colOk('الحسابات — الخزنة (حركتي)', A, '#kst-me', '.kty .n');
     if (await A.$('#kst-mk')) await colOk('الحسابات — الخزنة (حركة السوق)', A, '#kst-mk', '.kty .n');
     if (await A.evaluate(() => !isWide() && !$('#p-cash .kb.two') && $$('#p-cash .kb :is(.kbm,.kbk,.kbt)>.n').length > 1)) await colOk('الحسابات — الخزنة (الأرصدة فوق)', A, '#p-cash .kb', '.kbm>.n,.kbk>.n,.kbt>.n');   // مع خزنة السوق الأرصدة صف واحد جنب بعض
-    if (await A.evaluate(() => !isWide())) { await colOk('الحسابات — الخزنة (الملخص: الخزنة)', A, '#p-cash .ksum', 'td.m'); if (await A.$('#p-cash .ksum td.k')) await colOk('الحسابات — الخزنة (الملخص: السوق)', A, '#p-cash .ksum', 'td.k');   // من غير خزنة سوق (وضع acc لوحده) مفيش عمود سوق
-      eq('الخزنة على الموبايل: الملخص = داخل وخارج كارت حركتي', await A.evaluate(() => { const v = s => $('#p-cash .ksum tr.' + s + ' td.m').textContent; return [v('in') === fmtP(+$('#kst-me .kin .n').dataset.cnt), v('out') === fmtP(+$('#kst-me .kout .n').dataset.cnt)]; }), [true, true]); }
+    if (await A.evaluate(() => !isWide())) eq('الخزنة على الموبايل: مفيش جدول ملخص، وداخل/خارج ظاهرين فوق كارت حركتي، والأدوات ورا ⋯', await A.evaluate(() => {
+      const v = e => e && getComputedStyle(e).display !== 'none', r = [!$('#p-cash .ksum'), v($('#kst-me .kio')), v($('#cMore')), !v($('#cTr'))];
+      $('#cMore').click(); r.push($$('#modal .kmenu [data-b]').length === 4); $('#modal [data-b=cOpen2]').click(); r.push($('#mask').classList.contains('on') && !$('#modal .kmenu')); closeModal(); return r; }), [true, true, true, true, true, true]);
     await A.evaluate(() => { mkView = 'in'; go('mkt'); renderMkt(); }); await A.settle(300);
     for (const [nm, root] of [['الوارد (جاهزين للنقل)', '#mqReady'], ['الوارد (محتاجين قرارك)', '#mqDec']]) if (await A.evaluate(r => $$(r + ' .mqa>.n').length >= 2, root)) await colOk('الحسابات — ' + nm, A, root, '.mqa>.n');
     await A.evaluate(() => { cashMode = 'day'; go('home'); }); await A.settle(300);

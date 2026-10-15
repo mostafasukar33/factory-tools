@@ -1044,6 +1044,15 @@ const T0 = Date.now();
     await A.fill('#aqI', 'مبيعات الشهر ده'); await A.press('#aqI', 'Enter'); await A.waitForSelector('#p-ask .aqb');
     eq('الشات: السؤال بيترد عليه في الشاشة', await A.evaluate(() => [document.querySelectorAll('#p-ask .aqm').length, document.querySelectorAll('#p-ask .aqb').length > 0]), [1, true]);
     eq('الشات: الخط بالخمس أحجام بس', await fs5(A), [true, []]);
+    eq('الشات (الآيفون): لمسة واحدة على ابعت بتبعت والخانة تفضل مفتوحة، ولمسة بتمرر الاقتراحات مبتبعتش', await A.evaluate(() => {
+      const I = $('#aqI'), n = () => $$('#p-ask .aqm').length, n0 = n();
+      const tap = (el, dx) => { const r = el.getBoundingClientRect(), x = r.left + 5, y = r.top + 5, T = x => new Touch({identifier: 1, target: el, clientX: x, clientY: y});
+        el.dispatchEvent(new TouchEvent('touchstart', {touches: [T(x)], changedTouches: [T(x)], bubbles: true, cancelable: true}));
+        el.dispatchEvent(new TouchEvent('touchend', {touches: [], changedTouches: [T(x + dx)], bubbles: true, cancelable: true})); };
+      I.focus(); I.value = 'مبيعات السنه دي'; tap($('#aqF button'), 0);
+      const r = [n() - n0, document.activeElement === I, I.value];
+      tap($('#p-ask .aqk button'), 40); r.push(n() - n0);
+      return r; }), [1, true, '', 1]);
     await A.evaluate(() => go('home')); await A.settle(150);
 
     sec('١٤) التاريخ ورصيد أول المدة');

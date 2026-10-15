@@ -22,14 +22,31 @@ const same = (a, b) => { if (a.byteLength !== b.byteLength) return false; const 
 // الصفحة اللي اتفتحت بالنسخة المحفوظة والجديد طلع مختلف: بنقولها هي بالذات
 const tell = id => self.clients.get(id).then(c => c && c.postMessage('sw-stale'));
 
-// بيجيب الملف كامل من النت (مش أوله بس) ويحفظه. no-cache = بيسأل السيرفر كل مرة، ولو متغيرش الرد بيبقى صغير (304)
+// بيجيب الملف كامل من النت (مش أوله بس) ويحفظه. بنبعت علامة النسخة المحفوظة (ETag)، فلو الملف متغيرش
+// السيرفر بيرد بـ 304 صغير ونستخدم المحفوظ بدل ما ننزّل الملف كله تاني.
+// كلاود فلير بيحوّل x.html لـ /x (لفة زيادة كل فتحة)، فبنفتكر العنوان اللي حوّل عليه (ALIAS) ونطلبه على طول
+const ALIAS = new URL('__alias', SCOPE).href;
+let alias = null;
+const aliases = () => alias || (alias = caches.match(ALIAS).then(r => r ? r.json() : {}).catch(() => ({})));
+const setAlias = (u, to) => aliases().then(m => { if (m[u] === to) return; if (to) m[u] = to; else delete m[u];
+  return caches.open(CACHE).then(c => c.put(ALIAS, new Response(JSON.stringify(m), {headers: {'Content-Type': 'application/json'}}))); }).catch(() => {});
 function grab(u) {
-  return fetch(u, {cache: 'no-cache', credentials: 'same-origin'}).then(r => {
-    if (!r.ok) throw new Error(r.status);
-    const type = r.headers.get('content-type') || '';
-    return r.arrayBuffer().then(b => {
-      const res = () => new Response(b, {status: 200, headers: type ? {'Content-Type': type} : {}});
-      return caches.open(CACHE).then(c => c.put(key(u), res())).then(() => ({b, res}));
+  const k = key(u);
+  return Promise.all([aliases(), caches.match(k)]).then(([m, old]) => {
+    const tag = old && old.headers.get('X-Etag'), to = m[k];
+    const get = url => fetch(url, tag ? {cache: 'no-store', credentials: 'same-origin', headers: {'If-None-Match': tag}} : {cache: 'no-cache', credentials: 'same-origin'});
+    // لو العنوان المحفوظ مبقاش شغال نرجع للأصلي وننساه
+    return (to ? get(to).then(r => r.ok || r.status === 304 ? r : (setAlias(k, null), get(u)), () => get(u)) : get(u)).then(r => {
+      if (r.redirected && r.url && rel(r.url) !== null) setAlias(k, key(r.url));
+      if (r.status === 304 && old) return old.arrayBuffer().then(b => ({b, res: () => new Response(b, {status: 200, headers: old.headers})}));
+      if (!r.ok) throw new Error(r.status);
+      const h = {}, type = r.headers.get('content-type'), et = r.headers.get('etag');
+      if (type) h['Content-Type'] = type;
+      if (et) h['X-Etag'] = et;
+      return r.arrayBuffer().then(b => {
+        const res = () => new Response(b, {status: 200, headers: h});
+        return caches.open(CACHE).then(c => c.put(k, res())).then(() => ({b, res}));
+      });
     });
   });
 }

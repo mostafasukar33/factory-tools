@@ -42,24 +42,28 @@ function importFile() {
 }
 
 /* للاختبار sw.js: down = النت مقطوع، slow[ملف] = الملف بيتأخر (ملّي)، body[ملف] = نسخة جديدة اترفعت من الملف،
-   pretty = زي كلاود فلير (app.flashoneg.com): x.html بيتحوّل لـ /x، و/x بيرجّع x.html */
-const SRV = {down: false, slow: {}, body: {}, pretty: false};
+   pretty = زي كلاود فلير (app.flashoneg.com): x.html بيتحوّل لـ /x، و/x بيرجّع x.html، log = الطلبات اللي وصلت (لو array) */
+const SRV = {down: false, slow: {}, body: {}, pretty: false, log: null};
 function serve() {
   const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json'};
   return new Promise(res => {
     const srv = http.createServer((q, r) => {
       let u = decodeURIComponent(q.url.split('?')[0]);
+      const lg = SRV.log ? {u, st: 200} : null; if (lg) SRV.log.push(lg);
       if (SRV.pretty) {
         const m = u.match(/^(.*\/)([^/]+)\.html$/);
-        if (m) { r.writeHead(308, {Location: m[1] + (m[2] === 'index' ? '' : m[2])}); return r.end(); }
+        if (m) { if (lg) lg.st = 308; r.writeHead(308, {Location: m[1] + (m[2] === 'index' ? '' : m[2])}); return r.end(); }
         if (!/\.[a-z0-9]+$/i.test(u) && !u.endsWith('/')) u += '.html';
       }
       const f = path.join(ROOT, u.replace(/^\/+/, '') || 'index.html');
       if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); }
       if (SRV.down) return q.socket.destroy();
       const rel = path.relative(ROOT, f).split(path.sep).join('/'), send = () => {
-        r.writeHead(200, {'Content-Type': types[path.extname(f)] || 'application/octet-stream'});
-        if (rel in SRV.body) r.end(SRV.body[rel]); else fs.createReadStream(f).pipe(r);
+        /* ETag زي GitHub وكلاود فلير: لو الجهاز عنده نفس النسخة الرد 304 من غير الملف */
+        const body = rel in SRV.body ? Buffer.from(SRV.body[rel]) : fs.readFileSync(f), tag = 'W/"' + require('crypto').createHash('md5').update(body).digest('hex') + '"';
+        if (q.headers['if-none-match'] === tag) { if (lg) lg.st = 304; r.writeHead(304, {ETag: tag}); return r.end(); }
+        r.writeHead(200, {'Content-Type': types[path.extname(f)] || 'application/octet-stream', ETag: tag});
+        r.end(body);
       };
       if (SRV.slow[rel]) setTimeout(send, SRV.slow[rel]); else send();
     }).listen(0, () => res(srv));
@@ -1883,8 +1887,13 @@ const T0 = Date.now();
         try { const Y = await SWD.page(f); await Y.settle(400); ok = await Y.evaluate(() => !!document.body && document.body.children.length > 0 && !!document.querySelector('script')); await Y.close(); } catch (e) {}
         if (!ok) bad.push(f);
       }
-      SRV.pretty = false;
+      /* فتحة الحسابات التانية على كلاود فلير: من غير لفة التحويل، والملف الكبير مبيتنزلش تاني لو متغيرش (304) */
+      SRV.log = [];
+      try { const Y = await SWD.page('accounts.html'); await until(Y, () => !!document.querySelector('#suP, #lkP')); await Y.close(); } catch (e) {}
+      const acc = SRV.log.filter(x => /^\/accounts(\.html)?$/.test(x.u)).map(x => x.u + ' ' + x.st);
+      SRV.log = null; SRV.pretty = false;
       eq('كلاود فلير (من غير .html): كل الصفحات بتفتح من خلال الـ SW', bad, []);
+      eq('كلاود فلير: فتح الحسابات تاني = طلب واحد صغير (304) من غير تحويل', acc, ['/accounts 304']);
 
       /* نت بطيء: الملف بياخد 6 ثواني ونسخة جديدة اترفعت. بيفتح المحفوظ بعد 3 ثواني، والجديد بيوصل لوحده لما مفيش شغل مفتوح */
       SRV.slow = {'market.html': 6000}; SRV.body = {'market.html': v('market.html', 2)};

@@ -240,8 +240,7 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     /* أسبوع قديم كان متعلّم "الجمعة شغل" (قبل التعديل) بيفضل يتحسب ويبان */
     await A.evaluate(() => { put('wst', {id: 'ws_2026-10-15', thu: '2026-10-15', fri: 'work'}); commit(); drawWeek(); });
     eq('أسبوع متعلّم جمعة شغل قبل كده: بيبان علامته', (await A.textContent('#friT')).trim(), 'الجمعة شغل ✓');
-    await A.click('#lockW');
-    eq('القفل مبيشتغلش لو في يوم ناقص', (await A.textContent('#lockErr')).trim(), 'يوم ناقص عند عامل تجربة ج: الأربعيوم ناقص عند عامل تجربة ج: الخميس');
+    eq('زرار قفّل الأسبوع اتشال، وزرار قبض ظاهر والأسبوع مفتوح', [await A.$('#lockW'), (await A.$$('#main [data-pay]')).length > 0], [null, true]);
     await A.evaluate(() => nav('t/2026-10-14', true)); await A.click('#allDay');
     await A.evaluate(() => nav('t/2026-10-15', true)); await A.click('#main .wr:nth-child(3) .ub button[data-u="0"]');
     await A.evaluate(() => nav('w', true));
@@ -249,7 +248,7 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     const nets = await A.evaluate(() => { const c = calcWeek(idx(), '2026-10-15'); return Object.values(c.rows).map(r => [r.name, r.net]); });
     eq('الصافي لكل عامل', nets, [['عامل تجربة أ', 137500], ['عامل تجربة ب', 150000], ['عامل تجربة ج', 10000]]);
     eq('إجمالي "هيخرج من المصنع"', await A.textContent('.panel .p1 b'), '2,975');
-    await A.click('#lockW'); await A.click('#aY'); await A.waitForTimeout(150);
+    await A.evaluate(() => { lockWeek('2026-10-15', false); commit(); drawWeek(); });
     eq('بعد القفل: زرار قبض لكل عامل', (await A.$$('#main [data-pay]')).length, 3);
     await A.click('#main [data-pay]');
     eq('القبض اتعلّم باسم اللي سلّم', (await A.textContent('#main tr[data-w]:nth-child(1) .paid')).includes('مشرف تجربة 1'), true);
@@ -428,6 +427,10 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await A.evaluate(() => nav('e', true));
     const advSum = await A.evaluate(() => idx().adv.filter(a => idx().W.has(a.w)).reduce((s, a) => s + a.amt, 0) / 100), advN = await A.evaluate(() => idx().adv.filter(a => idx().W.has(a.w)).length);
     const money = n => n.toLocaleString('en-US', {maximumFractionDigits: 2});
+    const pd0 = await A.evaluate(() => [...idx().pd.values()].map(p => ({id: p.id, w: p.w, thu: p.thu, amt: p.amt})));
+    eq('القبض بينزل من العهدة سطر لوحده ("قبض · الاسم") وفي إجمالي المرتبات', await A.evaluate(p => [!!document.querySelector(`#main .row[data-e="${p.id}"]`), document.querySelector(`#main .row[data-e="${p.id}"] b`).textContent.startsWith('－ قبض · '), $('#eTot b').textContent], pd0[0]), [true, true, money(pd0.reduce((s, p) => s + p.amt, 0) / 100)]);
+    eq('إجمالي السلف فوق', await A.evaluate(() => $$('#eTot b')[1].textContent), money(advSum));
+    await A.evaluate(ps => { ps.forEach(p => put('pd', {id: p.id, del: true})); commit(); drawExp(); }, pd0);
     eq('السلف اللي اتسجلت على العمال بتتخصم من العهدة لوحدها (الصافي بالسالب لسه مفيش عهدة)', [advN > 0, await A.textContent('.panel .p1 b')], [true, '-' + money(advSum)]);
     await A.click('#eCus'); await A.fill('#exA', '9000'); await A.fill('#exD', '2026-10-20'); await A.fill('#exN', 'عهدة تجربة'); await A.click('#exOk'); await A.waitForTimeout(150);
     await A.click('#eCus'); await A.fill('#exA', '3000'); await A.fill('#exD', '2026-11-02'); await A.click('#exOk'); await A.waitForTimeout(150);
@@ -467,11 +470,13 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     eq('مسح سلفة من المصاريف: السطر اختفى والصافي زاد بقيمتها', await A.evaluate(([id, nb]) => [!document.querySelector(`#main .row[data-e="${id}"]`), $('.panel .p1 b').textContent !== nb], [adv0.id, netBefore]), [true, true]);
     await A.click('#eF button[data-v=all]');
     await A.evaluate(o => { put('adv', {id: o.id, del: false, w: o.w, date: o.date, amt: o.amt}); commit(); drawExp(); }, adv0);
-    await A.click('#eWk'); await A.waitForSelector('#pwOk');
-    const wkTot = await A.evaluate(() => idx().lk.get('2026-10-22').snap.total);
-    await A.click('#pwC .chip[data-t="2026-10-22"]'); await A.click('#pwOk'); await A.waitForTimeout(150);
-    eq('تنزيل قبض أسبوع من المصروفات', await A.evaluate(() => idx().exp.filter(x => x.wk).map(x => [x.wk, x.amt])), [['2026-10-22', wkTot]]);
-    eq('والصافي نزل بنفس المبلغ', await A.textContent('.panel .p1 b'), money(12000 - 2000 - advSum - wkTot / 100));
+    await A.evaluate(() => { const w = [...idx().W.keys()][0]; put('pd', {id: 'pd_2026-10-22_' + w, w, thu: '2026-10-22', amt: 50000, date: '2026-10-22'}); commit(); drawExp(); });
+    eq('قبض عامل بينزّل الصافي بمبلغه', await A.textContent('.panel .p1 b'), money(12000 - 2000 - advSum - 500));
+    await A.evaluate(() => { put('exp', {id: 'x_wk_2026-10-22', amt: 300000, note: 'قبض أسبوع', to: 'العمال', paidBy: 'x', date: '2026-10-23', wk: '2026-10-22'}); commit(); drawExp(); });
+    const wkTot = 300000;
+    eq('أسبوع اتنزل بالزرار القديم: القبض بتاعه مبيتخصمش تاني', await A.textContent('.panel .p1 b'), money(12000 - 2000 - advSum - wkTot / 100));
+    eq('زرار "نزّل قبض أسبوع" اتشال', await A.$('#eWk'), null);
+    await A.evaluate(() => { put('pd', {id: 'pd_2026-10-22_' + [...idx().W.keys()][0], del: true}); commit(); drawExp(); });
     await settle_(A); await settle_(B);
     eq('الشريك شايف العهدة والمصروفات', await B.evaluate(() => [idx().cus.length, idx().exp.length]), [2, 2]);
     await A.click('#main .row[data-e="x_wk_2026-10-22"]'); await A.click('#exDel'); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(150);

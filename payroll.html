@@ -1103,16 +1103,16 @@ function drawWeek() {
     ${owe.length && !c.closed ? `<button class="note" id="owe" type="button" style="width:100%;text-align:right;border:0">💵 فيه ${owe.length === 1 ? 'عامل' : owe.length + ' عمال'} لسه مقبضوش من أسبوع قبل كده — دوس هنا</button>` : ''}
     <section class="panel"><div class="p1"><span>${c.closed ? 'المرتبات (اتقفل)' : 'هيخرج من المصنع'}</span><b class="money">${fmt(c.total)}</b></div>
       <div class="cap"><span>من ${dayFull(ds[0])} لـ ${dayFull(ds[5])}</span>${c.closed ? `<span class="ok">🔒 ${c.lk.auto ? 'اتقفل تلقائي' : 'قفّله ' + esc(c.lk.closer || c.lk.by)}</span>` : ''}${c.fri === 'work' ? '<button class="tiny on" id="friT" type="button">الجمعة شغل ✓</button>' : ''}</div>
-      ${ids.length ? `<div class="stats"><div><b class="money">${fmt(sumW)}</b>المرتبات</div><div><b class="money ${sumD ? 'bk' : ''}">${sumD ? fmt(sumD) : '—'}</b>سلف وخصومات</div><div><b>${ids.length}</b>${c.closed ? `قبض ${paidN} من ${toPay}` : 'عامل'}</div></div>` : ''}
+      ${ids.length ? `<div class="stats"><div><b class="money">${fmt(sumW)}</b>المرتبات</div><div><b class="money ${sumD ? 'bk' : ''}">${sumD ? fmt(sumD) : '—'}</b>سلف وخصومات</div><div><b>${paidN}/${toPay}</b>قبضوا</div></div>` : ''}
     </section>
     ${c.closed ? '' : missAlert(I, thu, thu === nowThu ? t : addDays(thu, 1)).replace('class="alert', 'style="margin-top:10px" class="alert')}
     ${friCard(I, thu, c)}
     <div class="lbl"><span>العمال (${ids.length})</span><span>دوس على أي عامل تشوف تفاصيله</span></div>
-    ${ids.length ? `<table class="tbl"><thead><tr><th>الاسم</th><th>السلف</th><th>الصافي</th>${c.closed ? '<th></th>' : ''}</tr></thead><tbody>
-      ${ids.map(id => { const r = c.rows[id], p = I.pd.get(thu + '|' + id); return `<tr data-w="${esc(id)}"><td><b>${esc(r.name)}</b>${dots(r)}<small>${subTxt(r)}</small></td><td class="${ded(r) ? 'bk' : ''}">${nz(ded(r))}</td><td class="net ${r.net ? '' : 'z'}">${r.net ? fmt(r.net) : (r.carryOut ? '<small class="bk">عليه ' + fmt(r.carryOut) + '</small>' : '—')}</td>${c.closed ? `<td>${r.net > 0 || p ? (p ? `<span class="paid">✓ قبض<br>${esc(p.by)}${p.amt !== r.net ? `<br><span class="bk">⚠ كان ${fmt(p.amt)}</span>` : ''}</span>` : `<button class="pay" type="button" data-pay="${esc(id)}">قبض</button>`) : ''}</td>` : ''}</tr>`; }).join('')}</tbody>
-      <tfoot><tr><td>الإجمالي</td><td class="${sumD ? 'bk' : ''}">${nz(sumD)}</td><td class="net">${fmt(c.total)}</td>${c.closed ? '<td></td>' : ''}</tr></tfoot></table>`
+    ${ids.length ? `<table class="tbl"><thead><tr><th>الاسم</th><th>السلف</th><th>الصافي</th><th></th></tr></thead><tbody>
+      ${ids.map(id => { const r = c.rows[id], p = I.pd.get(thu + '|' + id); return `<tr data-w="${esc(id)}"><td><b>${esc(r.name)}</b>${dots(r)}<small>${subTxt(r)}</small></td><td class="${ded(r) ? 'bk' : ''}">${nz(ded(r))}</td><td class="net ${r.net ? '' : 'z'}">${r.net ? fmt(r.net) : (r.carryOut ? '<small class="bk">عليه ' + fmt(r.carryOut) + '</small>' : '—')}</td>${`<td>${r.net > 0 || p ? (p ? `<span class="paid">✓ قبض<br>${esc(p.by)}${p.amt !== r.net ? `<br><span class="bk">⚠ كان ${fmt(p.amt)}</span>` : ''}</span>` : `<button class="pay" type="button" data-pay="${esc(id)}">قبض</button>`) : ''}</td>`}</tr>`; }).join('')}</tbody>
+      <tfoot><tr><td>الإجمالي</td><td class="${sumD ? 'bk' : ''}">${nz(sumD)}</td><td class="net">${fmt(c.total)}</td><td></td></tr></tfoot></table>`
       : '<div class="list"><div class="empty">مفيش عمال في الأسبوع ده</div></div>'}
-    ${c.closed ? '' : `<button class="big b-dark" id="lockW" type="button">🔒 قفّل الأسبوع</button><div id="lockErr"></div><p class="hint">بعد القفل الأرقام بتتثبت ويظهر زرار "قبض" لكل عامل. ولو محدش قفله، بيتقفل لوحده بعد الجمعة.</p>
+    ${c.closed ? '' : `<p class="hint">دوس "قبض" قدام العامل لما تسلّمه مرتبه، والمبلغ بينزل من العهدة في المصاريف. دوسة تانية بتلغيه.</p>
     <button class="big b-redo" id="wipeW" type="button">🗑 امسح ${thu === nowThu ? 'الأسبوع الحالي' : 'الأسبوع ده'}</button>`}`;
   $('#wPrev').onclick = () => nav('w/' + addDays(thu, -7), true);
   $('#wNext').onclick = () => nav(addDays(thu, 7) >= nowThu ? 'w' : 'w/' + addDays(thu, 7), true);
@@ -1129,16 +1129,7 @@ function drawWeek() {
   $$('#main tbody tr[data-w]').forEach(tr => tr.onclick = e => { if (e.target.closest('[data-pay]')) return; workerSheet(tr.dataset.w, thu); });
   $$('#main [data-pay]').forEach(b => b.onclick = () => payOut(b.dataset.pay, thu));
   if ($('#wipeW')) $('#wipeW').onclick = () => wipeWeek(thu);
-  if ($('#lockW')) $('#lockW').onclick = async () => {
-    const miss = missingDays(idx(), thu);
-    if (miss.length) {
-      $('#lockErr').innerHTML = `<div class="note">${miss.slice(0, 4).map(m => `يوم ناقص عند ${esc(m.name)}: ${dayName(m.date)}`).join('<br>')}${miss.length > 4 ? `<br>و${miss.length - 4} تاني` : ''}</div>`;
-      return;
-    }
-    if (!(await ask(`تقفل أسبوع الخميس ${dm(thu)}؟ هيخرج ${fmt(calcWeek(idx(), thu).total)} جنيه، والأرقام هتتثبت.`, '🔒 أيوه قفّله'))) return;
-    if (idx().lk.has(thu)) return drawWeek();
-    lockWeek(thu, false); commit(); drawWeek(); toast('اتقفل ✔ دلوقتي علّم مين قبض');
-  };
+
 }
 /* فرق الجمعة: لو الجمعة اللي فاتت كانت شغل واتقفلت، العمال اللي اتدفعلهم بيظهروا هنا في الأسبوع الحالي. الكل محسوب "جه" لحد ما تعلّم اللي مجاش، وأجره بيتخصم من الخميس ده */
 function friCard(I, thu, c) {
@@ -1178,14 +1169,14 @@ async function wipeWeek(thu) {
 }
 async function payOut(wid, thu) {
   const I = idx(), c = calcWeek(I, thu), r = c.rows[wid];
-  if (!c.closed || !r) return;
+  if (!r) return;
   const p = I.pd.get(thu + '|' + wid);
   if (p) {
     if (!(await ask(`${r.name} اتعلّم إنه قبض ${fmt(p.amt)} (${p.by} ${whenTxt(p.at)}). تلغي ده؟`, 'أيوه، لسه مقبضش', 'لأ', true))) return;
     put('pd', {id: p.id, del: true});
     log(`${myName()} لغى قبض ${r.name} (أسبوع الخميس ${dm(thu)})`, {w: wid, thu});
   } else {
-    put('pd', {id: 'pd_' + thu + '_' + wid, w: wid, thu, amt: r.net});
+    put('pd', {id: 'pd_' + thu + '_' + wid, w: wid, thu, amt: r.net, date: today()});
     log(`${myName()} سلّم ${r.name} مرتبه ${fmt(r.net)} (أسبوع الخميس ${dm(thu)})`, {w: wid, thu});
   }
   commit(); closeModal(); render();
@@ -1534,27 +1525,33 @@ const monTxt = m => MON[+m.slice(5)] + ' ' + m.slice(0, 4);
 function drawExp() {
   /* السلف اللي بتتسجل على العمال بتتخصم من العهدة لوحدها (بتتحسب من حركات السلف نفسها، فتعديلها أو مسحها بيتغيّر هنا) */
   const I = idx(), advX = I.adv.filter(a => I.W.has(a.w)).map(a => Object.assign({}, a, {adv: true, to: wName(a.w), paidBy: a.by, note: a.note || ''}));
-  const all = I.cus.map(r => ({r, sg: 1})).concat(I.exp.map(r => ({r, sg: -1})), advX.map(r => ({r, sg: -1}))).sort((a, b) => a.r.date.localeCompare(b.r.date) || a.r.at - b.r.at);
+  /* القبض (زرار "قبض" في الأسبوع) بينزل من العهدة لوحده، ما عدا الأسابيع اللي اتنزلت قبل كده بزرار "نزّل قبض أسبوع" القديم (x_wk) علشان متتخصمش مرتين */
+  const oldWk = new Set(I.exp.filter(x => x.wk).map(x => x.wk));
+  const pdX = [...I.pd.values()].filter(p => p.amt > 0 && !oldWk.has(p.thu)).map(p => Object.assign({}, p, {pay: true, to: wName(p.w), paidBy: p.by, date: p.date || dayOf(p.at), note: ''}));
+  const all = I.cus.map(r => ({r, sg: 1})).concat(I.exp.map(r => ({r, sg: -1})), advX.map(r => ({r, sg: -1})), pdX.map(r => ({r, sg: -1}))).sort((a, b) => a.r.date.localeCompare(b.r.date) || a.r.at - b.r.at);
   let run = 0; all.forEach(x => { run += x.sg * x.r.amt; x.run = run; });
-  const tc = I.cus.reduce((s, r) => s + r.amt, 0), te = I.exp.concat(advX).reduce((s, r) => s + r.amt, 0);
+  const tc = I.cus.reduce((s, r) => s + r.amt, 0), te = I.exp.concat(advX, pdX).reduce((s, r) => s + r.amt, 0);
   const months = [...new Set(all.map(x => ym(x.r.date)))].sort().reverse();
   if (expM && !months.includes(expM)) expM = '';
   const shown = all.filter(x => (expF === 'all' || (expF === 'cus') === (x.sg > 0)) && (!expM || ym(x.r.date) === expM)).reverse();
   const sc = shown.filter(x => x.sg > 0).reduce((s, x) => s + x.r.amt, 0), se = shown.filter(x => x.sg < 0).reduce((s, x) => s + x.r.amt, 0);
+  /* الإجماليات (للشهر المختار أو كله): العهدة، المرتبات اللي اتقبضت، السلف، والمصاريف التانية */
+  const inM = all.filter(x => !expM || ym(x.r.date) === expM), sm = f => inM.filter(f).reduce((s, x) => s + x.r.amt, 0);
+  const tCus = sm(x => x.sg > 0), tPay = sm(x => x.r.pay || x.r.wk), tAdv = sm(x => x.r.adv), tOth = sm(x => x.sg < 0 && !x.r.pay && !x.r.wk && !x.r.adv);
   $('#main').innerHTML = `<section class="panel"><div class="p1"><span>الصافي (العهدة − المصروفات)</span><b class="money ${tc - te < 0 ? 'bk' : ''}">${fmtN(tc - te)}</b></div>
-      <div class="cap"><span>العهدة <b class="money ok">${fmt(tc)}</b></span><span>المصروفات <b class="money bk">${fmt(te)}</b></span></div></section>
+      <div class="cap"><span>العهدة <b class="money ok">${fmt(tc)}</b></span><span>المصروفات <b class="money bk">${fmt(te)}</b></span></div>
+      <div class="stats" id="eTot"><div><b class="money">${fmt(tPay)}</b>المرتبات</div><div><b class="money">${fmt(tAdv)}</b>السلف</div><div><b class="money">${fmt(tOth)}</b>مصاريف تانية</div></div>
+      <div class="cap"><span>${expM ? monTxt(expM) : 'من الأول'}${expM ? ` · عهدة <b class="money ok">${fmt(tCus)}</b>` : ''}</span></div></section>
     <div class="qa" style="grid-template-columns:1fr 1fr;margin-top:10px"><button class="qb g" id="eCus" type="button">＋ عهدة</button><button class="qb" id="eExp" type="button">＋ مصروف</button></div>
-    <button class="qb" id="eWk" type="button" style="width:100%;margin-bottom:6px">💵 نزّل قبض أسبوع من المصروفات</button>
     <div class="seg" id="eF" style="--n:3;margin-top:8px">${[['all', 'الكل'], ['cus', 'العهدة'], ['exp', 'المصروفات']].map(([k, t]) => `<button type="button" data-v="${k}" class="${expF === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     ${months.length > 1 ? `<div class="chips" id="eM" style="margin-top:8px"><button type="button" class="chip ${expM ? '' : 'on'}" data-m="">كل الشهور</button>${months.map(m => `<button type="button" class="chip ${expM === m ? 'on' : ''}" data-m="${m}">${monTxt(m)}</button>`).join('')}</div>` : ''}
     <div class="lbl"><span>${shown.length} حركة${expM || expF !== 'all' ? ` · عهدة ${fmt(sc)} · مصروفات ${fmt(se)}` : ''}</span><span>الرقم الصغير = الصافي بعد الحركة</span></div>
-    ${shown.length ? `<div class="list">${shown.map(x => `<div class="row" data-e="${esc(x.r.id)}"><div class="m"><b>${x.sg > 0 ? '＋ عهدة' : x.r.adv ? '－ سلفة' : '－ مصروف'}${x.r.adv ? ' · ' + esc(x.r.to) : x.r.note ? ' · ' + esc(x.r.note) : ''}</b><small>${x.sg > 0 ? '' : (x.r.adv ? (x.r.inst ? 'على أقساط · ' : '') + (x.r.note ? esc(x.r.note) + ' · ' : '') : (x.r.to ? 'لـ ' + esc(x.r.to) + ' · ' : '')) + 'دفعه ' + esc(x.r.paidBy || x.r.by) + ' · '}${dayFull(x.r.date)}${x.sg > 0 ? ' · ' + esc(x.r.by) : ''}</small></div><div class="a"><b class="money ${x.sg > 0 ? 'ok' : 'bk'}">${x.sg > 0 ? '+' : '-'}${fmt(x.r.amt)}</b><small class="sm money">${fmtN(x.run)}</small></div></div>`).join('')}</div>` : '<div class="list"><div class="empty">لسه مفيش حركات هنا.<br>ابدأ بـ "＋ عهدة" لما تستلم فلوس.</div></div>'}`;
+    ${shown.length ? `<div class="list">${shown.map(x => `<div class="row" data-e="${esc(x.r.id)}"><div class="m"><b>${x.sg > 0 ? '＋ عهدة' : x.r.pay ? '－ قبض' : x.r.adv ? '－ سلفة' : '－ مصروف'}${x.r.adv || x.r.pay ? ' · ' + esc(x.r.to) : x.r.note ? ' · ' + esc(x.r.note) : ''}</b><small>${x.sg > 0 ? '' : (x.r.pay ? `أسبوع الخميس ${dm(x.r.thu)} · ` : x.r.adv ? (x.r.inst ? 'على أقساط · ' : '') + (x.r.note ? esc(x.r.note) + ' · ' : '') : (x.r.to ? 'لـ ' + esc(x.r.to) + ' · ' : '')) + (x.r.pay ? 'سلّمه ' : 'دفعه ') + esc(x.r.paidBy || x.r.by) + ' · '}${dayFull(x.r.date)}${x.sg > 0 ? ' · ' + esc(x.r.by) : ''}</small></div><div class="a"><b class="money ${x.sg > 0 ? 'ok' : 'bk'}">${x.sg > 0 ? '+' : '-'}${fmt(x.r.amt)}</b><small class="sm money">${fmtN(x.run)}</small></div></div>`).join('')}</div>` : '<div class="list"><div class="empty">لسه مفيش حركات هنا.<br>ابدأ بـ "＋ عهدة" لما تستلم فلوس.</div></div>'}`;
   $('#eCus').onclick = () => expModal('cus', null);
   $('#eExp').onclick = () => expModal('exp', null);
-  $('#eWk').onclick = payWkModal;
   $$('#eF button').forEach(b => b.onclick = () => { expF = b.dataset.v; drawExp(); });
   $$('#eM .chip').forEach(b => b.onclick = () => { expM = b.dataset.m; drawExp(); });
-  $$('#main .row[data-e]').forEach(r => r.onclick = () => { const o = S.recs[r.dataset.e]; if (o.k === 'adv') advModal(o); else expModal(o.k, o); });
+  $$('#main .row[data-e]').forEach(r => r.onclick = () => { const o = S.recs[r.dataset.e]; if (o.k === 'pd') nav('w/' + o.thu, true); else if (o.k === 'adv') advModal(o); else expModal(o.k, o); });
 }
 function expModal(k, o) {
   const t = today(), cus = k === 'cus', nm = cus ? 'عهدة' : 'مصروف';

@@ -2,7 +2,7 @@
 
 ```
 node tests/run.js --changed     # العادي: بيختار لوحده من الملفات اللي اتغيرت عن origin/main
-node tests/run.js               # كله (حوالي دقيقتين ونص)
+node tests/run.js               # كله (حوالي دقيقتين وربع؛ قسم ٢٣ بيشتغل في نفس الوقت في عملية تانية، وSW_SERIAL=1 يرجّعه ورا الباقي)
 node tests/run.js --only=mkt    # حركة السوق (حوالي دقيقة ونص) — زي MARKET_ONLY=1 القديم
 node tests/run.js --only=acc    # كل حاجة ما عدا السوق (حوالي دقيقة)
 node tests/run.js --only=smoke  # تعديل شكل بس: الصفحات بتفتح من غير أخطاء (حوالي 15 ثانية)

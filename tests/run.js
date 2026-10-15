@@ -167,6 +167,15 @@ if (process.argv.includes('--changed') && !MODES.length) { console.log('\n✔ م
 if (!MODES.length || MODES.includes('full') || (MODES.includes('acc') && MODES.includes('mkt'))) MODES = ['full'];
 const FULL = MODES.includes('full');
 const RUN = {sw: SW_NEED, base: FULL || MODES.includes('acc'), sync: FULL || MODES.includes('acc') || MODES.includes('mkt'), mkt: FULL || MODES.includes('mkt'), smoke: MODES.includes('smoke')};
+/* التشغيل الكامل: قسم ٢٣ (الفتح السريع، ~20 ثانية) ليه جهاز وسيرفر لوحده ومبيعتمدش على بيانات الأقسام التانية،
+   فبيشتغل في عملية تانية في نفس الوقت (--only=sw). SW_SERIAL=1 = يشتغل ورا الباقي زي الأول */
+let SWP = null;
+if (FULL && RUN.sw && !process.env.SW_SERIAL && !process.argv.includes('--dry')) {
+  RUN.sw = false; let out = '';
+  const ch = require('child_process').spawn(process.execPath, [__filename, '--only=sw'], {cwd: ROOT, env: Object.assign({}, process.env, {SW_SERIAL: '1'})});
+  ch.stdout.on('data', d => out += d); ch.stderr.on('data', d => out += d);
+  SWP = new Promise(r => ch.on('close', code => r({code, out})));
+}
 const MO = MODES.includes('mkt') && !FULL;   // وضع السوق لوحده (بيضيف عميل سوق تجريبي مكان اللي بيتعمل في الأقسام اللي اتخطت)
 console.log('الأقسام:', FULL ? 'كله' : MODES.join(' + '));
 if (process.argv.includes('--dry')) process.exit(0);   // يقول هيشغّل إيه بس من غير ما يشغّل
@@ -597,6 +606,7 @@ const T0 = Date.now();
     {   // جوجل رد بصفحة خطأ مرة: البرنامج بيعيد لوحده ويكمّل، وعدد "مستني" في الإعدادات بيتحدث بعد المزامنة
       await A.evaluate(() => { const p = liveParties()[0]; p.note = 'تجربة صفحة جوجل'; p.upd = nowS(); saveDB(); renderSettings(); });
       eq('الإعدادات بتقول 1 مستني', (await A.textContent('#sStat')).includes('1 مستني'), true);
+      await A.evaluate(() => clearTimeout(syncT)); await A.waitForFunction(() => !syncing);   // مزامنة الخلفية بعد الحفظ (schedSync) لو اشتغلت الأول، syncNow(true) بيرجع على طول من غير رسالة
       D1.pageOnce = 1; await A.evaluate(() => syncNow(true));
       await A.waitForFunction(() => !syncing && !pendingRecs().length);
       eq('صفحة خطأ من جوجل مرة: اتعادت لوحدها والمزامنة نجحت', [D1.pageOnce, await A.evaluate(() => syncErr), (await A.textContent('#toast')).includes('✔')], [0, '', true]);
@@ -832,6 +842,17 @@ const T0 = Date.now();
     eq('البحث بالصنف وبالمبلغ', SR, [3, 'فاتورة بيع — عميل تجربة واحد', 1, 0]);
     await A.evaluate(() => go('home')); await A.settle(150); await A.click('#bSearch'); await A.click('#bSearchAll'); await A.fill('#saQ', 'سلفة'); await A.settle(400);
     eq('البحث في الحركات', (await A.textContent('#saR')).includes('مسحوبات الشركاء'), true); await A.click('#saX2'); await A.click('#bSearch');
+    eq('البحث في الحسابات: كل قسم بيطلع حساباته بس (الموردين موردين بس، والسوق سوق بس)', await A.evaluate(() => {
+      const t0 = tab, r = [];
+      for (const k of ['sup', 'mkt']) { tab = k; $('#hSearch').value = 'تجربة'; renderList(); const s = $$('#hList .pt').map(el => P.get(el.dataset.id).sec); r.push(s.length > 0 && s.every(x => x === k)); }
+      $('#hSearch').value = ''; tab = t0; renderList(); return r; }), [true, true]);
+    eq('الأرباح: الإيراد التاني بيزوّد الربح بالظبط، وتسوية الجرد مبتغيّرهوش', await A.evaluate(() => {
+      const y = todayISO().slice(0, 4) + '-01-01', t = todayISO(), b0 = profitOf(y, t), n = db.txs.length, mk = (id, cat, amt) => ({id, type: 'inc', vault: 'v_main', amt, cat, date: t, note: '', at: 1, upd: 1, del: false, hist: []});
+      db.txs.push(mk('t_tinc1', 'c_inc2', 12345)); const b1 = profitOf(y, t);
+      db.txs.push(mk('t_tinc2', 'c_adj_in', 7000)); const b2 = profitOf(y, t);
+      db.txs.splice(n);
+      return [b1.before - b0.before, b1.inc - b0.inc, b2.before - b1.before, b1.exp === b0.exp]; }), [12345, 12345, 0, true]);
+    eq('سطر الفاتورة بيتقرّب لأقرب قرش (1.5 × 3.33 = 5)', await A.evaluate(() => [lineTot({qty: 1.5, price: 333}), docTotal({lines: [{qty: 1.5, price: 333}, {qty: 0.333, price: 1000}], disc: 0})]), [500, 833]);
 
     eq('مفيش أرقام فواتير: لا خانة ولا عرض في الكشف ولا العنوان', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv'); const f = !!$('#dcNo'); closeModal();
       const e = partyEntries(p.id).find(x => x.kind === 'inv'); return [f, /رقم/.test(docTitle(e)), /رقم/.test(docDesc(e)), stmtData(p.id, '', '').rows.some(r => isDoc(r.e) && r.ref)]; }), [false, false, false, false]);
@@ -1035,6 +1056,11 @@ const T0 = Date.now();
       return [partyEntries(p.id)[0].kind, stmtData(p.id, '', '').rows[0].run, s.open, s.n];
     });
     eq('رصيد أول المدة أول سطر حتى لو في بند بتاريخ قبله', OP, ['open', 20000, 25000, 0]);
+    eq('كشف لفترة: حركة في نفس يوم البداية بتبان في الكشف ومبتتحسبش تاني في رصيد أول المدة', await A.evaluate(() => {
+      const p = liveParties().find(x => x.name === 'عميل ترتيب تجربة'), n = db.entries.length;
+      const e = addEntry({party: p.id, kind: 'man', date: '2026-02-01', desc: 'بند يوم البداية', dr: 3000, cr: 0});
+      const s = stmtData(p.id, '2026-02-01', '2026-12-31'), r = [s.open, s.n, s.close === balance(p.id)];
+      db.entries.splice(n); E.delete(e.id); return r; }), [25000, 1, true]);
     await A.evaluate(() => go('cash')); await A.click('#cExp'); await A.settle(150);
     const DP = await A.evaluate(() => { const b = $('#txD').nextElementSibling; return [b.className, [...b.querySelectorAll('span')].slice(0, 5).map(x => x.textContent).join('') === dispDate(todayISO()).split('/').join('/') .replace(/\//g, '') || true, getComputedStyle(b).direction, b.firstElementChild.textContent === todayISO().slice(8)]; });
     eq('خانة التاريخ: اليوم أول واحد على اليمين', [DP[0], DP[2], DP[3]], ['dp', 'rtl', true]);
@@ -2100,6 +2126,11 @@ const T0 = Date.now();
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2 ? D2.errs : [], DM ? DM.errs : []), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();
+  if (SWP) {   // نتيجة قسم ٢٣ اللي اشتغل في نفس الوقت
+    const {code, out} = await SWP, m = out.match(/(\d+) نجح، (\d+) فشل/);
+    console.log('\n— قسم ٢٣ (اشتغل في نفس الوقت في عملية تانية) —\n' + out.split('\n').filter(l => !/نجح، \d+ فشل|^الأقسام:/.test(l)).join('\n').trim());
+    if (m) { oks += +m[1]; fails += +m[2]; } else if (code || !m) { fails++; console.log('  ✖ قسم ٢٣ موصلش لآخره'); }
+  }
   if (secT.length) secT[secT.length - 1].s = (Date.now() - secT[secT.length - 1].t) / 1000;
   console.log('\n— الوقت —');
   secT.forEach(x => console.log(`  ${String(Math.round(x.s || 0)).padStart(4)} ث  ${x.name}`));

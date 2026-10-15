@@ -78,6 +78,7 @@ async function newDevice(browser, base, sheets) {
   await ctx.route('https://script.google.com/**', r => {
     if (ctx.netDown) return r.abort('failed');
     const q = r.request(), g = q.url().includes('TEST-CASH') ? sheets.cash : q.url().includes('TEST-MKT') ? sheets.mkt : sheets.acc;
+    if (ctx.pageOnce > 0 && g === sheets.acc) { ctx.pageOnce--; return r.fulfill({status: 200, contentType: 'text/html', body: '<html>Google error</html>'}); }   // جوجل بيرد بصفحة خطأ لحظية
     if (!g.ctx.doPost) return r.fulfill({status: 200, contentType: 'text/html', body: '<html>no script</html>'});
     r.fulfill({status: 200, contentType: 'application/json', body: q.method() === 'POST' ? g.post(q.postData()) : g.get()});
   });
@@ -572,6 +573,15 @@ const T0 = Date.now();
     eq('الرابط اتشال من شريط العنوان', J.url().includes('join'), false);
     await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.click('#shAudit'); await A.settle(3000);
     eq('مراجعة الجهاز مع الشيت متطابقة', (await A.textContent('#modal .sync')).includes('متطابقين ('), true); await A.click('#saX');
+    {   // جوجل رد بصفحة خطأ مرة: البرنامج بيعيد لوحده ويكمّل، وعدد "مستني" في الإعدادات بيتحدث بعد المزامنة
+      await A.evaluate(() => { const p = liveParties()[0]; p.note = 'تجربة صفحة جوجل'; p.upd = nowS(); saveDB(); renderSettings(); });
+      eq('الإعدادات بتقول 1 مستني', (await A.textContent('#sStat')).includes('1 مستني'), true);
+      D1.pageOnce = 1; await A.evaluate(() => syncNow(true));
+      await A.waitForFunction(() => !syncing && !pendingRecs().length);
+      eq('صفحة خطأ من جوجل مرة: اتعادت لوحدها والمزامنة نجحت', [D1.pageOnce, await A.evaluate(() => syncErr), (await A.textContent('#toast')).includes('✔')], [0, '', true]);
+      eq('بعد المزامنة "مستني" اختفت من الإعدادات من غير ما تخرج وترجع', [(await A.textContent('#sStat')).includes('مستني'), await A.textContent('#shNow')], [false, 'زامن دلوقتي (0 مستني)']);
+      eq('رسالة صفحة جوجل لشيت كان شغال: مشغول لحظة مش تسجيل دخول', await A.evaluate(() => { const e = new Error('page'); e.code = 'page'; return netWhy(e); }), 'جوجل كان مشغول لحظة، وهحاول تاني لوحدي');
+    }
 
     sec('١٠ج) كود الشيت الأساسي والنسخة الاحتياطية المنفصلة، والمزامنة بدفعات');
     /* الكود الأساسي لوحده من غير أي خدمة درايف: لازم يشتغل ومفيهوش DriveApp ولا ScriptApp */

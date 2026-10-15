@@ -3131,7 +3131,16 @@ function accNote(j) {
 }
 const accOld = () => !!(db && db.cfg.sheetOk && db.cfg.accV && db.cfg.accV < ACC_VER);
 
+/* لو الشيت كان شغال قبل كده وجوجل رد بصفحة خطأ (زحمة أو قفل الشيت أو عطل لحظي)، بنستنى ثانيتين ونعيد لوحدنا مرتين قبل ما نقول إن فيه مشكلة.
+   الإرسال آمن يتعاد: الشيت بيكتب كل سجل بالـ id بتاعه فوق نفسه */
 async function callSheet(body, url = db.cfg.sheetUrl, key = db.cfg.sheetKey, ms = 45000) {
+  const tries = db && db.cfg.sheetOk && url === db.cfg.sheetUrl ? 3 : 1;
+  for (let t = 1; ; t++) {
+    try { return await callSheet1(body, url, key, ms); }
+    catch (e) { if (e.code !== 'page' || t >= tries) throw e; await new Promise(r => setTimeout(r, 2000)); }
+  }
+}
+async function callSheet1(body, url, key, ms) {
   const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
   try {
     const t0 = Date.now();
@@ -3295,6 +3304,7 @@ function qh(html) { return `<span class="qh"><button class="qb" type="button" ar
 document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('.qb'); if (b) { const t = b.nextElementSibling; t.hidden = !t.hidden; } });
 function renderSyncBox() {
   renderSyncBox0(); syncDot();
+  if (db && $('#p-set.on') && $('#sStat')) renderSetStat();   // عدد "مستني" في الإعدادات يتحدث بعد المزامنة من غير ما تخرج وترجع
 }
 /* على الموبايل الشريط الكبير بيظهر بس لما فيه حاجة لازم تعملها (تعارض، سجل كبير، مفتاح مرفوض)، والباقي في النقطة اللي فوق */
 function syncDot() {
@@ -3337,16 +3347,21 @@ function bindUI() {
 /* آخر تحديث للبرنامج = وقت نشر الصفحة (Last-Modified اللي GitHub Pages بيبعته). لو المتصفح معرفوش بيدّي وقت الفتح نفسه، فساعتها مبنعرضش حاجة */
 const PAGE_LM = Date.parse(document.lastModified), PAGE_AT = Date.now();
 const verText = (lm = PAGE_LM, at = PAGE_AT) => lm && at - lm > 3000 ? `آخر تحديث للبرنامج على الجهاز ده: ${dispDate(isoOf(lm))} ${dispTime(lm)}` : '';
+function renderSetStat() {
+  const c = db.cfg;
+  const n = pendingRecs().length, st = $('#sStat'), openSheet = () => { const k = $('#sSheet').parentNode; $('#p-set').classList.add('advon'); k.classList.remove('shut'); k.scrollIntoView({block: 'start', behavior: 'smooth'}); };
+    st.className = 'sstat ' + (c.sheetOk ? 'ok' : 'no');
+    st.innerHTML = c.sheetOk ? `<div><b>✔ متزامن مع الشيت</b><small>${c.lastSync ? 'آخر مزامنة ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة'}${n ? ' · ' + n + ' مستني' : ''}</small></div><button class="btn line" id="sStatGo" type="button">زامن دلوقتي</button>`
+      : `<div><b>الشيت مش مربوط</b><small>البيانات على الجهاز ده بس</small></div><button class="btn gold" id="sStatGo" type="button">اربطه</button>`;
+    $('#sStatGo').onclick = () => { if (c.sheetOk && $('#shNow')) $('#shNow').click(); else openSheet(); };
+  if ($('#shNow')) $('#shNow').textContent = `زامن دلوقتي (${n} مستني)`;
+}
 function renderSettings() {
   bindUI();
   refreshBio(); renderMktSettings();
   $('#sVer').textContent = verText();
   const c = db.cfg;
-  { const n = pendingRecs().length, st = $('#sStat'), openSheet = () => { const k = $('#sSheet').parentNode; $('#p-set').classList.add('advon'); k.classList.remove('shut'); k.scrollIntoView({block: 'start', behavior: 'smooth'}); };
-    st.className = 'sstat ' + (c.sheetOk ? 'ok' : 'no');
-    st.innerHTML = c.sheetOk ? `<div><b>✔ متزامن مع الشيت</b><small>${c.lastSync ? 'آخر مزامنة ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة'}${n ? ' · ' + n + ' مستني' : ''}</small></div><button class="btn line" id="sStatGo" type="button">زامن دلوقتي</button>`
-      : `<div><b>الشيت مش مربوط</b><small>البيانات على الجهاز ده بس</small></div><button class="btn gold" id="sStatGo" type="button">اربطه</button>`;
-    $('#sStatGo').onclick = () => { if (c.sheetOk && $('#shNow')) $('#shNow').click(); else openSheet(); }; }
+  renderSetStat();
   const lk = lockDate(), lim = limitsOf();
   $('#sLock').innerHTML = lk ? `<div class="sync ok">🔒 مقفول لحد ${dispDate(lk)}</div><div class="g2"><input class="inp" type="date" id="sLockD" value="${lk}"><button class="btn gold sm" id="sLockGo" type="button">غيّر يوم القفل</button></div><button class="btn line sm" id="sUnlock" type="button" style="margin-top:8px">افتح الفترة (محتاج كلمة السر)</button>`
     : `<div class="g2"><input class="inp" type="date" id="sLockD" value="${todayISO().slice(0, 8)}01"><button class="btn gold sm" id="sLockGo" type="button">اقفل لحد اليوم ده</button></div>`;
@@ -3522,7 +3537,7 @@ if (/^#join=/.test(location.hash)) {
 const netWhy = e => !e ? 'الشيت رد بحاجة مش مفهومة'
   : e.srv ? 'الشيت رد: ' + e.message
   : e.name === 'AbortError' ? 'الشيت مردش في الوقت المحدد'
-  : e.code === 'page' ? 'جوجل رد بصفحة بدل الشيت (غالباً بيطلب تسجيل دخول أو الوصول مش "أي شخص")'
+  : e.code === 'page' ? (db && db.cfg.sheetOk && db.cfg.lastSync ? 'جوجل كان مشغول لحظة، وهحاول تاني لوحدي' : 'جوجل رد بصفحة بدل الشيت (غالباً بيطلب تسجيل دخول أو الوصول مش "أي شخص")')
   : 'المتصفح مش قادر يوصل لجوجل (النت، أو برنامج حماية/إضافة بتمنع script.google.com)';
 let joining = false, joinErr = '';
 /* بيكلّم الشيت ويكمّل الربط. لو فشل بيفضل الرابط محفوظ والبرنامج بيعيد المحاولة لوحده كل 20 ثانية، من غير ما تفتح الرابط تاني */

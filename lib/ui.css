@@ -126,7 +126,17 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
   .kb.two .ktools{grid-column:4}
   .kb .ktools .btn:not(.kmore){display:none}
   #p-cash .kb .ktools .kmore{flex:1;width:auto;min-height:0;margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;color:var(--ink);font-size:var(--f4);font-weight:800;line-height:1}
-  /* الجدول الصغير (داخل/خارج/الصافي) اتشال من الموبايل بطلبه 15/10/2026: داخل وخارج بقوا سطر صغير فوق كل كارت (.kio) زي اللاب */
+  /* الجدول الصغير (داخل/خارج/الصافي) اتشال من "بالنوع" بطلبه 15/10/2026 (داخل وخارج بقوا سطر فوق كل كارت .kio)، وفاضل في "بالتاريخ" بس لأنه المكان الوحيد اللي فيه إجمالي الفترة */
+  .ksum{display:block;background:var(--card);overflow:hidden}
+  .ksum table{width:100%;border-collapse:collapse}
+  .ksum th{font-size:var(--f1);color:var(--sub);font-weight:700;padding:6px 12px 2px;text-align:start}
+  .ksum th:not(:first-child){text-align:left;width:32%}
+  .ksum th.mk{color:var(--tr)}
+  .ksum td{padding:4px 12px;font-weight:800;font-size:var(--f2);color:var(--ink)}
+  .ksum td.n{text-align:left;width:32%}
+  .ksum tr.in td{color:var(--green)}
+  .ksum tr.out td{color:var(--red)}
+  .ksum tr.net td{border-top:1px solid var(--line);padding:7px 12px 8px}
   .kss{gap:8px;margin-bottom:8px}
   .kst{border-radius:14px;border-top-width:3px}
   .kst .ksh{padding:7px 12px;font-size:var(--f2);background:var(--row)}

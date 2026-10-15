@@ -1976,9 +1976,9 @@ const T0 = Date.now();
     await colOk('الحسابات — الخزنة (حركتي)', A, '#kst-me', '.kty .n');
     if (await A.$('#kst-mk')) await colOk('الحسابات — الخزنة (حركة السوق)', A, '#kst-mk', '.kty .n');
     if (await A.evaluate(() => !isWide() && !$('#p-cash .kb.two') && $$('#p-cash .kb :is(.kbm,.kbk,.kbt)>.n').length > 1)) await colOk('الحسابات — الخزنة (الأرصدة فوق)', A, '#p-cash .kb', '.kbm>.n,.kbk>.n,.kbt>.n');   // مع خزنة السوق الأرصدة صف واحد جنب بعض
-    if (await A.evaluate(() => !isWide())) eq('الخزنة على الموبايل: مفيش جدول ملخص، وداخل/خارج ظاهرين فوق كارت حركتي، والأدوات ورا ⋯', await A.evaluate(() => {
+    if (await A.evaluate(() => !isWide())) eq('الخزنة على الموبايل: مفيش جدول ملخص في "بالنوع" (بس في "بالتاريخ")، وداخل/خارج ظاهرين فوق كارت حركتي، والأدوات ورا ⋯', await A.evaluate(() => {
       const v = e => e && getComputedStyle(e).display !== 'none', r = [!$('#p-cash .ksum'), v($('#kst-me .kio')), v($('#cMore')), !v($('#cTr'))];
-      $('#cMore').click(); r.push($$('#modal .kmenu [data-b]').length === 4); $('#modal [data-b=cOpen2]').click(); r.push($('#mask').classList.contains('on') && !$('#modal .kmenu')); closeModal(); return r; }), [true, true, true, true, true, true]);
+      $('#cMore').click(); r.push($$('#modal .kmenu [data-b]').length === 4); $('#modal [data-b=cOpen2]').click(); r.push($('#mask').classList.contains('on') && !$('#modal .kmenu')); closeModal(); const v0 = cashView; cashView = 'date'; renderCash(); r.push(v($('#cPer .ksum'))); cashView = v0; renderCash(); return r; }), [true, true, true, true, true, true, true]);
     await A.evaluate(() => { mkView = 'in'; go('mkt'); renderMkt(); }); await A.settle(300);
     for (const [nm, root] of [['الوارد (جاهزين للنقل)', '#mqReady'], ['الوارد (محتاجين قرارك)', '#mqDec']]) if (await A.evaluate(r => $$(r + ' .mqa>.n').length >= 2, root)) await colOk('الحسابات — ' + nm, A, root, '.mqa>.n');
     await A.evaluate(() => { cashMode = 'day'; go('home'); }); await A.settle(300);

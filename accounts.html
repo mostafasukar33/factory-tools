@@ -4196,6 +4196,11 @@ function renderCash() {
         : cashMode === 'month' ? `<input class="inp" type="month" id="cMonth" value="${cashMonth || t.slice(0, 7)}">`
         : cashMode === 'year' ? `<input class="inp num" id="cYear" inputmode="numeric" value="${cashYear || t.slice(0, 4)}">`
         : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div><label class="cyr">أو سنة كاملة <input class="inp num" id="cYr" inputmode="numeric" placeholder="${t.slice(0, 4)}" value="${from.slice(5) === '01-01' && to === from.slice(0, 4) + '-12-31' ? from.slice(0, 4) : ''}"></label>`}</div>
+    ${dv ? `<div class="ksum"><table>
+      <tr><th>البيان</th><th>${dv && hasM && ldgScope !== 'me' ? (ldgScope === 'all' ? 'المصنع كله' : 'عهدة ' + MK_PN) : cashVault ? esc(vName(cashVault)) : 'الخزنة'}</th>${mk0 ? '<th class="mk">السوق</th>' : ''}</tr>
+      <tr class="in"><td>⬇ داخل</td><td class="n m">${fmtP(me.in)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.in)}</td>` : ''}</tr>
+      <tr class="out"><td>⬆ خارج</td><td class="n m">${fmtP(me.out)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.out)}</td>` : ''}</tr>
+      <tr class="net"><td>الصافي</td><td class="n m${me.in < me.out ? ' neg' : ''}">${fmtP(me.in - me.out)}</td>${mk0 ? `<td class="n k${mk0.in < mk0.out ? ' neg' : ''}">${fmtP(mk0.in - mk0.out)}</td>` : ''}</tr></table></div>` : ''}
     </div>
     ${dv ? ldgHtml(LD) : `<div class="kss${mk ? ' two' : ''}">${me.html}${mk ? mk.html : ''}</div>`}
     `;

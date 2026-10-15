@@ -248,7 +248,7 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     const nets = await A.evaluate(() => { const c = calcWeek(idx(), '2026-10-15'); return Object.values(c.rows).map(r => [r.name, r.net]); });
     eq('الصافي لكل عامل', nets, [['عامل تجربة أ', 137500], ['عامل تجربة ب', 150000], ['عامل تجربة ج', 10000]]);
     eq('إجمالي "هيخرج من المصنع"', await A.textContent('.panel .p1 b'), '2,975');
-    await A.evaluate(() => { lockWeek('2026-10-15', false); commit(); drawWeek(); });
+    await A.evaluate(() => { lockWeek('2026-10-15', false); commit(); nav('w/2026-10-15', true); });
     eq('بعد القفل: زرار قبض لكل عامل', (await A.$$('#main [data-pay]')).length, 3);
     await A.click('#main [data-pay]');
     eq('القبض اتعلّم باسم اللي سلّم', (await A.textContent('#main tr[data-w]:nth-child(1) .paid')).includes('مشرف تجربة 1'), true);
@@ -401,10 +401,21 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await D.evaluate(() => nav('w', true));
     eq('الأسبوع: صف الإجمالي تحت الجدول', await D.evaluate(() => [!!$('#main tfoot'), $('#main tfoot td.net').textContent]), [true, await D.evaluate(() => fmt(calcWeek(idx(), '2026-10-22').total))]);
 
+    await D.evaluate(() => nav('w', true));
+    eq('"ابدأ الأسبوع الجديد" مقفول لحد ما الكل يقبض', [await D.$eval('#nextW', b => b.disabled), (await D.textContent('#nextW')).includes('السبت 24')], [true, true]);
+    for (let i = 0; i < 3; i++) { await D.click('#main [data-pay]'); await D.waitForFunction(n => document.querySelectorAll('#main [data-pay]').length === n, 2 - i); }
+    eq('بعد ما الكل قبض: الزرار اشتغل', await D.$eval('#nextW', b => b.disabled), false);
+    await D.click('#nextW'); await D.waitForSelector('#aY'); await D.click('#aY');
+    await D.waitForFunction(() => idx().lk.has('2026-10-22'));
+    eq('الأسبوع اتقفل وراح الأرشيف والأسبوع الشغال بقى اللي بعده', await D.evaluate(() => [liveThu(), $('.dnav span').textContent.includes('29'), calcWeek(idx(), '2026-10-22').closed]), ['2026-10-29', true, true]);
+    await D.evaluate(() => nav('a', true));
+    eq('الأرشيف فيه الأسبوع المقفول والكل قبض', await D.evaluate(() => $$('#main .row[data-thu="2026-10-22"] .a small')[0].textContent.trim()), 'قبض 3 من 3');
+
     console.log('\n١٢) مسح الأسبوع الحالي');
     await A.evaluate(() => nav('w', true));
     const before = await A.evaluate(() => [idx().dayBy.size > 0, idx().adv.filter(a => ownerThursday(a.date) === '2026-10-29').length, idx().W.size]);
-    await A.click('#wipeW'); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(200);
+    eq('زرار "امسح الأسبوع" اتشال من الشاشة (مكانه "ابدأ الأسبوع الجديد")', [await A.$('#wipeW'), !!(await A.$('#nextW'))], [null, true]);
+    await A.evaluate(() => { wipeWeek(curThu()); }); await A.waitForSelector('#aY'); await A.click('#aY'); await A.waitForTimeout(200);
     eq('بعد المسح: مفيش أيام ولا سلف في الأسبوع ده، والعمال لسه موجودين', await A.evaluate(() => { const c = calcWeek(idx(), '2026-10-29'); return [Object.values(c.rows).every(r => r.units === 0 && r.advances === 0 && r.fridayPay === 0), idx().adv.filter(a => ownerThursday(a.date) === '2026-10-29').length, [...idx().day.values()].filter(d => d.date >= '2026-10-24').length, idx().W.size]; }), [true, 0, 0, before[2]]);
     eq('الأسبوع المقفول مبيتمسحش (مفيش زرار)', await A.evaluate(() => { nav('w/2026-10-22', true); return !$('#wipeW'); }), true);
     await settle_(A); await settle_(B);

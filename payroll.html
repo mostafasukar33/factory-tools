@@ -376,7 +376,9 @@ function calcWeek(I, thu, fresh) {
   const key = thu + (fresh ? '!' : '');
   if (I.memo.has(key)) return I.memo.get(key);
   const ds = weekDates(thu), work = ds;
-  const ws = I.ws.get(thu), fri = ws && ws.fri === 'work' ? 'work' : 'off';
+  const ws = I.ws.get(thu), sel = ws && Array.isArray(ws.ids) ? ws.ids : null;
+  /* sel = الجمعة المقدّمة بالأسامي (زرار الجمعة): اللي اتعلّم بياخد أجرة الجمعة ومفيش فرق بعدها. work = الطريقة القديمة (الكل، وفرق جمعة الأسبوع الجاي) */
+  const fri = sel ? (sel.length ? 'sel' : 'off') : ws && ws.fri === 'work' ? 'work' : 'off';
   const prev = addDays(thu, -7), pw = I.first && prev >= I.first ? calcWeek(I, prev) : null;
   const pf = pw && pw.fri === 'work' ? pw : null;         // الجمعة اللي فاتت كانت شغل: فرق الجمعة
   const prevPaid = pw && pw.oldPaid ? pw.oldPaid : {};
@@ -385,7 +387,7 @@ function calcWeek(I, thu, fresh) {
   I.W.forEach(w => { if (w.st === 'on' && (!w.from || w.from <= thu)) ids.add(w.id); });
   work.forEach(d => (I.dayBy.get(d) || []).forEach(r => ids.add(r.w)));
   const advs = I.adv.filter(a => ownerThursday(a.date) === thu), bons = I.bon.filter(b => b.thu === thu);
-  advs.forEach(a => ids.add(a.w)); bons.forEach(b => ids.add(b.w));
+  advs.forEach(a => ids.add(a.w)); bons.forEach(b => ids.add(b.w)); if (sel) sel.forEach(id => ids.add(id));
   if (pw) Object.keys(pw.rows).forEach(id => { if (pw.rows[id].carryOut || fdDelta(id)) ids.add(id); });
   const rows = {}, oldPaid = Object.assign({}, prevPaid);
   let total = 0;
@@ -394,7 +396,7 @@ function calcWeek(I, thu, fresh) {
     const days = {};
     let daysPay = 0, units = 0;
     work.forEach(d => { const r = I.day.get(id + '|' + d); if (r) { days[d] = r.u; units += r.u; daysPay += Math.round(r.u * r.rate); } });
-    const fridayPay = fri === 'work' && w.st === 'on' ? (w.fri || 0) : 0;
+    const fridayPay = sel ? (sel.includes(id) ? dayRate(w, addDays(thu, 1)) : 0) : fri === 'work' && w.st === 'on' ? (w.fri || 0) : 0;
     const bonus = bons.filter(b => b.w === id).reduce((s, b) => s + b.amt, 0);
     /* سلفة "على أقساط" (inst): مبتتخصمش كلها الأسبوع ده، بتتضاف للسلف القديمة وبتتخصم بقاعدة العامل */
     const advances = advs.filter(a => a.w === id && !a.inst).reduce((s, a) => s + a.amt, 0), instAdv = advs.filter(a => a.w === id && a.inst).reduce((s, a) => s + a.amt, 0);
@@ -896,11 +898,12 @@ function clearDay(w, d) {
   log(`${myName()} لغى تسجيل ${w.name} "${U_BTN[cur.u]}" — ${dayFull(d)}` + afterTag(ownerThursday(d)), {w: w.id, thu: ownerThursday(d)});
   return true;
 }
-/* الجمعة: نافذة فيها كل العمال، تعلّم مين اشتغل الجمعة (بيتسجله "يوم") وتشيل العلامة تلغيه */
-function friModal(fr) {
-  const I = idx(), thu = ownerThursday(fr), ws = workersOn(I, fr);
-  const sel = new Set(ws.filter(w => I.day.has(w.id + '|' + fr)).map(w => w.id));
-  modal(`<h3>مين اشتغل الجمعة؟<small>${dayFull(fr)} · بتتحسب مع قبض الخميس ${dm(thu)}</small></h3>
+/* الجمعة (مقدّم): يوم الخميس بتعلّم مين هيشتغل الجمعة اللي بعده، وأجرة جمعته بتتضاف على قبض الخميس ده.
+   بتتحفظ في wst الأسبوع (ws_<خميس>) في ids، واللي اتعلّم = قبضها وخلاص (مفيش جه/مجاش بعدها) */
+function friModal(thu) {
+  const I = idx(), fr = addDays(thu, 1), ws = workersOn(I, thu), cur = I.ws.get(thu);
+  const was = cur && Array.isArray(cur.ids) ? cur.ids : [], sel = new Set(was);
+  modal(`<h3>مين هيشتغل الجمعة؟<small>${dayFull(fr)} · مقدّم مع قبض الخميس ${dm(thu)}</small></h3>
     ${ws.length ? `<div class="chips" id="frW">${ws.map(w => `<button type="button" class="chip ${sel.has(w.id) ? 'on' : ''}" data-w="${esc(w.id)}">${esc(w.name)}</button>`).join('')}</div>` : '<p class="sm">لسه مفيش عمال.</p>'}
     <button class="big b-ok" id="frOk" type="button">حفظ</button>
     <button class="lnk" id="frX" type="button">إغلاق</button>`);
@@ -908,20 +911,18 @@ function friModal(fr) {
   $('#frX').onclick = () => closeModal();
   $('#frOk').onclick = () => {
     if (idx().lk.has(thu)) return toast('الأسبوع ده اتقفل');
-    const I2 = idx(), add = [], rem = [];
-    ws.forEach(w => {
-      const has = I2.day.has(w.id + '|' + fr);
-      if (sel.has(w.id) && !has) { put('day', {id: 'd_' + w.id + '_' + fr, w: w.id, date: fr, u: 1, rate: dayRate(w, fr)}); add.push(w.name); }
-      else if (!sel.has(w.id) && has) { put('day', {id: I2.day.get(w.id + '|' + fr).id, del: true}); rem.push(w.name); }
-    });
+    const ids = ws.map(w => w.id).filter(id => sel.has(id)).concat(was.filter(id => !ws.some(w => w.id === id) && sel.has(id)));
+    const add = ids.filter(id => !was.includes(id)).map(wName), rem = was.filter(id => !ids.includes(id)).map(wName);
     if (!add.length && !rem.length) return closeModal();
-    log(`${myName()} عدّل الجمعة ${dm(fr)}: ${[add.length ? 'اشتغل ' + add.join('، ') : '', rem.length ? 'اتشال ' + rem.join('، ') : ''].filter(Boolean).join(' · ')}`, {thu});
+    put('wst', {id: 'ws_' + thu, thu, fri: ids.length ? 'work' : 'off', ids});
+    log(`${myName()} عدّل الجمعة ${dm(fr)} (مقدّم مع الخميس ${dm(thu)}): ${[add.length ? 'هيشتغل ' + add.join('، ') : '', rem.length ? 'اتشال ' + rem.join('، ') : ''].filter(Boolean).join(' · ')}`, {thu});
     commit(); closeModal(); drawToday(); toast('اتسجلت الجمعة ✔');
   };
 }
 
 /* ---------- النهارده: سطر لكل عامل وجنبه غاب/نص/يوم/يوم ونص ---------- */
-function defDay() { return today(); }
+/* يوم الجمعة بيفتح على الخميس اللي قبله (الجمعة بتتعلّم من زرار الجمعة وبتتقبض مقدّم)، إلا لو فيه حد متسجل فيها (بيانات قديمة) */
+function defDay() { const t = today(); return weekday(t) === 5 && !(idx().dayBy.get(t) || []).length ? addDays(t, -1) : t; }
 /* الأيام اللي فاتت في الأسبوع (لحد النهارده) وفيها عمال لسه متسجلوش */
 function missingSoFar(I, thu, upto) {
   const per = {};
@@ -947,7 +948,7 @@ function bindAlerts() {
 /* شريط أيام الأسبوع: دوسة على أي يوم تفتحه. الشريط اللي تحت اليوم: أخضر اتسجلوا كلهم، برتقاني ناقص، أحمر ولا حد */
 function weekStrip(I, thu, d, t) {
   /* الجمعة (نادرة) بتظهر في أول الشريط بس لو النهارده جمعة أو حد متسجله فيها */
-  const fr = weekDates(thu)[6], showF = fr <= t && (fr === t || fr === d || (I.dayBy.get(fr) || []).length);
+  const fr = weekDates(thu)[6], showF = fr <= t && (fr === d || (I.dayBy.get(fr) || []).length);
   return `<div class="wk${showF ? ' f7' : ''}">${(showF ? [fr] : []).concat(weekDates(thu).slice(0, 6)).map(x => {
     const ws = workersOn(I, x), n = ws.filter(w => I.day.has(w.id + '|' + x)).length;
     const st = x > t || !ws.length ? 'f' : n === ws.length ? 'ok' : n ? 'p' : 'e';
@@ -958,7 +959,7 @@ function drawToday() {
   const t = today(), d = scr.day && scr.day <= t ? scr.day : defDay(), thu = ownerThursday(d);
   const I = idx(), ws = workersOn(I, d), closed = I.lk.has(thu), wd = weekday(d);
   const done = ws.filter(w => I.day.has(w.id + '|' + d)).length;
-  const fr = weekDates(thu)[6], frN = (I.dayBy.get(fr) || []).length;
+  const wsr = I.ws.get(thu), frN = wsr && Array.isArray(wsr.ids) ? wsr.ids.length : 0;
   $('#main').innerHTML = `${unlinkedAlert()}${weekStrip(I, thu, d, t)}
     ${missAlert(I, thu, t, d)}
     ${closed ? `<div class="info" style="margin:0 0 10px">🔒 الأسبوع ده اتقفل. الأرقام بتاعته في الأرشيف.</div>` : `<div class="qa"><button class="qb g" id="allDay" type="button"${done === ws.length ? ' disabled' : ''}>✓ الكل يوم</button><button class="qb" id="friB" type="button">الجمعة${frN ? ' (' + frN + ')' : ''} ▾</button><button class="qb" id="qAdv" type="button">＋ سلفة</button></div>`}
@@ -976,7 +977,7 @@ function drawToday() {
     log(`${myName()} علّم الكل "يوم" (${left.map(w => w.name).join('، ')}) — ${dayFull(d)}`, {thu});
     commit(); drawToday(); toast(`اتسجل ${left.length === 1 ? 'عامل' : left.length + ' عمال'} يوم ✔ — غيّر اللي غاب بس`);
   };
-  if ($('#friB')) $('#friB').onclick = () => friModal(fr);
+  if ($('#friB')) $('#friB').onclick = () => friModal(thu);
   $$('#main .wr .nm').forEach(n => n.onclick = () => workerSheet(n.closest('.wr').dataset.w, thu));
   $$('#main .wr .ub button').forEach(b => b.onclick = () => {
     if (idx().lk.has(thu)) return toast('الأسبوع ده اتقفل');

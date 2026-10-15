@@ -387,13 +387,14 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await D.click('#allDay');
     eq('الرسالة بتظهر تحت ومش بتغطي التاريخ', await D.evaluate(() => $('#toast').getBoundingClientRect().top > $('.wk').getBoundingClientRect().bottom + 200), true);
     await D.click('#friB'); await D.waitForSelector('#frW');
-    eq('الجمعة: النافذة فيها كل العمال ومفيش حد متعلم', await D.evaluate(() => [$$('#frW .chip').length, $$('#frW .chip.on').length, $('#modal h3 small').textContent.includes(dayFull('2026-10-16'))]), [3, 0, true]);
+    eq('الجمعة: النافذة فيها كل العمال وعلى جمعة بعد الخميس (مقدّم)', await D.evaluate(() => [$$('#frW .chip').length, $$('#frW .chip.on').length, $('#modal h3 small').textContent.includes(dayFull('2026-10-23'))]), [3, 0, true]);
     await D.click('#frW .chip:nth-child(1)'); await D.click('#frW .chip:nth-child(3)'); await D.click('#frOk'); await closed(D);
-    eq('الجمعة: اتسجل للي اتعلموا بس "يوم" على الجمعة اللي قبل السبت، والزرار عليه العدد', await D.evaluate(() => [[...idx().W.keys()].map(id => (idx().day.get(id + '|2026-10-16') || {}).u ?? null), $('#friB').textContent.trim(), $('#main .wk button').dataset.go]), [[1, null, 1], 'الجمعة (2) ▾', '2026-10-16']);
+    eq('الجمعة: أجرة الجمعة اتضافت على قبض الخميس ده للي اتعلموا بس، والزرار عليه العدد', await D.evaluate(() => { const c = calcWeek(idx(), '2026-10-22'), ids = [...idx().W.keys()]; return [ids.map(id => c.rows[id].fridayPay), $('#friB').textContent.trim(), [...idx().day.values()].some(d => d.date === '2026-10-23')]; }), [[20000, 0, 20000], 'الجمعة (2) ▾', false]);
+    eq('الجمعة المقدّمة: مفيش "جه/مجاش" ولا فرق الأسبوع الجاي', await D.evaluate(() => { const n = calcWeek(idx(), '2026-10-29'); return [friCard(idx(), '2026-10-29', calcWeek(idx(), '2026-10-29')), Object.values(n.rows).every(r => !r.prevFridayDelta)]; }), ['', true]);
     await D.click('#friB'); await D.waitForSelector('#frW');
-    eq('الجمعة: اللي اتسجلوا ظاهرين متعلمين', await D.evaluate(() => $$('#frW .chip.on').length), 2);
+    eq('الجمعة: اللي اتعلموا ظاهرين متعلمين', await D.evaluate(() => $$('#frW .chip.on').length), 2);
     await D.click('#frW .chip:nth-child(1)'); await D.click('#frOk'); await closed(D);
-    eq('الجمعة: شيل العلامة بيلغي تسجيله', await D.evaluate(() => [...idx().W.keys()].map(id => idx().day.has(id + '|2026-10-16'))), [false, false, true]);
+    eq('الجمعة: شيل العلامة بيشيل أجرتها', await D.evaluate(() => { const c = calcWeek(idx(), '2026-10-22'); return [...idx().W.keys()].map(id => c.rows[id].fridayPay); }), [0, 0, 20000]);
     await D.evaluate(() => nav('l', true));
     eq('السجل: الأسامي الكتير بتتلم في "(3 عمال ▾)" والوقت لوحده', await D.evaluate(() => [!!$('#main button[data-x]'), $('#main button[data-x]').textContent, !!$('#main .lg .tm'), $('#main .lg .who').textContent]), [true, '3 عمال ▾', true, 'مشرف تجربة 4']);
     await D.click('#lgF button[data-c]');
@@ -519,7 +520,8 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     console.log('\n١٨) الجمعة نادرة: لو حد اشتغلها بتتحسب مع الخميس الجاي');
     await A.clock.setFixedTime(at('2026-10-30T10:00:00'));
     await A.evaluate(() => { closeModal(); nav('', true); });
-    eq('يوم الجمعة: النهارده بيفتح على الجمعة نفسها وهي أول الشريط', await A.evaluate(() => [document.querySelector('#main .lbl b').textContent.includes('الجمعة'), document.querySelector('.wk button').textContent.includes('الجمعة')]), [true, true]);
+    eq('يوم الجمعة: بيفتح على الخميس اللي قبلها (الجمعة بتتعلّم مقدّم من زرار الجمعة)', await A.evaluate(() => [document.querySelector('#main .lbl b').textContent.includes('الخميس'), [...document.querySelectorAll('.wk button')].some(b => b.textContent.includes('الجمعة'))]), [true, false]);
+    await A.evaluate(() => nav('t/2026-10-30', true));
     await A.click('#main .wr:nth-child(1) .ub button[data-u="1"]'); await A.waitForTimeout(150);
     eq('الجمعة اتسجلت في أسبوع الخميس الجاي (مش الأسبوع اللي اتقبض)', await A.evaluate(() => { const r = [...idx().day.values()].find(x => x.date === '2026-10-30'); return [ownerThursday(r.date), calcWeek(idx(), '2026-11-05').rows[r.w].units, calcWeek(idx(), '2026-10-29').rows[r.w] ? calcWeek(idx(), '2026-10-29').rows[r.w].days['2026-10-30'] : undefined]; }), ['2026-11-05', 1, undefined]);
 

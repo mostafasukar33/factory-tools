@@ -3875,7 +3875,10 @@ const TXT = {exp: 'مصروف', inc: 'إيراد', tr: 'تحويل'};
 /* خزنة السوق (v_mkt) = فلوس الشريك: بتتحكم فيها حركة السوق بس (بطلب صاحب المشروع). مخفية من الخزنة والإجماليات والاختيارات،
    والحركات اللي فيها بتفضل (علشان الأرباح والتاريخ)، والكاش اللي الشريك بيسلّمه بيظهر دخل في خزنتك */
 const MKV = 'v_mkt', isMkv = id => id === MKV;
-const vaultsL = () => db.vaults.filter(v => !v.del && !isMkv(v.id)).sort((a, b) => (a.ord || 0) - (b.ord || 0) || (a.at || 0) - (b.at || 0));
+const vaultsAll = () => db.vaults.filter(v => !v.del && !isMkv(v.id)).sort((a, b) => (a.ord || 0) - (b.ord || 0) || (a.at || 0) - (b.at || 0));
+/* الخزنة المقفولة (shut، بطلبه 15/10/2026): رصيدها صفر ومش بتظهر في الاختيارات ولا الشاشة، وحركاتها القديمة زي ما هي في الكشوف والأرصدة (vaultBal مبيبصش على shut) */
+const vaultsL = () => vaultsAll().filter(v => !v.shut);
+const vaultsFor = sel => vaultsAll().filter(v => !v.shut || v.id === sel);   // تعديل حركة قديمة على خزنة مقفولة: خزنتها بتفضل في الاختيار
 const catsL = t => db.cats.filter(c => !c.del && c.type === t && !SPECIAL_CATS.has(c.id)).sort((a, b) => (a.ord || 0) - (b.ord || 0));
 const vName = id => (IDX.vault.get(id) || {name: '؟'}).name;
 const cName = id => (IDX.cat.get(id) || {name: 'بدون بند'}).name;
@@ -4181,7 +4184,7 @@ function renderCash() {
     $('#cNew').onclick = () => { ensureVaults(); renderCash(); };
     return;
   }
-  const vs = vaultsL(), hasM = db.vaults.some(v => v.id === MKV && !v.del), mkB = hasM ? vaultBal(MKV) : 0, meB = vaultBal(''), total = meB + mkB;
+  const vs = vaultsAll().filter(v => !v.shut || vaultBal(v.id)), hasM = db.vaults.some(v => v.id === MKV && !v.del), mkB = hasM ? vaultBal(MKV) : 0, meB = vaultBal(''), total = meB + mkB;
   if (cashVault && !vs.some(v => v.id === cashVault)) cashVault = '';
   if (cashVault) { cashOpenV = true; ldgScope = 'me'; }
   const [from, to] = cashRange(), t = todayISO(), nV = vs.length, dv = cashView === 'date';
@@ -4334,10 +4337,10 @@ function openingModal() {
 }
 function vaultOpts(sel, none) {
   if (isMkv(sel)) return `<option value="${MKV}" selected>خزنة السوق (مع شريكك — بتتحكم فيها حركة السوق)</option>`;   // مقفولة: متتغيرش من هنا
-  return (none ? `<option value="" ${!sel ? 'selected' : ''}>${esc(none)}</option>` : '') + vaultsL().map(v => `<option value="${esc(v.id)}" ${sel === v.id ? 'selected' : ''}>${esc(v.name)} (${fmtP(vaultBal(v.id))})</option>`).join('');
+  return (none ? `<option value="" ${!sel ? 'selected' : ''}>${esc(none)}</option>` : '') + vaultsFor(sel).map(v => `<option value="${esc(v.id)}" ${sel === v.id ? 'selected' : ''}>${esc(v.name)} (${fmtP(vaultBal(v.id))})</option>`).join('');
 }
 /* الخزنة الافتراضية: النقدي والمصروفات دايماً من أول خزنة (خزنة المصنع)، والتحويل من آخر خزنة اتسجل فيها تحويل */
-const defVault = (method = 'نقدي') => { const l = method === 'تحويل' && (db.cfg.lv || {})['تحويل']; return l && IDX.vault.get(l) && !IDX.vault.get(l).del ? l : (vaultsL()[0] || {}).id || ''; };
+const defVault = (method = 'نقدي') => { const l = method === 'تحويل' && (db.cfg.lv || {})['تحويل']; return l && IDX.vault.get(l) && !IDX.vault.get(l).del && !IDX.vault.get(l).shut ? l : (vaultsL()[0] || {}).id || ''; };
 const rememberVault = (method, id) => { if (id && method === 'تحويل') db.cfg.lv = Object.assign({}, db.cfg.lv, {'تحويل': id}); };
 function pickParty(kind, opts = {}) {
   const sup = kind === 'ppay';
@@ -4400,11 +4403,11 @@ function txModal(type, t) {
 }
 /* إدارة الخزن والبنود */
 function vaultSettings() {
-  const vs = vaultsL();
+  const vs = vaultsAll();
   const row = (k, x, extra) => `<div class="lrow"><span>${esc(x.name)}${extra || ''}</span><button class="ibtn" data-ed="${k}:${esc(x.id)}" type="button">✎</button></div>`;
   modal(`<h3>الخزن والبنود</h3>
     <div class="sech" style="margin-top:0"><span>الخزن</span></div>
-    ${vs.map(v => row('vault', v, ` <small>(افتتاحي ${fmtP(v.open || 0)})</small>`)).join('')}
+    ${vs.map(v => row('vault', v, v.shut ? ' <small>(مقفولة)</small>' : ` <small>(افتتاحي ${fmtP(v.open || 0)})</small>`)).join('')}
     <button class="btn line sm" id="vsAddV" type="button">+ خزنة جديدة (بنك، محفظة…)</button>
     <div class="sech"><span class="exp">بنود المصروفات</span></div>${catsL('exp').map(c => row('cat', c)).join('')}
     <button class="btn line sm" data-addc="exp" type="button">+ بند مصروف</button>
@@ -4418,10 +4421,15 @@ function vaultSettings() {
 }
 function editVault(v) {
   const used = v && (db.txs.some(t => !t.del && (t.vault === v.id || t.to === v.id)) || db.entries.some(e => !e.del && e.vault === v.id));
+  /* اقفل الخزنة: بس لو فيها حركات (غير كده "شيل") ورصيدها صفر وفاضل خزنة تانية مفتوحة */
+  const vb = v ? vaultBal(v.id) : 0;
+  const shutBtn = !v || !used ? '' : v.shut ? '<button class="btn line sm" id="evShut" type="button">افتح الخزنة دي تاني</button>'
+    : vaultsL().length < 2 ? '' : !vb ? '<button class="btn red sm" id="evShut" type="button">🔒 اقفل الخزنة دي</button>'
+    : `<p class="hint">علشان تقفلها: حوّل رصيدها (${fmtP(vb)}) لخزنة تانية الأول من "تحويل بين الخزن".</p>`;
   modal(`<h3>${v ? 'تعديل خزنة' : 'خزنة جديدة'}</h3>
     <div class="fld"><label>الاسم</label><input class="inp" id="evN" value="${esc(v ? v.name : '')}" placeholder="مثلاً: البنك الأهلي، إنستاباي، فودافون كاش"></div>
     <div class="fld"><label>الرصيد الافتتاحي</label><input class="inp num" id="evO" placeholder="0" value="${v && v.open ? fmtP(v.open) : ''}"></div>
-    <div class="stack"><button class="btn gold" id="evOk" type="button">حفظ</button>${v && !used && vaultsL().length > 1 ? '<button class="btn red sm" id="evDel" type="button">شيل الخزنة</button>' : ''}<button class="btn line" id="evX" type="button">رجوع</button></div>`);
+    <div class="stack"><button class="btn gold" id="evOk" type="button">حفظ</button>${v && !used && vaultsL().length > 1 ? '<button class="btn red sm" id="evDel" type="button">شيل الخزنة</button>' : ''}${shutBtn}<button class="btn line" id="evX" type="button">رجوع</button></div>`);
   bindMoney($('#evO'));
   $('#evX').onclick = vaultSettings;
   $('#evOk').onclick = () => {
@@ -4432,6 +4440,11 @@ function editVault(v) {
     saveDB(); vaultSettings();
   };
   if ($('#evDel')) $('#evDel').onclick = () => { v.del = true; touch(v); saveDB(); vaultSettings(); };
+  if ($('#evShut')) $('#evShut').onclick = () => {
+    v.shut = !v.shut; touch(v); saveDB();
+    if (v.shut && cashVault === v.id) cashVault = '';
+    toast(v.shut ? 'اتقفلت ✔ حركاتها القديمة زي ما هي' : 'اتفتحت تاني ✔'); vaultSettings();
+  };
 }
 function editCat(type, c) {
   type = c ? c.type : type;
@@ -4502,7 +4515,7 @@ function autoPartners(force) {
 const psVOpts = sel => `<option value="" ${!sel ? 'selected' : ''}>بياخد من خزنتي (العادي)</option><option value="${MKV}" ${sel === MKV ? 'selected' : ''}>بياخد من الكاش اللي معاه (خزنة السوق)</option>`;
 /* خزنة المسحوبات: أي خزنة، أو خزنة السوق، أو من غير خزنة (اتاخدت قبل كده ومتتخصمش من أي رصيد) */
 function partVaultOpts(sel, nv) {
-  const l = vaultsL().map(v => `<option value="${esc(v.id)}" ${!nv && sel === v.id ? 'selected' : ''}>${esc(v.name)} (${fmtP(vaultBal(v.id))})</option>`).join('');
+  const l = vaultsFor(nv ? '' : sel).map(v => `<option value="${esc(v.id)}" ${!nv && sel === v.id ? 'selected' : ''}>${esc(v.name)} (${fmtP(vaultBal(v.id))})</option>`).join('');
   return l + `<option value="${MKV}" ${!nv && sel === MKV ? 'selected' : ''}>الكاش اللي مع الشريك (خزنة السوق)</option><option value="" ${nv ? 'selected' : ''}>من غير خزنة — اتاخدت قبل كده</option>`;
 }
 function partnerSettings() {
@@ -6166,7 +6179,7 @@ function mkVaultFor(m) {
   return (vaultsL()[0] || {}).id || '';
 }
 /* كاش الشريك لمصطفى بيروح لخزنته (آخر اختيار، أو أول خزنة غير خزنة السوق) */
-const mkHandTo = () => { const r = (db.cfg.mkv || {}).handTo; return r && IDX.vault.get(r) && !IDX.vault.get(r).del && r !== 'v_mkt' ? r : (vaultsL().find(v => v.id !== 'v_mkt') || {}).id || ''; };
+const mkHandTo = () => { const r = (db.cfg.mkv || {}).handTo; return r && IDX.vault.get(r) && !IDX.vault.get(r).del && !IDX.vault.get(r).shut && r !== 'v_mkt' ? r : (vaultsL().find(v => v.id !== 'v_mkt') || {}).id || ''; };
 /* النقل للحسابات: نفس طريقة التسجيل العادي، بـ id ثابت مبني على id العملية، فمستحيل يتعمل مرتين */
 function mkMove(o, f) {
   const rec = mkRec(o);

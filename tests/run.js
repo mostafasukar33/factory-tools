@@ -442,6 +442,22 @@ const T0 = Date.now();
     await A.evaluate(() => { cashPickM = true; renderCash(); }); await A.settle(150); await segOk(A, 'الحسابات — دفتر الخزنة (اختيارات الفترة مفتوحة)');
     /* تنضيف بيانات الدفتر والرجوع لـ "بالنوع" */
     await A.evaluate(() => { const g = window.__ldg; [...g.E, ...g.mk].forEach(x => { x.del = true; touch(x); }); g.ids.forEach(i => { P.get(i).del = true; touch(P.get(i)); }); g.v2.del = true; touch(g.v2); cashView = 'type'; cashPickM = false; cashVault = ''; saveDB(); go('mkt'); });
+    {   // اقفل الخزنة: بس لما رصيدها صفر، وتختفي من الاختيارات وحركاتها القديمة زي ما هي
+      const r0 = await A.evaluate(() => { const now = nowS(), v = {id: 'v_tshut', name: 'خزنة تجربة للقفل', open: 0, ord: 9, at: now, upd: now, del: false}; db.vaults.push(v); IDX.vault.set(v.id, v);
+        const t = {id: 't_tshut1', type: 'inc', vault: v.id, amt: 70000, cat: catsL('inc')[0].id, date: todayISO(), note: '', at: now, upd: now, del: false, hist: []}; db.txs.push(t); IDX.tx.set(t.id, t); saveDB();
+        editVault(v); return [!!$('#evShut'), $('#modal').textContent.includes('حوّل رصيدها'), vaultBal('')]; });
+      eq('خزنة فيها فلوس: مفيش زرار قفل، وبيقولك حوّل رصيدها الأول', r0.slice(0, 2), [false, true]);
+      const r1 = await A.evaluate(() => { const now = nowS(), t = {id: 't_tshut2', type: 'tr', vault: 'v_tshut', to: vaultsL()[0].id, amt: 70000, date: todayISO(), note: '', at: now, upd: now, del: false, hist: []}; db.txs.push(t); IDX.tx.set(t.id, t); saveDB();
+        editVault(IDX.vault.get('v_tshut')); $('#evShut').click();
+        return [IDX.vault.get('v_tshut').shut, vaultsL().some(v => v.id === 'v_tshut'), vaultOpts('').includes('v_tshut'), vaultOpts('v_tshut').includes('v_tshut'), $('#modal').textContent.includes('(مقفولة)')]; });
+      eq('رصيدها صفر: اتقفلت، ومش في الاختيارات، بس الحركة القديمة عليها بتفضل تختارها، وظاهرة "مقفولة" في الخزن', r1, [true, false, false, true, true]);
+      eq('الرصيد الكلي ما اتغيرش بعد القفل', await A.evaluate(() => vaultBal('')), r0[2]);
+      await A.evaluate(() => { closeModal(); go('cash'); renderCash(); }); await A.settle(150);
+      eq('الخزنة المقفولة مش ظاهرة في شاشة الخزنة', (await A.textContent('#p-cash')).includes('خزنة تجربة للقفل'), false);
+      const r2 = await A.evaluate(() => { editVault(IDX.vault.get('v_tshut')); $('#evShut').click(); const a = vaultsL().some(v => v.id === 'v_tshut');
+        ['t_tshut1', 't_tshut2'].forEach(id => { const t = IDX.tx.get(id); t.del = true; touch(t); }); const v = IDX.vault.get('v_tshut'); v.del = true; touch(v); saveDB(); closeModal(); return a; });
+      eq('افتح الخزنة تاني بيرجّعها', r2, true);
+    }
     sec('٦) دفعة عميل بتدخل الخزنة');
     await openParty(A, 'عميل تجربة اتنين'); await A.click('#fbPay'); await A.fill('#pyAmt', '70'); await A.click('#pyOk'); await closed(A);
     eq('الدفعة نزلت على العميل', await bal(A, 'عميل تجربة اتنين'), -7000);

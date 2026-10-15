@@ -922,7 +922,14 @@ function friModal(thu) {
 
 /* ---------- النهارده: سطر لكل عامل وجنبه غاب/نص/يوم/يوم ونص ---------- */
 /* يوم الجمعة بيفتح على الخميس اللي قبله (الجمعة بتتعلّم من زرار الجمعة وبتتقبض مقدّم)، إلا لو فيه حد متسجل فيها (بيانات قديمة) */
-function defDay() { const t = today(); return weekday(t) === 5 && !(idx().dayBy.get(t) || []).length ? addDays(t, -1) : t; }
+/* آخر يوم ينفع يتفتح في النهارده: النهارده، ولو أسبوعه اتنقل (ابدأ الأسبوع الجديد) يبقى لآخر الأسبوع الجديد كله (أيام وسلف مقدّم) */
+const maxDay = () => { const t = today(), lt = liveThu(); return lt > ownerThursday(t) ? lt : t; };
+function defDay() {
+  const t = today(), I = idx(), d = weekday(t) === 5 && !(I.dayBy.get(t) || []).length ? addDays(t, -1) : t;
+  /* الأسبوع اتنقل: النهارده بيفتح على سبت الأسبوع الجديد */
+  const lt = liveThu();
+  return I.lk.has(ownerThursday(d)) && lt > ownerThursday(d) ? addDays(lt, -5) : d;
+}
 /* الأيام اللي فاتت في الأسبوع (لحد النهارده) وفيها عمال لسه متسجلوش */
 function missingSoFar(I, thu, upto) {
   const per = {};
@@ -952,11 +959,11 @@ function weekStrip(I, thu, d, t) {
   return `<div class="wk${showF ? ' f7' : ''}">${(showF ? [fr] : []).concat(weekDates(thu).slice(0, 6)).map(x => {
     const ws = workersOn(I, x), n = ws.filter(w => I.day.has(w.id + '|' + x)).length;
     const st = x > t || !ws.length ? 'f' : n === ws.length ? 'ok' : n ? 'p' : 'e';
-    return `<button type="button" data-go="${x}" class="s-${st}${x === d ? ' on' : ''}"${x > t ? ' disabled' : ''}><span>${dayName(x)}</span><b>${+x.slice(8)}</b><i></i></button>`;
+    return `<button type="button" data-go="${x}" class="s-${st}${x === d ? ' on' : ''}"${x > maxDay() ? ' disabled' : ''}><span>${dayName(x)}</span><b>${+x.slice(8)}</b><i></i></button>`;
   }).join('')}</div>`;
 }
 function drawToday() {
-  const t = today(), d = scr.day && scr.day <= t ? scr.day : defDay(), thu = ownerThursday(d);
+  const t = today(), d = scr.day && scr.day <= maxDay() ? scr.day : defDay(), thu = ownerThursday(d);
   const I = idx(), ws = workersOn(I, d), closed = I.lk.has(thu), wd = weekday(d);
   const done = ws.filter(w => I.day.has(w.id + '|' + d)).length;
   const wsr = I.ws.get(thu), frN = wsr && Array.isArray(wsr.ids) ? wsr.ids.length : 0;
@@ -1214,7 +1221,7 @@ function workerSheet(wid, thu) {
   const bons = I.bon.filter(b => b.w === wid && b.thu === thu);
   const p = I.pd.get(thu + '|' + wid);
   const dayRow = d => {
-    const rec = I.day.get(wid + '|' + d), before = w.from && d < w.from, future = open && d > t;
+    const rec = I.day.get(wid + '|' + d), before = w.from && d < w.from, future = open && d > maxDay();
     return `<div class="dr${!rec && !before && !future && open && w.st === 'on' ? ' todo' : ''}" data-d="${d}"><div class="nm"><b>${dayName(d)} ${dm(d)}</b><small>${rec ? byTxt(rec) : before ? 'قبل ما يبدأ شغل' : future ? 'لسه' : '<span class="wt">لسه متسجلش</span>'}</small></div>
       ${before || future ? '' : `<div class="ub">${UNITS.map(u => `<button type="button" data-d="${d}" data-u="${u}" class="${rec && rec.u === u ? 'on' : ''}">${U_BTN[u]}</button>`).join('')}</div>`}</div>`;
   };
@@ -1275,7 +1282,7 @@ function wdedModal(wid, thu) {
   $('#wdAmt').onclick = () => { const a = amtOf($('#wdA')); if (!(a > 0)) return toast('اكتب المبلغ'); save('amt', a, `خصم ${fmt(a)} بدل القاعدة من السلف القديمة لـ`); };
 }
 /* تاريخ السلفة الجديدة من شاشة الأسبوع: النهارده لو جوه الأسبوع، وإلا الخميس بتاعه */
-const defDayIn = thu => { const t = today(); return ownerThursday(t) === thu ? t : thu; };
+const defDayIn = thu => { const t = today(); return ownerThursday(t) === thu ? t : thu > ownerThursday(t) ? addDays(thu, -5) : thu; };
 
 /* ---------- العمال ---------- */
 /* كشف العامل الكامل: كل حاجة بالتفصيل — المرتبات، اللي قبضه، السلف الجديدة، السلف القديمة (إضافة وخصم والباقي)، وأسبوع بأسبوع */

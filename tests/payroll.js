@@ -408,6 +408,12 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await D.click('#nextW'); await D.waitForSelector('#aY'); await D.click('#aY');
     await D.waitForFunction(() => idx().lk.has('2026-10-22'));
     eq('الأسبوع اتقفل وراح الأرشيف والأسبوع الشغال بقى اللي بعده', await D.evaluate(() => [liveThu(), $('.dnav span').textContent.includes('29'), calcWeek(idx(), '2026-10-22').closed]), ['2026-10-29', true, true]);
+    await D.evaluate(() => nav('t', true));
+    eq('بعد النقل: النهارده بيفتح على سبت الأسبوع الجديد والأيام مفتوحة', await D.evaluate(() => [$('#main .lbl b').textContent.includes(dm('2026-10-24')), $$('#main .wk button').filter(b => !b.disabled).length, !!$('#allDay'), !$('#main .ub button').disabled]), [true, 6, true, true]);
+    await D.click('#main .wr:nth-child(1) .ub button[data-u="1"]');
+    eq('بعد النقل: يوم في الأسبوع الجديد اتسجل عليه', await D.evaluate(() => { const r = idx().day.get([...idx().W.keys()][0] + '|2026-10-24'); return [!!r, ownerThursday(r.date)]; }), [true, '2026-10-29']);
+    await D.click('#qAdv'); await D.click('#pkW .chip:nth-child(2)'); await D.fill('#avA', '150'); await D.click('#avOk'); await closed(D);
+    eq('بعد النقل: السلفة بتتسجل على الأسبوع الجديد مش المقفول', await D.evaluate(() => { const a = idx().adv.find(x => x.amt === 15000); return [a.date, calcWeek(idx(), '2026-10-29', true).rows[a.w].advances, calcWeek(idx(), '2026-10-22').rows[a.w].advances]; }), ['2026-10-24', 15000, 0]);
     await D.evaluate(() => nav('a', true));
     eq('الأرشيف فيه الأسبوع المقفول والكل قبض', await D.evaluate(() => $$('#main .row[data-thu="2026-10-22"] .a small')[0].textContent.trim()), 'قبض 3 من 3');
 

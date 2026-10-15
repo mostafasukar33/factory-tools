@@ -34,6 +34,9 @@ function grab(u) {
   });
 }
 const saved = u => caches.match(key(u), {ignoreSearch: true});
+// كلاود فلير (app.flashoneg.com) بيحوّل x.html لـ /x. الرد اللي جه بعد تحويل مينفعش يترجع للصفحة زي ما هو
+// (سفاري وكروم بيرفضوا يفتحوها)، فبنرجّع نسخة منه من غير علامة التحويل
+const plain = r => r.redirected ? new Response(r.body, {status: r.status, statusText: r.statusText, headers: r.headers}) : r;
 const offline = req => req.mode === 'navigate' ? caches.match('index.html') : Response.error();
 
 self.addEventListener('install', e => {
@@ -79,8 +82,8 @@ self.addEventListener('fetch', e => {
   if (p !== null && STATIC.test(p)) return e.respondWith(quick(e));
   e.respondWith(
     fetch(req.url, {cache: 'no-store', credentials: 'same-origin'}).then(r => {
-      if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(key(req.url), copy)); }
-      return r;
-    }).catch(() => saved(req.url).then(r => r || caches.match('index.html')))
+      if (r.ok) { const copy = plain(r.clone()); caches.open(CACHE).then(c => c.put(key(req.url), copy)); }
+      return plain(r);
+    }).catch(() => saved(req.url).then(r => r || caches.match('index.html')).then(r => r && plain(r)))
   );
 });

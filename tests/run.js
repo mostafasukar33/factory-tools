@@ -41,13 +41,20 @@ function importFile() {
       {party: 's1', kind: 'ppay', date: '2026-01-03', amt: 3000000, method: 'نقدي'}]};
 }
 
-/* للاختبار sw.js: down = النت مقطوع، slow[ملف] = الملف بيتأخر (ملّي)، body[ملف] = نسخة جديدة اترفعت من الملف */
-const SRV = {down: false, slow: {}, body: {}};
+/* للاختبار sw.js: down = النت مقطوع، slow[ملف] = الملف بيتأخر (ملّي)، body[ملف] = نسخة جديدة اترفعت من الملف،
+   pretty = زي كلاود فلير (app.flashoneg.com): x.html بيتحوّل لـ /x، و/x بيرجّع x.html */
+const SRV = {down: false, slow: {}, body: {}, pretty: false};
 function serve() {
   const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json'};
   return new Promise(res => {
     const srv = http.createServer((q, r) => {
-      const f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0]).replace(/^\/+/, '') || 'index.html');
+      let u = decodeURIComponent(q.url.split('?')[0]);
+      if (SRV.pretty) {
+        const m = u.match(/^(.*\/)([^/]+)\.html$/);
+        if (m) { r.writeHead(308, {Location: m[1] + (m[2] === 'index' ? '' : m[2])}); return r.end(); }
+        if (!/\.[a-z0-9]+$/i.test(u) && !u.endsWith('/')) u += '.html';
+      }
+      const f = path.join(ROOT, u.replace(/^\/+/, '') || 'index.html');
       if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); }
       if (SRV.down) return q.socket.destroy();
       const rel = path.relative(ROOT, f).split(path.sep).join('/'), send = () => {
@@ -1867,6 +1874,17 @@ const T0 = Date.now();
       eq('النت مقطوع: باقي الأدوات (عرض السعر) بتفتح من المحفوظ زي الأول', await X.evaluate(() => document.body.children.length > 0), true);
       await X.close();
       SRV.down = false;
+
+      /* كلاود فلير بيشيل .html (بيحوّل payroll.html لـ /payroll). الـ SW كان بيرجّع الرد "متحوّل" فسفاري وكروم بيرفضوا يفتحوا الصفحة */
+      SRV.pretty = true;
+      const bad = [];
+      for (const f of ['payroll.html', 'quote.html', 'index.html', 'accounts.html', 'market.html', 'cost.html']) {
+        let ok = false;
+        try { const Y = await SWD.page(f); await Y.settle(400); ok = await Y.evaluate(() => !!document.body && document.body.children.length > 0 && !!document.querySelector('script')); await Y.close(); } catch (e) {}
+        if (!ok) bad.push(f);
+      }
+      SRV.pretty = false;
+      eq('كلاود فلير (من غير .html): كل الصفحات بتفتح من خلال الـ SW', bad, []);
 
       /* نت بطيء: الملف بياخد 6 ثواني ونسخة جديدة اترفعت. بيفتح المحفوظ بعد 3 ثواني، والجديد بيوصل لوحده لما مفيش شغل مفتوح */
       SRV.slow = {'market.html': 6000}; SRV.body = {'market.html': v('market.html', 2)};

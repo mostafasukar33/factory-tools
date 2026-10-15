@@ -3880,6 +3880,7 @@ const MKV = 'v_mkt', isMkv = id => id === MKV;
 const vaultsAll = () => db.vaults.filter(v => !v.del && !isMkv(v.id)).sort((a, b) => (a.ord || 0) - (b.ord || 0) || (a.at || 0) - (b.at || 0));
 /* الخزنة المقفولة (shut، بطلبه 15/10/2026): رصيدها صفر ومش بتظهر في الاختيارات ولا الشاشة، وحركاتها القديمة زي ما هي في الكشوف والأرصدة (vaultBal مبيبصش على shut) */
 const vaultsL = () => vaultsAll().filter(v => !v.shut);
+const openV = id => { const v = id && IDX.vault.get(id); return !!v && !v.del && !v.shut; };   // خزنة لسه شغالة (متخترش خزنة مقفولة لوحدك)
 const vaultsFor = sel => vaultsAll().filter(v => !v.shut || v.id === sel);   // تعديل حركة قديمة على خزنة مقفولة: خزنتها بتفضل في الاختيار
 const catsL = t => db.cats.filter(c => !c.del && c.type === t && !SPECIAL_CATS.has(c.id)).sort((a, b) => (a.ord || 0) - (b.ord || 0));
 const vName = id => (IDX.vault.get(id) || {name: '؟'}).name;
@@ -4405,7 +4406,7 @@ function txModal(type, t) {
 }
 /* إدارة الخزن والبنود */
 function vaultSettings() {
-  const vs = vaultsAll();
+  const vs = vaultsAll().filter(v => !v.gone);   // gone = اتمسحت من القايمة خالص (بطلبه)
   const row = (k, x, extra) => `<div class="lrow"><span>${esc(x.name)}${extra || ''}</span><button class="ibtn" data-ed="${k}:${esc(x.id)}" type="button">✎</button></div>`;
   modal(`<h3>الخزن والبنود</h3>
     <div class="sech" style="margin-top:0"><span>الخزن</span></div>
@@ -4425,7 +4426,7 @@ function editVault(v) {
   const used = v && (db.txs.some(t => !t.del && (t.vault === v.id || t.to === v.id)) || db.entries.some(e => !e.del && e.vault === v.id));
   /* اقفل الخزنة: بس لو فيها حركات (غير كده "شيل") ورصيدها صفر وفاضل خزنة تانية مفتوحة */
   const vb = v ? vaultBal(v.id) : 0;
-  const shutBtn = !v || !used ? '' : v.shut ? '<button class="btn line sm" id="evShut" type="button">افتح الخزنة دي تاني</button>'
+  const shutBtn = !v || !used ? '' : v.shut ? '<button class="btn line sm" id="evShut" type="button">افتح الخزنة دي تاني</button><button class="btn red sm" id="evGone" type="button">امسح الخزنة دي خالص</button>'
     : vaultsL().length < 2 ? '' : !vb ? '<button class="btn red sm" id="evShut" type="button">🔒 اقفل الخزنة دي</button>'
     : `<p class="hint">علشان تقفلها: حوّل رصيدها (${fmtP(vb)}) لخزنة تانية الأول من "تحويل بين الخزن".</p>`;
   modal(`<h3>${v ? 'تعديل خزنة' : 'خزنة جديدة'}</h3>
@@ -4446,6 +4447,11 @@ function editVault(v) {
     v.shut = !v.shut; touch(v); saveDB();
     if (v.shut && cashVault === v.id) cashVault = '';
     toast(v.shut ? 'اتقفلت ✔ حركاتها القديمة زي ما هي' : 'اتفتحت تاني ✔'); vaultSettings();
+  };
+  /* امسحها خالص (بطلبه 15/10/2026): مقفولة بس، بتختفي من كل حتة حتى قايمة الخزن، والحركات القديمة والأرصدة زي ما هي (مش del) */
+  if ($('#evGone')) $('#evGone').onclick = () => {
+    v.gone = 1; touch(v); saveDB(); vaultSettings();
+    toastUndo('اتمسحت خزنة ' + v.name, () => { delete v.gone; touch(v); saveDB(); vaultSettings(); });
   };
 }
 function editCat(type, c) {
@@ -4496,7 +4502,7 @@ function autoPartners(force) {
   const s = partners(); if (!s || !s.on || !(s.amt > 0) || !s.start) return 0;
   ensureVaults(); ensurePartCats();
   if (s.list.some(p => p.vault === MKV)) ensureMktVault();
-  const v = IDX.vault.get(s.vault), vault0 = v && !v.del ? s.vault : defVault();
+  const vault0 = openV(s.vault) || s.vault === MKV ? s.vault : defVault();
   const t = todayISO(); let n = 0;
   for (let d = thuOnOrAfter(s.start); d <= t; d = addDays(d, 7)) {
     if (isLocked(d)) continue;
@@ -4504,7 +4510,7 @@ function autoPartners(force) {
       if ((p.from && d < p.from) || (p.to && d > p.to)) return;
       const id = `t_ps_${d}_${p.id}`;
       if (IDX.tx.get(id)) return;
-      const pv = p.vault && IDX.vault.get(p.vault), vault = pv && !pv.del ? p.vault : vault0;
+      const vault = p.vault === MKV || openV(p.vault) ? p.vault : vault0;
       const [y, m, dd] = d.split('-').map(Number), ts = new Date(y, m - 1, dd, 9).getTime();
       const r = {id, type: 'exp', amt: s.amt, vault, to: '', cat: 'c_psal', pt: p.id, pnote: '', note: 'مرتب ' + p.name, date: d, at: ts, upd: ts, del: false, hist: [], auto: 1};
       db.txs.push(r); IDX.tx.set(id, r); n++;
@@ -4569,7 +4575,7 @@ function partnerTxModal(t, kind = 'draw', ptId = '') {
   const s = partners() || {list: []}, isNew = !t;
   if (t) { kind = ptKind(t); ptId = t.pt; }
   const list = s.list.filter(p => !p.to || p.id === ptId);
-  const pDef = id => { const p = s.list && s.list.find(x => x.id === id); return p && p.vault || s.vault; };
+  const pDef = id => { const p = s.list && s.list.find(x => x.id === id); const v = p && p.vault || s.vault; return v === MKV || openV(v) ? v : defVault(); };
   modal(`<h3 class="exp">${isNew ? '− مسحوبات شريك' : 'تعديل ' + PK[kind] + ' شريك'}</h3>
     <div class="fld"><label>الشريك</label><select class="inp" id="ptP">${list.map(p => `<option value="${esc(p.id)}" ${p.id === ptId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
     <div class="fld"><label>النوع</label><div class="seg" id="ptK">${Object.entries(PK).map(([k, n]) => `<button type="button" data-v="${k}" class="${k === kind ? 'on' : ''}">${n}</button>`).join('')}</div></div>
@@ -6179,7 +6185,7 @@ function ensureMktVault() {
 }
 /* الاقتراح الجاهز (مصطفى بيغيّره براحته): الكاش والمصروف ودفعة المورد ← خزنة السوق، الإنستا ← خزنة إنستا، الفودافون ← خزنة فودافون (أو آخر اختيار) */
 function mkVaultFor(m) {
-  const ok = id => id && IDX.vault.get(id) && !IDX.vault.get(id).del;
+  const ok = id => id === 'v_mkt' ? IDX.vault.get(id) && !IDX.vault.get(id).del : openV(id);
   if ((m === 'cash' || m === 'spay' || m === 'exp' || m === 'hand' || m === 'cs') && ok('v_mkt')) return 'v_mkt';
   const re = m === 'insta' ? /انستا|إنستا|insta/i : m === 'voda' ? /فودافون|vodafone|voda/i : null;
   const v = re && vaultsL().find(x => re.test(x.name)); if (v) return v.id;

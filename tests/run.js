@@ -460,9 +460,14 @@ const T0 = Date.now();
         editVault(IDX.vault.get('v_tshut')); $('#evShut').click();
         return [IDX.vault.get('v_tshut').shut, vaultsL().some(v => v.id === 'v_tshut'), vaultOpts('').includes('v_tshut'), vaultOpts('v_tshut').includes('v_tshut'), $('#modal').textContent.includes('(مقفولة)')]; });
       eq('رصيدها صفر: اتقفلت، ومش في الاختيارات، بس الحركة القديمة عليها بتفضل تختارها، وظاهرة "مقفولة" في الخزن', r1, [true, false, false, true, true]);
-      eq('الرصيد الكلي ما اتغيرش بعد القفل', await A.evaluate(() => vaultBal('')), r0[2]);
+      eq('الرصيد الكلي ما اتغيرش بعد القفل', await A.evaluate(() => (window.__vb0 = vaultBal(''))), r0[2]);
       await A.evaluate(() => { closeModal(); go('cash'); renderCash(); }); await A.settle(150);
       eq('الخزنة المقفولة مش ظاهرة في شاشة الخزنة', (await A.textContent('#p-cash')).includes('خزنة تجربة للقفل'), false);
+      eq('الخزنة المقفولة مبتتختارش لوحدها: الوارد (آخر خزنة اتسجل فيها) ومرتب الشركاء', await A.evaluate(() => {
+        const mv0 = db.cfg.mkv; db.cfg.mkv = Object.assign({}, mv0, {insta: 'v_tshut'}); const r = [mkVaultFor('insta') !== 'v_tshut', openV('v_tshut'), openV(vaultsL()[0].id)]; db.cfg.mkv = mv0; return r; }), [true, false, true]);
+      eq('امسح الخزنة المقفولة خالص: بتختفي حتى من قايمة الخزن، والرصيد الكلي والحركات القديمة زي ما هي، والتراجع بيرجّعها', await A.evaluate(() => {
+        editVault(IDX.vault.get('v_tshut')); $('#evGone').click(); const r = [!!IDX.vault.get('v_tshut').gone, !$('#modal').textContent.includes('خزنة تجربة للقفل'), vaultBal('') === window.__vb0, !IDX.tx.get('t_tshut1').del, !IDX.vault.get('v_tshut').del];
+        $('#toast.act button').click(); r.push(!IDX.vault.get('v_tshut').gone && $('#modal').textContent.includes('خزنة تجربة للقفل')); return r; }), [true, true, true, true, true, true]);
       const r2 = await A.evaluate(() => { editVault(IDX.vault.get('v_tshut')); $('#evShut').click(); const a = vaultsL().some(v => v.id === 'v_tshut');
         ['t_tshut1', 't_tshut2'].forEach(id => { const t = IDX.tx.get(id); t.del = true; touch(t); }); const v = IDX.vault.get('v_tshut'); v.del = true; touch(v); saveDB(); closeModal(); return a; });
       eq('افتح الخزنة تاني بيرجّعها', r2, true);

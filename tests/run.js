@@ -884,7 +884,10 @@ const T0 = Date.now();
     eq('الجرد: العملا والموردين والخزن من الحسابات (من غير الحساب الفرعي)', await A.evaluate(() => {
       const n = jrdCalc(todayISO()), b = allBalances(), w = {mkt: 0, site: 0, sup: 0};
       b.forEach((v, id) => { const p = P.get(id); if (!p.noTot) w[p.sec] += v; });
-      return [n.mkt === w.mkt, n.site === w.site, n.sup === -w.sup, n.vault === vaultBal(''), !!$('#jrBack')]; }), [true, true, true, true, true]);
+      return [n.mkt === w.mkt, n.site === w.site, n.sup === -w.sup, n.vault === vaultBal('') + (IDX.vault.get(MKV) ? vaultBal(MKV) : 0), !!$('#jrBack')]; }), [true, true, true, true, true]);
+    eq('الجرد: خزنة السوق داخلة في النقدية ومكتوبة تحتها', await A.evaluate(() => { const v = IDX.vault.get(MKV), had = !!v; if (!had) { const r = {id: MKV, name: 'خزنة السوق', open: 0, ord: 9, at: nowS(), upd: 2, del: false}; db.vaults.push(r); IDX.vault.set(MKV, r); }
+      const t = {id: 't_jrmk', type: 'inc', vault: MKV, amt: 4200000, cat: catsL('inc')[0].id, date: todayISO(), note: '', at: nowS(), upd: nowS(), del: false, hist: []}; db.txs.push(t); IDX.tx.set(t.id, t);
+      const n = jrdCalc(todayISO()), L = jrdLines(n, 0).find(x => x.n === 'النقدية بالخزن'); t.del = true; return [n.vault - vaultBal(''), n.mk, L.s.includes('منها خزنة السوق')]; }).then(r => [r[0] === r[1] && r[1] >= 4200000, r[2]]), [true, true]);
     await A.fill('#jrS', '1000'); await A.settle(100);
     const J1 = await A.evaluate(() => { const n = jrdCalc(todayISO()), T = jrdTot(n, 100000); return [$('#jrStockV').textContent, $('#jrNet').textContent.trim().startsWith(fmtP(T.net)), T.net === n.mkt + n.site + n.vault + 100000 - n.sup]; });
     eq('المخزون بيتكتب مبلغ والصافي بيتحسب على طول', J1, ['1,000', true, true]);

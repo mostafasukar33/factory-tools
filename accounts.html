@@ -5242,7 +5242,9 @@ function ivSuggest(v, m) {
 function jrdCalc(d) {
   const before = addDays(d, 1), bal = new Map();
   for (const e of db.entries) if (!e.del && (e.date < before || e.kind === 'open')) bal.set(e.party, (bal.get(e.party) || 0) + (e.dr || 0) - (e.cr || 0));
-  const n = {mkt: 0, site: 0, sup: 0, cnt: {mkt: 0, site: 0, sup: 0}, vault: db.vaults.length ? vaultBal('', before) : 0, ivs: []};
+  const n = {mkt: 0, site: 0, sup: 0, cnt: {mkt: 0, site: 0, sup: 0}, vault: db.vaults.length ? vaultBal('', before) : 0, mk: 0, ivs: []};
+  /* خزنة السوق (اللي مع أحمد) فلوس المصنع برضه، فبتدخل النقدية في الجرد (بطلبه 15/10/2026) */
+  if (db.vaults.some(v => v.id === MKV && !v.del)) { n.mk = vaultBal(MKV, before); n.vault += n.mk; }
   liveParties().forEach(p => { if (p.noTot) return; const b = bal.get(p.id) || 0; if (!b || n.cnt[p.sec] === undefined) return; if (p.sec === 'sup') n.sup -= b; else n[p.sec] += b; n.cnt[p.sec]++; });   // الحساب الفرعي ميدخلش زي الرئيسية
   ivList().forEach(v => n.ivs.push({id: v.id, name: v.name, amt: ivSums(v.id, d).bal}));
   return n;
@@ -5258,7 +5260,7 @@ let jrDate = '', jrStock = null;
 function jrdLines(n, stock) {
   const T = jrdTot(n, stock), cnt = k => n.cnt[k] ? `${n.cnt[k]} حساب` : '', L = [
     {t: 'r', n: 'أرصدة عملاء السوق', s: cnt('mkt'), a: n.mkt}, {t: 'r', n: 'أرصدة عملاء المواقع', s: cnt('site'), a: n.site},
-    {t: 'r', n: 'النقدية بالخزن', s: '', a: n.vault}, {t: 'r', n: 'قيمة المخزون', s: 'بالمصنع', a: stock, id: 'jrStockV'},
+    {t: 'r', n: 'النقدية بالخزن', s: n.mk ? 'منها خزنة السوق ' + fmtP(n.mk) : '', a: n.vault}, {t: 'r', n: 'قيمة المخزون', s: 'بالمصنع', a: stock, id: 'jrStockV'},
     {t: 's', n: '= إجمالي الأصول', a: T.own}, {t: 'r', n: '− مستحقات الموردين', s: cnt('sup'), a: n.sup, neg: 1}];
   if (n.ivs.length) {
     L.push({t: 's', n: '= صافي الأصول قبل المساهمين', a: T.work});

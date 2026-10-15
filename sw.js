@@ -1,13 +1,12 @@
 // Service worker مشترك لكل الأدوات. مبيلمسش البيانات المحفوظة خالص (localStorage وIndexedDB)، الكاش هنا للملفات بس.
 //
-// الحسابات والسوق (والملفات اللي محتاجينها): بنستنى النت WAIT بس. لو الملف وصل كامل قبلها بيتفتح الجديد،
-// ولو اتأخر بتتفتح النسخة المحفوظة على طول ونكمّل نجيب الجديد في الخلفية. لما يوصل ويطلع مختلف بنقول للصفحة
+// الحسابات والسوق (والملفات اللي محتاجينها): النسخة المحفوظة بتتفتح على طول ونجيب الجديد في الخلفية
+// (أول مرة خالص بس بنستنى النت). لما يوصل ويطلع مختلف بنقول للصفحة
 // 'sw-stale'، و lib/swup.js بيعمل reload لوحده في وقت آمن (مش والحد بيكتب).
 // الخطوط والأيقونات والـ manifest: المحفوظة على طول، وبنجددها في الخلفية.
 // باقي الأدوات زي الأول: الشبكة أولاً، والمحفوظ لما مفيش نت بس.
 // كل ملفات الحسابات والسوق بتتخزن من أول فتحة (SHELL).
 const CACHE = 'flashon-tools-v3';   // نفس الاسم القديم علشان النسخ المحفوظة من الأدوات التانية متتمسحش
-const WAIT = 3000;
 const FONTS = [400, 600, 700, 800].flatMap(w => ['arabic', 'latin'].map(l => `fonts/cairo-${l}-${w}-normal.woff2`));
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'accounts.html', 'accounts.webmanifest', 'market.html', 'market.webmanifest',
   'lib/ui.css', 'lib/datepick.js', 'lib/swup.js', 'lib/icons.js', 'fonts/fonts.css', ...FONTS,
@@ -72,14 +71,15 @@ self.addEventListener('message', e => {
     .then(() => e.source && e.source.postMessage('sw-new')));
 });
 
-// الحسابات والسوق: النت لحد WAIT، وبعدها المحفوظ على طول والجديد بيكمّل في الخلفية
+// الحسابات والسوق: المحفوظ على طول، والجديد بيكمّل في الخلفية
 function fast(e) {
   const u = e.request.url, id = e.resultingClientId || e.clientId, old = saved(u), net = grab(u);
   let sent = false, stale = null;
   const res = new Promise(done => {
     const send = r => { if (!sent) { sent = true; done(r); } };
+    // فيه نسخة محفوظة؟ تتفتح على طول من غير ما نستنى النت (بطلبه: كلاود فلير بيوصل من فرنسا وكان بيستنى)
+    old.then(r => { if (r && !sent) { stale = r.clone(); send(r); } });
     net.then(x => send(x.res()), () => old.then(r => sent || send(r || offline(e.request))));
-    setTimeout(() => old.then(r => { if (r && !sent) { stale = r.clone(); send(r); } }), WAIT);
   });
   e.waitUntil(Promise.all([net, res]).then(([x]) => stale && stale.arrayBuffer().then(b => { if (!same(b, x.b) && id) return tell(id); })).catch(() => {}));
   return res;

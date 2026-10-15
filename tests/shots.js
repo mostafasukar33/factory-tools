@@ -108,7 +108,7 @@ function mktState() {
   op({t: 'inv', cid: 'p3', cname: 'عميل تجربة واحد', amt: 66000, ts: day(0, 10, 40)});
   op({t: 'exp', cat: 'بنزين', note: '', amt: 30000, ts: day(0, 11, 15)});
   op({t: 'exp', cat: 'أكل', note: 'غدا العمال', amt: 18500, ts: day(0, 12, 0)});
-  op({t: 'spay', sname: 'مورد تجربة', amt: 120000, ts: day(0, 12, 20)});
+  op({t: 'spay', sname: 'مورد تجربة الخامات', sid: 'v1', amt: 120000, ts: day(0, 12, 20)});
   op({t: 'cs', buyer: 'زبون تجربة', amt: 95000, ts: day(0, 13, 5)});
   op({t: 'pay', cid: 'p5', cname: 'ورشة تجربة', amt: 1000000, m: 'cash', ts: day(1, 9, 50)}, {done: true});
   op({t: 'pay', cid: 'p4', cname: 'محل تجربة الجديد', amt: 75000, m: 'cash', ts: day(1, 11, 30)}, {done: true});
@@ -116,7 +116,13 @@ function mktState() {
   op({t: 'exp', cat: 'نقل', note: '', amt: 45000, ts: day(1, 14, 0)});
   op({t: 'pay', cid: 'p1', cname: 'مؤسسة تجربة للمقاولات العمومية', amt: 1250000, m: 'tr', ts: day(2, 10, 0)}, {done: true});
   op({t: 'rt', cid: 'p6', cname: 'عميل تجربة تلاتة', amt: 19000, note: 'كرتونة وصلات', ts: day(2, 12, 0)}, {done: true});
-  return {u: 'https://script.google.com/macros/s/SHOT-MKT/exec', k: 'Shot-Key', dev: 'sh01', cursor: 1, ops, st, cust, newc: [], lastOk: NOW, cSort: 'owe'};
+  /* الموردين: نسخة من الحسابات (رصيد سابق + كشف آخر 3 شهور) */
+  const sup = {}, sp = (id, name, ob, from, r) => { sup[id] = {id, name, ob, from, r, bal: ob + r.reduce((a, x) => a + x[3], 0), upd: NOW}; };
+  sp('v1', 'مورد تجربة الخامات', 9000000, iso(100), [[iso(80), 'ppay', 'دفعة نقدي', -2500000, ''], [iso(30), 'pur', 'فاتورة مشتريات', 10100000, 'خامة تجربة 2000 كيلو'], [iso(10), 'ppay', 'دفعة تحويل', -6000000, ''], [iso(2), 'pur', 'فاتورة مشتريات', 1850000, 'خامة تجربة 300 كيلو، صبغة تجربة 20 كيلو']]);
+  sp('v2', 'مورد تجربة الكرتون', 0, iso(100), [[iso(22), 'pur', 'فاتورة مشتريات', 600000, 'كرتون تجربة 500 كرتونة'], [iso(5), 'ppay', 'دفعة نقدي', -400000, '']]);
+  sp('v3', 'مورد تجربة النحاس', 4350000, iso(100), [[iso(40), 'pur', 'فاتورة مشتريات', 2200000, 'نحاس تجربة 50 كيلو']]);
+  sp('v4', 'مورد تجربة البلاستيك', 0, iso(100), []);
+  return {u: 'https://script.google.com/macros/s/SHOT-MKT/exec', k: 'Shot-Key', dev: 'sh01', cursor: 1, ops, st, cust, sup, newc: [], lastOk: NOW, cSort: 'owe'};
 }
 
 /* ====================== الشاشات ======================
@@ -184,6 +190,11 @@ const SCREENS = [
   {name: 'mkt-cust-m', app: 'mkt', vp: MOB, full: true, go: mktGo('c')},
   {name: 'mkt-pay-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { nav('p/p2'); document.activeElement && document.activeElement.blur(); }); }},
   {name: 'mkt-spend-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { nav('x'); document.activeElement && document.activeElement.blur(); }); }},
+  {name: 'mkt-sup-m', app: 'mkt', vp: MOB, full: true, go: mktGo('v')},
+  {name: 'mkt-supacc-m', app: 'mkt', vp: MOB, full: true, go: mktGo('v/v1')},
+  {name: 'mkt-suppay-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { spTab = 'spay'; spPick = ''; nav('x'); document.activeElement && document.activeElement.blur(); }); }},
+  {name: 'mkt-suppick-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { spTab = 'spay'; spPick = 'v1'; spBack = 'v/v1'; nav('x'); document.activeElement && document.activeElement.blur(); }); }},
+  {name: 'mkt-sup-m-dark', app: 'mkt', vp: MOB, dark: true, go: mktGo('v')},
   {name: 'mkt-sale-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav('b'); document.activeElement && document.activeElement.blur(); }); }},
   {name: 'mkt-ok-m', app: 'mkt', vp: MOB, go: mktGo('ok/m_shot1')},
   {name: 'mkt-arch-m', app: 'mkt', vp: MOB, full: true, go: mktGo('a')},

@@ -1252,7 +1252,7 @@ const T0 = Date.now();
     const M = await DM.page('market.html' + mlink.slice(mlink.indexOf('#'))); await M.settle(1500);
     eq('تطبيق الشريك اتربط بالرابط بس، والرابط اتشال من العنوان', [M.url().includes('marketjoin'), await M.evaluate(() => !!S.u && !!S.k)], [false, true]);
     eq('العملاء: عملاء السوق بس بأرصدتهم', await M.evaluate(() => [...customers().values()].map(c => [c.name, c.bal]).sort()), (await A.evaluate(() => liveParties().filter(p => p.sec === 'mkt').map(p => [p.name, balance(p.id)]))).sort());
-    eq('الرئيسية: معاك كاش 0، ومفيهاش قايمة العملاء (ليها تبويب لوحدها) وفيه 4 تبويبات', [await M.textContent('#cashT'), await M.$('#lists'), await M.evaluate(() => document.querySelectorAll('#tabs button').length)], ['0', null, 4]);
+    eq('الرئيسية: معاك كاش 0، ومفيهاش قايمة العملاء (ليها تبويب لوحدها) وفيه 5 تبويبات (الموردين اتضافوا)', [await M.textContent('#cashT'), await M.$('#lists'), await M.evaluate(() => document.querySelectorAll('#tabs button').length)], ['0', null, 5]);
     await M.click('#tabs button[data-t=c]'); await M.settle(150);
     await M.click(`#lists .pt[data-c="${pid1}"]`);
     eq('شاشة الدفعة: خانة المبلغ مفتوحة على لوحة الأرقام', await M.evaluate(() => [document.activeElement.id, $('#amt').inputMode]), ['amt', 'decimal']);
@@ -1405,9 +1405,9 @@ const T0 = Date.now();
     eq('تعديل المصروف من الرئيسية بدوسة: الرقم القديم والنوع ظاهرين', [await M.inputValue('#eA'), await M.inputValue('#eNt')], ['200', 'بنزين']);
     await M.fill('#eA', '250'); await M.fill('#eNt', 'مواصلات'); await M.click('#eOk'); await M.settle(1200);
     eq('تليجرام: رسالة تعديل المصروف', tgTexts().pop(), '✏️ اتعدلت: مصروف بنزين: 200\nبقت: مصروف مواصلات: 250');
-    await M.evaluate(() => nav('')); await M.click('#qSp'); await M.click('#spT button[data-v=spay]'); await M.fill('#sn', 'مورد تجربة'); await M.fill('#amt', '3000'); await M.click('#spOk'); await M.settle(1200);
-    eq('دفعة لمورد (باسم مكتوب بإيده) اتسجلت: إشعار وفي القايمة تحت', [(await M.textContent('#toast')).includes('اتسجل: مورد تجربة'), tgTexts().pop(), await M.evaluate(() => $$('#spList .row').length)], [true, '🏭 دفع للمورد مورد تجربة 3,000', 1]);
-    eq('الأسامي اللي كتبها قبل كده بتطلع يختار منها (من غير قايمة موردين)', await M.evaluate(() => [...document.querySelectorAll('#spBody .chip')].map(c => c.textContent)), ['مورد تجربة']);
+    await M.evaluate(() => nav('')); await M.click('#qSp'); await M.click('#spT button[data-v=spay]'); await M.fill('#sn', 'مورد بإيده تجربة'); await M.fill('#amt', '3000'); await M.click('#spOk'); await M.settle(1200);
+    eq('دفعة لمورد (باسم مكتوب بإيده) اتسجلت: إشعار وفي القايمة تحت', [(await M.textContent('#toast')).includes('اتسجل: مورد بإيده تجربة'), tgTexts().pop(), await M.evaluate(() => $$('#spList .row').length)], [true, '🏭 دفع للمورد مورد بإيده تجربة 3,000', 1]);
+    eq('الأسامي اللي كتبها قبل كده بتطلع يختار منها (لو مش في قايمة الموردين)', await M.evaluate(() => [...document.querySelectorAll('#spBody .chip')].map(c => c.textContent)), ['مورد بإيده تجربة']);
     await M.evaluate(() => nav('')); await M.click('#qHand'); await M.fill('#hAmt', '1000'); await M.click('#hOk'); await M.settle(1200);
     eq('سلمت لمصطفى كاش اتسجلت (إشعار وفضل في الرئيسية)، وتليجرام', [await M.textContent('#toast'), await M.evaluate(() => scr.v), tgTexts().pop()], ['✔ اتسجل: سلمت لمصطفى 1,000', 'home', '🤝 سلّمك 1,000 كاش']);
     eq('معاه دلوقتي = كاش − مصروف − مورد − اللي سلمه', await M.evaluate(() => cashNow()), cash0 - 25000 - 300000 - 100000);
@@ -1874,6 +1874,45 @@ const T0 = Date.now();
     const tokC = X => X.evaluate(() => { const d = document.createElement('i'); document.body.appendChild(d); const g = v => (d.style.color = `var(${v})`, getComputedStyle(d).color); const r = [g('--green'), g('--tr'), g('--red')]; d.remove(); return r; });
     const mTok = await tokC(M);
     eq('الألوان واحدة في التطبيقين: الكاش أخضر والتحويل أزرق والمصروف أحمر', [await M.evaluate(() => { nav('', true); const c = k => { const r = document.querySelector('.row.' + k + ' .a .money'); return r ? getComputedStyle(r).color : null; }; return [c('d-in'), c('d-to')]; }), await tokC(A)], [mTok.slice(0, 2), mTok]);
+
+    sec('٢٢ب) حركة السوق: الموردين عند الشريك (نسخة من حساباتهم ودفعة بتنزل من الرصيد ومربوطة بالمورد)');
+    {
+      const VN = 'مورد تجربة', vid = await A.evaluate(n => liveParties().find(x => x.name === n).id, VN);
+      /* فاتورة قديمة (قبل الـ 3 شهور) وفاتورة جديدة علشان نتأكد إن الرصيد صح من أول الحساب */
+      await A.evaluate(id => { addEntry({party: id, kind: 'man', date: '2020-02-02', desc: 'حركة قديمة تجربة', dr: 0, cr: 70000}); addEntry({party: id, kind: 'man', date: todayISO(), desc: 'حركة جديدة تجربة', dr: 0, cr: 12345}); saveDB(); }, vid);
+      await bg(A, 'mkSync()'); await A.settle(300);
+      const supRows = sheets.mkt.sheets['الحركات'].rows.slice(1).filter(r => r[1] === 'sup' && r[4] !== 'نعم').map(r => Object.assign(JSON.parse(r[10]), {id: r[0]}));
+      eq('الشيت فيه كل الموردين، وكل واحد: الرصيد السابق + حركاته = اللي ليه في الحسابات بالقرش', await A.evaluate(L => { const s = liveParties().filter(p => p.sec === 'sup'); return [L.length === s.length, L.every(x => x.ob + x.r.reduce((a, r) => a + r[3], 0) === x.bal && x.bal === -balance(x.id)), L.every(x => x.r.every(r => r[0] >= x.from))]; }, supRows), [true, true, true]);
+      const v0 = supRows.find(x => x.id === vid);
+      eq('الحركة القديمة جوه الرصيد السابق مش في الكشف، والجديدة في الكشف', [v0.r.some(r => r[2] === 'حركة قديمة تجربة'), v0.r.some(r => r[2] === 'حركة جديدة تجربة')], [false, true]);
+      const n0 = sheets.mkt.sheets['الحركات'].rows.length; await bg(A, 'mkSync()');
+      eq('مزامنة تانية من غير تغيير مبتبعتش الموردين تاني', sheets.mkt.sheets['الحركات'].rows.length, n0);
+      await bg(M, 'sync()'); await M.settle(300);
+      await M.click('#tabs button[data-t=v]'); await M.settle(200);
+      const owe = await A.evaluate(() => -liveParties().filter(p => p.sec === 'sup').reduce((n, p) => n + Math.min(0, balance(p.id)), 0));
+      eq('تبويب الموردين: 5 زراير تحت، وفوق إجمالي اللي ليهم زي الحسابات، وكل الموردين في القايمة', await M.evaluate(() => [$$('#tabs button').length, $('.ctot .money').textContent, $$('#vL .pt').length]), [5, await M.evaluate(p => fmt(p), owe), supRows.length]);
+      await M.click(`#vL .pt[data-v="${vid}"]`); await M.settle(200);
+      const bal0 = await M.evaluate(id => suppliers().get(id).bal, vid);
+      eq('حساب المورد: رصيده وكشفه وآخر سطر رصيده = اللي ليه', await M.evaluate(([id, b]) => [scr.v, $('.cust .money').textContent, $$('.sst .row').length > 1, $('.sst .row small:last-child') && $$('.sst .row')[0].querySelector('.a small').textContent], [vid, bal0]), ['sup', await M.evaluate(b => fmt(b), bal0), true, await M.evaluate(b => fmt(b), bal0)]);
+      await M.click('#vPay'); await M.settle(200);
+      eq('دفعتله: صفحة دفعت لمورد والمورد مختار ورصيده ظاهر وخانة المبلغ مفتوحة', await M.evaluate(n => [scr.v, spTab, $('#sn').value === n, !!$('.vsel'), document.activeElement.id], VN), ['spend', 'spay', true, true, 'amt']);
+      await M.fill('#amt', '500'); await M.click('#spOk'); await M.settle(800);
+      const op = await M.evaluate(() => liveOps().filter(o => o.t === 'spay').sort((a, b) => b.cr - a.cr || b.ts - a.ts)[0]);
+      eq('الدفعة متسجلة بالمورد (sid) ونزلت من رصيده عند الشريك على طول', [op.sid, op.amt, await M.evaluate(id => suppliers().get(id).bal, vid)], [vid, 50000, bal0 - 50000]);
+      await M.click('#bBack'); await M.settle(200);
+      eq('الرجوع من دفعت لمورد بيرجع لحساب المورد، وفيه الدفعة "عند مصطفى"', await M.evaluate(() => [scr.v, $('#main').textContent.includes('ولسه عند مصطفى')]), ['sup', true]);
+      /* اسم مكتوب بإيده مش في القايمة: من غير sid زي الأول */
+      await M.evaluate(() => nav('')); await M.click('#qSp'); await M.click('#spT button[data-v=spay]'); await M.settle(150);
+      eq('القايمة بتظهر في دفعت لمورد وبتتفلتر بالكتابة', [await M.evaluate(() => $$('#vpk .vlist button').length), (await M.fill('#sn', 'مورد مش موجود خالص'), await M.evaluate(() => [$$('#vpk .vlist button').length, $('#vpk').textContent.includes('مصطفى يربطه')]))], [supRows.length, [0, true]]);
+      await M.fill('#amt', '100'); await M.click('#spOk'); await M.settle(800);
+      eq('المكتوب بإيده: من غير sid', await M.evaluate(() => { const o = liveOps().find(o => o.sname === 'مورد مش موجود خالص'); return [!!o, 'sid' in o]; }), [true, false]);
+      await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(300);
+      eq('في الوارد: دفعة المورد المختار مربوطة على طول (من غير ربط)، والمكتوبة بإيده لسه محتاجة ربط', await A.evaluate(([id]) => { const L = mkPending().filter(o => o.t === 'spay'); return [mkPid(L.find(o => o.sid === id)), mkPid(L.find(o => o.sname === 'مورد مش موجود خالص'))]; }, [vid]), [vid, '']);
+      eq('مفيش حاجة دخلت حساب المورد لوحدها', await A.evaluate(id => -balance(id), vid), v0.bal);
+      /* نشيل الدفعتين علشان باقي الاختبارات */
+      await M.evaluate(() => { liveOps().filter(o => o.t === 'spay' && (o.sid || o.sname === 'مورد مش موجود خالص') && opState(o) !== 'done').forEach(o => { o.del = true; bump(o); }); save(); });
+      await bg(M, 'sync()'); await bg(A, 'mkSync()');
+    }
 
     }   // نهاية أقسام السوق
     }   // نهاية RUN.sync

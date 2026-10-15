@@ -6028,7 +6028,9 @@ function mkAlias() {
   return a;
 }
 /* الحساب اللي العملية بتاعته. فاضي = لسه محتاج ربط (أو مفيش حساب أصلاً زي المصروف) */
-const mkPid = (o, al) => { al = al || mkAlias(); const p = o.t === 'spay' ? al['s:' + norm(o.sname)] : al[o.cid] || o.cid, x = p && P.get(p); return x && !x.del ? p : ''; };
+/* دفعة المورد اللي الشريك اختار مورّدها من القايمة (sid) بتبقى مربوطة بالحساب ده على طول، والمكتوبة بإيده باسمها زي الأول */
+const mkSidOk = o => { const x = o.sid && P.get(o.sid); return !!(x && !x.del && x.sec === 'sup'); };
+const mkPid = (o, al) => { if (o.t === 'spay' && mkSidOk(o)) return o.sid; al = al || mkAlias(); const p = o.t === 'spay' ? al['s:' + norm(o.sname)] : al[o.cid] || o.cid, x = p && P.get(p); return x && !x.del ? p : ''; };
 const mkLive = () => Object.values(mkDb().ops).filter(o => !o.del && MK_T[o.t]);
 const mkPending = () => mkLive().filter(o => mkState(o) === 'new');
 function mkSetSt(opId, ch) {
@@ -6283,6 +6285,39 @@ function mkCustRows() {
   Object.keys(d.cs).forEach(id => { if (!seen.has(id) && d.cs[id] !== '-') out.push({row: {id, kind: 'cust', upd: now, del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-'}); });
   return out;
 }
+/* حسابات الموردين كلها (بطلب صاحب المشروع 15/10/2026): نسخة للشريك يشوفها بس. كل مورد سطر sup فيه:
+   bal = اللي ليه دلوقتي، ob = اللي كان ليه قبل from، وr = حركاته من أول الشهر من 3 شهور [تاريخ، نوع، بيان، اللي ليه زاد بكام (بالسالب لو قل)، ملاحظة].
+   ob + مجموع r = bal بالظبط، فالرصيد صح من أول الحساب. التوقيت upd زي العملاء (1e13 + آخر تعديل) */
+const SUP_LBL = {pur: 'فاتورة مشتريات', rpur: 'مرتجع مشتريات'};
+const supFrom = () => { const [y, m] = todayISO().split('-').map(Number), d = new Date(y, m - 4, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; };
+const strHash = t => { let h = 2166136261; for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 16777619); return (h >>> 0).toString(36) + '.' + t.length; };
+function mkSupData(p, ents, from) {
+  let ob = 0, bal = 0; const r = [];
+  ents.forEach(e => {
+    const x = -((e.dr || 0) - (e.cr || 0)); bal += x;
+    if (e.kind === 'open' || e.date < from) { ob += x; return; }
+    const r0 = rowsOf(e)[0] || {};
+    const note = isDoc(e) ? (e.lines || []).map(l => `${l.name} ${fmtQ(l.qty)} ${l.unit || ''}`.trim()).join('، ') : r0.ref || '';
+    r.push([e.date, e.kind, SUP_LBL[e.kind] || r0.desc || e.desc || '', x, note.length > 140 ? note.slice(0, 139) + '…' : note]);
+  });
+  /* خانة الشيت 50 ألف حرف: لو مورد حركاته كتير قوي، الأقدم بيدخل في ob والرصيد بيفضل زي ما هو */
+  while (r.length && JSON.stringify(r).length > 40000) { const o = r.shift(); ob += o[3]; from = r.length ? r[0][0] : todayISO(); }
+  return {name: p.name, bal, ob, from, r};
+}
+function mkSupRows() {
+  let ver = 0; for (const k of ['parties', 'entries', 'sets']) for (const x of db[k]) if (x.upd > ver) ver = x.upd;
+  const d = mkDb(), ss = d.ss = d.ss || {}, now = 1e13 + ver, from = supFrom(), out = [], seen = new Set(), by = new Map();
+  const sups = liveParties().filter(p => p.sec === 'sup');
+  sups.forEach(p => by.set(p.id, []));
+  for (const e of db.entries) if (!e.del && by.has(e.party)) by.get(e.party).push(e);
+  sups.forEach(p => {
+    seen.add(p.id);
+    const data = mkSupData(p, by.get(p.id).sort(entCmp), from), sig = 's1|' + strHash(JSON.stringify(data));
+    if (ss[p.id] !== sig) out.push({row: {id: p.id, kind: 'sup', upd: now, del: false, view: ['', cell(p.name), data.bal / 100, 'رصيد مورد', ''], data}, sig, box: 'ss'});
+  });
+  Object.keys(ss).forEach(id => { if (!seen.has(id) && ss[id] !== '-') out.push({row: {id, kind: 'sup', upd: now, del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-', box: 'ss'}); });
+  return out;
+}
 const mkStView = s => { const o = mkDb().ops[s.op] || {}; return ['', cell(o.cname || o.sname || o.cat || o.buyer || (o.t === 'hand' ? 'تسليم كاش' : '')), o.amt ? o.amt / 100 : '', 'حالة', cell([s.done ? 'اتنقلت' : '', s.ok ? 'وصل' : '', s.back ? 'راجعة: ' + s.back : ''].filter(Boolean).join(' — '))]; };
 let mkBusy = false, mkErr = '', mkLastOk = 0, mkCur = null, mkQ = null;
 /* لو فيه مزامنة شغالة، الطلب الجديد مبيضيعش: بيستنى اللي شغالة تخلص ويعيد مرة واحدة (علشان الرصيد الجديد بعد النقل يتبعت على طول، مش بعد 8 ثواني) */
@@ -6297,20 +6332,23 @@ async function mkSyncOnce() {
   let fresh = [], ch = false, edits = [];
   try {
     const d = mkDb();
-    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}}); ch = true; }
+    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}, ss: {}}); ch = true; }
     ensureMktVault();
     if (mkReconcile()) ch = true;
     if (mkWantPrune()) ch = true;
     const call = body => callSheet(body, cr.u, cr.k, 30000);
-    const sts = Object.values(d.st).filter(s => s.sy !== s.upd), cus = mkCustRows();
+    const sts = Object.values(d.st).filter(s => s.sy !== s.upd), cus = mkCustRows().concat(mkSupRows());
     const all = sts.map(s => ({row: {id: s.id, kind: 'st', upd: s.upd, del: false, view: mkStView(s), data: stripLocal(s)}, s})).concat(cus);
-    for (let i = 0; i < all.length; i += 100) {
-      const part = all.slice(i, i + 100);
+    /* دفعات لحد 100 سطر أو ~400 ألف حرف (سطور الموردين فيها كشف حسابهم) */
+    const parts = []; let cur = [], sz = 0;
+    all.forEach(x => { const n = JSON.stringify(x.row.data).length; if (cur.length && (cur.length >= 100 || sz + n > 400000)) { parts.push(cur); cur = []; sz = 0; } cur.push(x); sz += n; });
+    if (cur.length) parts.push(cur);
+    for (const part of parts) {
       const j = await call({action: 'push', who: 'a', rows: part.map(x => x.row)});
       if (db !== d0) return false;
       if (!j || j.ok !== true) throw new Error(j && j.error === 'key' ? 'key' : j && j.error ? String(j.error) : 'push');
       const ack = new Set(j.ack || []);
-      part.forEach(x => { if (!ack.has(x.row.id)) return; if (x.s) { if (x.s.upd === x.row.upd) x.s.sy = x.s.upd; } else d.cs[x.row.id] = x.sig; });
+      part.forEach(x => { if (!ack.has(x.row.id)) return; if (x.s) { if (x.s.upd === x.row.upd) x.s.sy = x.s.upd; } else (x.box ? d[x.box] : d.cs)[x.row.id] = x.sig; });
       ch = true;
     }
     const first = !d.cursor;

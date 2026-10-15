@@ -58,7 +58,7 @@ button,input,textarea{font-family:inherit;color:inherit}
 main{padding:12px 12px 28px;max-width:560px;margin:0 auto}
 main.tabbed{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 /* شريط التبويبات تحت */
-#tabs{position:fixed;bottom:0;inset-inline:0;z-index:30;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+#tabs{position:fixed;bottom:0;inset-inline:0;z-index:30;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
 #tabs button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 0 6px;font-size:var(--f1);font-weight:700;color:var(--sub);cursor:pointer;min-height:54px;position:relative}
 #tabs button svg{width:23px;height:23px}
 #tabs button.on{color:var(--gold-d)}
@@ -189,6 +189,18 @@ html[data-theme=dark] .b-exp,html[data-theme=dark] .b-sup{color:#111}
 .cat:active,.cat.on{background:var(--gold-l);border-color:var(--gold)}
 .inp2{width:100%;height:48px;border:1px solid var(--field);border-radius:11px;background:var(--card);padding:0 14px;font-size:var(--f3);outline:none;margin-top:10px}
 .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+/* اختيار المورد في "دفعت لمورد": قايمة بتتفلتر بالكتابة، واللي اتختار بيظهر رصيده */
+.vlist{margin-top:8px;max-height:232px;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.vlist button{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:46px;padding:6px 14px;border:0;border-bottom:1px solid var(--row);background:none;text-align:right;font-size:var(--f2);font-weight:700;color:var(--ink);cursor:pointer}
+.vlist button:last-child{border-bottom:0}
+.vlist button .money{color:var(--sub);font-size:var(--f2)}
+.vsel{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 14px;border-radius:12px;background:var(--sup-l);color:var(--sup);font-weight:700;font-size:var(--f2)}
+.vsel .money{flex:1;font-size:var(--f3)}
+.vsel button{border:1px solid var(--sup);background:var(--card);color:var(--sup);border-radius:9px;padding:4px 12px;font-weight:700;font-size:var(--f1);cursor:pointer}
+/* كشف حساب المورد: الرصيد بعد كل سطر تحت المبلغ، والرصيد السابق آخر سطر */
+.sst .row{cursor:default}
+.sst .row .a small{display:block;color:var(--sub);font-size:var(--f1);font-weight:700;direction:ltr;text-align:left}
+.sst .row.ob{background:var(--row)}
 .chip{border:1px solid var(--gold);background:var(--gold-l);border-radius:20px;padding:4px 13px;font-weight:700;font-size:var(--f2);cursor:pointer}
 .chip.on{background:var(--gold);color:#241b00}
 .seg{display:grid;grid-template-columns:repeat(var(--n,2),1fr);gap:4px;background:var(--row);border-radius:11px;padding:3px}
@@ -361,7 +373,9 @@ body{font-size:var(--f3);line-height:1.6}
   - حالة العملية بيكتبها مصطفى في سجل لوحده (st_<id>): ok/ov = التحويل وصل، done = اتنقلت للحسابات، back/bv = رجّعها بملاحظة.
     ov و bv بيتقارنوا بـ upd بتاع العملية، فلو الشريك عدّلها بعد كده الحالة القديمة بتتلغي لوحدها.
   - أرصدة عملاء السوق (cust) بيبعتها برنامج الحسابات. الرصيد المعروض = رصيده في الحسابات − الدفعات اللي اتسجلت هنا ولسه متنقلتش.
-  - الشاشات: تبويبات تحت (الرئيسية / العملاء / الأرشيف / الإعدادات). التعديل والمسح بنافذة من تحت (editSheet) على أي حركة لسه متنقلتش.
+  - حسابات الموردين (sup) نسخة من الحسابات بيبعتها برنامج الحسابات (الرصيد + كشف آخر 3 شهور). الرصيد المعروض = اللي ليه في الحسابات − الدفعات اللي اتسجلت هنا ولسه متنقلتش.
+    دفعة المورد اللي اختار مورّدها من القايمة فيها sid (id حساب المورد) فبتوصل مصطفى مربوطة، والمكتوبة بإيده بالاسم بس زي الأول.
+  - الشاشات: تبويبات تحت (الرئيسية / العملاء / الموردين / الأرشيف / الإعدادات). التعديل والمسح بنافذة من تحت (editSheet) على أي حركة لسه متنقلتش.
 */
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -407,7 +421,7 @@ const LS = 'fo_mkt_v1';
 let S;
 function load() {
   let d = null; try { d = JSON.parse(localStorage.getItem(LS)); } catch (e) {}
-  S = Object.assign({u: '', k: '', dev: '', cursor: 0, ops: {}, st: {}, cust: {}, newc: [], lastOk: 0}, d || {});
+  S = Object.assign({u: '', k: '', dev: '', cursor: 0, ops: {}, st: {}, cust: {}, sup: {}, newc: [], lastOk: 0}, d || {});
   if (!S.dev) S.dev = Array.from(crypto.getRandomValues(new Uint8Array(3)), x => x.toString(36).padStart(2, '0')).join('');
 }
 function save() { try { localStorage.setItem(LS, JSON.stringify(S)); stoWarn(); } catch (e) { toast('الموبايل مش قادر يحفظ. كلّم مصطفى.', 6000); } }
@@ -432,7 +446,7 @@ const unb64u = str => decodeURIComponent(escape(atob(str.replace(/-/g, '+').repl
   let o = null; try { o = JSON.parse(unb64u(m[1])); } catch (e) {}
   history.replaceState(null, '', location.pathname);
   if (!o || !o.u || !o.k) { setTimeout(() => toast('الرابط ناقص. اطلب من مصطفى يبعته تاني.', 8000), 300); return; }
-  if (S.u !== o.u) { S.cursor = 0; S.st = {}; S.cust = {}; Object.values(S.ops).forEach(x => { delete x.sy; }); }
+  if (S.u !== o.u) { S.cursor = 0; S.st = {}; S.cust = {}; S.sup = {}; Object.values(S.ops).forEach(x => { delete x.sy; }); }
   S.u = o.u; S.k = o.k; S.bad = false; save();
   setTimeout(() => toast('✔ التطبيق اتربط. ممكن تحطه على الشاشة الرئيسية.', 5000), 300);
 })();
@@ -490,6 +504,18 @@ function wantList() {
   return L.sort((a, b) => (!!a.paid - !!b.paid) || b.want.amt - a.want.amt);
 }
 const custOps = (cid, al) => custAll().filter(o => (al[o.cid] || o.cid) === cid);
+/* الموردين: نسخة من حساباتهم عند مصطفى. bal = اللي ليه، ob = اللي كان ليه قبل from، r = [تاريخ، نوع، بيان، اللي ليه زاد بكام، ملاحظة] */
+const supLive = () => Object.values(S.sup).filter(x => !x.del && x.name);
+const supByName = () => new Map(supLive().map(x => [norm(x.name), x.id]));
+/* دفعة المورد بتاعة مين: المختار من القايمة (sid)، وإلا نفس الاسم بالظبط */
+const supIdOf = (o, byN) => o.sid && S.sup[o.sid] && !S.sup[o.sid].del ? o.sid : (byN || supByName()).get(norm(o.sname)) || '';
+const supPend = o => o.t === 'spay' && !['done', 'rm'].includes(opState(o));
+function suppliers() {
+  const m = new Map(), byN = supByName();
+  supLive().forEach(x => m.set(x.id, {id: x.id, name: x.name, bal: x.bal || 0, ob: x.ob || 0, from: x.from || '', r: Array.isArray(x.r) ? x.r : [], pend: []}));
+  liveOps().filter(supPend).forEach(o => { const v = m.get(supIdOf(o, byN)); if (v) { v.bal -= o.amt; v.pend.push(o); } });
+  return m;
+}
 /* اللي معايا كاش دلوقتي = كاش حصّلته − مصروفات − دفعات موردين − كاش سلمته لمصطفى (التحويلات مش على الشريك) */
 /* بيع كاش اتحوّل لمصطفى على طول (m: 'tr'). القديم من غير m = كاش مع الشريك */
 const csTr = o => o.t === 'cs' && o.m === 'tr';
@@ -529,7 +555,7 @@ async function callSheet(body, ms = 25000) {
 }
 function merge(r) {
   if (!r || !r.id || !r.data) return false;
-  const box = r.kind === 'op' ? S.ops : r.kind === 'st' ? S.st : r.kind === 'cust' ? S.cust : null;
+  const box = r.kind === 'op' ? S.ops : r.kind === 'st' ? S.st : r.kind === 'cust' ? S.cust : r.kind === 'sup' ? S.sup : null;
   if (!box) return false;
   const cur = box[r.id];
   if (cur && cur.upd > r.upd) return false;
@@ -617,12 +643,13 @@ const SVG = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const IC = {
   home: SVG('<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>'),
   c: SVG('<circle cx="9" cy="8" r="3.2"/><path d="M3 20v-1.5a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5V20"/><path d="M16 4.6a3.2 3.2 0 0 1 0 6.2M21 20v-1.5a5 5 0 0 0-3.5-4.8"/>'),
+  v: SVG('<path d="M2 7h11v9H2z"/><path d="M13 10h4l3 3v3h-7"/><circle cx="6" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/>'),
   a: SVG('<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10h14V9M10 13h4"/>'),
   s: SVG('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>')
 };
-const TABS = [['home', 'الرئيسية'], ['c', 'العملاء'], ['a', 'الأرشيف'], ['s', 'الإعدادات']];
-const TAB_OF = {home: 'home', c: 'c', a: 'a', day: 'a', mon: 'a', s: 's'};
-const TITLE = {home: 'حركة السوق', c: 'العملاء', a: 'الأرشيف', day: 'الأرشيف', mon: 'الأرشيف', s: 'الإعدادات', pay: 'دفعة', spend: 'صرفت', sale: 'بيع كاش من المصنع', ok: ''};
+const TABS = [['home', 'الرئيسية'], ['c', 'العملاء'], ['v', 'الموردين'], ['a', 'الأرشيف'], ['s', 'الإعدادات']];
+const TAB_OF = {home: 'home', c: 'c', v: 'v', a: 'a', day: 'a', mon: 'a', s: 's'};
+const TITLE = {home: 'حركة السوق', c: 'العملاء', v: 'الموردين', sup: 'حساب مورد', a: 'الأرشيف', day: 'الأرشيف', mon: 'الأرشيف', s: 'الإعدادات', pay: 'دفعة', spend: 'صرفت', sale: 'بيع كاش من المصنع', ok: ''};
 let scr = {v: 'home'};
 function dotHtml() {
   if (!S.u) return '';
@@ -633,11 +660,11 @@ function dotHtml() {
   return '<span class="dot" id="dot"><i></i>متصل</span>';
 }
 function drawTop() {
-  const t = $('#top'), sub = scr.v === 'pay' || scr.v === 'spend' || scr.v === 'sale' || scr.v === 'ok';
+  const t = $('#top'), sub = scr.v === 'pay' || scr.v === 'sup' || scr.v === 'spend' || scr.v === 'sale' || scr.v === 'ok';
   drawStuck();
   t.innerHTML = sub ? `<button class="back" id="bBack" type="button">→ رجوع</button>${TITLE[scr.v] ? `<b style="font-size:var(--f3)">${TITLE[scr.v]}</b>` : ''}${dotHtml()}`
     : `${LOGO}<h1>${TITLE[scr.v] || 'حركة السوق'}${scr.v === 'home' ? '<small>فلاش أون</small>' : ''}</h1>${dotHtml()}`;
-  if ($('#bBack')) $('#bBack').onclick = () => nav(scr.v === 'pay' ? 'c' : '');
+  if ($('#bBack')) $('#bBack').onclick = () => nav(scr.v === 'pay' ? 'c' : scr.v === 'sup' ? 'v' : scr.v === 'spend' ? spBack : '');
 }
 function drawTabs() {
   const k = TAB_OF[scr.v], el = $('#tabs');
@@ -662,19 +689,21 @@ const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 function route() {
   mPush = false; hideModal();
   const h = decodeURIComponent(location.hash.slice(1)), [a, b] = h.split('/');
-  scr = a === 'p' && b ? {v: 'pay', cid: b} : a === 'ok' && b && S.ops[b] ? {v: 'ok', op: b} : a === 'x' ? {v: 'spend'} : a === 'b' ? {v: 'sale'} : a === 'c' ? {v: 'c'} : a === 's' ? {v: 's'} : a === 'a' ? (isDay(b) ? {v: 'day', day: b} : /^\d{4}-\d{2}$/.test(b || '') ? {v: 'mon', mon: b} : {v: 'a'}) : {v: 'home'};
+  scr = a === 'p' && b ? {v: 'pay', cid: b} : a === 'ok' && b && S.ops[b] ? {v: 'ok', op: b} : a === 'x' ? {v: 'spend'} : a === 'b' ? {v: 'sale'} : a === 'c' ? {v: 'c'} : a === 'v' ? (b ? {v: 'sup', sid: b} : {v: 'v'}) : a === 's' ? {v: 's'} : a === 'a' ? (isDay(b) ? {v: 'day', day: b} : /^\d{4}-\d{2}$/.test(b || '') ? {v: 'mon', mon: b} : {v: 'a'}) : {v: 'home'};
   render(); window.scrollTo(0, 0);
 }
 function render() {
   drawTop(); drawTabs();
   if (!S.u) { $('#main').innerHTML = `<div class="gate">${LOGO}<h2>حركة السوق</h2><p>التطبيق ده لسه متربطش.<br>اطلب من مصطفى يبعتلك الرابط على الواتساب وافتحه من هنا.</p></div>`; return; }
-  ({pay: drawPay, ok: drawSaved, spend: drawSpend, sale: drawSale, c: drawCustomers, a: drawArchive, mon: drawMonth, day: drawDay, s: drawSettings}[scr.v] || drawHome)();
+  ({pay: drawPay, ok: drawSaved, spend: drawSpend, sale: drawSale, c: drawCustomers, v: drawSuppliers, sup: drawSup, a: drawArchive, mon: drawMonth, day: drawDay, s: drawSettings}[scr.v] || drawHome)();
 }
 /* لما يوصل جديد من الشيت: نرسم من غير ما نبوّظ اللي بيكتبه */
 function refresh() {
   if ($('#mask').classList.contains('on')) return;
   if (scr.v === 'c') drawCustomers($('#q') ? $('#q').value : '');
   else if (scr.v === 'pay') drawPayInfo();
+  else if (scr.v === 'v') drawSuppliers($('#vq') ? $('#vq').value : '');
+  else if (scr.v === 'sup') drawSup();
   else if (scr.v === 'ok') drawSaved();
   else if (scr.v === 'spend') drawSpendList();
   else if (scr.v === 'home') drawHome();
@@ -729,7 +758,7 @@ function drawHome() {
   $$('#want .wr[data-c]').forEach(r => r.onclick = () => { pyTab = 'pay'; nav('p/' + r.dataset.c); });
   $('#kBtn').onclick = closeDay;
   $('#qPay').onclick = () => { nav('c', true); setTimeout(() => $('#q') && $('#q').focus(), 120); };
-  $('#qSp').onclick = () => { spTab = 'exp'; nav('x'); };
+  $('#qSp').onclick = () => { spTab = 'exp'; spPick = ''; spBack = ''; nav('x'); };
   $('#qHand').onclick = handModal;
   $('#qSale').onclick = () => nav('b');
   $('#goArch').onclick = () => nav('a', true);
@@ -829,6 +858,42 @@ function newCustomer() {
     const c = {id: 'n_' + newId().slice(2), name, ts: nowS()};
     S.newc.push(c); save(); closeModal(); pyTab = 'pay'; nav('p/' + c.id);
   };
+}
+
+/* ---------- الموردين (نسخة من حساباتهم عند مصطفى): الإجمالي فوق والقايمة، ودوسة بتفتح حساب المورد ---------- */
+const supWord = b => b > 0 ? 'ليه' : b < 0 ? 'عليه' : 'خالص';
+const supLast = v => { const d = v.r.length ? v.r[v.r.length - 1][0] : '', n = daysAgo(d); return v.pend.length ? `⏳ ${v.pend.length === 1 ? 'دفعة' : v.pend.length + ' دفعات'} عند مصطفى` : n < 0 ? 'مفيش حركات آخر 3 شهور' : n === 0 ? 'آخر حركة النهارده' : n === 1 ? 'آخر حركة امبارح' : `آخر حركة من ${n} ${n <= 10 ? 'أيام' : 'يوم'}`; };
+function drawSuppliers(q0) {
+  const all = [...suppliers().values()].sort((a, b) => b.bal - a.bal || a.name.localeCompare(b.name, 'ar'));
+  const owe = all.reduce((a, v) => a + (v.bal > 0 ? v.bal : 0), 0), n = all.filter(v => v.bal > 0).length;
+  $('#main').innerHTML = `<section class="ctot"><div class="m"><span>إجمالي اللي ليهم</span><small>${n} ${n === 1 ? 'مورد ليه' : n <= 10 ? 'موردين ليهم' : 'مورد ليهم'} فلوس</small></div><b class="money">${fmt(owe)}</b></section>
+    <input class="search" id="vq" type="search" placeholder="🔍 دوّر على مورد…" autocomplete="off" value="${esc(q0 || '')}">
+    <div id="vL"></div>`;
+  const draw = () => {
+    const q = norm($('#vq').value), l = q ? all.filter(v => norm(v.name).includes(q)) : all;
+    $('#vL').innerHTML = !all.length ? '<div class="empty">لسه الموردين منزلوش. استنى ثواني والنت شغال.</div>'
+      : `<div class="lbl"><span>${q ? 'نتيجة البحث' : 'كل الموردين'} (${l.length})</span></div>` + (l.length ? `<div class="ctb"><div class="pth"><span>المورد</span><span>ليه</span></div>${l.map(v => `<div class="pt" data-v="${esc(v.id)}"><div class="m"><b class="nm">${esc(v.name)}</b><small class="lp">${esc(supLast(v))}</small></div><div class="a"><b class="${v.bal > 0 ? 'money' : 'z'}">${v.bal > 0 ? fmt(v.bal) : v.bal < 0 ? 'عليه ' + fmt(v.bal) : '—'}</b></div></div>`).join('')}</div>` : '<div class="empty">مفيش مورد بالاسم ده</div>');
+    $$('#vL .pt[data-v]').forEach(r => r.onclick = () => nav('v/' + r.dataset.v));
+  };
+  draw(); $('#vq').oninput = draw;
+}
+/* حساب المورد: رصيده، الدفعات اللي سجلتها ولسه عند مصطفى، وكشف الحساب (الأحدث فوق) بالرصيد بعد كل سطر */
+let vShow = 30;
+function drawSup() {
+  const v = suppliers().get(scr.sid);
+  if (!v) return nav('v', true);
+  let run = v.ob; const rows = v.r.map(x => { run += x[3]; return {d: x[0], k: x[1], t: x[2], x: x[3], n: x[4] || '', run}; }).reverse(), shown = rows.slice(0, vShow);
+  $('#main').innerHTML = `<div class="cust"><b>${esc(v.name)}<small class="lp">${esc(supLast(v))}</small></b><div><span>${supWord(v.bal)}</span>${v.bal ? `<b class="money">${fmt(v.bal)}</b>` : ''}</div></div>
+    <button class="big b-sup" id="vPay" type="button">🏭 دفعتله</button>
+    ${v.pend.length ? `<div class="lbl" style="margin-top:16px"><span>دفعات سجلتها ولسه عند مصطفى (${v.pend.length})</span><span>نزلت من رصيده</span></div><div class="list">${v.pend.sort((a, b) => b.ts - a.ts).map(o => opRow(o, true, true)).join('')}</div>` : ''}
+    <div class="lbl" style="margin-top:16px"><span>كشف الحساب${v.from ? ' من ' + dispDate(v.from) : ''}</span><span>الرصيد بعدها</span></div>
+    <div class="list sst">${shown.map(r => `<div class="row ${r.x > 0 ? 'd-inv' : 'd-out'}"><div class="m"><b>${esc(r.t)}</b><small>${dispDate(r.d)}${r.n ? ' · ' + esc(r.n) : ''}</small></div><div class="a"><b class="money">${r.x < 0 ? '−' : '+'}${fmt(r.x)}</b><small>${fmt(r.run)}${r.run < 0 ? ' عليه' : ''}</small></div></div>`).join('')}
+      ${rows.length > shown.length ? '' : `<div class="row ob"><div class="m"><b>رصيد سابق</b><small>${v.from ? 'قبل ' + dispDate(v.from) : ''}</small></div><div class="a"><b class="money">${fmt(v.ob)}</b><small>${supWord(v.ob)}</small></div></div>`}</div>
+    ${rows.length > shown.length ? '<button class="more" id="vMore" type="button" style="margin-top:10px">اعرض أقدم</button>' : ''}
+    <p class="hint">ده نفس حساب المورد عند مصطفى. أي دفعة بتسجلها بتنزل من رصيده على طول.</p>`;
+  $('#vPay').onclick = () => { spTab = 'spay'; spPick = v.id; spBack = 'v/' + v.id; nav('x'); };
+  if ($('#vMore')) $('#vMore').onclick = () => { vShow += 30; drawSup(); };
+  bindOps('#main');
 }
 
 /* ---------- شاشة الدفعة (دوسة على الزرار بتحفظ على طول) ---------- */
@@ -976,7 +1041,7 @@ function editSheet(o) {
     if (o.t === 'exp') { const w = $('#eNt').value.trim().replace(/\s+/g, ' '); if (!w) return toast('اكتب المصروف ده إيه'); Object.assign(ch, {cat: w, note: ''}); }
     if (o.t === 'rt') { ch.note = $('#eRt').value.trim().replace(/\s+/g, ' '); if (!ch.note) return toast('اكتب الملاحظة'); }
     if (o.t === 'cs') { ch.buyer = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.buyer) return toast('اكتب اسم المشتري'); }
-    if (o.t === 'spay') { ch.sname = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.sname) return toast('اكتب اسم المورد'); }
+    if (o.t === 'spay') { ch.sname = $('#eN').value.trim().replace(/\s+/g, ' '); if (!ch.sname) return toast('اكتب اسم المورد'); if (norm(ch.sname) !== norm(o.sname)) ch.sid = supByName().get(norm(ch.sname)) || ''; }
     if (Object.keys(ch).every(k => (o[k] ?? '') === ch[k])) return closeModal();
     Object.assign(o, ch); bump(o); save(); sync(); closeModal(); toast('اتعدّلت ✔'); refresh();
   };
@@ -1019,7 +1084,7 @@ function drawSaved() {
 }
 
 /* ---------- صرفت: مصروف أو دفعة لمورد (بتتخصم من اللي معايا) ---------- */
-let spTab = 'exp';
+let spTab = 'exp', spPick = '', spBack = '';   // spPick = المورد اللي اختاره من القايمة (أو من صفحة حسابه)
 /* أسامي الموردين اللي كتبها قبل كده (الأحدث الأول) علشان يختار منها بدل ما يكتب */
 function spNames() {
   const seen = new Map();
@@ -1032,7 +1097,7 @@ function drawSpend() {
     <div id="spBody"></div>
     <div id="spList"></div>
     <p class="hint">بتتخصم من اللي معاك كاش (${fmtN(cashNow())})</p>`;
-  $$('#spT button').forEach(b => b.onclick = () => { spTab = b.dataset.v; $$('#spT button').forEach(x => x.classList.toggle('on', x === b)); body(); drawSpendList(); });
+  $$('#spT button').forEach(b => b.onclick = () => { spTab = b.dataset.v; spPick = ''; $$('#spT button').forEach(x => x.classList.toggle('on', x === b)); body(); drawSpendList(); });
   const body = () => {
     const amtBox = `<label class="amt ${spTab}" for="amt"><input id="amt" type="text" inputmode="decimal" autocomplete="off" placeholder="0"><em>جنيه</em></label>`;
     if (spTab === 'exp') {
@@ -1042,15 +1107,27 @@ function drawSpend() {
       $('#spOk').onclick = () => saveSpend('exp', {cat: $('#nt').value.trim().replace(/\s+/g, ' '), note: ''});
       $('#amt').focus(); setTimeout(() => { const i = $('#amt'); if (i && document.activeElement !== i) i.focus(); }, 120);
     } else {
-      const names = spNames();
-      $('#spBody').innerHTML = `<label class="wh" for="sn" style="margin-top:0">اسم المورد</label><input class="inp2 spay" id="sn" autocomplete="off" placeholder="اكتب اسم المورد" style="margin-top:6px">
+      /* المورد من القايمة (نسخة الحسابات)، ولو مش موجود يكتب اسمه بإيده زي الأول (والأسامي اللي كتبها قبل كده تحت) */
+      const vs = [...suppliers().values()].sort((a, b) => a.name.localeCompare(b.name, 'ar')), byN = supByName(), names = spNames().filter(n => !byN.has(norm(n)));
+      if (spPick && !S.sup[spPick]) spPick = '';
+      $('#spBody').innerHTML = `<label class="wh" for="sn" style="margin-top:0">المورد</label><input class="inp2 spay" id="sn" autocomplete="off" placeholder="${vs.length ? 'دوّر على المورد أو اكتب اسمه' : 'اكتب اسم المورد'}" style="margin-top:6px" value="${spPick ? esc(S.sup[spPick].name) : ''}">
+        <div class="vpk" id="vpk"></div>
         ${names.length ? `<div class="chips">${names.map(n => `<button class="chip" type="button" data-n="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}
         ${amtBox}
         <button class="big b-sup" id="spOk" type="button">حفظ دفعة المورد</button>`;
       bindAmt($('#amt'));
-      $$('#spBody .chip').forEach(c => c.onclick = () => { $('#sn').value = c.dataset.n; $('#amt').focus(); });
-      $('#spOk').onclick = () => saveSpend('spay', {sname: $('#sn').value.trim().replace(/\s+/g, ' ')});
-      setTimeout(() => $('#sn') && $('#sn').focus(), 100);
+      const pk = () => {
+        const q = norm($('#sn').value), cur = spPick && suppliers().get(spPick);
+        if (cur) { $('#vpk').innerHTML = `<div class="vsel"><span>ليه دلوقتي</span><b class="money">${fmtN(cur.bal)}</b><button type="button" id="vX">تغيير</button></div>`; $('#vX').onclick = () => { spPick = ''; $('#sn').value = ''; pk(); $('#sn').focus(); }; return; }
+        const l = vs.filter(v => !q || norm(v.name).includes(q));
+        $('#vpk').innerHTML = l.length ? `<div class="vlist">${l.map(v => `<button type="button" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="money">${v.bal > 0 ? fmt(v.bal) : '—'}</b></button>`).join('')}</div>` : q && vs.length ? '<p class="hint" style="margin:6px 0 0">مش في قايمة الموردين. هيتسجل بالاسم ده ومصطفى يربطه.</p>' : '';
+        $$('#vpk button[data-v]').forEach(b => { b.addEventListener('mousedown', e => e.preventDefault()); b.onclick = () => { spPick = b.dataset.v; $('#sn').value = S.sup[spPick].name; pk(); $('#amt').focus(); }; });
+      };
+      $('#sn').oninput = () => { spPick = byN.get(norm($('#sn').value)) || ''; pk(); };
+      pk();
+      $$('#spBody .chip').forEach(c => c.onclick = () => { $('#sn').value = c.dataset.n; spPick = ''; pk(); $('#amt').focus(); });
+      $('#spOk').onclick = () => saveSpend('spay', {sname: $('#sn').value.trim().replace(/\s+/g, ' '), sid: spPick || byN.get(norm($('#sn').value)) || ''});
+      setTimeout(() => { const f = spPick ? $('#amt') : $('#sn'); f && f.focus(); }, 100);
     }
   };
   body(); drawSpendList();
@@ -1074,7 +1151,8 @@ async function saveSpend(t, x) {
   if (dup && !(await ask(`سجلت ${fmt(amt)} (${t === 'exp' ? x.cat : x.sname}) من شوية. دي مرة تانية؟`, 'أيوه، مرة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
   const now = nowS();
   const o = Object.assign({id: newId(), t, amt, ts: now, upd: now, del: false}, x);
-  S.ops[o.id] = o; save(); sync();
+  if (o.t === 'spay' && !o.sid) delete o.sid;
+  S.ops[o.id] = o; save(); sync(); spPick = '';
   try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
   drawSpend(); lastSave = Date.now();   // نفس الشاشة جاهزة للي بعده، واللي اتسجل بيظهر تحتها
   toast(`✔ اتسجل: ${t === 'exp' ? x.cat : x.sname} — ${fmt(amt)} جنيه`, 3000);

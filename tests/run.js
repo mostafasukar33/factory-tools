@@ -1023,7 +1023,11 @@ const T0 = Date.now();
     await A.evaluate(() => go('home')); await A.settle(200);
 
     sec('١٣ج) اسأل Claude: ملف الحسابات = أرقام البرنامج بالقرش، ومبيغيّرش أي حاجة');
+    // الموبايل ممكن يكون محفوظ عليه lib/claude.js أقدم من غير claudeOpen: الزرار لازم يفتح النافذة برضه مش "مش قادر يفتح"
+    await A.evaluate(() => { window.__clOld = 1; delete window.claudeOpen; clP = null; const ap = document.head.appendChild.bind(document.head);
+      document.head.appendChild = n => { if (n.src && n.src.includes('lib/claude.js') && window.__clOld-- > 0) n.src = 'data:text/javascript,window.claudeShare%3D()%3D%3E%7B%7D'; return ap(n); }; });
     await A.click('#bCl:visible, #nCl:visible'); await A.waitForSelector('#clGo');
+    eq('اسأل Claude: لو المحفوظ على الموبايل نسخة قديمة من الملف، النافذة بتفتح برضه (مش "مش قادر يفتح")', await A.evaluate(() => { delete document.head.appendChild; return window.__clOld; }), -1);
     eq('اسأل Claude: الملف = أرقام البرنامج بالقرش، فيه الشرح وكل الحركات، وبيتبعت بالمشاركة من غير ما يغيّر البيانات', await A.evaluate(async () => {
       const v0 = dataVer, n0 = JSON.stringify([db.entries.length, db.txs.length, db.parties.length]), {text, n} = claudeBuild('all'), L = text.split('\n'), bal = allBalances();
       const cell = (name, i) => { const l = L.find(x => x.startsWith(name + ' | ')); return l ? l.split(' | ')[i] : null; };

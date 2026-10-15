@@ -5132,9 +5132,15 @@ async function exportReport(R, how, fileName) {
 const cleanName = t => String(t || '').replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
 /* "اسأل Claude" (lib/claude.js): بيتحمّل أول مرة تدوس الزرار بس، مش مع كل فتحة للبرنامج. بيقرا بس ومبيكتبش في البيانات */
 let clP = null;
+// lib/claude.js من المحفوظ على الموبايل ممكن يكون نسخة أقدم من الصفحة (الجديد بيوصل في الخلفية)،
+// فلو مفيهوش claudeOpen بنحمّله تاني لحد ما الجديد يوصل بدل ما نقول "مش قادر يفتح"
+function clScript(n) {
+  return new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'lib/claude.js'; sc.onload = ok; sc.onerror = () => { sc.remove(); no(); }; document.head.appendChild(sc); })
+    .then(() => window.claudeOpen || (n > 0 ? new Promise(r => setTimeout(r, 700)).then(() => clScript(n - 1)) : Promise.reject()));
+}
 function loadClaude() {
   if (window.claudeOpen) return window.claudeOpen();
-  clP = clP || new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'lib/claude.js'; sc.onload = ok; sc.onerror = () => { clP = null; sc.remove(); no(); }; document.head.appendChild(sc); });
+  clP = clP || clScript(4).catch(e => { clP = null; throw e; });
   clP.then(() => window.claudeOpen()).catch(() => toast('مش قادر يفتح دلوقتي، اتأكد من النت وجرّب تاني.'));
 }
 /* مكتبات الـ PDF تقيلة (حوالي 600 كيلو)، فبتتحمّل بس أول مرة حد يعمل PDF مش مع كل فتحة للبرنامج */

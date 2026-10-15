@@ -741,6 +741,18 @@ const T0 = Date.now();
     await A.click('#ptNew'); await A.fill('#ptA', '50'); await A.fill('#ptN', 'سلفة'); await A.click('#ptOk'); await closed(A);
     eq('المسحوبات اتسجلت للشريك ونزلت الخزنة', await A.evaluate(() => [db.txs.filter(t => t.cat === 'c_pdraw' && !t.del).map(t => [partName(t.pt), t.amt, t.note]), vaultBal('')]), [[['مصطفى', 5000, 'مسحوبات مصطفى — سلفة']], vb0 - 8000 - 5000]);
     eq('بنود الشركاء مش في قايمة المصروفات العادية', await A.evaluate(() => catsL('exp').some(c => c.id === 'c_psal' || c.id === 'c_pdraw')), false);
+    /* شريك بياخد من الكاش اللي معاه (خزنة السوق)، ومسحوبات قديمة من غير خزنة */
+    eq('الشريك بخزنة السوق: مرتبه ينزل منها، والمسحوبات القديمة من غير خزنة متمسش أي رصيد', await A.evaluate(() => {
+      const s0 = partners(), d = lastThu(), m0 = vaultBal('v_mkt'), v0 = vaultBal(''), p0 = cashSums(d, d).part;
+      putSet('partners', Object.assign({}, s0, {list: s0.list.concat([{id: 'pz', name: 'تجربة', from: d, vault: 'v_mkt'}])}));
+      autoPartners(true);
+      const a = IDX.tx.get(`t_ps_${d}_pz`), r1 = [a && a.vault, vaultBal('v_mkt') - m0, vaultBal('') - v0];
+      const nvr = {id: 't_test_nv', type: 'exp', amt: 7000, vault: '', nv: 1, to: '', cat: 'c_pdraw', pt: 'pz', pnote: '', note: 'قديمة', date: d, at: 1, upd: 1, del: false, hist: []};
+      db.txs.push(nvr); IDX.tx.set(nvr.id, nvr);
+      const r2 = [vaultBal('') - v0, vaultBal('v_mkt') - m0, cashSums(d, d).part - p0, vaultMoves('', d, d).some(m => m.r.id === nvr.id)];
+      nvr.del = true; a.del = true; touch(nvr); touch(a); putSet('partners', s0);
+      return [r1, r2];
+    }), [['v_mkt', -1000, 0], [0, -1000, 8000, false]]);
 
     sec('١٣) الأرباح ولوحة النهارده والبحث');
     const PR = await A.evaluate(() => { const y = todayISO().slice(0, 4) + '-01-01', x = profitOf(y, todayISO()), ex = db.txs.filter(t => !t.del && t.type === 'exp' && !t.pt && !NOT_PL.has(t.cat) && t.date >= y).reduce((s, t) => s + t.amt, 0); return [x.sales, x.purch, x.part, x.exp === ex, x.before === x.sales - x.purch - x.exp + x.inc, x.after === x.before - x.part]; });

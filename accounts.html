@@ -1797,7 +1797,7 @@ function selfCheck() {
     if (!p.del) sumEnt += (e.dr || 0) - (e.cr || 0);
   }
   for (const e of db.entries) if (!e.del && e.vault && !IDX.vault.get(e.vault)) probs.push(`دفعة "${e.desc}" على خزنة مش موجودة`);
-  for (const t of db.txs) if (!t.del && (!IDX.vault.get(t.vault) || (t.type === 'tr' && !IDX.vault.get(t.to)) || !Number.isInteger(t.amt) || t.amt <= 0)) probs.push(`حركة خزنة بتاريخ ${dispDate(t.date)} فيها مشكلة`);
+  for (const t of db.txs) if (!t.del && ((!t.nv && !IDX.vault.get(t.vault)) || (t.type === 'tr' && !IDX.vault.get(t.to)) || !Number.isInteger(t.amt) || t.amt <= 0)) probs.push(`حركة خزنة بتاريخ ${dispDate(t.date)} فيها مشكلة`);
   if (sumBal !== sumEnt) probs.push('مجموع الأرصدة مش مساوي لمجموع الحركات');
   return probs;
 }
@@ -3836,7 +3836,7 @@ function vaultBal(vid, before) {
   const has = id => vid ? id === vid : !isMkv(id);   // كل الخزن = من غير خزنة السوق
   db.vaults.forEach(v => { if (!v.del && (vid ? v.id === vid : !isMkv(v.id))) b += v.open || 0; });
   for (const t of db.txs) {
-    if (t.del || (before && t.date >= before)) continue;
+    if (t.del || t.nv || (before && t.date >= before)) continue;   // nv = حركة شريك قديمة من غير خزنة
     if (t.type === 'inc' && has(t.vault)) b += t.amt;
     else if (t.type === 'exp' && has(t.vault)) b -= t.amt;
     else if (t.type === 'tr' && vid) { if (t.vault === vid) b -= t.amt; if (t.to === vid) b += t.amt; }
@@ -3852,7 +3852,7 @@ function vaultBal(vid, before) {
 function vaultMoves(vid, from, to) {
   const out = [], inR = d => (!from || d >= from) && (!to || d <= to);
   db.txs.forEach(t => {
-    if (t.del || !inR(t.date)) return;
+    if (t.del || t.nv || !inR(t.date)) return;
     if (vid && t.vault !== vid && t.to !== vid) return;
     if (!vid && isMkv(t.vault) && (t.type !== 'tr' || isMkv(t.to))) return;   // حركات خزنة السوق مش بتظهر هنا
     const fromM = t.type === 'tr' && isMkv(t.vault), toM = t.type === 'tr' && isMkv(t.to);
@@ -4428,7 +4428,8 @@ function autoPartners(force) {
   apAt = nowS();
   const s = partners(); if (!s || !s.on || !(s.amt > 0) || !s.start) return 0;
   ensureVaults(); ensurePartCats();
-  const v = IDX.vault.get(s.vault), vault = v && !v.del ? s.vault : defVault();
+  if (s.list.some(p => p.vault === MKV)) ensureMktVault();
+  const v = IDX.vault.get(s.vault), vault0 = v && !v.del ? s.vault : defVault();
   const t = todayISO(); let n = 0;
   for (let d = thuOnOrAfter(s.start); d <= t; d = addDays(d, 7)) {
     if (isLocked(d)) continue;
@@ -4436,6 +4437,7 @@ function autoPartners(force) {
       if ((p.from && d < p.from) || (p.to && d > p.to)) return;
       const id = `t_ps_${d}_${p.id}`;
       if (IDX.tx.get(id)) return;
+      const pv = p.vault && IDX.vault.get(p.vault), vault = pv && !pv.del ? p.vault : vault0;
       const [y, m, dd] = d.split('-').map(Number), ts = new Date(y, m - 1, dd, 9).getTime();
       const r = {id, type: 'exp', amt: s.amt, vault, to: '', cat: 'c_psal', pt: p.id, pnote: '', note: 'مرتب ' + p.name, date: d, at: ts, upd: ts, del: false, hist: [], auto: 1};
       db.txs.push(r); IDX.tx.set(id, r); n++;
@@ -4444,16 +4446,24 @@ function autoPartners(force) {
   if (n) saveDB();
   return n;
 }
+/* خزنة الشريك: فاضي = خزنة المرتب العامة، أو خزنة السوق (الكاش اللي مع الشريك) */
+const psVOpts = sel => `<option value="" ${!sel ? 'selected' : ''}>بياخد من خزنتي (العادي)</option><option value="${MKV}" ${sel === MKV ? 'selected' : ''}>بياخد من الكاش اللي معاه (خزنة السوق)</option>`;
+/* خزنة المسحوبات: أي خزنة، أو خزنة السوق، أو من غير خزنة (اتاخدت قبل كده ومتتخصمش من أي رصيد) */
+function partVaultOpts(sel, nv) {
+  const l = vaultsL().map(v => `<option value="${esc(v.id)}" ${!nv && sel === v.id ? 'selected' : ''}>${esc(v.name)} (${fmtP(vaultBal(v.id))})</option>`).join('');
+  return l + `<option value="${MKV}" ${!nv && sel === MKV ? 'selected' : ''}>الكاش اللي مع الشريك (خزنة السوق)</option><option value="" ${nv ? 'selected' : ''}>من غير خزنة — اتاخدت قبل كده</option>`;
+}
 function partnerSettings() {
   ensureVaults();
   const s = partners() || {on: false, amt: 0, vault: defVault(), start: lastThu(), list: [{id: 'pa', name: 'مصطفى'}, {id: 'pb', name: 'حسن'}, {id: 'pc', name: 'أحمد'}]};
   const live = s.list.filter(p => !p.to);
   modal(`<h3>👥 إعدادات الشركاء</h3>
     <div class="fld"><label>المرتب الأسبوعي لكل شريك (نفس المبلغ للكل)</label><input class="inp num amt" id="psA" placeholder="0" value="${s.amt ? fmtP(s.amt) : ''}"></div>
-    <div class="fld"><label>بيتصرف من خزنة</label><select class="inp" id="psV">${vaultOpts(s.vault || defVault())}</select></div>
+    <div class="fld"><label>بيتصرف من خزنة (للشركاء اللي مش مختار لهم حاجة تانية تحت)</label><select class="inp" id="psV">${vaultOpts(s.vault || defVault())}</select></div>
     <div class="fld"><label>أول خميس يتسجل</label><input class="inp" type="date" id="psS" value="${s.start || lastThu()}"><p class="hint">من التاريخ ده، كل خميس المرتب بيتسجل لوحده في المصروفات. ولو البرنامج متفتحش يوم الخميس، بيتسجل أول ما يتفتح بتاريخ الخميس.</p></div>
     <div class="sech"><span>الشركاء</span></div>
-    <div id="psL">${live.map(p => `<div class="krow fld" style="grid-template-columns:1fr auto"><input class="inp" data-p="${esc(p.id)}" value="${esc(p.name)}"><button class="btn red sm" data-rm="${esc(p.id)}" type="button" style="width:auto">شيل</button></div>`).join('')}</div>
+    <p class="hint">اختار لكل شريك بياخد مرتبه منين. اللي بياخد من الكاش اللي معاه يتختار له "خزنة السوق"، فمرتبه مبيتخصمش من خزنتك ومبيتكتبش مصروف تاني من حركة السوق.</p>
+    <div id="psL">${live.map(p => `<div class="krow fld" style="grid-template-columns:1fr auto"><input class="inp" data-p="${esc(p.id)}" value="${esc(p.name)}"><select class="inp" data-pv="${esc(p.id)}" style="grid-column:1/-1">${psVOpts(p.vault)}</select><button class="btn red sm" data-rm="${esc(p.id)}" type="button" style="width:auto">شيل</button></div>`).join('')}</div>
     <button class="btn line sm" id="psAdd" type="button">+ شريك جديد</button>
     <div class="stack" style="margin-top:12px"><button class="btn gold" id="psOk" type="button">حفظ</button>
     ${s.on ? '<button class="btn red sm" id="psOff" type="button">وقّف التسجيل الأوتوماتيك</button>' : ''}
@@ -4462,7 +4472,7 @@ function partnerSettings() {
   const removed = new Set();
   const bindRm = () => $$('#psL [data-rm]').forEach(b => b.onclick = () => { removed.add(b.dataset.rm); b.parentElement.remove(); });
   bindRm();
-  $('#psAdd').onclick = () => { const d = document.createElement('div'); d.className = 'krow fld'; d.style.gridTemplateColumns = '1fr auto'; d.innerHTML = `<input class="inp" data-p="" placeholder="اسم الشريك"><button class="btn red sm" data-rm="" type="button" style="width:auto">شيل</button>`; $('#psL').appendChild(d); bindRm(); d.querySelector('input').focus(); };
+  $('#psAdd').onclick = () => { const d = document.createElement('div'); d.className = 'krow fld'; d.style.gridTemplateColumns = '1fr auto'; d.innerHTML = `<input class="inp" data-p="" placeholder="اسم الشريك"><select class="inp" data-pv="" style="grid-column:1/-1">${psVOpts('')}</select><button class="btn red sm" data-rm="" type="button" style="width:auto">شيل</button>`; $('#psL').appendChild(d); bindRm(); d.querySelector('input').focus(); };
   $('#psX').onclick = closeModal;
   if ($('#psOff')) $('#psOff').onclick = () => { putSet('partners', Object.assign({}, s, {on: false})); closeModal(); route(); toast('اتوقف التسجيل الأوتوماتيك. اللي اتسجل قبل كده زي ما هو.'); };
   $('#psOk').onclick = () => {
@@ -4474,12 +4484,13 @@ function partnerSettings() {
     let k = 0;
     $$('#psL [data-p]').forEach(el => {
       const name = el.value.trim(); if (!name) return;
-      const cur = list.find(p => p.id === el.dataset.p && el.dataset.p);
-      if (cur) cur.name = name;
-      else { let id; do { id = 'p' + nowS().toString(36) + (k++); } while (list.some(p => p.id === id)); list.push({id, name, from: t}); }
+      const cur = list.find(p => p.id === el.dataset.p && el.dataset.p), pv = el.parentElement.querySelector('[data-pv]').value;
+      if (cur) { cur.name = name; cur.vault = pv; }
+      else { let id; do { id = 'p' + nowS().toString(36) + (k++); } while (list.some(p => p.id === id)); list.push({id, name, from: t, vault: pv}); }
     });
     if (!list.some(p => !p.to)) return toast('اكتب اسم شريك واحد على الأقل');
     putSet('partners', {on: true, amt, vault: $('#psV').value, start, list});
+    if (list.some(p => p.vault === MKV)) ensureMktVault();
     const n = autoPartners(true);
     closeModal(); route(); toast(n ? `اتحفظ ✔ واتسجل ${n} مرتب لحد النهارده` : 'اتحفظ ✔');
   };
@@ -4491,11 +4502,12 @@ function partnerTxModal(t, kind = 'draw', ptId = '') {
   const s = partners() || {list: []}, isNew = !t;
   if (t) { kind = ptKind(t); ptId = t.pt; }
   const list = s.list.filter(p => !p.to || p.id === ptId);
+  const pDef = id => { const p = s.list && s.list.find(x => x.id === id); return p && p.vault || s.vault; };
   modal(`<h3 class="exp">${isNew ? '− مسحوبات شريك' : 'تعديل ' + PK[kind] + ' شريك'}</h3>
     <div class="fld"><label>الشريك</label><select class="inp" id="ptP">${list.map(p => `<option value="${esc(p.id)}" ${p.id === ptId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
     <div class="fld"><label>النوع</label><div class="seg" id="ptK">${Object.entries(PK).map(([k, n]) => `<button type="button" data-v="${k}" class="${k === kind ? 'on' : ''}">${n}</button>`).join('')}</div></div>
     <div class="fld"><label>المبلغ</label><input class="inp num amt" id="ptA" placeholder="0" value="${t ? fmtP(t.amt) : ''}"></div>
-    <div class="fld"><label>الخزنة</label><select class="inp" id="ptV">${vaultOpts(t ? t.vault : defVault())}</select></div>
+    <div class="fld"><label>الخزنة</label><select class="inp" id="ptV">${partVaultOpts(t ? t.vault : (pDef(ptId) || defVault()), t && t.nv)}</select><p class="hint">لو الفلوس اتاخدت قبل كده، اختار "من غير خزنة": بتتسجل على الشريك وفي الأرباح من غير ما تنزل من أي رصيد.</p></div>
     <div class="fld"><label>التاريخ</label><input class="inp" id="ptD" type="date" value="${t ? t.date : todayISO()}"></div>
     <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="ptN" value="${esc(t ? t.pnote || '' : '')}" autocomplete="off"></div>
     ${t ? histHtml(t) : ''}
@@ -4505,6 +4517,7 @@ function partnerTxModal(t, kind = 'draw', ptId = '') {
   bindMoney($('#ptA'));
   $$('#ptK button').forEach(b => b.onclick = () => { kind = b.dataset.v; $$('#ptK button').forEach(x => x.classList.toggle('on', x === b)); });
   $('#ptX').onclick = closeModal;
+  if (isNew) $('#ptP').onchange = () => { const v = pDef($('#ptP').value); if ([...$('#ptV').options].some(o => o.value === v)) $('#ptV').value = v; };
   if (isNew) setTimeout(() => $('#ptA') && $('#ptA').focus(), 50);
   $('#ptOk').onclick = () => {
     const amt = toP($('#ptA').value), date = $('#ptD').value, pnote = $('#ptN').value.trim(), pt = $('#ptP').value, vault = $('#ptV').value;
@@ -4512,11 +4525,11 @@ function partnerTxModal(t, kind = 'draw', ptId = '') {
     if (amt <= 0) return toast('اكتب المبلغ');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');
     if (isLocked(date)) return lockToast();
-    const o = {type: 'exp', amt, date, vault, to: '', cat: PART_CATS[kind][0], pt, pnote, note: `${PK[kind]} ${partName(pt)}${pnote ? ' — ' + pnote : ''}`};
+    const o = {type: 'exp', amt, date, vault, nv: vault ? 0 : 1, to: '', cat: PART_CATS[kind][0], pt, pnote, note: `${PK[kind]} ${partName(pt)}${pnote ? ' — ' + pnote : ''}`};
     if (isNew) { const now = nowS(); const r = Object.assign({id: newId('t_'), at: now, upd: now, del: false, hist: []}, o); db.txs.push(r); IDX.tx.set(r.id, r); toast('اتسجلت ✔'); }
     else {
-      if (['amt', 'date', 'vault', 'cat', 'pt', 'pnote'].every(k => (t[k] || '') === (o[k] || ''))) return closeModal();
-      (t.hist = t.hist || []).push({t: nowS(), date: t.date, desc: `${PK[ptKind(t)]} ${partName(t.pt)} — ${vName(t.vault)}`, dr: t.amt, cr: 0});
+      if (['amt', 'date', 'vault', 'cat', 'pt', 'pnote', 'nv'].every(k => (t[k] || '') === (o[k] || ''))) return closeModal();
+      (t.hist = t.hist || []).push({t: nowS(), date: t.date, desc: `${PK[ptKind(t)]} ${partName(t.pt)} — ${t.nv ? 'من غير خزنة' : vName(t.vault)}`, dr: t.amt, cr: 0});
       Object.assign(t, o); touch(t); toast('اتعدّلت ✔');
     }
     saveDB(); closeModal(); route();

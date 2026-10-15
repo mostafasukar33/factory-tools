@@ -1034,7 +1034,7 @@ const T0 = Date.now();
       let got = null; navigator.canShare = () => true; navigator.share = async d => { got = d; };
       $('#clGo').click(); await new Promise(r => setTimeout(r, 50));
       const shared = got && got.files[0] ? await got.files[0].text() : '';
-      return [text.includes('## اقراني الأول'), badBal, L.find(x => x.startsWith('إجمالي خزن ')).split(' | ')[1] === fmtP(vaultBal('')), pl[8] === fmtP(profitOf(first, todayISO()).after), n === nEnt + nTx,
+      return [text.includes('## اقراني الأول') && text.indexOf('## تعليمات لـ Claude') < text.indexOf('## اقراني الأول') && !$('#clSt'), badBal, L.find(x => x.startsWith('إجمالي خزن ')).split(' | ')[1] === fmtP(vaultBal('')), pl[8] === fmtP(profitOf(first, todayISO()).after), n === nEnt + nTx,
         !!got && /^flashon-accounts-.*\.txt$/.test(got.files[0].name) && shared.length > 1000, !$('#clGo'), dataVer === v0 && JSON.stringify([db.entries.length, db.txs.length, db.parties.length]) === n0];
     }), [true, [], true, true, true, true, true, true]);
     eq('اسأل Claude "كل حاجة": فيه الملغي وسجل التعديلات زيادة، والأرصدة زي "من الأول"، والشات القديم اتشال', await A.evaluate(() => {

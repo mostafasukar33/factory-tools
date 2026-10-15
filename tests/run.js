@@ -580,6 +580,13 @@ const T0 = Date.now();
       await A.waitForFunction(() => !syncing && !pendingRecs().length);
       eq('صفحة خطأ من جوجل مرة: اتعادت لوحدها والمزامنة نجحت', [D1.pageOnce, await A.evaluate(() => syncErr), (await A.textContent('#toast')).includes('✔')], [0, '', true]);
       eq('بعد المزامنة "مستني" اختفت من الإعدادات من غير ما تخرج وترجع', [(await A.textContent('#sStat')).includes('مستني'), await A.textContent('#shNow')], [false, 'زامن دلوقتي (0 مستني)']);
+      await A.evaluate(() => { const p = liveParties()[0]; p.note = 'تجربة صفحة جوجل ٢'; p.upd = nowS(); saveDB(); });
+      D1.pageOnce = 3; await A.evaluate(() => syncNow(true));
+      await A.waitForFunction(() => !syncing && syncErr);
+      const st3 = await A.textContent('#sStat');
+      eq('جوجل فضل يرد بصفحة: الإعدادات بتقول موصلتش وبتعرض كلام جوجل نفسه، والحركة لسه مستنية', [st3.includes('موصلتش'), st3.includes('جوجل كاتب: Google error'), st3.includes('1 مستني'), D1.pageOnce], [true, true, true, 0]);
+      await A.evaluate(() => syncNow(true)); await A.waitForFunction(() => !syncing && !pendingRecs().length);
+      eq('المرة اللي بعدها نجحت: رجعت ✔ متزامن', (await A.textContent('#sStat')).includes('✔ متزامن'), true);
       eq('رسالة صفحة جوجل لشيت كان شغال: مشغول لحظة مش تسجيل دخول', await A.evaluate(() => { const e = new Error('page'); e.code = 'page'; return netWhy(e); }), 'جوجل كان مشغول لحظة، وهحاول تاني لوحدي');
     }
 

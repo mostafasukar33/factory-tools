@@ -192,6 +192,7 @@ html[data-theme=dark] .b-ok{color:#06140d}
 .tiny.on{background:var(--green-l);border-color:transparent;color:var(--green)}
 /* شريط أيام الأسبوع في النهارده */
 .wk{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin:0 0 10px}
+.wk.f7{grid-template-columns:repeat(7,1fr);gap:4px}.wk.f7 button{font-size:10.5px}
 .wk button{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:5px 0 7px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:11.5px;font-weight:700;color:var(--sub);box-shadow:var(--shadow);min-height:62px}
 .wk button b{font-size:18px;color:var(--ink);line-height:1.25}
 .wk button i{width:18px;height:4px;border-radius:3px;background:var(--row);margin-top:2px}
@@ -676,7 +677,9 @@ function lockWeek(thu, auto) {
   let I = idx();
   if (auto) missingDays(I, thu).forEach(m => {
     const id = 'd_' + m.w + '_' + m.date;
-    if (!S.recs[id]) S.recs[id] = {id, k: 'day', w: m.w, date: m.date, u: 0, rate: (I.W.get(m.w) || {}).rate || 0, by: 'تلقائي', at: Date.now(), upd: 1, del: false};
+    /* يوم اتلغى (دوسة تانية على اختياره) = متسجلش، فبيتحسب غياب زي أي يوم ناقص */
+    const old = S.recs[id];
+    if (!old || old.del) S.recs[id] = {id, k: 'day', w: m.w, date: m.date, u: 0, rate: (I.W.get(m.w) || {}).rate || 0, by: 'تلقائي', at: Date.now(), upd: old ? old.upd + 1 : 1, del: false};
   });
   dirty(); I = idx();
   const c = calcWeek(I, thu, true);
@@ -885,6 +888,37 @@ function setDay(w, d, u) {
   log((cur ? `${myName()} غيّر ${dayFull(d)} لـ ${w.name} من "${U_BTN[cur.u]}" لـ "${U_BTN[u]}"` : `${myName()} سجّل ${w.name} "${U_BTN[u]}" — ${dayFull(d)}`) + afterTag(ownerThursday(d)), {w: w.id, thu: ownerThursday(d)});
   return true;
 }
+/* إلغاء تسجيل اليوم (دوسة تانية على نفس الاختيار): العامل يرجع "لسه" */
+function clearDay(w, d) {
+  const cur = idx().day.get(w.id + '|' + d);
+  if (!cur) return false;
+  put('day', {id: cur.id, del: true});
+  log(`${myName()} لغى تسجيل ${w.name} "${U_BTN[cur.u]}" — ${dayFull(d)}` + afterTag(ownerThursday(d)), {w: w.id, thu: ownerThursday(d)});
+  return true;
+}
+/* الجمعة: نافذة فيها كل العمال، تعلّم مين اشتغل الجمعة (بيتسجله "يوم") وتشيل العلامة تلغيه */
+function friModal(fr) {
+  const I = idx(), thu = ownerThursday(fr), ws = workersOn(I, fr);
+  const sel = new Set(ws.filter(w => I.day.has(w.id + '|' + fr)).map(w => w.id));
+  modal(`<h3>مين اشتغل الجمعة؟<small>${dayFull(fr)} · بتتحسب مع قبض الخميس ${dm(thu)}</small></h3>
+    ${ws.length ? `<div class="chips" id="frW">${ws.map(w => `<button type="button" class="chip ${sel.has(w.id) ? 'on' : ''}" data-w="${esc(w.id)}">${esc(w.name)}</button>`).join('')}</div>` : '<p class="sm">لسه مفيش عمال.</p>'}
+    <button class="big b-ok" id="frOk" type="button">حفظ</button>
+    <button class="lnk" id="frX" type="button">إغلاق</button>`);
+  $$('#frW .chip').forEach(b => b.onclick = () => { const id = b.dataset.w; sel.has(id) ? sel.delete(id) : sel.add(id); b.classList.toggle('on', sel.has(id)); });
+  $('#frX').onclick = () => closeModal();
+  $('#frOk').onclick = () => {
+    if (idx().lk.has(thu)) return toast('الأسبوع ده اتقفل');
+    const I2 = idx(), add = [], rem = [];
+    ws.forEach(w => {
+      const has = I2.day.has(w.id + '|' + fr);
+      if (sel.has(w.id) && !has) { put('day', {id: 'd_' + w.id + '_' + fr, w: w.id, date: fr, u: 1, rate: dayRate(w, fr)}); add.push(w.name); }
+      else if (!sel.has(w.id) && has) { put('day', {id: I2.day.get(w.id + '|' + fr).id, del: true}); rem.push(w.name); }
+    });
+    if (!add.length && !rem.length) return closeModal();
+    log(`${myName()} عدّل الجمعة ${dm(fr)}: ${[add.length ? 'اشتغل ' + add.join('، ') : '', rem.length ? 'اتشال ' + rem.join('، ') : ''].filter(Boolean).join(' · ')}`, {thu});
+    commit(); closeModal(); drawToday(); toast('اتسجلت الجمعة ✔');
+  };
+}
 
 /* ---------- النهارده: سطر لكل عامل وجنبه غاب/نص/يوم/يوم ونص ---------- */
 function defDay() { return today(); }
@@ -914,7 +948,7 @@ function bindAlerts() {
 function weekStrip(I, thu, d, t) {
   /* الجمعة (نادرة) بتظهر في أول الشريط بس لو النهارده جمعة أو حد متسجله فيها */
   const fr = weekDates(thu)[6], showF = fr <= t && (fr === t || fr === d || (I.dayBy.get(fr) || []).length);
-  return `<div class="wk">${(showF ? [fr] : []).concat(weekDates(thu).slice(0, 6)).map(x => {
+  return `<div class="wk${showF ? ' f7' : ''}">${(showF ? [fr] : []).concat(weekDates(thu).slice(0, 6)).map(x => {
     const ws = workersOn(I, x), n = ws.filter(w => I.day.has(w.id + '|' + x)).length;
     const st = x > t || !ws.length ? 'f' : n === ws.length ? 'ok' : n ? 'p' : 'e';
     return `<button type="button" data-go="${x}" class="s-${st}${x === d ? ' on' : ''}"${x > t ? ' disabled' : ''}><span>${dayName(x)}</span><b>${+x.slice(8)}</b><i></i></button>`;
@@ -924,10 +958,10 @@ function drawToday() {
   const t = today(), d = scr.day && scr.day <= t ? scr.day : defDay(), thu = ownerThursday(d);
   const I = idx(), ws = workersOn(I, d), closed = I.lk.has(thu), wd = weekday(d);
   const done = ws.filter(w => I.day.has(w.id + '|' + d)).length;
-  const yd = wd === 6 ? null : addDays(d, -1), canCopy = yd && ws.some(w => !I.day.has(w.id + '|' + d) && I.day.has(w.id + '|' + yd));
+  const fr = weekDates(thu)[6], frN = (I.dayBy.get(fr) || []).length;
   $('#main').innerHTML = `${unlinkedAlert()}${weekStrip(I, thu, d, t)}
     ${missAlert(I, thu, t, d)}
-    ${closed ? `<div class="info" style="margin:0 0 10px">🔒 الأسبوع ده اتقفل. الأرقام بتاعته في الأرشيف.</div>` : `<div class="qa"><button class="qb g" id="allDay" type="button"${done === ws.length ? ' disabled' : ''}>✓ الكل يوم</button><button class="qb" id="sameY" type="button"${canCopy ? '' : ' disabled'}>↺ زي امبارح</button><button class="qb" id="qAdv" type="button">＋ سلفة</button></div>`}
+    ${closed ? `<div class="info" style="margin:0 0 10px">🔒 الأسبوع ده اتقفل. الأرقام بتاعته في الأرشيف.</div>` : `<div class="qa"><button class="qb g" id="allDay" type="button"${done === ws.length ? ' disabled' : ''}>✓ الكل يوم</button><button class="qb" id="friB" type="button">الجمعة${frN ? ' (' + frN + ')' : ''} ▾</button><button class="qb" id="qAdv" type="button">＋ سلفة</button></div>`}
     <div class="lbl"><span><b>${dayFull(d)}${d === t ? ' · النهارده' : ''}</b></span><span class="${ws.length && done === ws.length ? 'ok' : ''}">${ws.length ? (done === ws.length ? '✓ اتسجلوا كلهم' : `اتسجل ${done} من ${ws.length}`) : ''}</span></div>
     ${ws.length ? `<div class="prog" style="margin-bottom:8px"><i style="width:${Math.round(done / ws.length * 100)}%"></i></div><div class="list">${ws.map(w => { const r = I.day.get(w.id + '|' + d); return `<div class="wr${r ? '' : ' todo'}" data-w="${esc(w.id)}"><div class="nm"><b>${esc(w.name)}</b><small class="sm">${r ? `${U_BTN[r.u]} · ${byTxt(r)}` : '<span class="wt">لسه</span>'}</small></div>
       <div class="ub">${UNITS.map(u => `<button type="button" data-u="${u}" class="${r && r.u === u ? 'on' : ''}"${closed ? ' disabled' : ''}>${U_BTN[u]}</button>`).join('')}</div></div>`; }).join('')}</div>`
@@ -942,18 +976,13 @@ function drawToday() {
     log(`${myName()} علّم الكل "يوم" (${left.map(w => w.name).join('، ')}) — ${dayFull(d)}`, {thu});
     commit(); drawToday(); toast(`اتسجل ${left.length === 1 ? 'عامل' : left.length + ' عمال'} يوم ✔ — غيّر اللي غاب بس`);
   };
-  if ($('#sameY')) $('#sameY').onclick = () => {
-    const I2 = idx(), left = workersOn(I2, d).filter(w => !I2.day.has(w.id + '|' + d) && I2.day.has(w.id + '|' + yd));
-    if (!left.length) return toast('مفيش حاجة تتنقل من امبارح');
-    left.forEach(w => put('day', {id: 'd_' + w.id + '_' + d, w: w.id, date: d, u: I2.day.get(w.id + '|' + yd).u, rate: dayRate(w, d)}));
-    log(`${myName()} سجّل زي امبارح (${left.map(w => w.name + ' "' + U_BTN[I2.day.get(w.id + '|' + yd).u] + '"').join('، ')}) — ${dayFull(d)}`, {thu});
-    commit(); drawToday(); toast(`اتسجل ${left.length === 1 ? 'عامل' : left.length + ' عمال'} زي امبارح ✔`);
-  };
+  if ($('#friB')) $('#friB').onclick = () => friModal(fr);
   $$('#main .wr .nm').forEach(n => n.onclick = () => workerSheet(n.closest('.wr').dataset.w, thu));
   $$('#main .wr .ub button').forEach(b => b.onclick = () => {
     if (idx().lk.has(thu)) return toast('الأسبوع ده اتقفل');
     const w = idx().W.get(b.closest('.wr').dataset.w);
-    if (w && setDay(w, d, +b.dataset.u)) { commit(); drawToday(); }
+    const u = +b.dataset.u, cur = w && idx().day.get(w.id + '|' + d);
+    if (w && (cur && cur.u === u ? clearDay(w, d) : setDay(w, d, u))) { commit(); drawToday(); }
   });
 }
 

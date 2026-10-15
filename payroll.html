@@ -1084,12 +1084,14 @@ function bonModal(b, thu, wid) {
 function afterChange(wid, back) { render(); if (back && wid === back.wid) workerSheet(wid, back.thu); }
 
 /* ---------- الأسبوع / الخميس ---------- */
-const curThu = () => scr.thu || ownerThursday(today());
+/* الأسبوع الشغال: أسبوع النهارده، ولو اتقفل (زرار "ابدأ الأسبوع الجديد" بعد ما الكل قبض) يبقى اللي بعده */
+const liveThu = () => { const I = idx(); let th = ownerThursday(today()); while (I.lk.has(th)) th = addDays(th, 7); return th; };
+const curThu = () => scr.thu || liveThu();
 const nz = n => n ? fmt(n) : '<span class="z">—</span>';
 /* كل اللي اتخصم من العامل في الأسبوع ده (سلف + مرحّل + فرق جمعة + خصم السلف القديمة) */
 const ded = r => r.advances + r.carryIn + (r.prevFridayDelta || 0) + (r.oldApplied || 0);
 function drawWeek() {
-  const I = idx(), t = today(), thu = curThu(), nowThu = ownerThursday(t), ds = weekDates(thu);
+  const I = idx(), t = today(), thu = curThu(), nowThu = liveThu(), ds = weekDates(thu);
   const c = calcWeek(I, thu), ids = Object.keys(c.rows).sort((a, b) => ((I.W.get(a) || {}).ord || 0) - ((I.W.get(b) || {}).ord || 0));
   const paidN = ids.filter(id => c.rows[id].net > 0 && I.pd.has(thu + '|' + id)).length, toPay = ids.filter(id => c.rows[id].net > 0).length;
   const firstThu = I.first && I.first < nowThu ? I.first : nowThu;
@@ -1113,7 +1115,8 @@ function drawWeek() {
       <tfoot><tr><td>الإجمالي</td><td class="${sumD ? 'bk' : ''}">${nz(sumD)}</td><td class="net">${fmt(c.total)}</td><td></td></tr></tfoot></table>`
       : '<div class="list"><div class="empty">مفيش عمال في الأسبوع ده</div></div>'}
     ${c.closed ? '' : `<p class="hint">دوس "قبض" قدام العامل لما تسلّمه مرتبه، والمبلغ بينزل من العهدة في المصاريف. دوسة تانية بتلغيه.</p>
-    <button class="big b-redo" id="wipeW" type="button">🗑 امسح ${thu === nowThu ? 'الأسبوع الحالي' : 'الأسبوع ده'}</button>`}`;
+    <button class="big b-dark" id="nextW" type="button"${toPay && paidN === toPay ? '' : ' disabled'}>ابدأ الأسبوع الجديد (من السبت ${dm(addDays(thu, 2))}) ←</button>
+    <p class="hint">${toPay && paidN === toPay ? 'الكل قبض. الأسبوع ده هيروح الأرشيف وتقدر تفتحه وتعدّل فيه بعد كده.' : toPay ? `لسه ${toPay - paidN === 1 ? 'عامل' : toPay - paidN + ' عمال'} مقبضوش. الزرار بيشتغل لما الكل يقبض.` : 'مفيش مرتبات في الأسبوع ده لسه.'}</p>`}`;
   $('#wPrev').onclick = () => nav('w/' + addDays(thu, -7), true);
   $('#wNext').onclick = () => nav(addDays(thu, 7) >= nowThu ? 'w' : 'w/' + addDays(thu, 7), true);
   if ($('#owe')) $('#owe').onclick = () => nav('w/' + owe.sort().pop(), true);
@@ -1128,7 +1131,13 @@ function drawWeek() {
   $$('#main .ub button[data-fd]').forEach(b => b.onclick = () => setFriCame(b.dataset.fd, thu, +b.dataset.u));
   $$('#main tbody tr[data-w]').forEach(tr => tr.onclick = e => { if (e.target.closest('[data-pay]')) return; workerSheet(tr.dataset.w, thu); });
   $$('#main [data-pay]').forEach(b => b.onclick = () => payOut(b.dataset.pay, thu));
-  if ($('#wipeW')) $('#wipeW').onclick = () => wipeWeek(thu);
+  if ($('#nextW')) $('#nextW').onclick = async () => {
+    const I2 = idx(), c2 = calcWeek(I2, thu), left = Object.keys(c2.rows).filter(id => c2.rows[id].net > 0 && !I2.pd.has(thu + '|' + id));
+    if (left.length) return toast('لسه فيه عمال مقبضوش');
+    if (!(await ask(`تقفل أسبوع الخميس ${dm(thu)} وتبدأ الأسبوع الجديد من السبت ${dm(addDays(thu, 2))}؟ الأسبوع ده هيروح الأرشيف.`, 'أيوه، ابدأ الجديد'))) return;
+    if (!idx().lk.has(thu)) lockWeek(thu, false);
+    commit(); nav('w', true); toast('اتقفل وراح الأرشيف ✔ ده الأسبوع الجديد');
+  };
 
 }
 /* فرق الجمعة: لو الجمعة اللي فاتت كانت شغل واتقفلت، العمال اللي اتدفعلهم بيظهروا هنا في الأسبوع الحالي. الكل محسوب "جه" لحد ما تعلّم اللي مجاش، وأجره بيتخصم من الخميس ده */
@@ -1433,7 +1442,8 @@ function workerModal(w) {
     ${w ? `<div class="mini">${w.st === 'on' ? '<button class="big b-home" id="wkStop" type="button">⏸ وقّفه</button>' : '<button class="big b-home" id="wkOn" type="button">▶ رجّعه للشغل</button>'}${w.st !== 'gone' ? '<button class="big b-redo" id="wkGone" type="button">مشى</button>' : '<span></span>'}</div>` : ''}
     <button class="lnk" id="wkX" type="button">إغلاق</button>`);
   bindAmt($('#wkR')); bindAmt($('#wkF'));
-  if (!w) setTimeout(() => $('#wkN') && $('#wkN').focus(), 60);
+  /* متخطفش المؤشر لو حد بدأ يكتب في خانة تانية (كانت الأرقام بتتلزق في الاسم) */
+  if (!w) setTimeout(() => $('#wkN') && !(document.activeElement && document.activeElement.closest('#modal input')) && $('#wkN').focus(), 60);
   $('#wkX').onclick = closeModal;
   $('#wkOk').onclick = () => {
     const name = $('#wkN').value.trim().replace(/\s+/g, ' '), rate = amtOf($('#wkR')), fri = amtOf($('#wkF'));

@@ -1053,6 +1053,20 @@ const T0 = Date.now();
       const r = [n() - n0, document.activeElement === I, I.value];
       tap($('#p-ask .aqk button'), 40); r.push(n() - n0);
       return r; }), [1, true, '', 1]);
+    await A.click('#aqCl'); await A.waitForSelector('#clGo');
+    eq('اسأل Claude: الملف = أرقام البرنامج بالقرش، فيه الشرح وكل الحركات، وبيتبعت بالمشاركة من غير ما يغيّر البيانات', await A.evaluate(async () => {
+      const v0 = dataVer, n0 = JSON.stringify([db.entries.length, db.txs.length, db.parties.length]), {text, n} = claudeBuild('all'), L = text.split('\n'), bal = allBalances();
+      const cell = (name, i) => { const l = L.find(x => x.startsWith(name + ' | ')); return l ? l.split(' | ')[i] : null; };
+      const badBal = liveParties().filter(p => cell(p.name, 2) !== fmtP(Math.abs(bal.get(p.id) || 0)) || cell(p.name, 3) !== balWord(bal.get(p.id) || 0)).map(p => p.name);
+      const first = [...db.entries.filter(e => !e.del).map(e => e.date), ...db.txs.filter(x => !x.del).map(x => x.date)].sort()[0];
+      const pl = L.find(x => x.startsWith('الفترة كلها | ')).split(' | ');
+      const nEnt = db.entries.filter(e => !e.del && P.get(e.party)).length, nTx = db.txs.filter(x => !x.del).length;
+      let got = null; navigator.canShare = () => true; navigator.share = async d => { got = d; };
+      $('#clGo').click(); await new Promise(r => setTimeout(r, 50));
+      const shared = got && got.files[0] ? await got.files[0].text() : '';
+      return [text.includes('## اقراني الأول'), badBal, L.find(x => x.startsWith('إجمالي خزن ')).split(' | ')[1] === fmtP(vaultBal('')), pl[8] === fmtP(profitOf(first, todayISO()).after), n === nEnt + nTx,
+        !!got && /^flashon-accounts-.*\.txt$/.test(got.files[0].name) && shared.length > 1000, !$('#clGo'), dataVer === v0 && JSON.stringify([db.entries.length, db.txs.length, db.parties.length]) === n0];
+    }), [true, [], true, true, true, true, true, true]);
     await A.evaluate(() => go('home')); await A.settle(150);
 
     sec('١٤) التاريخ ورصيد أول المدة');

@@ -154,6 +154,8 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-set-' + sfx, go: accGo('set'), full: true},
   {name: 'acc-jrd-' + sfx, go: accEval(IVSHOT + "jrDate = ''; jrStock = null; go('jrd')"), full: true},
   {name: 'acc-iv-' + sfx, go: accEval(IVSHOT + "go('jrd/iv/ip_shot')"), full: true},
+  {name: 'acc-ask-' + sfx, go: async A => { await accGo('ask')(A); await A.waitForFunction(() => window.askAnswer && $('#aqI'));
+    for (const q of ['مؤسسة تجربة خدت كام السنه دي ودفعت كام', 'احمد جاب كام الاسبوع ده وصرف كام']) { await A.fill('#aqI', q); await A.press('#aqI', 'Enter'); } await A.waitForTimeout(300); }},
 ].map(x => Object.assign({app: 'acc', vp}, x, extra, vp.width > 999 ? {full: false} : {}));
 const SCREENS = [
   ...ACC('m', MOB),
@@ -173,6 +175,7 @@ const SCREENS = [
   {name: 'acc-cash-pick-m', app: 'acc', vp: MOB, go: accEval("cashOpenV = false; cashVault = ''; cashMode = 'day'; cashDay = addDays(todayISO(), -1); cashPickM = true; go('cash'); renderCash()")},
   {name: 'acc-list-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval("tab = 'mkt'; go('home'); renderHome()")},
   {name: 'acc-party-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval(`go('p/' + ${party}.id)`)},
+  {name: 'acc-ask-m-dark', app: 'acc', vp: MOB, dark: true, go: async A => { await accGo('ask')(A); await A.waitForFunction(() => window.askAnswer && $('#aqI')); await A.fill('#aqI', 'مين عليه فلوس'); await A.press('#aqI', 'Enter'); await A.waitForTimeout(300); }},
   {name: 'acc-inv-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval(`docModal(${party}, 'inv')`)},
   {name: 'acc-cash-m-dark', app: 'acc', vp: MOB, dark: true, go: accGo('cash')},
   {name: 'acc-party-l-dark', app: 'acc', vp: LAP, dark: true, go: accEval(`go('p/' + ${party}.id)`)},

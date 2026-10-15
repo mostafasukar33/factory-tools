@@ -960,6 +960,29 @@ const T0 = Date.now();
       await A.evaluate(() => [ivList().length, db.ivrs.filter(r => !r.del).length, jrdSaved().length, ivSums('ip_imp_t').bal]));
     await A.evaluate(() => go('home')); await A.settle(200);
 
+    sec('١٣ج) اسأل الحسابات (الشات): كل إجابة = رقم التقارير بالقرش، ومبيغيّرش أي حاجة');
+    await A.evaluate(() => go('ask')); await A.waitForFunction(() => window.askAnswer && document.querySelector('#aqI'));
+    const ASK = await A.evaluate(() => {
+      const t = todayISO(), y = t.slice(0, 4) + '-01-01', m = t.slice(0, 8) + '01', p1 = liveParties().find(x => x.name === 'عميل تجربة واحد');
+      const pays = partyEntries(p1.id).filter(isPay).reverse();
+      const colM = db.entries.filter(e => { const p = P.get(e.party); return !e.del && e.kind === 'pay' && e.date >= m && e.date <= t && p && !p.noTot && (p.sec === 'mkt' || p.sec === 'site'); }).reduce((n, e) => n + e.amt, 0);
+      const v0 = dataVer, n0 = JSON.stringify([db.entries.length, db.txs.length, db.parties.length]);
+      /* [السؤال، الرقم الصح من حسابات البرنامج نفسه] */
+      const T = [
+        ['مبيعات السنه دي', tradeSums(y, t).sales], ['مشتريات الشهر ده', tradeSums(m, t).purch], ['شوفلي ارباح السنادي', Math.abs(profitOf(y, t).after)],
+        ['عميل تجربة واحد عليه كام', Math.abs(allBalances().get(p1.id) || 0)], ['اخر دفعه دفعها عميل تجربة واحد', pays[0] ? pays[0].amt : 0],
+        ['الخزنة فيها كام', vaultBal('v_main')], ['حصلنا كام الشهر ده', colM],
+        ['عميل تجربه واحد خد بضاعه بكام السنه دي', partyEntries(p1.id).filter(e => !e.del && e.kind === 'inv' && e.date >= y && e.date <= t).reduce((n, e) => n + (e.dr || 0), 0)]];
+      const got = T.map(([q, w]) => { const r = askAnswer(q, {}), v = r.cards.flatMap(c => (c.rows || []).map(x => x.v)); return v.includes(w) ? 'ok' : q + ' = ' + w + ' ← ' + v.slice(0, 6).join(','); });
+      const miss = askAnswer('الدنيا فيها مطر', {}).cards.length, lost = askAnswer('الفلانيه عليها كام', {}).cards[0];
+      return [got.filter(x => x !== 'ok'), miss, /مش لاقي/.test(lost.h || ''), dataVer === v0 && JSON.stringify([db.entries.length, db.txs.length, db.parties.length]) === n0];
+    });
+    eq('الشات: الأرقام = التقارير، والاسم اللي مش موجود بيقول كده، والمش مفهوم ميطلعش رقم، ومبيغيّرش البيانات', ASK, [[], 0, true, true]);
+    await A.fill('#aqI', 'مبيعات الشهر ده'); await A.press('#aqI', 'Enter'); await A.waitForSelector('#p-ask .aqb');
+    eq('الشات: السؤال بيترد عليه في الشاشة', await A.evaluate(() => [document.querySelectorAll('#p-ask .aqm').length, document.querySelectorAll('#p-ask .aqb').length > 0]), [1, true]);
+    eq('الشات: الخط بالخمس أحجام بس', await fs5(A), [true, []]);
+    await A.evaluate(() => go('home')); await A.settle(150);
+
     sec('١٤) التاريخ ورصيد أول المدة');
     const OP = await A.evaluate(() => {
       const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name: 'عميل ترتيب تجربة', phone: '', note: '', noTot: false, at: now, upd: now, del: false};

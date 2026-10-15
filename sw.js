@@ -9,9 +9,9 @@
 const CACHE = 'flashon-tools-v3';   // نفس الاسم القديم علشان النسخ المحفوظة من الأدوات التانية متتمسحش
 const FONTS = [400, 600, 700, 800].flatMap(w => ['arabic', 'latin'].map(l => `fonts/cairo-${l}-${w}-normal.woff2`));
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'accounts.html', 'accounts.webmanifest', 'market.html', 'market.webmanifest',
-  'lib/ui.css', 'lib/datepick.js', 'lib/swup.js', 'lib/icons.js', 'fonts/fonts.css', ...FONTS,
+  'lib/ui.css', 'lib/datepick.js', 'lib/swup.js', 'lib/icons.js', 'lib/ask.js', 'fonts/fonts.css', ...FONTS,
   'icons/logo.jpg', 'icons/logo-pdf.jpg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'];
-const FAST = /^(accounts\.html|market\.html|lib\/(ui\.css|datepick\.js|swup\.js|icons\.js)|fonts\/fonts\.css)$/;
+const FAST = /^(accounts\.html|market\.html|lib\/(ui\.css|datepick\.js|swup\.js|icons\.js|ask\.js)|fonts\/fonts\.css)$/;
 const STATIC = /^(fonts\/[^/]+\.woff2|icons\/[^/]+|[^/]+\.webmanifest)$/;
 
 const SCOPE = new URL(self.registration.scope);

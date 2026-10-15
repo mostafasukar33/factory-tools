@@ -179,7 +179,7 @@ const SCREENS = [
   {name: 'acc-cash-pick-m', app: 'acc', vp: MOB, go: accEval("cashOpenV = false; cashVault = ''; cashMode = 'day'; cashDay = addDays(todayISO(), -1); cashPickM = true; go('cash'); renderCash()")},
   {name: 'acc-list-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval("tab = 'mkt'; go('home'); renderHome()")},
   {name: 'acc-party-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval(`go('p/' + ${party}.id)`)},
-  {name: 'acc-claude-m', app: 'acc', vp: MOB, go: accGo('home')},
+  {name: 'acc-claude-m', app: 'acc', vp: MOB, go: async A => { await accGo('home')(A); await A.click('#bCl:visible, #nCl:visible'); await A.waitForSelector('#clGo'); }},
   {name: 'acc-inv-m-dark', app: 'acc', vp: MOB, dark: true, go: accEval(`docModal(${party}, 'inv')`)},
   {name: 'acc-cash-m-dark', app: 'acc', vp: MOB, dark: true, go: accGo('cash')},
   {name: 'acc-party-l-dark', app: 'acc', vp: LAP, dark: true, go: accEval(`go('p/' + ${party}.id)`)},

@@ -993,7 +993,8 @@ const T0 = Date.now();
       const T = [
         ['مبيعات السنه دي', tradeSums(y, t).sales], ['مشتريات الشهر ده', tradeSums(m, t).purch], ['شوفلي ارباح السنادي', Math.abs(profitOf(y, t).after)],
         ['عميل تجربة واحد عليه كام', Math.abs(allBalances().get(p1.id) || 0)], ['اخر دفعه دفعها عميل تجربة واحد', pays[0] ? pays[0].amt : 0],
-        ['الخزنة فيها كام', vaultBal('v_main')], ['حصلنا كام الشهر ده', colM],
+        ['الخزنة فيها كام', vaultBal('v_main')],
+        ['مجموع بيع احمد السنه دي', db.entries.filter(e => { const p = P.get(e.party); return !e.del && p && !p.noTot && p.sec === 'mkt' && SALE_K.has(e.kind) && e.date >= y && e.date <= t; }).reduce((n, e) => n + (e.dr || 0) - (e.cr || 0), 0)], ['حصلنا كام الشهر ده', colM],
         ['عميل تجربه واحد خد بضاعه بكام السنه دي', partyEntries(p1.id).filter(e => !e.del && e.kind === 'inv' && e.date >= y && e.date <= t).reduce((n, e) => n + (e.dr || 0), 0)]];
       const got = T.map(([q, w]) => { const r = askAnswer(q, {}), v = r.cards.flatMap(c => (c.rows || []).map(x => x.v)); return v.includes(w) ? 'ok' : q + ' = ' + w + ' ← ' + v.slice(0, 6).join(','); });
       const miss = askAnswer('الدنيا فيها مطر', {}).cards.length, lost = askAnswer('الفلانيه عليها كام', {}).cards[0];

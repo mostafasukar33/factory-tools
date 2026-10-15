@@ -2118,15 +2118,17 @@ function partyModal(p) {
     ${p && isFwdSrc(p) ? `<div class="fld"><label>فواتيره بتتنقل لحساب</label><select class="inp" id="pmFwd">${liveParties().filter(x => x.id !== p.id && x.sec !== 'sup').sort((a, b) => a.name.localeCompare(b.name, 'ar')).map(x => `<option value="${esc(x.id)}" ${fwdMain(p) && fwdMain(p).id === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` : ''}
     ${isNew ? `<div class="card" style="background:var(--gold-l);margin:4px 0 12px">
       <label>رصيد أول المدة (لو ليه رصيد قديم، وإلا سيبه فاضي)</label>
-      <div class="seg dir" id="pmDir"><button type="button" data-v="dr" class="on">عليه (فلوس ليا عنده)</button><button type="button" data-v="cr">ليه (فلوس عليا له)</button></div>
+      <div class="seg dir" id="pmDir"><button type="button" data-v="dr" class="${sec0 !== 'sup' ? 'on' : ''}">عليه (فلوس ليا عنده)</button><button type="button" data-v="cr" class="${sec0 === 'sup' ? 'on' : ''}">ليه (فلوس عليا له)</button></div>
       <div class="g2"><input class="inp num amt" id="pmAmt" placeholder="0"><input class="inp" id="pmDate" type="date" value="${todayISO()}"></div>
     </div>` : ''}
     <div class="stack"><button class="btn gold" id="pmOk" type="button">${isNew ? 'إضافة الحساب' : 'حفظ'}</button>
     ${isNew ? '' : '<button class="btn red sm" id="pmDel" type="button">شيل الحساب</button>'}
     <button class="btn line" id="pmX" type="button">إلغاء</button></div>`);
-  let sec = sec0, dir = 'dr';
-  $$('#pmSec button').forEach(b => b.onclick = () => { sec = b.dataset.v; $$('#pmSec button').forEach(x => x.classList.toggle('on', x === b)); });
-  if (isNew) { bindMoney($('#pmAmt')); $$('#pmDir button').forEach(b => b.onclick = () => { dir = b.dataset.v; $$('#pmDir button').forEach(x => x.classList.toggle('on', x === b)); }); }
+  /* الرصيد القديم: المورد غالباً "ليه" والعميل "عليه"، فبيتختار لوحده حسب القسم لحد ما تدوس انت بنفسك */
+  let sec = sec0, dir = sec0 === 'sup' ? 'cr' : 'dr', dirSet = false;
+  const showDir = () => $$('#pmDir button').forEach(x => x.classList.toggle('on', x.dataset.v === dir));
+  $$('#pmSec button').forEach(b => b.onclick = () => { sec = b.dataset.v; $$('#pmSec button').forEach(x => x.classList.toggle('on', x === b)); if (isNew && !dirSet) { dir = sec === 'sup' ? 'cr' : 'dr'; showDir(); } });
+  if (isNew) { bindMoney($('#pmAmt')); $$('#pmDir button').forEach(b => b.onclick = () => { dir = b.dataset.v; dirSet = true; showDir(); }); }
   $('#pmX').onclick = closeModal;
   setTimeout(() => isNew && $('#pmN') && $('#pmN').focus(), 50);
   $('#pmOk').onclick = async () => {
@@ -2915,6 +2917,8 @@ const pdfPeriod = (s, issued) => s.lastInv ? `من آخر فاتورة ${dispDat
 function buildStmtPages(p, s) {
   const box = $('#render'); box.innerHTML = '';
   const c = db.cfg, phone = c.phone, issued = nowS(), per = s.invOnly ? dispDate(s.from) : pdfPeriod(s, issued), web = coWeb();
+  /* المورد بس: المربعات اللي فوق = كل التعامل من أوله لحد آخر الكشف، حتى لو الكشف لشهر واحد (بطلبه). العملاء مبيتلمسوش */
+  const aT = p.sec === 'sup' && !s.invOnly ? stmtData(p.id, '', s.to || todayISO()) : null;
   /* بيانات الشركة (من الإعدادات): لو فيه حاجة منها بتتكتب كلها في سطر تحت الرأس، والتليفون معاها */
   const info = [['العنوان', c.coAddr], ['سجل تجاري', c.coCr], ['بطاقة ضريبية', c.coTax]].filter(x => x[1]);
   if (info.length && phone) info.push(['تليفون', phone]);
@@ -2926,7 +2930,7 @@ function buildStmtPages(p, s) {
          <div class="ti"><h3>${s.invOnly ? (p.sec === 'sup' ? 'فاتورة مشتريات' : 'فاتورة') : 'كشف حساب'}</h3><div>تاريخ الإصدار: <span>${dispDate(isoOf(issued))}</span></div><div>${s.invOnly ? 'تاريخ الفاتورة' : 'الفترة'}: <span>${esc(per)}</span></div></div></div>
          ${info.length ? `<div class="coi">${info.map(([k, v]) => `<span>${k}: <b${k === 'العنوان' ? '' : ' class="ltr"'}>${esc(v)}</b></span>`).join('')}</div>` : ''}
          <div class="cust"><span>السادة / <b>${esc(p.name)}</b></span>${p.sec === 'sup' ? `<i>${SEC1[p.sec]}</i>` : ''}</div>
-         ${p.sec === 'sup' && !s.invOnly ? `<div class="sbox"><div><span>إجمالي المشتريات</span><b>${fmtP(s.tg)}</b></div><div><span>إجمالي المدفوعات</span><b>${fmtP(s.tp)}</b></div><div class="k"><span>الرصيد</span><b>${fmtP(s.close * s.sg)}</b></div></div>` : ''}`
+         ${p.sec === 'sup' && !s.invOnly ? `<div class="sbox"><div><span>إجمالي المشتريات من أول التعامل</span><b>${fmtP(aT.tg)}</b></div><div><span>إجمالي المدفوعات من أول التعامل</span><b>${fmtP(aT.tp)}</b></div><div class="k"><span>الرصيد</span><b>${fmtP(aT.close * aT.sg)}</b></div></div>` : ''}`
       : `<div class="mini"><b>فلاش أون</b><span>${s.invOnly ? 'فاتورة' : 'كشف حساب'} — ${esc(p.name)} — ${esc(per)}</span></div>`) +
       `</div><div class="gen">${gen}</div><div class="ft"><span>عالم متكامل من احتياجاتك الكهربائية</span>${web ? `<span class="web" data-url="${esc(webUrl(web))}">${esc(web)}</span>` : ''}<span class="pn"></span></div>`;
     box.appendChild(pg);

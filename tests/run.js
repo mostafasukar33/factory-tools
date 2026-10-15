@@ -536,6 +536,11 @@ const T0 = Date.now();
     eq('المسحوبات − المدفوعات = الرصيد', await A.evaluate(() => { const s = stmtData(liveParties().find(x => x.name === 'عميل تجربة واحد').id, '', ''); return s.tg - s.tp === s.close; }), true);
     eq('ملخص فوق كشف المورد بس', await A.evaluate(() => { const ps = liveParties(); const sup = ps.find(p => p.sec === 'sup'), cu = ps.find(p => p.sec === 'mkt');
       const a = buildStmtPages(sup, stmtData(sup.id, '', ''))[0].querySelector('.sbox'), b = buildStmtPages(cu, stmtData(cu.id, '', ''))[0].querySelector('.sbox'); $('#render').innerHTML = ''; return [!!a, !!b]; }), [true, false]);
+    eq('كشف المورد لفترة قصيرة: المربعات اللي فوق = كل التعامل من أوله مش الفترة بس', await A.evaluate(() => { const sup = liveParties().find(p => p.sec === 'sup'), all = stmtData(sup.id, '', ''), per = stmtData(sup.id, '2099-01-01', '2099-01-31');
+      const bx = buildStmtPages(sup, Object.assign(per, {to: todayISO()}))[0].querySelectorAll('.sbox b'); $('#render').innerHTML = ''; return [...bx].map(b => b.textContent).concat(per.tg); }), [await A.evaluate(() => { const s = stmtData(liveParties().find(p => p.sec === 'sup').id, '', ''); return fmtP(s.tg); }), await A.evaluate(() => { const s = stmtData(liveParties().find(p => p.sec === 'sup').id, '', ''); return fmtP(s.tp); }), await A.evaluate(() => { const s = stmtData(liveParties().find(p => p.sec === 'sup').id, '', ''); return fmtP(s.close * s.sg); }), 0]);
+    eq('حساب جديد: المورد "ليه" والعميل "عليه" لوحدهم، ولو دوست بنفسك اختيارك بيفضل', await A.evaluate(() => { partyModal(); const on = () => $('#pmDir button.on').dataset.v, r = [];
+      const sb = k => $(`#pmSec button[data-v="${k}"]`).click();
+      sb('sup'); r.push(on()); sb('mkt'); r.push(on()); $('#pmDir button[data-v="cr"]').click(); sb('sup'); sb('site'); r.push(on()); closeModal(); return r; }), ['cr', 'dr', 'cr']);
 
     sec('٩) قفل الفترة');
     await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.fill('#sLockD', today); await A.click('#sLockGo'); await A.click('#cOk'); await A.settle(200);

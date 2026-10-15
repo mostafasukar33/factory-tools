@@ -2052,11 +2052,11 @@ const isWide = () => matchMedia('(min-width:1000px)').matches;
 function renderList(bal) {
   bal = bal || allBalances();
   const q = norm($('#hSearch').value), sort = $('#hSort').value, last = sort === 'last' ? lastDates() : null;
-  let ps = liveParties().filter(p => (q ? isWide() || (tab === 'sup') === (p.sec === 'sup') : p.sec === tab) && (!q || norm(p.name).includes(q) || norm(p.phone || '').includes(q)));
+  let ps = liveParties().filter(p => p.sec === tab && (!q || norm(p.name).includes(q) || norm(p.phone || '').includes(q)));
   if (sort === 'bal') ps.sort((a, b) => Math.abs(bal.get(b.id)) - Math.abs(bal.get(a.id)));
   else if (sort === 'last') ps.sort((a, b) => (last.get(b.id) || '').localeCompare(last.get(a.id) || ''));
   else ps.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
-  if (!ps.length) { $('#hList').innerHTML = `<div class="empty">${liveParties().length ? 'مفيش حساب بالاسم ده' : 'لسه مفيش حسابات. اضغط "+ حساب جديد".'}</div>`; return; }
+  if (!ps.length) { $('#hList').innerHTML = `<div class="empty">${liveParties().length ? 'مفيش حساب بالاسم ده في القسم ده' : 'لسه مفيش حسابات. اضغط "+ حساب جديد".'}</div>`; return; }
   $('#hList').classList.toggle('srch', !!q);
   /* على اللاب: كلمة "عليه/ليه" مكتوبة مرة واحدة فوق عمود الأرقام (ثابتة)، وجنب الرقم بتظهر بس لو مختلفة عنها */
   const hw = !q && tab === 'sup' ? 'ليه' : 'عليه';

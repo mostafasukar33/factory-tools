@@ -53,6 +53,7 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
 .kv.on{border-color:var(--gold);background:var(--gold-l);box-shadow:0 0 0 1px var(--gold)}
 .kv.neg{border-color:var(--red)}.kv.neg .n{color:var(--red)}
 .kfix{display:block;margin-top:2px;font-size:var(--f2);font-weight:800;color:var(--red);cursor:pointer}
+.kshut{display:block;margin-top:2px;font-size:var(--f2);font-weight:800;color:var(--gold-d);cursor:pointer}
 .kbk{padding:14px 18px;background:var(--tr-l);border-top:1px solid var(--line)}
 .kbk>span{font-weight:800;font-size:var(--f3);color:var(--tr)}
 .kbk>.n{font-size:var(--f4);color:var(--tr)}

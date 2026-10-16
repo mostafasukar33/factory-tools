@@ -3881,7 +3881,7 @@ const vaultsAll = () => db.vaults.filter(v => !v.del && !isMkv(v.id)).sort((a, b
 /* الخزنة المقفولة (shut، بطلبه 15/10/2026): رصيدها صفر ومش بتظهر في الاختيارات ولا الشاشة، وحركاتها القديمة زي ما هي في الكشوف والأرصدة (vaultBal مبيبصش على shut) */
 const vaultsL = () => vaultsAll().filter(v => !v.shut);
 const openV = id => { const v = id && IDX.vault.get(id); return !!v && !v.del && !v.shut; };   // خزنة لسه شغالة (متخترش خزنة مقفولة لوحدك)
-const vaultsFor = sel => vaultsAll().filter(v => !v.shut || v.id === sel);   // تعديل حركة قديمة على خزنة مقفولة: خزنتها بتفضل في الاختيار
+const vaultsFor = sel => vaultsAll().filter(v => !v.shut || v.id === sel || vaultBal(v.id));   // مقفولة وفيها فلوس (دخلتها حركة بعد القفل): بتظهر علشان تحوّل رصيدها   // تعديل حركة قديمة على خزنة مقفولة: خزنتها بتفضل في الاختيار
 const catsL = t => db.cats.filter(c => !c.del && c.type === t && !SPECIAL_CATS.has(c.id)).sort((a, b) => (a.ord || 0) - (b.ord || 0));
 const vName = id => (IDX.vault.get(id) || {name: '؟'}).name;
 const cName = id => (IDX.cat.get(id) || {name: 'بدون بند'}).name;
@@ -4196,7 +4196,7 @@ function renderCash() {
   const me = dv ? {in: ldgSum(LD, 'in'), out: ldgSum(LD, 'out'), by: {}, html: ''} : kstHtml('me', meTitle, 'me', vaultMoves(cashVault, from, to).map(m => Object.assign(m, {mk: isMkRec(m.r)})), 'me');
   const mk0 = hasM && !dv ? kstHtml('mk', '<span>🏪 حركة السوق</span>', 'mkt', vaultMoves(MKV, from, to).concat(mkXfers(from, to)), 'mk') : null;
   const mk = mk0 && Object.keys(mk0.by).length ? mk0 : null;   // مفيش حركة سوق في الفترة = الكارت مبيظهرش
-  const tiles = vs.map(v => { const b = vaultBal(v.id); return `<div class="kv${cashVault === v.id ? ' on' : ''}${b < 0 ? ' neg' : ''}" data-v="${esc(v.id)}" role="button" tabindex="0"><span>${esc(v.name)}</span><b class="n" data-ck="c:v:${esc(v.id)}" data-cnt="${b}">${fmtP(b)}</b>${b < 0 ? '<a class="kfix">⚠ راجعها</a>' : ''}</div>`; }).join('');
+  const tiles = vs.map(v => { const b = vaultBal(v.id); return `<div class="kv${cashVault === v.id ? ' on' : ''}${b < 0 ? ' neg' : ''}" data-v="${esc(v.id)}" role="button" tabindex="0"><span>${esc(v.name)}</span><b class="n" data-ck="c:v:${esc(v.id)}" data-cnt="${b}">${fmtP(b)}</b>${b < 0 ? '<a class="kfix">⚠ راجعها</a>' : v.shut ? '<a class="kshut">🔒 مقفولة، حوّل رصيدها</a>' : ''}</div>`; }).join('');
   pg.innerHTML = `
     <div class="cbar">
       <button class="btn green" id="cRecv" type="button" title="استلمت من عميل">💵 <span class="lg">استلمت من عميل</span><span class="sh">تحصيل</span></button>
@@ -4244,6 +4244,7 @@ function renderCash() {
     if (cashVault) { const k = $('#kst-me'); if (k && k.scrollIntoView) k.scrollIntoView({behavior: 'smooth', block: 'start'}); }
   }));
   $$('#p-cash .kfix').forEach(a => a.onclick = ev => { ev.stopPropagation(); openingModal(); });
+  $$('#p-cash .kshut').forEach(a => a.onclick = ev => { ev.stopPropagation(); cashVault = a.closest('.kv').dataset.v; txModal('tr'); });
   if ($('#kAll')) $('#kAll').onclick = ev => { ev.stopPropagation(); cashVault = ''; renderCash(); };
   const open = m => {
     if (m.parts) return m.side === 'mkt' ? cashTypeSheet('حركة السوق', 'col', m.parts, open) : cashTypeSheet('حركتي', 'mkcol', m.parts, open);   // دفعة مجمّعة من عميل سوق: أجزاءها وكل جزء بيتفتح لوحده
@@ -4365,10 +4366,9 @@ function txModal(type, t) {
   ensureVaults();
   if (t && t.del) return cancelledModal(t);
   if (t && isLocked(t.date)) { modal(`<h3>🔒 ${TXT[t.type]} ${fmtP(t.amt)}</h3><div class="sync">الحركة دي في فترة مقفولة (لحد ${dispDate(lockDate())}). افتحها من الإعدادات لو محتاج تعدّل.</div><button class="btn line" id="lvX" type="button">رجوع</button>`); $('#lvX').onclick = closeModal; return; }
-  const isNew = !t, vs = vaultsL();
-  if (type === 'tr' && vs.length < 2) return toast('محتاج خزنتين على الأقل. زوّد خزنة من "الخزن والبنود".');
+  const isNew = !t, vs = vaultsL(), v0 = t ? t.vault : (cashVault || defVault());
+  if (type === 'tr' && vaultsFor(v0).length < 2) return toast('محتاج خزنتين على الأقل. زوّد خزنة من "الخزن والبنود".');
   const cats = catsL(type);
-  const v0 = t ? t.vault : (cashVault || defVault());
   modal(`<h3 class="${type}">${isNew ? (type === 'tr' ? 'تحويل بين الخزن ⇄' : TXT[type] + (type === 'exp' ? ' −' : ' +')) : 'تعديل ' + TXT[type]}</h3>
     <div class="fld"><label>المبلغ</label><input class="inp num amt" id="txA" placeholder="0" value="${t ? fmtP(t.amt) : ''}"></div>
     ${type === 'tr' ? `<div class="g2 fld"><div><label>من خزنة</label><select class="inp" id="txV">${vaultOpts(v0)}</select></div><div><label>إلى خزنة</label><select class="inp" id="txTo">${vaultOpts(t ? t.to : (vs.find(v => v.id !== v0) || {}).id)}</select></div></div>`
@@ -4406,11 +4406,11 @@ function txModal(type, t) {
 }
 /* إدارة الخزن والبنود */
 function vaultSettings() {
-  const vs = vaultsAll().filter(v => !v.gone);   // gone = اتمسحت من القايمة خالص (بطلبه)
+  const vs = vaultsAll().filter(v => !v.gone || vaultBal(v.id));   // gone = اتمسحت من القايمة خالص (بطلبه)
   const row = (k, x, extra) => `<div class="lrow"><span>${esc(x.name)}${extra || ''}</span><button class="ibtn" data-ed="${k}:${esc(x.id)}" type="button">✎</button></div>`;
   modal(`<h3>الخزن والبنود</h3>
     <div class="sech" style="margin-top:0"><span>الخزن</span></div>
-    ${vs.map(v => row('vault', v, v.shut ? ' <small>(مقفولة)</small>' : ` <small>(افتتاحي ${fmtP(v.open || 0)})</small>`)).join('')}
+    ${vs.map(v => row('vault', v, v.shut ? (vaultBal(v.id) ? ` <small>(مقفولة وفيها ${fmtP(vaultBal(v.id))})</small>` : ' <small>(مقفولة)</small>') : ` <small>(افتتاحي ${fmtP(v.open || 0)})</small>`)).join('')}
     <button class="btn line sm" id="vsAddV" type="button">+ خزنة جديدة (بنك، محفظة…)</button>
     <div class="sech"><span class="exp">بنود المصروفات</span></div>${catsL('exp').map(c => row('cat', c)).join('')}
     <button class="btn line sm" data-addc="exp" type="button">+ بند مصروف</button>
@@ -4426,7 +4426,7 @@ function editVault(v) {
   const used = v && (db.txs.some(t => !t.del && (t.vault === v.id || t.to === v.id)) || db.entries.some(e => !e.del && e.vault === v.id));
   /* اقفل الخزنة: بس لو فيها حركات (غير كده "شيل") ورصيدها صفر وفاضل خزنة تانية مفتوحة */
   const vb = v ? vaultBal(v.id) : 0;
-  const shutBtn = !v || !used ? '' : v.shut ? '<button class="btn line sm" id="evShut" type="button">افتح الخزنة دي تاني</button><button class="btn red sm" id="evGone" type="button">امسح الخزنة دي خالص</button>'
+  const shutBtn = !v || !used ? '' : v.shut ? '<button class="btn line sm" id="evShut" type="button">افتح الخزنة دي تاني</button>' + (vb ? `<p class="hint">الخزنة دي مقفولة بس فيها ${fmtP(vb)} (دخلتها حركة بعد ما اتقفلت). حوّلهم لخزنة تانية من "تحويل بين الخزن"، وبعدها تقدر تمسحها.</p>` : '<button class="btn red sm" id="evGone" type="button">امسح الخزنة دي خالص</button>')
     : vaultsL().length < 2 ? '' : !vb ? '<button class="btn red sm" id="evShut" type="button">🔒 اقفل الخزنة دي</button>'
     : `<p class="hint">علشان تقفلها: حوّل رصيدها (${fmtP(vb)}) لخزنة تانية الأول من "تحويل بين الخزن".</p>`;
   modal(`<h3>${v ? 'تعديل خزنة' : 'خزنة جديدة'}</h3>

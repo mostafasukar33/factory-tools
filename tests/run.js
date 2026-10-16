@@ -465,6 +465,14 @@ const T0 = Date.now();
       eq('الخزنة المقفولة مش ظاهرة في شاشة الخزنة', (await A.textContent('#p-cash')).includes('خزنة تجربة للقفل'), false);
       eq('الخزنة المقفولة مبتتختارش لوحدها: الوارد (آخر خزنة اتسجل فيها) ومرتب الشركاء', await A.evaluate(() => {
         const mv0 = db.cfg.mkv; db.cfg.mkv = Object.assign({}, mv0, {insta: 'v_tshut'}); const r = [mkVaultFor('insta') !== 'v_tshut', openV('v_tshut'), openV(vaultsL()[0].id)]; db.cfg.mkv = mv0; return r; }), [true, false, true]);
+      {   // فلوس دخلت خزنة مقفولة بعد القفل (زي الوارد قبل التصليح): لازم تبان وتتحوّل، ومتتمسحش
+        await A.evaluate(() => { const now = nowS(), t = {id: 't_tshut3', type: 'inc', vault: 'v_tshut', amt: 25000, cat: catsL('inc')[0].id, date: todayISO(), note: '', at: now, upd: now, del: false, hist: []}; db.txs.push(t); IDX.tx.set(t.id, t); IDX.vault.get('v_tshut').gone = 1; saveDB(); closeModal(); go('cash'); renderCash(); });
+        await A.settle(150);
+        const r = await A.evaluate(() => { const k = $('.kv[data-v="v_tshut"] .kshut'), r = [!!k, vaultOpts('').includes('v_tshut')]; k && k.click(); r.push(!!$('#txV') && $('#txV').value === 'v_tshut' && $('#txTo').value !== 'v_tshut');
+          vaultSettings(); r.push($('#modal').textContent.includes('مقفولة وفيها')); editVault(IDX.vault.get('v_tshut')); r.push(!$('#evGone'), $('#modal').textContent.includes('حوّلهم لخزنة تانية'));
+          const x = IDX.tx.get('t_tshut3'); x.del = true; touch(x); delete IDX.vault.get('v_tshut').gone; saveDB(); closeModal(); return r; });
+        eq('خزنة مقفولة دخلتها فلوس: بتبان في الخزنة بزرار "حوّل رصيدها" اللي بيفتح التحويل منها، وظاهرة في الخزن حتى لو اتمسحت، ومفيش مسح لحد ما تتحوّل', r, [true, true, true, true, true, true]);
+      }
       eq('امسح الخزنة المقفولة خالص: بتختفي حتى من قايمة الخزن، والرصيد الكلي والحركات القديمة زي ما هي، والتراجع بيرجّعها', await A.evaluate(() => {
         editVault(IDX.vault.get('v_tshut')); $('#evGone').click(); const r = [!!IDX.vault.get('v_tshut').gone, !$('#modal').textContent.includes('خزنة تجربة للقفل'), vaultBal('') === window.__vb0, !IDX.tx.get('t_tshut1').del, !IDX.vault.get('v_tshut').del];
         $('#toast.act button').click(); r.push(!IDX.vault.get('v_tshut').gone && $('#modal').textContent.includes('خزنة تجربة للقفل')); return r; }), [true, true, true, true, true, true]);

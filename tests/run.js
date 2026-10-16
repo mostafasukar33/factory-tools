@@ -478,17 +478,21 @@ const T0 = Date.now();
         doc('e_fac3', s, 'pur', [{name: 'مواسير تجربة 3 بوصة', unit: 'ماسورة', qty: 5, price: 15000}]);
         saveDB(); go('fac'); });
       await A.waitForFunction(() => window.facCalc && $('#p-fac .fc'));
-      eq('المصنع والتجارة: القاموس بيفهم المصاريف (حسن عيسى عهدة، أبو شوشه لأ) والأصناف (خرطوم إنتاج، مواسير تجربة تجارة)', await A.evaluate(() => {
+      eq('المصنع والتجارة: القاموس بيفهم المصاريف (حسن عيسى عهدة، أبو شوشه لأ) والأصناف (العميل إنتاج إلا المواسير تجارة)', await A.evaluate(() => {
         const C = facCalc('2001-05-01', '2001-05-31'), g = k => (C.R[k] || {amt: 0}).amt;
         return [g('e:power'), g('e:run'), g('e:gen'), g('e:hassan'), g('e:raw'), g('e:out'), g('e:unk'), g('s:prod'), g('s:trade'), g('s:unk'), g('p:prod'), g('p:trade')]; }),
-        [100000, 20000, 5000, 300000, 40000, 50000, 10000, 400000, 100000, 9000, 300000, 75000]);
+        [100000, 20000, 5000, 300000, 40000, 50000, 10000, 409000, 100000, 0, 300000, 75000]);
       eq('المصنع والتجارة: الصافي = تقرير الأرباح "قبل الشركاء" + برّه الحسبة (بالقرش)، وعرض بس', await A.evaluate(() => {
         const C = facCalc('2001-05-01', '2001-05-31'), n0 = db.txs.length + db.entries.length;
         return [C.total === profitOf('2001-05-01', '2001-05-31').before + C.out, C.out, db.txs.length + db.entries.length === n0]; }), [true, 50000, true]);
       eq('المصنع والتجارة: الاختيار من "مش فاهم دول" بيتحفظ على الكلمة ويتطبق على أي حركة بنفس الملاحظة', await A.evaluate(() => {
         const L = () => facCalc('2001-05-01', '2001-05-31');
         const m = getSet('facMap', null) || {}; putSet('facMap', Object.assign({w: {}, d: {}, s: {}, j: []}, m, {w: Object.assign({}, m.w, {['x:' + norm('حاجه غريبه خالص')]: 'run', ['i:' + norm('صنف تجربة مجهول')]: 'trade'})}));
-        const C = L(), g = k => (C.R[k] || {amt: 0}).amt; return [g('e:unk'), g('e:run'), g('s:trade'), g('s:unk')]; }), [7000, 23000, 109000, 0]);
+        const C = L(), g = k => (C.R[k] || {amt: 0}).amt; return [g('e:unk'), g('e:run'), g('s:trade'), g('s:prod')]; }), [7000, 23000, 109000, 400000]);
+      eq('المصنع والتجارة: فاتورة عميل من غير بنود (السوق "البنود لسه") = إنتاج، ومبتتسألش', await A.evaluate(() => {
+        const now = nowS(), e = {id: 'e_fac4', party: 'p_facmkt', kind: 'inv', date: '2001-05-11', mkNL: true, lines: [], dr: 25000, cr: 0, at: now, upd: now, del: false, hist: []}; db.entries.push(e); E.set(e.id, e);
+        const C = facCalc('2001-05-01', '2001-05-31'), g = k => (C.R[k] || {amt: 0}).amt;
+        return [g('s:prod'), g('s:nl'), (C.R['s:prod'].it.find(x => x.id === 'e_fac4') || {}).what]; }), [425000, 0, 'البنود لسه']);
       eq('المصنع والتجارة: الشغلانات اتشالت، واللي اتحط في شغلانة اسمها "نثريات" أو "تجارة" بيرجع للبند ده لوحده', await A.evaluate(() => {
         putSet('facMap', {w: {}, d: {t_fac2: 'j:j1', e_fac3: 'j:j2'}, s: {}, j: [{id: 'j1', name: 'نثريات'}, {id: 'j2', name: 'تجارة'}]}); facOpen();
         const m = getSet('facMap', null); return [m.j.length, m.d.t_fac2, m.d.e_fac3, !!$('#fcNJ'), $$('#p-fac .fc').length]; }), [0, 'gen', 'trade', false, 3]);

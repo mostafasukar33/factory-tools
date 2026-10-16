@@ -435,6 +435,21 @@ const T0 = Date.now();
         renderCash(); $('#ldgS button[data-v=me]').click(); r.push(ldgScope, $('#ldg .ldtt').textContent.includes('دفتري')); $('#ldgS button[data-v=all]').click(); r.push(ldgScope);
         $('#kMe').click(); r.push(ldgScope, cashOpenV); $('#kMe').click(); return r; }), ['mk', true, true, 'me', true, 'all', 'all', true]);
     }
+    eq('دفتر الخزنة: سطر "بدأ بـ · قفل على" تحت كل يوم = الرصيد الحقيقي أول اليوم وآخره، في المصنع كله وخزني وعهدة أحمد', await A.evaluate(() => {
+      const r = []; for (const sc of ['all', 'me', 'mk']) {
+        cashView = 'date'; ldgScope = sc; cashVault = ''; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; go('cash'); renderCash();
+        const bal = d => ldgSc() === 'all' ? vaultBal('', d) + vaultBal('v_mkt', d) : ldgSc() === 'mk' ? vaultBal('v_mkt', d) : vaultBal('', d);
+        r.push([...$$('#ldg .ldd')].every(el => { const b = el.querySelector('.ldbal'); return b && +b.dataset.b0 === bal(el.dataset.d) && +b.dataset.b1 === bal(addDays(el.dataset.d, 1)) && b.textContent.includes(fmtP(bal(el.dataset.d))); }) && $$('#ldg .ldd').length > 0);
+      }
+      ldgScope = 'me'; return r; }), [true, true, true]);
+    eq('الخزنة: العدسة بتدوّر في كل التواريخ (خزني + خزنة السوق) بالملاحظة والمبلغ، والدوس بيفتح الحركة', await A.evaluate(() => {
+      cashView = 'date'; cashVault = ''; go('cash'); renderCash(); $('#cSrch').click(); const q = $('#csQ'), r = [!!q];
+      q.value = 'بنزين دفتر'; q.dispatchEvent(new Event('input')); r.push(window.__ldg.hasMk ? $$('#csR .ldr').length === 1 && $('#csR').textContent.includes('60') : true);
+      q.value = 'مورد دفتر تجربة'; q.dispatchEvent(new Event('input')); r.push($$('#csR .ldr').length === 1 && $('#csR .ldr .n.out') !== null);
+      q.value = '3,000'; q.dispatchEvent(new Event('input')); r.push($$('#csR .ldr').length >= 1);
+      q.value = 'كلمة مش موجودة خالص'; q.dispatchEvent(new Event('input')); r.push($$('#csR .ldr').length === 0);
+      q.value = 'مورد دفتر تجربة'; q.dispatchEvent(new Event('input')); $('#csR .ldr').click(); r.push(!!$('#modal h3') && !$('#csQ')); closeModal();
+      return r; }), [true, true, true, true, true, true]);
     eq('دفتر الخزنة: زرار "نقلته" و"اعرض اللي لسه" اتشالوا', await ldgOpen(`[!$('#ldg .ldb'), !$('#ldgRest'), !$('#ldg').textContent.includes('نقلت')]`), [true, true, true]);
     eq('دفتر الخزنة: الفلتر "خارج" مفيهوش سطر داخل، والبند بيفتح نافذة بحركاته', await A.evaluate(() => {
       cashView = 'date'; const r = [];

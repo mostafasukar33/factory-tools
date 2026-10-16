@@ -4103,7 +4103,7 @@ function kitsDraw(arr, row, open, empty) {
 }
 /* خزنة السوق فوق رقم بس ومبتتداسش (بطلبه 15/10/2026): حركتها ظاهرة تحت في كارت "حركة السوق" */
 /* ============ دفتر الخزنة بالتاريخ (cashView = 'date') ============
-   نفس حركات "بالنوع" بالظبط (نفس cashGroup: تسوية الجرد والتحويل بين خزنتين مش بيظهروا، وعملاء السوق سطر مجمّع)، بس مترتبة يوم ورا يوم: على الشاشة الأحدث فوق، وفي الـ PDF الأقدم فوق. مفيش رصيد.
+   نفس حركات "بالنوع" بالظبط (نفس cashGroup: تسوية الجرد والتحويل بين خزنتين مش بيظهروا، وعملاء السوق سطر مجمّع)، بس مترتبة يوم ورا يوم: على الشاشة الأحدث فوق، وفي الـ PDF الأقدم فوق. تحت تاريخ كل يوم سطر صغير "بدأ بـ · قفل على" من الرصيد الحقيقي (ldgBal، بطلبه 16/10/2026)، والـ PDF من غير رصيد.
    زرار "✓ نقلته" و"اعرض اللي لسه" اتشالوا بطلب صاحب المشروع (كانوا بيلخبطوه). إعداد ldgDone القديم متساب في الشيت ومحدش بيقراه */
 /* 🔍 البحث في الخزنة: كل الحركات (خزني + خزنة السوق) في كل التواريخ، بالاسم أو الملاحظة أو البند أو الخزنة أو المبلغ. الأحدث فوق، والدوس بيفتح الحركة */
 function cashSearch(open) {
@@ -4123,7 +4123,7 @@ function cashSearch(open) {
       : '<div class="kno">مفيش حاجة بالكلمة دي</div>';
     $$('#csR .ldr').forEach(el => el.onclick = () => { const m = sh[+el.dataset.i]; closeModal(); open(m); });
   };
-  $('#csQ').oninput = draw; draw(); setTimeout(() => $('#csQ').focus(), 50);
+  $('#csQ').oninput = draw; draw(); setTimeout(() => { const q = $('#csQ'); if (q) q.focus(); }, 50);
 }
 function ldgRange() {
   const t = todayISO();
@@ -4181,7 +4181,7 @@ function ldgHtml(L) {
     <div class="ldsg"${ldgSumOpen ? '' : ' hidden'}>${G.filter(g => g.dir === 'in').map(gRow).join('')}${G.filter(g => g.dir === 'out').map(gRow).join('')}</div></section>`;
   const days = ldgDays(F).reverse().map(({d, rows, in: di, out: dout}) => {   // الأحدث فوق (بطلب صاحب المشروع)، والـ PDF بيفضل الأقدم فوق زي الدفتر الورق
     const b0 = ldgBal(d), b1 = ldgBal(addDays(d, 1));
-    return `<div class="ldd" data-d="${d}"><div class="ldh"><div class="ldw"><b>${AR_DAYS[dowOf(d)]} · ${dispDate(d)}</b><small class="ldb">بدأ بـ <b class="n">${fmtP(b0)}</b> · ${d >= todayISO() ? 'دلوقتي' : 'قفل على'} <b class="n${b1 < 0 ? ' neg' : ''}">${fmtP(b1)}</b></small></div>
+    return `<div class="ldd" data-d="${d}"><div class="ldh"><div class="ldw"><b>${AR_DAYS[dowOf(d)]} · ${dispDate(d)}</b><small class="ldbal" data-b0="${b0}" data-b1="${b1}">بدأ بـ <b>${fmtP(b0)}</b> · ${d >= todayISO() ? 'دلوقتي' : 'قفل على'} <b${b1 < 0 ? ' class="neg"' : ''}>${fmtP(b1)}</b></small></div>
       <div class="ldt">${di ? `<b class="n in">+ ${fmtP(di)}</b>` : ''}${dout ? `<b class="n out">− ${fmtP(dout)}</b>` : ''}</div></div>
       ${rows.slice().reverse().map(x => { const m = x.m, i = F.indexOf(x), vid = m.r.type === 'tr' || m.parts || m.side === 'mkt' ? '' : m.r.vault, bits = [ldgName(x), ldgWhat(m, ldgName(x)), showV && vid ? vName(vid) : ''].filter(Boolean);
         return `<div class="ldr" data-i="${i}" role="button" tabindex="0"><div class="ldm"><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n ${x.dir}">${x.dir === 'in' ? '+' : '−'} ${fmtP(m.amt)}</b></div>`; }).join('')}</div>`;

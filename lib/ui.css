@@ -209,3 +209,27 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
 /* قايمة أدوات الخزنة (⋯ على الموبايل) */
 .kmenu{display:grid;gap:8px}
 .kmenu .btn{width:100%;margin:0;justify-content:flex-start;text-align:start;font-weight:800}
+/* المصنع والتجارة (lib/fac.js، صفحة #fac) */
+#p-fac .dnav{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#p-fac .dnav span{font-size:var(--f4);font-weight:800}
+#p-fac .dnav button{min-width:44px;min-height:40px;border:1px solid var(--line);border-radius:10px;background:var(--field);color:var(--ink);font:inherit;font-size:var(--f4);font-weight:800;cursor:pointer}
+.fcu{display:block;margin:0 0 10px;padding:12px 14px;border-radius:12px;background:var(--card);border:1px solid var(--gold);color:var(--ink);font-size:var(--f2);font-weight:700;cursor:pointer;text-decoration:none}
+.fc{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+.fc h3{margin:0;padding:10px 14px;font-size:var(--f3);font-weight:800;background:var(--row);border-bottom:1px solid var(--line)}
+.fr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line);font-size:var(--f2);font-weight:600}
+.fc h3+.fr{border-top:0}
+.fr.go{cursor:pointer}
+.fr>span{min-width:0}
+.fr .n{white-space:nowrap;direction:ltr;unicode-bidi:isolate}
+.fr.tot{background:var(--row);font-size:var(--f3);font-weight:800}
+.fr .n.neg{color:var(--red)}
+.fd{display:block;font-size:var(--f1);font-weight:700;color:var(--sub)}
+.fd.up{color:var(--green)}.fd.dn{color:var(--red)}
+.fcn{font-size:var(--f1);color:var(--sub);font-weight:600;margin:4px 14px 12px;line-height:1.7}
+.fcn b{color:var(--ink)}
+.fch{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.fch .btn.line{width:auto;flex:1 1 30%;margin:0;min-height:40px;font-size:var(--f2)}
+.fch4{margin:14px 0 0;font-size:var(--f2);color:var(--sub);font-weight:700}
+.fcs{padding:8px 0;border-top:1px solid var(--line)}.fcs>b{font-size:var(--f3)}
+.modal h3 small.fsm{display:block;margin-top:2px;font-size:var(--f2);font-weight:600;color:var(--sub)}
+@media (min-width:1000px){#p-fac{max-width:820px}}

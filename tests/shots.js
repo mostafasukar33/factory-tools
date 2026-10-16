@@ -141,6 +141,13 @@ const IVSHOT = `if (!IDX.ivp.get('ip_shot')) { const t = todayISO(), u = Date.no
   add('exp', {id: 'ir_shot3', amt: 300000, date: addDays(t, -20), note: 'مصروف تجربة'});
   add('draw', {id: 'ir_shot4', amt: 1000000, date: addDays(t, -10)}); }
 `;
+/* المصنع والتجارة: مصاريف بكلام حر زي الحقيقة (القاموس بيفهمها لوحده)، وفاتورة فيها تجارة */
+const FACSHOT = `if (!IDX.tx.get('t_fac0')) { const v = defVault(), d = n => addDays(todayISO(), -n);
+  [[2500000, 1, 'كهربا المصنع'], [380000, 2, 'كساره'], [150000, 2, 'جاز العربيه'], [1200000, 3, 'حسن عيسي'], [500000, 4, 'جمعيه'], [90000, 4, 'سباكه الحمام'], [450000, 5, 'كسر ابيض']]
+    .forEach(([amt, n, note], i) => { const r = {id: 't_fac' + i, at: Date.now(), upd: Date.now(), del: false, hist: [], type: 'exp', amt, date: d(n), note, vault: v, to: '', cat: ''}; db.txs.push(r); IDX.tx.set(r.id, r); });
+  const c = liveParties().find(p => p.name === 'عميل تجربة اتنين'); const e = {id: 'e_fac1', party: c.id, kind: 'inv', date: d(3), lines: [{name: 'مواسير تجربة 4 بوصة', unit: 'ماسورة', qty: 20, price: 30000}, {name: 'خرطوم تجربة 16 مم', unit: 'لفة', qty: 10, price: 45000}], at: Date.now(), upd: Date.now(), del: false, hist: []};
+  e.dr = docTotal(e); e.cr = 0; db.entries.push(e); E.set(e.id, e); saveDB(); }`;
+const facGo = rev => async A => { await accEval(FACSHOT + "go('fac')")(A); await A.waitForSelector('#p-fac .fc'); if (rev) { await A.click('#fcRev'); await A.waitForSelector('#modal .ldr, #modal .fcs'); } };
 const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-list-' + sfx, go: accEval("tab = 'mkt'; go('home'); renderHome()"), full: true},
   {name: 'acc-site-' + sfx, go: accEval("tab = 'site'; go('home'); renderHome()")},
@@ -160,6 +167,8 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-ldg-sum-' + sfx, go: accEval(`cashView = 'date'; ldgMode = 'w3'; ldgEnd = ''; ldgFilter = 'all'; cashVault = ''; cashOpenV = false; cashPickM = false; ldgSumOpen = true; go('cash'); renderCash()`), full: true},
   {name: 'acc-set-' + sfx, go: accGo('set'), full: true},
   {name: 'acc-jrd-' + sfx, go: accEval(IVSHOT + "jrDate = ''; jrStock = null; go('jrd')"), full: true},
+  {name: 'acc-fac-' + sfx, go: facGo(false), full: true},
+  {name: 'acc-fac-rev-' + sfx, go: facGo(true)},
   {name: 'acc-iv-' + sfx, go: accEval(IVSHOT + "go('jrd/iv/ip_shot')"), full: true},
 ].map(x => Object.assign({app: 'acc', vp}, x, extra, vp.width > 999 ? {full: false} : {}));
 const SCREENS = [

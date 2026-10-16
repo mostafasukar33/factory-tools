@@ -466,6 +466,33 @@ const T0 = Date.now();
     await A.evaluate(() => { cashPickM = true; renderCash(); }); await A.settle(150); await segOk(A, 'الحسابات — دفتر الخزنة (اختيارات الفترة مفتوحة)');
     /* تنضيف بيانات الدفتر والرجوع لـ "بالنوع" */
     await A.evaluate(() => { const g = window.__ldg; [...g.E, ...g.mk].forEach(x => { x.del = true; touch(x); }); g.ids.forEach(i => { P.get(i).del = true; touch(P.get(i)); }); g.v2.del = true; touch(g.v2); cashView = 'type'; cashPickM = false; cashVault = ''; saveDB(); go('mkt'); });
+    {   // المصنع والتجارة (lib/fac.js): القاموس بيفهم الكلام الحر، والمجموع = تقرير الأرباح + برّه الحسبة، والاختيار بيتحفظ
+      await A.evaluate(() => { const now = nowS(), v = vaultsL()[0].id, d = '2001-05-10', ids = [];
+        [['كهربا المصنع', 100000], ['كساره', 20000], ['جاز العربيه', 5000], ['حسن عيسي', 300000], ['حسن ابو شوشه', 7000], ['جمعيه', 50000], ['كسر ابيض', 40000], ['حاجه غريبه خالص', 3000]]
+          .forEach(([note, amt], i) => { const t = {id: 't_fac' + i, type: 'exp', vault: v, amt, cat: '', date: d, note, at: now, upd: now, del: false, hist: []}; db.txs.push(t); IDX.tx.set(t.id, t); ids.push(t.id); });
+        const np = (sec, name) => { const p = {id: 'p_fac' + sec, sec, name, phone: '', note: '', noTot: false, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p); return p; };
+        const c = np('mkt', 'عميل تجربة المصنع'), s = np('sup', 'مورد تجربة المصنع');
+        const doc = (id, p, kind, lines) => { const e = {id, party: p.id, kind, date: d, lines, at: now, upd: now, del: false, hist: []}; const tt = docTotal(e); e.dr = kind === 'inv' ? tt : 0; e.cr = kind === 'inv' ? 0 : tt; db.entries.push(e); E.set(e.id, e); };
+        doc('e_fac1', c, 'inv', [{name: 'خرطوم تجربة 16 مم', unit: 'لفة', qty: 10, price: 40000}, {name: 'مواسير تجربة 3 بوصة', unit: 'ماسورة', qty: 5, price: 20000}, {name: 'صنف تجربة مجهول', unit: 'قطعة', qty: 1, price: 9000}]);
+        doc('e_fac2', s, 'pur', [{name: 'لينير تجربة', unit: 'كيلو', qty: 100, price: 3000}]);
+        doc('e_fac3', s, 'pur', [{name: 'مواسير تجربة 3 بوصة', unit: 'ماسورة', qty: 5, price: 15000}]);
+        saveDB(); go('fac'); });
+      await A.waitForFunction(() => window.facCalc && $('#p-fac .fc'));
+      eq('المصنع والتجارة: القاموس بيفهم المصاريف (حسن عيسى عهدة، أبو شوشه لأ) والأصناف (خرطوم إنتاج، مواسير تجربة تجارة)', await A.evaluate(() => {
+        const C = facCalc('2001-05-01', '2001-05-31'), g = k => (C.R[k] || {amt: 0}).amt;
+        return [g('e:power'), g('e:run'), g('e:gen'), g('e:hassan'), g('e:raw'), g('e:out'), g('e:unk'), g('s:prod'), g('s:trade'), g('s:unk'), g('p:prod'), g('p:trade')]; }),
+        [100000, 20000, 5000, 300000, 40000, 50000, 10000, 400000, 100000, 9000, 300000, 75000]);
+      eq('المصنع والتجارة: الصافي = تقرير الأرباح "قبل الشركاء" + برّه الحسبة (بالقرش)، وعرض بس', await A.evaluate(() => {
+        const C = facCalc('2001-05-01', '2001-05-31'), n0 = db.txs.length + db.entries.length;
+        return [C.total === profitOf('2001-05-01', '2001-05-31').before + C.out, C.out, db.txs.length + db.entries.length === n0]; }), [true, 50000, true]);
+      eq('المصنع والتجارة: الاختيار من "مش فاهم دول" بيتحفظ على الكلمة ويتطبق على أي حركة بنفس الملاحظة', await A.evaluate(() => {
+        const L = () => facCalc('2001-05-01', '2001-05-31');
+        const m = getSet('facMap', null) || {}; putSet('facMap', Object.assign({w: {}, d: {}, s: {}, j: []}, m, {w: Object.assign({}, m.w, {['x:' + norm('حاجه غريبه خالص')]: 'run', ['i:' + norm('صنف تجربة مجهول')]: 'trade'})}));
+        const C = L(), g = k => (C.R[k] || {amt: 0}).amt; return [g('e:unk'), g('e:run'), g('s:trade'), g('s:unk')]; }), [7000, 23000, 109000, 0]);
+      await A.evaluate(() => facOpen()); await A.settle(150); await colOk('الحسابات — المصنع والتجارة', A, '#p-fac', '.fr .n');
+      /* تنضيف */
+      await A.evaluate(() => { db.txs.filter(x => x.id.startsWith('t_fac')).forEach(x => { x.del = true; touch(x); }); db.entries.filter(x => x.id.startsWith('e_fac')).forEach(x => { x.del = true; touch(x); }); ['p_facmkt', 'p_facsup'].forEach(i => { P.get(i).del = true; touch(P.get(i)); }); putSet('facMap', null); saveDB(); go('mkt'); });
+    }
     {   // اقفل الخزنة: بس لما رصيدها صفر، وتختفي من الاختيارات وحركاتها القديمة زي ما هي
       const r0 = await A.evaluate(() => { const now = nowS(), v = {id: 'v_tshut', name: 'خزنة تجربة للقفل', open: 0, ord: 9, at: now, upd: now, del: false}; db.vaults.push(v); IDX.vault.set(v.id, v);
         const t = {id: 't_tshut1', type: 'inc', vault: v.id, amt: 70000, cat: catsL('inc')[0].id, date: todayISO(), note: '', at: now, upd: now, del: false, hist: []}; db.txs.push(t); IDX.tx.set(t.id, t); saveDB();

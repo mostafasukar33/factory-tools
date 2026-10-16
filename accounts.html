@@ -1536,6 +1536,9 @@ body{font-size:var(--f3);line-height:1.6}
 <!-- ============== الجرد والمساهمين ============== -->
 <section class="page" id="p-jrd"></section>
 
+<!-- ============== المصنع والتجارة (lib/fac.js) ============== -->
+<section class="page" id="p-fac"></section>
+
 <!-- ============== الإعدادات ============== -->
 <section class="page" id="p-set">
   <div class="sstat" id="sStat"></div>
@@ -5115,7 +5118,7 @@ function renderReports() {
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
   const needRange = repKind === 'cash' || repKind === 'item' || repKind === 'profit';
   const jw = isWide() ? 0 : ivWaiting();
-  $('#p-rep').innerHTML = (isWide() ? '' : `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b></div><div class="tstrip"><button class="btn line sm" id="rpJrd" type="button">📦 الجرد والمساهمون${jw ? ` (${jw})` : ''}</button></div>`) + `
+  $('#p-rep').innerHTML = (isWide() ? '<div class="tstrip"><button class="btn line sm" id="rpFac" type="button">🏭 المصنع والتجارة</button></div>' : `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b></div><div class="tstrip"><button class="btn line sm" id="rpFac" type="button">🏭 المصنع والتجارة</button><button class="btn line sm" id="rpJrd" type="button">📦 الجرد والمساهمون${jw ? ` (${jw})` : ''}</button></div>`) + `
     <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="card">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
@@ -5145,6 +5148,7 @@ function renderReports() {
   bindI('#rpFrom', v => repFrom = v); bindI('#rpTo', v => repTo = v); bindI('#rpV', v => repVault = v);
   $$('#p-rep tr[data-p]').forEach(el => el.onclick = () => go('p/' + el.dataset.p));
   if ($('#rpJrd')) $('#rpJrd').onclick = () => go('jrd');
+  $('#rpFac').onclick = () => go('fac');
   if ($('#rpBack')) $('#rpBack').onclick = () => go('home');
   $('#rpShare').onclick = () => exportReport(R, 'share');
   $('#rpPdf').onclick = () => exportReport(R, 'preview');
@@ -5205,6 +5209,18 @@ let clP = null;
 function clScript(n) {
   return new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'lib/claude.js'; sc.onload = ok; sc.onerror = () => { sc.remove(); no(); }; document.head.appendChild(sc); })
     .then(() => window.claudeOpen || (n > 0 ? new Promise(r => setTimeout(r, 700)).then(() => clScript(n - 1)) : Promise.reject()));
+}
+/* "المصنع والتجارة" (lib/fac.js): بيتحمّل أول مرة تفتح الصفحة بس، وعرض بس (مبيكتبش غير إعداد facMap) */
+let facP = null;
+function facScript(n) {
+  return new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'lib/fac.js'; sc.onload = ok; sc.onerror = () => { sc.remove(); no(); }; document.head.appendChild(sc); })
+    .then(() => window.facOpen || (n > 0 ? new Promise(r => setTimeout(r, 700)).then(() => facScript(n - 1)) : Promise.reject()));
+}
+function loadFac() {
+  if (window.facOpen) return window.facOpen();
+  $('#p-fac').innerHTML = '<div class="card empty">...</div>';
+  facP = facP || facScript(4).catch(e => { facP = null; throw e; });
+  facP.then(() => { if (document.body.dataset.pg === 'fac') window.facOpen(); }).catch(() => toast('مش قادر يفتح دلوقتي، اتأكد من النت وجرّب تاني.'));
 }
 function loadClaude() {
   if (window.claudeOpen) return window.claudeOpen();
@@ -5785,7 +5801,7 @@ function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   let pg = 'home';
   try { localStorage.setItem('fo_lastpg', /^(cash|part|rep|set)$/.test(h) ? h : 'home'); } catch (e) {}
-  if (h === 'set' || h === 'cash' || h === 'part' || (h === 'chk' && CHECKS_ON) || h === 'rep' || h === 'mkt') pg = h; else if (h.startsWith('p/')) pg = 'party'; else if (h === 'jrd' || h.startsWith('jrd/')) pg = 'jrd';
+  if (h === 'set' || h === 'cash' || h === 'part' || (h === 'chk' && CHECKS_ON) || h === 'rep' || h === 'mkt') pg = h; else if (h.startsWith('p/')) pg = 'party'; else if (h === 'jrd' || h.startsWith('jrd/')) pg = 'jrd'; else if (h === 'fac') pg = 'fac';
   if (h === 'sup') tab = 'sup'; else if (pg === 'home' && tab === 'sup' && !isWide()) tab = 'mkt';   // الموبايل: الموردين تبويب لوحده تحت
   autoPartners();
   /* مرة واحدة: سحب كامل من الشيت علشان أي جرد أو مساهمين اتسجلوا من جهاز تاني قبل التحديث ده ينزلوا */
@@ -5799,7 +5815,7 @@ function route() {
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
   document.body.dataset.pg = pg;   // زرار ＋ العايم بيظهر على الموبايل في الرئيسية ووارد السوق والتقارير بس
   const supOn = !isWide() && (pg === 'home' ? tab === 'sup' : pg === 'party' && (P.get(h.slice(2)) || {}).sec === 'sup');
-  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (supOn ? 'sup' : pg === 'party' ? 'home' : pg === 'part' && !isWide() ? 'cash' : pg)));   // على الموبايل الشركاء جوه الخزنة
+  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (supOn ? 'sup' : pg === 'party' ? 'home' : pg === 'part' && !isWide() ? 'cash' : pg === 'fac' ? 'rep' : pg)));   // على الموبايل الشركاء جوه الخزنة
   if (CHECKS_ON) { const nd = chkDue().length; $('#nbChk').textContent = nd || ''; $('#nbChk').style.display = nd ? '' : 'none'; }
   /* على اللاب توب: قايمة الحسابات على جنب والحساب المفتوح جنبها */
   const split = isWide() && (pg === 'home' || pg === 'party');
@@ -5814,7 +5830,7 @@ function route() {
       $('#p-party').innerHTML = '<div class="card empty" style="padding:60px 20px;font-size:var(--f3)">لسه مفيش حسابات. اضغط "+ حساب جديد".</div>';
     }
   }
-  if (pg === 'mkt') { $('#mkBar').classList.remove('on'); renderMkt(); } else if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'jrd') renderJrd(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split && !(back && homeVer === dataVer + '|' + tab)) renderHome();
+  if (pg === 'mkt') { $('#mkBar').classList.remove('on'); renderMkt(); } else if (pg === 'set') renderSettings(); else if (pg === 'rep') renderReports(); else if (pg === 'chk') renderChecks(); else if (pg === 'cash') renderCash(); else if (pg === 'part') renderPartners(); else if (pg === 'jrd') renderJrd(); else if (pg === 'fac') loadFac(); else if (pg === 'party') renderParty(h.slice(2)); else if (!split && !(back && homeVer === dataVer + '|' + tab)) renderHome();
 }
 /* شريط أعلى صفحة الحساب ثابت (مبيخبّيش وانت بتنزل): رجوع، فوق، تحت، تعديل */
 function setHdr() { const h = document.querySelector('header.top'); if (h) document.documentElement.style.setProperty('--hh', (getComputedStyle(h).position === 'fixed' ? 0 : h.offsetHeight) + 'px'); }   // على اللاب الشريط في القايمة الجانبية فمفيش مسافة فوق

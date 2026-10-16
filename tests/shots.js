@@ -156,6 +156,7 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-rep-' + sfx, go: accGo('rep'), full: true},
   {name: 'acc-col-' + sfx, go: async A => { await accGo('rep')(A); await A.evaluate(() => { repKind = 'col'; repColMode = 'month'; renderReports(); }); }, full: true},
   {name: 'acc-ldg-' + sfx, go: accEval(`cashView = 'date'; ldgMode = 'w3'; ldgEnd = ''; ldgFilter = 'all'; cashVault = ''; cashOpenV = false; cashPickM = false; ldgSumOpen = false; go('cash'); renderCash()`), full: true},
+  {name: 'acc-cash-srch-' + sfx, go: async A => { await accEval(`cashView = 'date'; ldgMode = 'w3'; ldgEnd = ''; cashVault = ''; go('cash'); renderCash(); $('#cSrch').click()`)(A); await A.fill('#csQ', 'عميل'); await A.waitForTimeout(150); }},
   {name: 'acc-ldg-sum-' + sfx, go: accEval(`cashView = 'date'; ldgMode = 'w3'; ldgEnd = ''; ldgFilter = 'all'; cashVault = ''; cashOpenV = false; cashPickM = false; ldgSumOpen = true; go('cash'); renderCash()`), full: true},
   {name: 'acc-set-' + sfx, go: accGo('set'), full: true},
   {name: 'acc-jrd-' + sfx, go: accEval(IVSHOT + "jrDate = ''; jrStock = null; go('jrd')"), full: true},

@@ -4105,6 +4105,26 @@ function kitsDraw(arr, row, open, empty) {
 /* ============ دفتر الخزنة بالتاريخ (cashView = 'date') ============
    نفس حركات "بالنوع" بالظبط (نفس cashGroup: تسوية الجرد والتحويل بين خزنتين مش بيظهروا، وعملاء السوق سطر مجمّع)، بس مترتبة يوم ورا يوم: على الشاشة الأحدث فوق، وفي الـ PDF الأقدم فوق. مفيش رصيد.
    زرار "✓ نقلته" و"اعرض اللي لسه" اتشالوا بطلب صاحب المشروع (كانوا بيلخبطوه). إعداد ldgDone القديم متساب في الشيت ومحدش بيقراه */
+/* 🔍 البحث في الخزنة: كل الحركات (خزني + خزنة السوق) في كل التواريخ، بالاسم أو الملاحظة أو البند أو الخزنة أو المبلغ. الأحدث فوق، والدوس بيفتح الحركة */
+function cashSearch(open) {
+  const seen = new Set(), all = vaultMoves('', '', '').map(m => Object.assign(m, {side: 'me'})).concat(vaultMoves(MKV, '', '').map(m => Object.assign(m, {side: 'mkt'})))
+    .filter(m => { const k = m.src + m.r.id; if (seen.has(k)) return false; seen.add(k); return true; })
+    .sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at);
+  const txt = m => norm([m.who, m.what, m.title, m.sub, m.side === 'mkt' ? vName(MKV) : '', fmtP(m.amt), String(m.amt / 100), dispDate(m.date)].join(' '));
+  modal(`<h3>🔍 دوّر في الخزنة</h3><input class="inp" id="csQ" type="search" placeholder="اسم، مصروف، ملاحظة، أو مبلغ" autocomplete="off"><div id="csR" class="csr"></div>`);
+  let res = [];
+  const draw = () => {
+    const q = norm($('#csQ').value);
+    if (!q) { $('#csR').innerHTML = '<div class="kno">اكتب أي كلمة أو رقم</div>'; return; }
+    const ws = q.split(' ');
+    res = all.filter(m => { const t = txt(m); return ws.every(w => t.includes(w)); });
+    const sh = res.slice(0, 80), tot = res.reduce((n, m) => n + m.sign * m.amt, 0);
+    $('#csR').innerHTML = res.length ? `<div class="csn">${res.length === 1 ? 'حركة واحدة' : res.length === 2 ? 'حركتين' : res.length + (res.length <= 10 ? ' حركات' : ' حركة')}${res.length > 1 ? ` · الصافي <b class="n${tot < 0 ? ' neg' : ''}">${fmtP(tot)}</b>` : ''}</div>` + sh.map((m, i) => `<div class="ldr" data-i="${i}" role="button" tabindex="0"><div class="ldm"><b>${esc(m.who)}</b><small>${dispDate(m.date)} · ${esc([m.what, m.side === 'mkt' ? vName(MKV) : m.r.type === 'tr' ? '' : vName(m.r.vault)].filter(Boolean).join(' · '))}</small></div><b class="n ${m.sign > 0 ? 'in' : 'out'}">${m.sign > 0 ? '+' : '−'} ${fmtP(m.amt)}</b></div>`).join('') + (res.length > 80 ? '<div class="kno">فيه أكتر، زوّد كلمة</div>' : '')
+      : '<div class="kno">مفيش حاجة بالكلمة دي</div>';
+    $$('#csR .ldr').forEach(el => el.onclick = () => { const m = sh[+el.dataset.i]; closeModal(); open(m); });
+  };
+  $('#csQ').oninput = draw; draw(); setTimeout(() => $('#csQ').focus(), 50);
+}
 function ldgRange() {
   const t = todayISO();
   if (ldgMode === 'range') return [ldgFrom || addDays(t, -13), ldgTo || t];
@@ -4137,6 +4157,8 @@ function ldgItems(from, to) {
 /* اسم الدفتر حسب الاختيار */
 const ldgSc = () => db.vaults.some(v => v.id === MKV && !v.del) ? ldgScope : 'me';
 const ldgTitle = () => ldgSc() === 'all' ? 'دفتر المصنع كله' : ldgSc() === 'mk' ? 'عهدة ' + MK_PN : cashVault ? 'دفتر ' + vName(cashVault) : 'دفتري';
+/* رصيد الدفتر أول اليوم d (قبله): نفس الخزن اللي الدفتر بيعرضها. المصنع كله = خزني + خزنة السوق. من الأرصدة الحقيقية (vaultBal) فبيبان فيه أي تسوية جرد أو تحويل مش ظاهر في السطور */
+const ldgBal = d => { const s = ldgSc(); return s === 'all' ? vaultBal('', d) + vaultBal(MKV, d) : s === 'mk' ? vaultBal(MKV, d) : vaultBal(cashVault || '', d); };
 const ldgSum = (L, dir) => L.filter(x => x.dir === dir).reduce((n, x) => n + x.m.amt, 0);
 const ldgName = x => x.g === 'exp' ? cName(x.m.r.cat) : CG[x.g][0];
 const ldgWhat = (m, nm) => { const w = (m.what || '').replace(/حركة السوق( — )?/, '').trim(); return w && w !== m.who && w !== nm ? w : ''; };
@@ -4158,7 +4180,8 @@ function ldgHtml(L) {
     <button type="button" class="ldsb${ldgSumOpen ? ' on' : ''}" id="ldgSumB">بالبند <i class="kch">▾</i></button>
     <div class="ldsg"${ldgSumOpen ? '' : ' hidden'}>${G.filter(g => g.dir === 'in').map(gRow).join('')}${G.filter(g => g.dir === 'out').map(gRow).join('')}</div></section>`;
   const days = ldgDays(F).reverse().map(({d, rows, in: di, out: dout}) => {   // الأحدث فوق (بطلب صاحب المشروع)، والـ PDF بيفضل الأقدم فوق زي الدفتر الورق
-    return `<div class="ldd" data-d="${d}"><div class="ldh"><div class="ldw"><b>${AR_DAYS[dowOf(d)]} · ${dispDate(d)}</b></div>
+    const b0 = ldgBal(d), b1 = ldgBal(addDays(d, 1));
+    return `<div class="ldd" data-d="${d}"><div class="ldh"><div class="ldw"><b>${AR_DAYS[dowOf(d)]} · ${dispDate(d)}</b><small class="ldb">بدأ بـ <b class="n">${fmtP(b0)}</b> · ${d >= todayISO() ? 'دلوقتي' : 'قفل على'} <b class="n${b1 < 0 ? ' neg' : ''}">${fmtP(b1)}</b></small></div>
       <div class="ldt">${di ? `<b class="n in">+ ${fmtP(di)}</b>` : ''}${dout ? `<b class="n out">− ${fmtP(dout)}</b>` : ''}</div></div>
       ${rows.slice().reverse().map(x => { const m = x.m, i = F.indexOf(x), vid = m.r.type === 'tr' || m.parts || m.side === 'mkt' ? '' : m.r.vault, bits = [ldgName(x), ldgWhat(m, ldgName(x)), showV && vid ? vName(vid) : ''].filter(Boolean);
         return `<div class="ldr" data-i="${i}" role="button" tabindex="0"><div class="ldm"><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n ${x.dir}">${x.dir === 'in' ? '+' : '−'} ${fmtP(m.amt)}</b></div>`; }).join('')}</div>`;
@@ -4222,7 +4245,7 @@ function renderCash() {
         <button class="btn line mob" id="cPart" type="button">👥 <span>الشركاء</span></button>
       </div>
     </div>
-    <div class="seg s2" id="cView"><button type="button" data-v="type" class="${dv ? '' : 'on'}">بالنوع</button><button type="button" data-v="date" class="${dv ? 'on' : ''}">بالتاريخ</button></div>
+    <div class="kvrow"><div class="seg s2" id="cView"><button type="button" data-v="type" class="${dv ? '' : 'on'}">بالنوع</button><button type="button" data-v="date" class="${dv ? 'on' : ''}">بالتاريخ</button></div><button type="button" class="ksrch" id="cSrch" title="دوّر في الخزنة" aria-label="دوّر في الخزنة">🔍</button></div>
     ${dv && hasM ? `<div class="seg s3" id="ldgS">${[['all', 'المصنع كله'], ['me', 'خزني'], ['mk', 'عهدة ' + MK_PN]].map(([k, n]) => `<button type="button" data-v="${k}" class="${ldgScope === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
     <div class="card${cashPickM ? ' pk' : ''}" id="cPer">
       ${dv ? `<div class="seg s5" id="cMode">${LDG_MODES.map(([k, n]) => `<button type="button" data-m="${k}" class="${ldgMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>`
@@ -4257,6 +4280,7 @@ function renderCash() {
     if (op && MK_T[op.t] && (m.side === 'mkt' || op.t === 'exp')) return mkOpMenu(op);
     if (m.src === 'tx') m.r.pt ? partnerTxModal(m.r) : m.r.iv && ivGet(m.r.iv) ? ivTxModal(m.r) : txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
   };
+  tap($('#cSrch'), () => cashSearch(open));
   $$('#ldgS button').forEach(b => b.onclick = () => { ldgScope = b.dataset.v; cashVault = ''; cashOpenV = false; ldgScroll = true; renderCash(); });
   $$('#p-cash .kty').forEach(el => tap(el, () => {
     const [key, k] = el.dataset.k.split(':'), s = key === 'mk' ? mk : me;

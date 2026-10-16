@@ -1046,6 +1046,7 @@ const T0 = Date.now();
       return [text.includes('## اقراني الأول') && text.indexOf('## تعليمات لـ Claude') < text.indexOf('## اقراني الأول') && !$('#clSt'), badBal, L.find(x => x.startsWith('إجمالي خزن ')).split(' | ')[1] === fmtP(vaultBal('')), pl[8] === fmtP(profitOf(first, todayISO()).after), n === nEnt + nTx,
         !!got && /^flashon-accounts-.*\.txt$/.test(got.files[0].name) && shared.length > 1000, !$('#clGo'), dataVer === v0 && JSON.stringify([db.entries.length, db.txs.length, db.parties.length]) === n0];
     }), [true, [], true, true, true, true, true, true]);
+    eq('اسأل Claude: "اقراني الأول" فيه شرح توحيد الخزن في "كاش" ودفعات السوق القديمة قبل 12/10/2026', await A.evaluate(() => { const f = claudeBuild('full').text, r = f.indexOf('## اقراني الأول'); return [f.indexOf('كل الخزن اتوحدت في خزنة واحدة اسمها "كاش"') > r, f.indexOf('جرد يوم 12/10/2026 صفّر الخزن القديمة') > r]; }), [true, true]);
     eq('اسأل Claude "كل حاجة": فيه الملغي وسجل التعديلات زيادة، والأرصدة زي "من الأول"، والشات القديم اتشال', await A.evaluate(() => {
       const a = claudeBuild('all').text, f = claudeBuild('full').text, del = db.entries.find(e => e.del && P.get(e.party));
       const part = (x, h) => x.slice(x.indexOf(h), x.indexOf('\n## ', x.indexOf(h) + 3));
@@ -1093,6 +1094,7 @@ const T0 = Date.now();
     eq('الموبايل: كل زراير صفحة العميل جوه الشاشة', await A.evaluate(() => [...$$('#p-party .acts .btn')].filter(b => b.offsetParent).every(b => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })), true);
     eq('رسالة التراجع: صغيرة فوق مكان الاسم، مش فوق أي زرار، وبتختفي في أقل من 5 ثواني', await A.evaluate(async () => {
       toastUndo('اتلغت حركة تجربة طويلة شوية علشان نشوف الاسم بيتقص ولا لأ', () => {});
+      await Promise.all($('#toast').getAnimations().map(a => a.finished));   // بعد حركة الظهور (foUp) مش في نصها
       const t = $('#toast').getBoundingClientRect(), hit = [...$$('.top button')].filter(b => b.offsetParent).some(b => { const r = b.getBoundingClientRect(); return r.right > t.left && r.left < t.right && r.bottom > t.top && r.top < t.bottom; });
       return [t.top < 20, t.height < 50, hit]; }), [true, true, false]);
     eq('رسالة التراجع اختفت لوحدها في أقل من 5 ثواني', await A.waitForFunction(() => getComputedStyle($('#toast')).display === 'none', null, {timeout: 5000}).then(() => true, () => false), true);

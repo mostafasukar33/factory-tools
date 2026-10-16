@@ -480,6 +480,21 @@ const T0 = Date.now();
         ['t_tshut1', 't_tshut2'].forEach(id => { const t = IDX.tx.get(id); t.del = true; touch(t); }); const v = IDX.vault.get('v_tshut'); v.del = true; touch(v); saveDB(); closeModal(); return a; });
       eq('افتح الخزنة تاني بيرجّعها', r2, true);
     }
+    {   // جرد الخزنة: ملاحظة العجز، وحركة اتسجلت بعد الجرد بتاريخ قبله بتسأل "كانت معاك؟"
+      const r = await A.evaluate(async () => {
+        const v = vaultsL()[0].id, b0 = vaultBal(v), n0 = db.txs.length, y = addDays(todayISO(), -3);
+        openingModal(); const el = $(`#modal [data-v="${v}"]`); el.value = fmtP(b0 - 70000); $('#opN').value = 'عجز تجربة'; $('#opOk').click();
+        const adj = db.txs[db.txs.length - 1], r = [adj.cat === 'c_adj_out' && adj.note.includes('عجز تجربة') && vaultBal(v) === b0 - 70000];
+        const add = (type, ans) => { txModal(type); $('#txA').value = fmtP(50000); $('#txD').value = y; if ($('#txC')) $('#txC').value = catsL(type)[0].id; $('#txV').value = v; $('#txOk').click();
+          const asked = !!$('#cnY') && db.txs.length === n1(); if (asked) $(ans ? '#cnY' : '#cnN').click(); return asked; };
+        let n1v = db.txs.length; const n1 = () => n1v;
+        r.push(add('inc', true), vaultBal(v) === b0 - 70000, db.txs.some(x => x.cfix && x.date === adj.date && x.type === 'exp' && x.amt === 50000));
+        n1v = db.txs.length; r.push(add('inc', false), vaultBal(v) === b0 - 20000);
+        n1v = db.txs.length; txModal('exp'); $('#txA').value = fmtP(1000); $('#txD').value = todayISO(); $('#txC').value = catsL('exp')[0].id; $('#txV').value = v; $('#txOk').click(); r.push(!$('#cnY') && db.txs.length === n1v + 1);
+        { const cf = db.txs.find(x => x.cfix && !x.del), pf = profitOf(addDays(todayISO(), -30), todayISO()).after; cf.del = true; r.push(profitOf(addDays(todayISO(), -30), todayISO()).after === pf); cf.del = false; }
+        db.txs.slice(n0).forEach(x => { x.del = true; touch(x); }); saveDB(); closeModal(); r.push(vaultBal(v) === b0); return r; });
+      eq('جرد الخزنة: ملاحظة العجز بتتسجل، والحركة بتاريخ قبل الجرد بتسأل "كانت معاك؟": أيوه = الرصيد بعد الجرد مبيتغيرش، لأ = بيزيد، وحركة النهارده مبتسألش، والأرباح مش متأثرة بالتصحيح', r, [true, true, true, true, true, true, true, true, true]);
+    }
     sec('٦) دفعة عميل بتدخل الخزنة');
     await openParty(A, 'عميل تجربة اتنين'); await A.click('#fbPay'); await A.fill('#pyAmt', '70'); await A.click('#pyOk'); await closed(A);
     eq('الدفعة نزلت على العميل', await bal(A, 'عميل تجربة اتنين'), -7000);

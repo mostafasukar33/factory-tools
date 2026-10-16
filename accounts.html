@@ -2688,6 +2688,7 @@ function payModal(p, kind, e, opts = {}) {
   $('#pyX').onclick = closeModal;
   let warned = false;
   if (isNew) setTimeout(() => $('#pyAmt') && $('#pyAmt').focus(), 50);
+  const cnSt = {a: null};
   $('#pyOk').onclick = () => {
     const amt = toP($('#pyAmt').value), date = $('#pyDate').value, note = $('#pyNote').value.trim(), vault = $('#pyV').value;
     if (amt <= 0) return toast('اكتب المبلغ');
@@ -2707,8 +2708,12 @@ function payModal(p, kind, e, opts = {}) {
     if (isNew && !warned && db.entries.some(x => !x.del && x.party === p.id && x.kind === kind && x.date === date && x.amt === amt)) {
       warned = true; $('#pyWarn').innerHTML = `<div class="sync warn">فيه دفعة بنفس المبلغ (${fmtP(amt)}) لنفس الحساب في نفس اليوم. متأكد إنها مش متكررة؟</div>`; $('#pyOk').textContent = 'متأكد، احفظ برضه'; return;
     }
+    const effOf = (x, v) => x.chk && !v ? [] : [{v, d: kind === 'ppay' ? -x.amt : x.amt}];
+    const hits = isNew || !cntHits(effOf(e, e.vault), e.date, e.at || 0).length ? cntHits(effOf(o, o.vault), date, isNew ? nowS() : e.at || 0) : [];
+    if (cntGate($('#pyOk'), hits, cnSt)) return;
     rememberVault(method, vault);
     o.desc = docDesc(o);
+    if (cnSt.a) cntFix(hits, `${KIND[kind]} ${p.name} ${fmtP(amt)} بتاريخ ${dispDate(date)}`);
     if (isNew) { if (!o.chk) delete o.chk; applyAmounts(addEntry(Object.assign({party: p.id}, o))); toast(o.chk ? 'اتسجل الشيك ✔' : 'اتسجلت الدفعة ✔'); }
     else {
       if (e.amt === amt && e.date === date && e.method === method && (e.note || '') === note && (e.vault || '') === o.vault && JSON.stringify(e.chk || null) === JSON.stringify(o.chk || null)) return closeModal();
@@ -4312,26 +4317,54 @@ function ensureAdjCat(type) {
   if (!IDX.cat.get(id)) { const now = nowS(); const r = {id, type, name, ord: 98, upd: now, del: false}; db.cats.push(r); IDX.cat.set(id, r); }
   return id;
 }
+/* حركة اتسجلت بعد الجرد بتاريخ قبله (بطلبه 16/10/2026): بنسأل "الفلوس دي كانت معاك وقت الجرد؟".
+   أيوه = الجرد كان حاسبها، فبتتسجل تسوية عكسها بتاريخ الجرد (cfix) والرصيد بعد الجرد ميتغيرش. لأ = تتسجل عادي. */
+function lastCnt(vid) {
+  let c = null;
+  for (const t of db.txs) if (!t.del && !t.cfix && t.vault === vid && ADJ_CATS.has(t.cat) && (!c || t.date > c.date || (t.date === c.date && (t.at || 0) > (c.at || 0)))) c = t;
+  return c;
+}
+const cntHits = (eff, date, at) => eff.filter(x => x.v && x.d).map(x => Object.assign({c: lastCnt(x.v)}, x)).filter(x => x.c && date < x.c.date && at > (x.c.at || 0));
+function cntFix(hits, what) {
+  hits.forEach(h => {
+    const type = h.d > 0 ? 'exp' : 'inc', now = nowS();
+    const r = {id: newId('t_'), type, amt: Math.abs(h.d), vault: h.v, to: '', cat: ensureAdjCat(type), date: h.c.date, note: `تصحيح جرد ${dispDate(h.c.date)}: ${what} اتسجلت بعد الجرد وكانت محسوبة فيه`, cfix: 1, at: now, upd: now, del: false, hist: []};
+    db.txs.push(r); IDX.tx.set(r.id, r);
+  });
+}
+/* بيرجع true لو لسه مستني الإجابة (st.a: null = لسه، true = كانت معايا، false = مكانتش) */
+function cntGate(btn, hits, st) {
+  if (!hits.length || st.a !== null) return false;
+  if (!$('#cnBox')) btn.parentNode.insertAdjacentHTML('beforebegin', '<div id="cnBox"></div>');
+  const h = hits[0];
+  $('#cnBox').innerHTML = `<div class="sync warn">الحركة دي تاريخها قبل جرد خزنة ${esc(vName(h.v))} يوم ${dispDate(h.c.date)}. الفلوس دي كانت معاك وقت الجرد؟
+    <div class="stack" style="margin-top:8px"><button class="btn gold sm" id="cnY" type="button">أيوه كانت معايا (الجرد كان حاسبها)</button><button class="btn line sm" id="cnN" type="button">لأ، مكانتش معايا</button></div></div>`;
+  $('#cnY').onclick = () => { st.a = true; btn.click(); };
+  $('#cnN').onclick = () => { st.a = false; btn.click(); };
+  $('#cnBox').scrollIntoView({block: 'nearest'});
+  return true;
+}
 function openingModal() {
   const vs = vaultsL();
   const moved = v => db.txs.some(t => !t.del && (t.vault === v.id || t.to === v.id)) || db.entries.some(e => !e.del && e.vault === v.id);
   modal(`<h3>الفلوس اللي معايا دلوقتي</h3>
     <p style="font-size:var(--f3)">اكتب الفلوس اللي موجودة فعلاً في كل خزنة دلوقتي، والبرنامج يظبط الرصيد عليها.</p>
     ${vs.map(v => `<div class="fld"><label>${esc(v.name)} <small style="color:var(--sub)">(البرنامج شايف ${fmtP(vaultBal(v.id))})</small></label><input class="inp num amt" data-v="${esc(v.id)}" placeholder="0" value="${fmtP(vaultBal(v.id))}"></div>`).join('')}
+    ${vs.some(moved) ? '<div class="fld"><label>ملاحظة (سبب العجز أو الزيادة)</label><input class="inp" id="opN" placeholder="مثلاً: فلوس اتدفعت لعامل ومتسجلتش"></div>' : ''}
     <p class="hint">${vs.some(moved) ? 'الخزنة اللي فيها حركات: الفرق هيتسجل النهارده "تسوية جرد"، والحركات القديمة مش هتتغير.' : 'الرقم ده هيبقى رصيد البداية، وكل حاجة بعد كده هتتحسب عليه.'}</p>
     <div class="stack"><button class="btn gold" id="opOk" type="button">حفظ</button><button class="btn line sm" id="opAdd" type="button">+ خزنة تانية (بنك، محفظة…)</button><button class="btn line" id="opX" type="button">رجوع</button></div>`);
   $$('#modal [data-v]').forEach(bindMoney);
   $('#opX').onclick = closeModal;
   $('#opAdd').onclick = () => editVault();
   $('#opOk').onclick = () => {
-    let n = 0;
+    let n = 0; const why = $('#opN') ? $('#opN').value.trim() : '';
     $$('#modal [data-v]').forEach(el => {
       const v = IDX.vault.get(el.dataset.v); if (!v) return;
       const d = toP(el.value) - vaultBal(v.id); if (!d) return;
       if (!moved(v)) { v.open = (v.open || 0) + d; touch(v); }
       else {
         const type = d > 0 ? 'inc' : 'exp', now = nowS();
-        const r = {id: newId('t_'), type, amt: Math.abs(d), vault: v.id, to: '', cat: ensureAdjCat(type), date: todayISO(), note: `جرد: الموجود فعلاً ${fmtP(toP(el.value))}`, at: now, upd: now, del: false, hist: []};
+        const r = {id: newId('t_'), type, amt: Math.abs(d), vault: v.id, to: '', cat: ensureAdjCat(type), date: todayISO(), note: `جرد: الموجود فعلاً ${fmtP(toP(el.value))}${why ? ' — ' + why : ''}`, at: now, upd: now, del: false, hist: []};
         db.txs.push(r); IDX.tx.set(r.id, r);
       }
       n++;
@@ -4383,6 +4416,7 @@ function txModal(type, t) {
   bindMoney($('#txA'));
   $('#txX').onclick = closeModal;
   if (isNew) setTimeout(() => $('#txA') && $('#txA').focus(), 50);
+  const cnSt = {a: null};
   $('#txOk').onclick = () => {
     const amt = toP($('#txA').value), date = $('#txD').value, note = $('#txN').value.trim(), vault = $('#txV').value;
     if (amt <= 0) return toast('اكتب المبلغ');
@@ -4391,6 +4425,10 @@ function txModal(type, t) {
     if (type === 'tr' && o.to === vault) return toast('اختار خزنتين مختلفتين');
     if (type !== 'tr' && !o.cat) return toast('اختار البند');
     if (isLocked(date)) return lockToast();
+    const effOf = x => x.type === 'tr' ? [{v: x.vault, d: -x.amt}, {v: x.to, d: x.amt}] : [{v: x.vault, d: x.type === 'inc' ? x.amt : -x.amt}];
+    const hits = isNew || !cntHits(effOf(t), t.date, t.at || 0).length ? cntHits(effOf(o), date, isNew ? nowS() : t.at || 0) : [];
+    if (cntGate($('#txOk'), hits, cnSt)) return;
+    if (cnSt.a) cntFix(hits, `${TXT[type]} ${fmtP(amt)} بتاريخ ${dispDate(date)}`);
     if (isNew) { const now = nowS(); const r = Object.assign({id: newId('t_'), at: now, upd: now, del: false, hist: []}, o); db.txs.push(r); IDX.tx.set(r.id, r); toast('اتسجلت ✔'); }
     else {
       if (['amt', 'date', 'note', 'vault', 'to', 'cat'].every(k => (t[k] || '') === (o[k] || ''))) return closeModal();

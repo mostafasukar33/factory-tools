@@ -493,10 +493,11 @@ const T0 = Date.now();
         const now = nowS(), e = {id: 'e_fac4', party: 'p_facmkt', kind: 'inv', date: '2001-05-11', mkNL: true, lines: [], dr: 25000, cr: 0, at: now, upd: now, del: false, hist: []}; db.entries.push(e); E.set(e.id, e);
         const C = facCalc('2001-05-01', '2001-05-31'), g = k => (C.R[k] || {amt: 0}).amt;
         return [g('s:prod'), g('s:nl'), (C.R['s:prod'].it.find(x => x.id === 'e_fac4') || {}).what]; }), [425000, 0, 'البنود لسه']);
+      eq('المصنع والتجارة: زرارها اتشال من التقارير (بطلبه)', await A.evaluate(() => { go('rep'); renderReports(); return !$('#rpFac'); }), true);
       eq('المصنع والتجارة: الشغلانات اتشالت، واللي اتحط في شغلانة اسمها "نثريات" أو "تجارة" بيرجع للبند ده لوحده', await A.evaluate(() => {
         putSet('facMap', {w: {}, d: {t_fac2: 'j:j1', e_fac3: 'j:j2'}, s: {}, j: [{id: 'j1', name: 'نثريات'}, {id: 'j2', name: 'تجارة'}]}); facOpen();
         const m = getSet('facMap', null); return [m.j.length, m.d.t_fac2, m.d.e_fac3, !!$('#fcNJ'), $$('#p-fac .fc').length]; }), [0, 'gen', 'trade', false, 3]);
-      await A.evaluate(() => facOpen()); await A.settle(150); await colOk('الحسابات — المصنع والتجارة', A, '#p-fac', '.fr .n');
+      await A.evaluate(() => { go('fac'); facOpen(); }); await A.settle(150); await colOk('الحسابات — المصنع والتجارة', A, '#p-fac', '.fr .n');
       /* تنضيف */
       await A.evaluate(() => { db.txs.filter(x => x.id.startsWith('t_fac')).forEach(x => { x.del = true; touch(x); }); db.entries.filter(x => x.id.startsWith('e_fac')).forEach(x => { x.del = true; touch(x); }); ['p_facmkt', 'p_facsup'].forEach(i => { P.get(i).del = true; touch(P.get(i)); }); putSet('facMap', null); saveDB(); go('mkt'); });
     }

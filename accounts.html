@@ -5118,7 +5118,7 @@ function renderReports() {
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
   const needRange = repKind === 'cash' || repKind === 'item' || repKind === 'profit';
   const jw = isWide() ? 0 : ivWaiting();
-  $('#p-rep').innerHTML = (isWide() ? '<div class="tstrip"><button class="btn line sm" id="rpFac" type="button">🏭 المصنع والتجارة</button></div>' : `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b></div><div class="tstrip"><button class="btn line sm" id="rpFac" type="button">🏭 المصنع والتجارة</button><button class="btn line sm" id="rpJrd" type="button">📦 الجرد والمساهمون${jw ? ` (${jw})` : ''}</button></div>`) + `
+  $('#p-rep').innerHTML = (isWide() ? '' : `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b></div><div class="tstrip"><button class="btn line sm" id="rpJrd" type="button">📦 الجرد والمساهمون${jw ? ` (${jw})` : ''}</button></div>`) + `
     <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="card">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
@@ -5148,7 +5148,6 @@ function renderReports() {
   bindI('#rpFrom', v => repFrom = v); bindI('#rpTo', v => repTo = v); bindI('#rpV', v => repVault = v);
   $$('#p-rep tr[data-p]').forEach(el => el.onclick = () => go('p/' + el.dataset.p));
   if ($('#rpJrd')) $('#rpJrd').onclick = () => go('jrd');
-  $('#rpFac').onclick = () => go('fac');
   if ($('#rpBack')) $('#rpBack').onclick = () => go('home');
   $('#rpShare').onclick = () => exportReport(R, 'share');
   $('#rpPdf').onclick = () => exportReport(R, 'preview');

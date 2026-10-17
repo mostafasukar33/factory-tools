@@ -2286,7 +2286,7 @@ const noRef = t => String(t || '').replace(/ رقم \d+/g, '');
 function docTitle(e) {
   if (isDoc(e)) return KIND[e.kind];
   if ((e.kind === 'pay' || e.kind === 'ppay') && e.chk) return `${e.kind === 'pay' ? 'شيك وارد' : 'شيك صادر'}${e.chk.no ? ' رقم ' + e.chk.no : ''} — يستحق ${dispDate(e.chk.due)}`;
-  if (e.kind === 'pay' || e.kind === 'ppay') return `${e.kind === 'pay' ? 'دفعة استلمتها' : 'دفعة دفعتها'} — ${e.method || 'نقدي'}${e.vault ? ' — ' + vName(e.vault) : ''}`;
+  if (e.kind === 'pay' || e.kind === 'ppay') return `${e.kind === 'pay' ? 'دفعة استلمتها' : 'دفعة دفعتها'}${e.vault ? ' — ' + vName(e.vault) : ''}`;   // من غير طريقة الدفع (اتشالت بطلبه 17/10/2026)
   if (e.kind === 'adj') return `${e.dir === 'dn' ? 'خصم' : 'تسوية'}: ${e.note || ''}`;
   if (e.kind === 'bnc') return `شيك مرتجع${e.chkno ? ' رقم ' + e.chkno : ''}`;
   return e.desc;
@@ -2516,7 +2516,7 @@ function mkGrpModal(p, ids) {
   if (L.length === 1) return openEntry(p, L[0]);
   modal(`<h3>💵 دفعة<small class="mnm">${esc(p.name)}</small></h3>
     
-    ${L.map(e => `<div class="pt" data-e="${esc(e.id)}"><div class="m"><b>${esc(e.method || 'نقدي')}${e.note && e.note !== 'حركة السوق' ? ' — ' + esc(e.note.replace(/^حركة السوق — /, '')) : ''}</b><small>${dispDate(e.date)}${e.vault ? ' — ' + esc(vName(e.vault)) : ''}</small></div><div class="a"><b>${fmtP(e.amt)}</b></div></div>`).join('')}
+    ${L.map(e => `<div class="pt" data-e="${esc(e.id)}"><div class="m"><b>${e.note && e.note !== 'حركة السوق' ? esc(e.note.replace(/^حركة السوق — /, '')) : 'دفعة'}</b><small>${dispDate(e.date)}${e.vault ? ' — ' + esc(vName(e.vault)) : ''}</small></div><div class="a"><b>${fmtP(e.amt)}</b></div></div>`).join('')}
     <div class="dtot"><span>الإجمالي</span><b>${fmtP(L.reduce((s, e) => s + (e.amt || 0), 0))}</b></div>
     <button class="btn line" id="mgX" type="button">رجوع</button>`, true);
   $('#mgX').onclick = closeModal;
@@ -2779,7 +2779,7 @@ function payModal(p, kind, e, opts = {}) {
   modal(`<h3>💵 ${isNew ? (rec ? 'استلمت دفعة' : 'دفعت دفعة') : 'تعديل دفعة'}<small class="mnm">${esc(p.name)}</small></h3>
     <div class="fld"><label>المبلغ</label><div class="amtrow"><input class="inp num amt" id="pyAmt" placeholder="0" value="${e ? fmtP(e.amt) : ''}">${isNew && (rec ? balance(p.id) > 0 : balance(p.id) < 0) ? '<button class="btn line sm" id="pyAll" type="button">كل الرصيد</button>' : ''}</div>
       <div class="hint" style="margin-top:4px">الرصيد الحالي: ${fmtP(Math.abs(balance(p.id)))} ${balWord(balance(p.id))}</div></div>
-    <div class="fld"><label>طريقة الدفع</label><div class="seg ${CHECKS_ON || method === 'شيك' ? 's3' : 's2'}" id="pyM">${METHODS.filter(m => CHECKS_ON || m !== 'شيك' || m === method).map(m => `<button type="button" data-v="${m}" class="${m === method ? 'on' : ''}">${m}</button>`).join('')}</div></div>
+    ${CHECKS_ON || method === 'شيك' ? `<div class="fld"><label>طريقة الدفع</label><div class="seg s3" id="pyM">${METHODS.map(m => `<button type="button" data-v="${m}" class="${m === method ? 'on' : ''}">${m}</button>`).join('')}</div></div>` : ''}
     <div id="pyChk" class="card" style="background:var(--gold-l);margin:0 0 10px">
       <div class="g2"><div class="fld"><label>رقم الشيك</label><input class="inp num" id="pyCn" inputmode="numeric" value="${esc(ck.no || '')}"></div>
         <div class="fld"><label>البنك</label><input class="inp" id="pyCb" value="${esc(ck.bank || '')}"></div></div>
@@ -2936,7 +2936,7 @@ function rowsOf(e) {
   }
   if ((e.kind === 'pay' || e.kind === 'ppay') && e.chk) return [{date: e.date, desc: `شيك${e.chk.no ? ' رقم ' + e.chk.no : ''}`, ref: `يستحق ${dispDate(e.chk.due)}${e.chk.bank ? ' — ' + e.chk.bank : ''}`, dr: e.dr || 0, cr: e.cr || 0, pay: true}];
   if (e.kind === 'pay' && isMkPay(e)) return [{date: e.date, desc: 'دفعة', ref: '', dr: e.dr || 0, cr: e.cr || 0, pay: true}];   // دفعة من حركة السوق: "دفعة" وبس من غير تفاصيل (بطلب صاحب المشروع)
-  if (e.kind === 'pay' || e.kind === 'ppay') return [{date: e.date, desc: 'دفعة ' + (e.method || 'نقدي'), ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, pay: true}];
+  if (e.kind === 'pay' || e.kind === 'ppay') return [{date: e.date, desc: 'دفعة', ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, pay: true}];
   if (e.kind === 'adj') return [{date: e.date, desc: e.dir === 'dn' ? 'خصم' : 'تسوية', ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, pay: e.dir === 'dn'}];
   if (e.kind === 'bnc') return [{date: e.date, desc: `شيك مرتجع${e.chkno ? ' رقم ' + e.chkno : ''}`, ref: e.note || '', dr: e.dr || 0, cr: e.cr || 0, bnc: true}];
   return [{date: e.date, desc: e.desc, ref: '', dr: e.dr || 0, cr: e.cr || 0, op: e.kind === 'open'}];
@@ -4058,8 +4058,8 @@ function vaultMoves(vid, from, to) {
     if (e.del || !isPay(e) || !e.vault || !inR(vdate(e)) || (vid && e.vault !== vid) || (!vid && isMkv(e.vault))) return;
     const p = P.get(e.party);
     out.push({src: 'pay', r: e, date: vdate(e), at: e.at || 0, sign: e.kind === 'pay' ? 1 : -1, amt: e.amt,
-      title: `${e.kind === 'pay' ? 'تحصيل من' : 'دفع لـ'} ${p ? p.name : '؟'}`, sub: `${vName(e.vault)} — ${e.chk ? 'شيك' + (e.chk.no ? ' رقم ' + e.chk.no : '') + ' اتصرف' : e.method || 'نقدي'}${e.note ? ' — ' + e.note : ''}`, cls: e.kind === 'pay' ? 'inc' : 'exp',
-      who: p ? p.name : '؟', what: [e.chk ? 'شيك' + (e.chk.no ? ' رقم ' + e.chk.no : '') : (e.method && e.method !== 'نقدي' ? e.method : ''), e.note || ''].filter(Boolean).join(' — ')});
+      title: `${e.kind === 'pay' ? 'تحصيل من' : 'دفع لـ'} ${p ? p.name : '؟'}`, sub: `${vName(e.vault)}${e.chk ? ' — شيك' + (e.chk.no ? ' رقم ' + e.chk.no : '') + ' اتصرف' : ''}${e.note ? ' — ' + e.note : ''}`, cls: e.kind === 'pay' ? 'inc' : 'exp',
+      who: p ? p.name : '؟', what: [e.chk ? 'شيك' + (e.chk.no ? ' رقم ' + e.chk.no : '') : '', e.note || ''].filter(Boolean).join(' — ')});
   });
   return out.sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at);
 }

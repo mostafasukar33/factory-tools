@@ -377,6 +377,7 @@ const T0 = Date.now();
 
     sec('٤) الشيكات مقفولة واختيارات كشف الحساب');
     eq('مفيش زرار شيكات ولا طريقة دفع شيك', [!!(await A.$('nav button[data-go=chk]')), (await A.click('#fbPay'), !!(await A.$('#pyM button[data-v=شيك]')))], [false, false]); await A.click('#pyX');
+    eq('مفيش طريقة دفع في الدفعة، والكشف بيكتب "دفعة" بس', [(await A.click('#fbPay'), !!(await A.$('#pyM'))), await A.evaluate(() => rowsOf({kind: 'ppay', date: '2026-01-01', amt: 100, method: 'تحويل', cr: 100})[0].desc + '|' + docTitle({kind: 'pay', method: 'تحويل'}))], [false, 'دفعة|دفعة استلمتها']); await A.click('#pyX');
     await A.click('#fbStmt'); await A.settle(150);
     eq('الكشف بيفتح على آخر فاتورة والرصيد قبلها', [await A.getAttribute('#smMode .on', 'data-m'), (await A.textContent('#smOut')).includes('الرصيد قبل الفاتورة')], ['last', true]);
     eq('آخر فاتورة: الرصيد قبل وبعد', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), l = partyEntries(p.id).filter(e => e.kind === 'inv').pop(), s = stmtData(p.id, '', '', l.id); return [s.open, s.close, s.rows[0].kind || s.lastInv.kind]; }), [270000, 318500, 'inv']);

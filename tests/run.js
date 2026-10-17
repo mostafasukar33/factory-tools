@@ -1997,7 +1997,7 @@ const T0 = Date.now();
     eq('الحسابات بتبعت تاريخ آخر دفعة مع رصيد عميل السوق', JSON.parse(mkRows('cust').find(r => r[0] === pid1)[10]).lp, await A.evaluate(id => lastPays().get(id) || '', pid1));
     await M.evaluate(() => nav('c', true)); await M.settle(150);
     eq('العملاء: زرار ترتيب في العنوان والافتراضي "الأكبر"، وتحت كل اسم "آخر دفعة"', await M.evaluate(() => [$('#cSortB').textContent.trim(), $$('#lists .pt[data-c]').length === $$('#lists .pt .lp').length, $('#lists .pth span:last-child').textContent]), ['⇅ الأكبر', true, 'عليه']);
-    eq('الأكتر عليه: مترتبين بالرصيد من الكبير للصغير', await M.evaluate(() => { const b = $$('#lists .pt[data-c]').map(r => customers().get(r.dataset.c).bal); return b.every((x, i) => !i || b[i - 1] >= x); }), true);
+    eq('الأكبر: مترتبين بحجم الرصيد من الكبير للصغير (زي الحسابات، و"له عندنا" بحجمه)', await M.evaluate(() => { const b = $$('#lists .pt[data-c]').map(r => Math.abs(customers().get(r.dataset.c).bal)); return b.every((x, i) => !i || b[i - 1] >= x); }), true);
     eq('"آخر دفعة" لسه بتظهر في صفحة العميل', await M.evaluate(id => { nav('p/' + id); const t = $('#cBox .lp').textContent; nav('c', true); return t; }, pid1), 'دفع النهارده');
     await M.evaluate(() => { while (S.cSort !== 'abc') $('#cSortB').click(); }); await M.settle(100);
     eq('بالحروف: بيترتبوا بالاسم والاختيار بيتحفظ', await M.evaluate(() => { const n = $$('#lists .pt[data-c] .nm').map(x => x.firstChild.textContent); return [n.every((x, i) => !i || n[i - 1].localeCompare(x, 'ar') <= 0), S.cSort, JSON.parse(localStorage.getItem('fo_mkt_v1')).cSort]; }), [true, 'abc', 'abc']);
@@ -2142,6 +2142,11 @@ const T0 = Date.now();
       await bg(M, 'sync()'); await bg(A, 'mkSync()');
     }
 
+    {
+      /* عميل دفع أكتر من اللي عليه: زي قايمة الحسابات (الرقم بالأحمر وتحته "له عندنا")، مش "—" */
+      const r = await M.evaluate(() => { const c = Object.values(S.cust).find(x => !x.del); const b0 = c.bal; c.bal = -150000; nav('c'); const row = $(`#lists .pt[data-c="${c.id}"] .a`).textContent; nav('p/' + c.id); const box = $('#cBox').textContent; c.bal = b0; nav(''); return [row, box.includes('له عندنا') && box.includes('1,500')]; });
+      eq('عميل دافع زيادة: زي الحسابات بالظبط (الرقم بالأحمر وتحته "له عندنا")، مش شرطة', r, ['1,500له عندنا', true]);
+    }
     }   // نهاية أقسام السوق
     }   // نهاية RUN.sync
     if (RUN.smoke) {

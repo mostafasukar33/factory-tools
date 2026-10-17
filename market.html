@@ -126,6 +126,9 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:var(--ink)}
 .ctb .pt .a{text-align:left;flex:none}
 .ctb .pt .a b{display:block;font-size:var(--f4);font-weight:800;line-height:1.25;direction:ltr;font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1;letter-spacing:.01em}
 .ctb .pt .a b.z{color:var(--sub);font-weight:600}
+/* العميل اللي دفع زيادة: الرقم بالأحمر وتحته "له عندنا" زي قايمة الحسابات بالظبط */
+.ctb .pt .a b.neg,.cust div .money.neg{color:var(--red)}
+.ctb .pt .a small.cr{display:block;font-size:var(--f1);font-weight:700;color:var(--sub)}
 .ctb .pt.l-y{background:var(--gold-l);box-shadow:inset -4px 0 0 var(--gold)}
 .ctb .pt.l-r{background:var(--red-l);box-shadow:inset -4px 0 0 var(--red)}
 .row .bal{font-size:var(--f3);white-space:nowrap;flex:none}
@@ -824,14 +827,14 @@ function drawHome() {
 let custNo = new Map();
 const limOf = c => c.bal > 0 ? (c.lim || '') : '';
 const lpList = c => { const n = daysAgo(c.lp); return n < 0 ? 'مدفعش قبل كده' : n === 0 ? 'آخر دفعة النهارده' : n === 1 ? 'آخر دفعة امبارح' : n === 2 ? 'آخر دفعة من يومين' : `آخر دفعة من ${n} ${n <= 10 ? 'أيام' : 'يوم'}`; };
-const custTbl = list => `<div class="ctb"><div class="pth"><span>الاسم</span><button class="psort" id="cSortB" type="button">⇅ ${esc((C_SORT.find(x => x[0] === (S.cSort || 'owe')) || C_SORT[0])[1])}</button><span>عليه</span></div>${list.map(c => `<div class="pt ${limOf(c) ? 'l-' + limOf(c) : ''}" data-c="${esc(c.id)}"><div class="m"><b class="nm">${esc(c.name)}${c.nw ? '<span class="nw">جديد</span>' : ''}${c.want ? '<span class="wn">📌 مطلوب</span>' : ''}</b><small class="lp ${lpCls(c) === 'old' ? 'old' : ''}">${lpList(c)}</small></div><div class="a"><b class="${c.bal > 0 ? 'money' : 'z'}">${c.bal > 0 ? fmt(c.bal) : '—'}</b></div></div>`).join('')}</div>`;
+const custTbl = list => `<div class="ctb"><div class="pth"><span>الاسم</span><button class="psort" id="cSortB" type="button">⇅ ${esc((C_SORT.find(x => x[0] === (S.cSort || 'owe')) || C_SORT[0])[1])}</button><span>عليه</span></div>${list.map(c => `<div class="pt ${limOf(c) ? 'l-' + limOf(c) : ''}" data-c="${esc(c.id)}"><div class="m"><b class="nm">${esc(c.name)}${c.nw ? '<span class="nw">جديد</span>' : ''}${c.want ? '<span class="wn">📌 مطلوب</span>' : ''}</b><small class="lp ${lpCls(c) === 'old' ? 'old' : ''}">${lpList(c)}</small></div><div class="a">${c.bal < 0 ? `<b class="money neg">${fmt(c.bal)}</b><small class="cr">له عندنا</small>` : `<b class="${c.bal > 0 ? 'money' : 'z'}">${c.bal > 0 ? fmt(c.bal) : '—'}</b>`}</div></div>`).join('')}</div>`;
 /* ترتيب العملاء (بيتحفظ على الموبايل): الأكتر عليه / مدفعش من زمان / بالحروف */
 const C_SORT = [['owe', 'الأكبر'], ['old', 'الأقدم دفعة'], ['abc', 'بالاسم']];
 function sortCust(all, k) {
   const abc = (a, b) => a.name.localeCompare(b.name, 'ar');
   if (k === 'abc') return all.sort(abc);
   if (k === 'old') return all.sort((a, b) => ((b.bal > 0) - (a.bal > 0)) || (a.lp || '').localeCompare(b.lp || '') || b.bal - a.bal || abc(a, b));
-  return all.sort((a, b) => b.bal - a.bal || abc(a, b));
+  return all.sort((a, b) => Math.abs(b.bal) - Math.abs(a.bal) || abc(a, b));   // زي الحسابات: "له عندنا" بيترتب بحجمه مع الباقي
 }
 /* أقسام العملاء (بطلب صاحب المشروع): الشريك بيقسّمهم براحته (منطقة كذا...)، وكل قسم تبويب فوق جنب "كل العملاء".
    متخزنة على الموبايل بس في S.groups = [{id, name, ids:[عميل]}] ومالهاش أي دعوة ببرنامج الحسابات */
@@ -1005,7 +1008,7 @@ function drawPayInfo() {
   const cs = customers(), c = cs.get(scr.cid);
   if (!c || !$('#cBox')) return;
   const w = wantList().find(x => x.c.id === c.id);
-  $('#cBox').innerHTML = `<b>${esc(c.name)}${c.nw ? '<span class="nw">عميل جديد</span>' : ''}<small class="lp ${lpCls(c)}">${lpTxt(c)}</small></b><div>${c.bal > 0 ? `<span>عليه</span><b class="money">${fmt(c.bal)}</b>` : '<span class="z">مفيش عليه</span>'}</div>
+  $('#cBox').innerHTML = `<b>${esc(c.name)}${c.nw ? '<span class="nw">عميل جديد</span>' : ''}<small class="lp ${lpCls(c)}">${lpTxt(c)}</small></b><div>${c.bal > 0 ? `<span>عليه</span><b class="money">${fmt(c.bal)}</b>` : c.bal < 0 ? `<span>له عندنا</span><b class="money neg">${fmt(c.bal)}</b>` : '<span class="z">مفيش عليه</span>'}</div>
     ${w ? `<div class="cwant ${w.paid ? 'ok' : ''}">📌 مصطفى عاوز منه <b class="money">${fmt(w.want.amt)}</b>${w.want.note ? ' — ' + esc(w.want.note) : ''}${w.paid ? ` · ✓ حصّلت ${fmt(w.paid)}` : ''}</div>` : ''}`;
   const ops = custOps(c.id, aliases()).sort((a, b) => b.ts - a.ts), shown = ops.slice(0, cShow);
   $('#tdy').innerHTML = ops.length ? `<div class="lbl" style="margin-top:16px"><span>كل اللي سجلته على العميل ده (${ops.length})</span><span>دوس تعدّل أو تمسح</span></div><div class="list">${shown.map(o => opRow(o, true, true)).join('')}</div>${ops.length > shown.length ? '<button class="more" id="cMore" type="button" style="margin-top:10px">اعرض أقدم</button>' : ''}` : '';

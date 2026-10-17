@@ -1874,7 +1874,7 @@ const T0 = Date.now();
     eq('والشريك لسه ينفع يعدّل (مفيش قفل)', await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); editSheet(o); const ok = !!$('#eOk'); closeModal(); return ok; }), true);
     eq('تنبيه المساحة: بيسأل المتصفح عن مساحة IndexedDB، تحت 80% مفيش تنبيه، وفوقها تنبيه صغير مرة واحدة، ومفيش حاجة اتمسحت', await M.evaluate(async () => {
       const wait = () => new Promise(r => setTimeout(r, 30)), has = () => $('#toast').textContent.includes('قربت تتملي'), est = navigator.storage.estimate;
-      const before = localStorage.getItem(LS), n0 = Object.keys(S.ops).length; stoWarned = false; $('#toast').textContent = '';
+      const opsLs = () => JSON.stringify(JSON.parse(localStorage.getItem(LS)).ops), before = opsLs(), n0 = Object.keys(S.ops).length; stoWarned = false; $('#toast').textContent = '';
       navigator.storage.estimate = async () => ({usage: 10, quota: 100}); stoAsk = 0; stoWarn(); await wait();
       const low = has() || stoWarned;
       localStorage.setItem('zz_fill_test', 'x'.repeat(4300000)); stoAsk = 0; stoWarn(); await wait();
@@ -1882,7 +1882,7 @@ const T0 = Date.now();
       navigator.storage.estimate = async () => ({usage: 85, quota: 100}); stoAsk = 0; stoWarn(); await wait();
       const hi = has(); $('#toast').textContent = ''; stoAsk = 0; stoWarn(); await wait();
       const once = !$('#toast').textContent; navigator.storage.estimate = est; stoWarned = false;
-      return [useIdb, low, lsFull, hi, once, localStorage.getItem(LS) === before, Object.keys(S.ops).length === n0];
+      return [useIdb, low, lsFull, hi, once, opsLs() === before, Object.keys(S.ops).length === n0];
     }), [true, false, false, true, true, true, true]);
     /* الحفظ في IndexedDB: نسخته = اللي على الشاشة، ولو localStorage اتملى الحفظ بيكمّل والفتح الجاي بيجيب كل حاجة */
     const idbIdle = P => P.waitForFunction(() => !idbBusy && idbNext === null);

@@ -363,7 +363,7 @@ const T0 = Date.now();
     await A.selectOption('#dcLines .li:nth-child(1) [data-f=unit]', 'لفة'); await A.fill('#dcLines .li:nth-child(1) [data-f=name]', 'صنف جدول تجربة');
     eq('أول ما يتكتب في الأخير بيطلع سطر فاضي بوحدته', await A.evaluate(() => [$$('#dcLines .li').length, $('#dcLines .li:nth-child(2) [data-f=unit]').value, $('#dcLines .li:nth-child(2) .badge').textContent]), [2, 'لفة', '2']);
     await A.focus('#dcLines .li:nth-child(1) [data-f=name]'); await A.keyboard.press('Enter');
-    eq('Enter من الاسم للوحدة', await A.evaluate(() => document.activeElement.dataset.f), 'unit');
+    eq('Enter من الاسم للكمية على طول (الوحدة بالإيد)', await A.evaluate(() => document.activeElement.dataset.f), 'qty');
     await A.focus('#dcLines .li:nth-child(1) [data-f=price]'); await A.keyboard.press('Enter');
     eq('Enter من السعر لاسم السطر اللي بعده والنافذة مفتوحة', await A.evaluate(() => [document.activeElement === $('#dcLines .li:nth-child(2) [data-f=name]'), $('#modal').classList.contains('on') || !!$('#dcOk')]), [true, true]);
     await A.click('#dcLines .li:nth-child(1) [data-del]');

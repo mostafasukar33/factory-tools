@@ -2620,11 +2620,11 @@ function docModal(p, kind, e, opts = {}) {
     if (mkT !== null) $('#dcMk').innerHTML = t === mkT ? '<span style="color:var(--green)">✓ مطابق لإجمالي شريكك</span>' : `<span style="color:var(--red)">الفرق عن إجمالي شريكك: ${fmtP(t - mkT)}</span>`;
   };
   /* البنود جدول (بطلبه 17/10/2026): كل صنف سطر واحد، وآخر سطر فاضي دايماً وأول ما يتكتب فيه بيطلع تحته سطر فاضي جديد بوحدة السطر اللي قبله.
-     Enter أو "التالي" في كيبورد الموبايل بينقل: الاسم ← الوحدة ← الكمية ← السعر ← اسم السطر اللي بعده */
+     Enter أو "التالي" في كيبورد الموبايل بينقل: الاسم ← الكمية ← السعر ← اسم السطر اللي بعده (الوحدة بالإيد بس) */
   const isBlank = li => !li.querySelector('[data-f=name]').value.trim() && !li.querySelector('[data-f=qty]').value.trim() && !li.querySelector('[data-f=price]').value.trim();
   const rowHtml = l => `<div class="li">
       <span class="badge"></span><div class="lnm"><input class="inp" data-f="name" placeholder="اسم الصنف" value="${esc(l.name)}" autocomplete="off" enterkeyhint="next"><div class="sg"></div></div>
-      <select class="inp" data-f="unit" enterkeyhint="next">${[...new Set(UNITS.concat(l.unit ? [l.unit] : []))].map(u => `<option ${u === l.unit ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select>
+      <select class="inp" data-f="unit" tabindex="-1">${[...new Set(UNITS.concat(l.unit ? [l.unit] : []))].map(u => `<option ${u === l.unit ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select>
       <input class="inp num" data-f="qty" inputmode="decimal" placeholder="0" value="${esc(l.qty)}" enterkeyhint="next">
       <input class="inp num" data-f="price" placeholder="0" value="${esc(l.price)}" enterkeyhint="next">
       <div class="lt2">—</div><button class="ibtn d" data-del type="button" tabindex="-1" aria-label="مسح السطر">✕</button></div>`;
@@ -2642,7 +2642,7 @@ function docModal(p, kind, e, opts = {}) {
   };
   /* السطر الفاضي الأخير بياخد وحدة السطر اللي قبله لو اتغيرت */
   const syncBlank = li => { const nx = li.nextElementSibling; if (nx && nx.classList.contains('blank') && isBlank(nx)) setUnit(nx, li.querySelector('[data-f=unit]').value); };
-  const FLD = ['name', 'unit', 'qty', 'price'];
+  const FLD = ['name', 'qty', 'price'];   // الوحدة بتتخطى (بطلبه): بتتغير بالإيد بس
   const bindRow = li => {
     const el = li.querySelector('[data-f=name]'), box = li.querySelector('.sg');
     bindMoney(li.querySelector('[data-f=price]'));

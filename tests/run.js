@@ -1162,7 +1162,7 @@ const T0 = Date.now();
       return [text.includes('## اقراني الأول') && text.indexOf('## تعليمات لـ Claude') < text.indexOf('## اقراني الأول') && !$('#clSt'), badBal, L.find(x => x.startsWith('إجمالي خزن ')).split(' | ')[1] === fmtP(vaultBal('')), pl[8] === fmtP(profitOf(first, todayISO()).after), n === nEnt + nTx,
         !!got && /^flashon-accounts-.*\.txt$/.test(got.files[0].name) && shared.length > 1000, !$('#clGo'), dataVer === v0 && JSON.stringify([db.entries.length, db.txs.length, db.parties.length]) === n0];
     }), [true, [], true, true, true, true, true, true]);
-    eq('اسأل Claude: "اقراني الأول" فيه شرح توحيد الخزن في "كاش" ودفعات السوق القديمة قبل 12/10/2026', await A.evaluate(() => { const f = claudeBuild('full').text, r = f.indexOf('## اقراني الأول'); return [f.indexOf('كل الخزن اتوحدت في خزنة واحدة اسمها "كاش"') > r, f.indexOf('جرد يوم 12/10/2026 صفّر الخزن القديمة') > r]; }), [true, true]);
+    eq('اسأل Claude: "اقراني الأول" فيه شرح توحيد الخزن في "كاش" ودفعات السوق القديمة قبل 12/10/2026', await A.evaluate(() => { const f = claudeBuild('full').text, r = f.indexOf('## اقراني الأول'); return [f.indexOf('كل الخزن اتوحدت في خزنة واحدة اسمها "كاش"') > r, f.indexOf('جرد يوم 12/10/2026 صفّر الخزن القديمة') > r, f.indexOf('جرد 17/10/2026 = نقطة البداية') > r]; }), [true, true, true]);
     eq('اسأل Claude "كل حاجة": فيه الملغي وسجل التعديلات زيادة، والأرصدة زي "من الأول"، والشات القديم اتشال', await A.evaluate(() => {
       const a = claudeBuild('all').text, f = claudeBuild('full').text, del = db.entries.find(e => e.del && P.get(e.party));
       const part = (x, h) => x.slice(x.indexOf(h), x.indexOf('\n## ', x.indexOf(h) + 3));

@@ -1409,7 +1409,7 @@ body{font-size:var(--f3);line-height:1.6}
   html main .srow #bNewParty,html main .srow #bSearch{width:38px;min-height:36px;height:36px;font-size:16px;border-radius:9px}
   html main .srow #bNewParty{font-size:20px}
   #hTabs{gap:5px;margin-bottom:6px}
-  #hTabs button{min-height:34px;height:34px;flex-direction:row;gap:6px;padding:2px 6px;border-radius:9px;white-space:nowrap;font-size:var(--f2);overflow:hidden}
+  #hTabs button{min-height:42px;height:42px;flex-direction:row;gap:6px;padding:2px 6px;border-radius:9px;white-space:nowrap;font-size:var(--f2);overflow:hidden}   /* أكبر سنة (بطلبه 17/10/2026) */
   #hTabs button small{display:inline;font-size:var(--f1)}
   #hTabs .supt{padding:0 4px}
 }
@@ -1486,10 +1486,11 @@ body{font-size:var(--f3);line-height:1.6}
   #hList .pt.age-g{box-shadow:inset -5px 0 0 var(--green)}
   #hList .pt.age-y{box-shadow:inset -5px 0 0 var(--gold)}
   #hList .pt.age-r{box-shadow:inset -5px 0 0 var(--red)}
-  .top .ttl{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1}
+  .top .ttl{display:flex;flex-direction:column;align-items:flex-start;line-height:1;margin-block:-4px}   /* كلمة المزامنة تحت الاسم من غير ما الشريط يطول (بطلبه 17/10/2026) */
+  .top .ttl>*{line-height:1}
   #ptr{position:fixed;top:calc(var(--hh,48px) + 6px);left:50%;transform:translate(-50%,-60px);z-index:40;background:var(--bar);color:var(--gold);font-size:var(--f1);font-weight:800;padding:6px 14px;border-radius:20px;opacity:0;transition:transform .15s,opacity .15s;pointer-events:none}
   #ptr.on{transform:translate(-50%,0);opacity:1}
-  .top .ttl #bSyncM{margin:2px 0 0;padding:0;min-width:0;min-height:0;height:auto;border:0;background:none;gap:4px;align-items:center}
+  .top .ttl #bSyncM{margin:1px 0 0;padding:0;min-width:0;min-height:0;height:auto;border:0;background:none;gap:4px;align-items:center}
   .top #bSyncM .sdot{width:7px;height:7px}
   .top #bLock{margin-inline-start:auto}
   #bSyncM .stx{font-size:var(--f1);font-weight:800;white-space:nowrap;color:var(--sub)}

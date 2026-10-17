@@ -4996,6 +4996,10 @@ function profitOf(f, t) {
   return {sales: a.sales, purch: a.purch, exp: c.exp, inc: c.inc, part: c.part, iv, before, after: before - c.part - iv, byCat: c.byCat};
 }
 const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+function stockDiff(f, t) {
+  const L = jrdSaved().filter(x => !x.n.noStock), b = L.find(x => x.date === t), a = L.find(x => x.date === addDays(f, -1)) || L.find(x => x.date === f);
+  return a && b && a !== b ? {a, b, d: b.stock - a.stock} : null;
+}
 function profitReport(f, t) {
   const rows = [], tot = {sales: 0, purch: 0, exp: 0, inc: 0, part: 0, iv: 0, before: 0, after: 0}, cats = new Map();
   for (let m = f.slice(0, 7); m <= t.slice(0, 7);) {
@@ -5005,15 +5009,22 @@ function profitReport(f, t) {
     rows.push({empty: !x.sales && !x.purch && !x.exp && !x.inc && !x.part && !x.iv, raw: {m: MONTHS[mo - 1], s: x.sales, p: x.after}, cells: [`${MONTHS[mo - 1]} ${y}`, fmtP(x.sales), fmtP(x.purch), fmtP(x.exp - x.inc), fmtP(x.before), fmtP(x.part + x.iv), fmtP(x.after)], cls: x.after < 0 ? 'ret' : ''});
     m = mo === 12 ? `${y + 1}-01` : `${y}-${pad2(mo + 1)}`;
   }
+  /* الفرق في المخزون (بطلبه 17/10/2026): لو أول الفترة وآخرها عند جرد فيه مخزون، الربح بيزيد بزيادة المخزون أو يقل بنقصه، فيطابق الجرد.
+     غير كده مفيش تخمين، والشرح تحت بيقول يختار منين لفين */
+  const stk = stockDiff(f, t);
+  if (stk) { tot.before += stk.d; tot.after += stk.d; }
   /* الملخص بالترتيب (بطلبه 17/10/2026): الداخل كله، بعده الخارج كله، وبعدين الربح. نفس الأرقام */
   const byCat = sg => [...cats.entries()].filter(([k]) => k.startsWith(sg)).sort((a, b) => b[1] - a[1]).map(([k, v]) => ['   ' + k, fmtP(v)]);
   const sum = [['صافي المبيعات', fmtP(tot.sales)], ...byCat('+ '), ...(tot.inc ? [['إجمالي الداخل', fmtP(tot.sales + tot.inc), 'sub']] : []),
     ['صافي المشتريات', fmtP(tot.purch)], ['المصروفات', fmtP(tot.exp)], ...byCat('− '), ['إجمالي الخارج', fmtP(tot.purch + tot.exp), 'sub'],
+    ...(stk ? [[stk.d >= 0 ? '+ زاد المخزون (من الجرد)' : '− نقص المخزون (من الجرد)', fmtP(Math.abs(stk.d))]] : []),
     ['الربح قبل الشركاء', fmtP(tot.before)], ['مرتبات ومسحوبات الشركاء', fmtP(tot.part)], ...(tot.iv ? [['أرباح المساهمين', fmtP(tot.iv)]] : [])];
   return {title: 'الأرباح بالشهر', period: rangeText(f, t),
     cols: [{h: 'الشهر', w: 16, c: 'l'}, {h: 'المبيعات', w: 14, c: 'n'}, {h: 'المشتريات', w: 14, c: 'n'}, {h: 'المصروفات', w: 13, c: 'n'}, {h: 'الربح قبل الشركاء', w: 15, c: 'n'}, {h: tot.iv ? 'الشركاء والمساهمين' : 'الشركاء', w: 13, c: 'n'}, {h: 'الباقي', w: 15, c: 'b'}],
     rows, sum, fin: [(tot.after >= 0 ? 'الباقي بعد الشركاء' : 'خسارة بعد الشركاء') + (tot.iv ? ' والمساهمين' : ''), fmtP(tot.after)],
-    note: 'الربح هنا = المبيعات − المشتريات − المصروفات في نفس الفترة، من غير حساب المخزون. المصروفات = مصروفات الخزنة ناقص إيراداتها التانية.'};
+    note: stk ? `الربح هنا = المبيعات − المشتريات − المصروفات + الفرق في المخزون من جرد ${dispDate(stk.a.date)} لجرد ${dispDate(stk.b.date)}. المصروفات = مصروفات الخزنة ناقص إيراداتها التانية.`
+      : 'الربح هنا = المبيعات − المشتريات − المصروفات في نفس الفترة، من غير حساب المخزون. المصروفات = مصروفات الخزنة ناقص إيراداتها التانية.'
+        + (jrdSaved().some(x => !x.n.noStock) ? ' علشان المخزون يدخل في الحسبة اختار «من–إلى» من يوم جرد لحد يوم جرد تاني.' : '')};
 }
 function renderDash(box = $('#hDash')) {
   const t = todayISO(), m0 = t.slice(0, 8) + '01';
@@ -5410,7 +5421,7 @@ function jrdCalc(d) {
   return n;
 }
 function jrdTot(n, stock) {
-  const iv = n.ivs.reduce((s, x) => s + x.amt, 0), own = n.mkt + n.site + n.vault + stock;
+  const iv = n.ivs.reduce((s, x) => s + x.amt, 0), own = n.mkt + n.site + n.vault + stock + (n.rest || 0);
   return {iv, own, owe: n.sup + iv, work: own - n.sup, net: own - n.sup - iv};
 }
 const jrdSaved = () => db.stks.filter(s => !s.del).sort((a, b) => b.date.localeCompare(a.date) || (b.at || 0) - (a.at || 0));
@@ -5418,6 +5429,8 @@ const jrdBefore = d => jrdSaved().find(s => s.date < d) || null;
 let jrDate = '', jrStock = null;
 /* الجرد بالترتيب اللي بيتحسب بيه: اللي ليك ← − الموردين = قيمة الشغل ← − المساهمين = صافي حقك. نفس السطور في الشاشة والـ PDF */
 function jrdLines(n, stock) {
+  if (n.old) return [...(n.mkt ? [{t: 'r', n: 'أرصدة العملاء', s: 'من ورقة الجرد', a: n.mkt}] : []), ...(n.noStock ? [] : [{t: 'r', n: 'قيمة المخزون', s: 'من ورقة الجرد', a: stock}]),
+    ...(n.rest ? [{t: 'r', n: 'باقي البنود', s: 'خزن وموردين وغيره', a: n.rest}] : []), {t: 'f', n: '= صافي الجرد', a: jrdTot(n, stock).net}];
   const T = jrdTot(n, stock), cnt = k => n.cnt[k] ? `${n.cnt[k]} حساب` : '', L = [
     {t: 'r', n: 'أرصدة عملاء السوق', s: cnt('mkt'), a: n.mkt}, {t: 'r', n: 'أرصدة عملاء المواقع', s: cnt('site'), a: n.site},
     {t: 'r', n: 'النقدية بالخزن', s: n.mk ? 'منها خزنة السوق ' + fmtP(n.mk) : '', a: n.vault}, {t: 'r', n: 'قيمة المخزون', s: 'بالمصنع', a: stock, id: 'jrStockV'},
@@ -5460,7 +5473,7 @@ function renderJrd() {
   if (parts[1] === 's' && parts[2]) return renderJrdSaved(parts[2]);
   if (parts[1] === 'iv') return renderIvList();
   const pg = $('#p-jrd'), t = todayISO(), d = jrDate || t, n = jrdCalc(d), same = jrdSaved().find(s => s.date === d), prev = jrdBefore(d);
-  const last = same || prev, stock = jrStock !== null ? jrStock : last ? last.stock : 0, saved = jrdSaved();
+  const last = same || jrdSaved().find(s => s.date < d && !s.n.old), stock = jrStock !== null ? jrStock : last ? last.stock : 0, saved = jrdSaved();   // الجرد القديم (بالإيد) مبيتملاش منه المخزون
   pg.innerHTML = jrdHead('jrd') + `
     <div class="card">
       <div class="g2"><div class="fld"><label>تاريخ الجرد</label><input class="inp" type="date" id="jrD" value="${d}"></div>
@@ -5472,9 +5485,11 @@ function renderJrd() {
     <div style="height:12px"></div>
     <section class="ctab"><div class="cth"><span>الجرود المحفوظة (${saved.length})</span><span></span></div><table class="cmt"><tbody>
       ${saved.length ? saved.map(s => { const T = jrdTot(s.n, s.stock), p = jrdBefore(s.date), df = p ? T.net - jrdTot(p.n, p.stock).net : null;
-        return `<tr data-s="${esc(s.id)}"><td class="d">${shortDate(s.date)}</td><td class="w"><b>صافي الجرد</b><small>المخزون ${fmtP(s.stock)}${df === null ? '' : ` — ${df >= 0 ? 'زيادة' : 'نقص'} ${fmtP(Math.abs(df))}`}</small></td><td class="am">${fmtP(T.net)}</td></tr>`; }).join('')
-        : '<tr><td class="e" colspan="3">لا توجد جرود محفوظة. أدخل قيمة المخزون ثم اضغط «حفظ الجرد».</td></tr>'}</tbody></table></section>`;
+        return `<tr data-s="${esc(s.id)}"><td class="d">${shortDate(s.date)}</td><td class="w"><b>صافي الجرد${s.n.old ? ' (قديم)' : ''}</b><small>${s.n.noStock ? 'من غير مخزون' : 'المخزون ' + fmtP(s.stock)}${df === null ? '' : ` — ${df >= 0 ? 'زيادة' : 'نقص'} ${fmtP(Math.abs(df))}`}</small></td><td class="am">${fmtP(T.net)}</td></tr>`; }).join('')
+        : '<tr><td class="e" colspan="3">لا توجد جرود محفوظة. أدخل قيمة المخزون ثم اضغط «حفظ الجرد».</td></tr>'}</tbody></table></section>
+    <button class="btn line sm again" id="jrOld" type="button">＋ سجّل جرد قديم</button>`;
   jrdBindHead();
+  $('#jrOld').onclick = jrdOldModal;
   const sIn = $('#jrS'); bindMoney(sIn);
   const bindBlk = () => $$('#p-jrd tr[data-iv]').forEach(el => el.onclick = () => go('jrd/iv/' + el.dataset.iv));
   sIn.addEventListener('input', () => { jrStock = toP(sIn.value); $('#jrBlk').innerHTML = jrdBlock(n, jrStock, prev, true); bindBlk(); });
@@ -5492,12 +5507,38 @@ function renderJrd() {
     jrStock = null; saveDB(); renderJrd(); toast('تم حفظ الجرد ✔');
   };
 }
+/* جرد قديم (بطلبه 17/10/2026): جرود اتعملت قبل البرنامج بتتكتب أرقام بس (التاريخ والصافي، والعملا والمخزن لو موجودين)
+   ومبيتعادش حسابها. بتظهر في الجرود المحفوظة ويتقارن بيها الجرد اللي بعدها، ومبتغيرش أي رصيد ولا حركة */
+function jrdOldModal() {
+  modal(`<h3>سجّل جرد قديم</h3>
+    <div class="fld"><label>تاريخ الجرد</label><input class="inp" type="date" id="joD" value=""></div>
+    <div class="fld"><label>صافي الجرد</label><input class="inp num amt" id="joN" placeholder="0"></div>
+    <div class="g2"><div class="fld"><label>أرصدة العملاء (لو موجودة)</label><input class="inp num amt" id="joC" placeholder="—"></div>
+      <div class="fld"><label>المخزون (لو موجود)</label><input class="inp num amt" id="joS" placeholder="—"></div></div>
+    <div class="fld"><label>ملاحظة</label><input class="inp" id="joT" placeholder="اختياري"></div>
+    ${qh('الأرقام بتتحفظ زي ما هي، ومبتغيرش أي رصيد ولا حركة. الجرد اللي بعده هيتقارن بيها.')}
+    <div class="mrow"><button class="btn gold" id="joOk" type="button">حفظ</button><button class="btn line" id="joX" type="button">رجوع</button></div>`);
+  ['#joN', '#joC', '#joS'].forEach(x => bindMoney($(x)));
+  $('#joX').onclick = closeModal;
+  $('#joOk').onclick = () => {
+    const d = $('#joD').value, net = $('#joN').value.trim(), c = $('#joC').value.trim(), st = $('#joS').value.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return toast('اختار تاريخ الجرد');
+    if (d >= todayISO()) return toast('الجرد القديم لازم يكون قبل النهارده');
+    if (!net) return toast('اكتب صافي الجرد');
+    if (jrdSaved().some(x => x.date === d)) return toast('فيه جرد متسجل بنفس التاريخ ده');
+    const N = toP(net), C = c ? toP(c) : 0, S = st ? toP(st) : 0, now = nowS();
+    const n = {old: 1, mkt: C, site: 0, sup: 0, vault: 0, mk: 0, cnt: {mkt: 0, site: 0, sup: 0}, ivs: [], rest: N - C - S};
+    if (!st) n.noStock = 1;
+    const r = {id: newId('jr_'), at: now, upd: now, del: false, hist: [], date: d, stock: S, n, note: $('#joT').value.trim()};
+    db.stks.push(r); IDX.stk.set(r.id, r); saveDB(); closeModal(); renderJrd(); toast('اتسجل الجرد القديم ✔');
+  };
+}
 function renderJrdSaved(id) {
   const pg = $('#p-jrd'), s = IDX.stk.get(id);
   if (!s || s.del) { go('jrd'); return; }
   const prev = jrdBefore(s.date);
   pg.innerHTML = `<div class="sech ppbar tb" style="margin-top:0"><a id="jsBack">→<em> الجرد</em></a><b class="tt">📦 جرد ${dispDate(s.date)}</b><span></span></div>
-    ${qh('هذه الأرقام مثبّتة وقت حفظ الجرد، ولا تتغير بتعديل الحسابات لاحقاً.')}
+    ${qh(s.n.old ? 'جرد قديم اتكتب بالإيد، أرقامه زي ما اتكتبت.' + (s.note ? ' ' + esc(s.note) : '') : 'هذه الأرقام مثبّتة وقت حفظ الجرد، ولا تتغير بتعديل الحسابات لاحقاً.')}
     ${jrdBlock(s.n, s.stock, prev, false)}
     <div class="mrow3" style="grid-template-columns:1fr 1fr"><button class="btn green" id="jsShare" type="button">📲 إرسال PDF عبر واتساب</button><button class="btn gold" id="jsPdf" type="button">معاينة / تنزيل PDF</button></div>
     <div class="stack" style="margin-top:10px"><button class="btn red sm" id="jsDel" type="button">إلغاء هذا الجرد</button></div>`;

@@ -134,6 +134,9 @@ const accEval = code => async A => { await A.evaluate(code => { if ($('#mask').c
 const party = `liveParties().find(p => p.name.startsWith('${PNAME}'))`;
 const mktGo = h => async M => { await M.evaluate(h => nav(h), h); };
 /* مساهم تجريبي (أول مرة بس): رأس مال وشحنة بأصنافها ومصروف وسحب، علشان شاشة الجرد وكشف المساهم */
+/* جرد قديم (بالإيد) من 60 يوم وجرد النهارده، لصور الجرد القديم وفرق المخزون في الأرباح */
+const JRDSHOT = `if (!IDX.stk.get('jr_shot_o')) { const u = Date.now(), t = todayISO(), mk = (id, date, stock, n) => { const r = {id, date, stock, n, at: u, upd: u, del: false, hist: []}; db.stks.push(r); IDX.stk.set(id, r); };
+  mk('jr_shot_o', addDays(t, -60), 15000000, {old: 1, mkt: 30000000, site: 0, sup: 0, vault: 0, mk: 0, cnt: {mkt: 0, site: 0, sup: 0}, ivs: [], rest: 5000000}); mk('jr_shot_n', t, 18000000, jrdCalc(t)); }; `;
 const IVSHOT = `if (!IDX.ivp.get('ip_shot')) { const t = todayISO(), u = Date.now(), add = (k, r) => { const x = Object.assign({id: r.id, iv: 'ip_shot', k, note: '', at: u, upd: u, del: false, hist: []}, r); db.ivrs.push(x); IDX.ivr.set(x.id, x); };
   const v = {id: 'ip_shot', name: 'مساهم تجربة', mode: 'c', party: ${party}.id, from: addDays(t, -40), note: '', at: u, upd: u, del: false, hist: []}; db.ivps.push(v); IDX.ivp.set(v.id, v);
   add('cap', {id: 'ir_shot1', amt: 29000000, date: addDays(t, -60)});
@@ -167,6 +170,9 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-ldg-sum-' + sfx, go: accEval(`cashView = 'date'; ldgMode = 'w3'; ldgEnd = ''; ldgFilter = 'all'; cashVault = ''; cashOpenV = false; cashPickM = false; ldgSumOpen = true; go('cash'); renderCash()`), full: true},
   {name: 'acc-set-' + sfx, go: accGo('set'), full: true},
   {name: 'acc-jrd-' + sfx, go: accEval(IVSHOT + "jrDate = ''; jrStock = null; go('jrd')"), full: true},
+  {name: 'acc-jrd-old-' + sfx, go: accEval(JRDSHOT + "jrDate = ''; jrStock = null; go('jrd'); jrdOldModal()")},
+  {name: 'acc-jrd-list-' + sfx, go: accEval(JRDSHOT + "jrDate = ''; jrStock = null; go('jrd')"), full: true},
+  {name: 'acc-rep-stk-' + sfx, go: accEval(JRDSHOT + "go('rep'); repKind = 'profit'; repMode = 'range'; repFrom = addDays(todayISO(), -59); repTo = todayISO(); renderReports()"), full: true},
   {name: 'acc-fac-' + sfx, go: facGo(false), full: true},
   {name: 'acc-fac-rev-' + sfx, go: facGo(true)},
   {name: 'acc-fac-pick-' + sfx, go: facGo('pick')},

@@ -994,6 +994,23 @@ const T0 = Date.now();
     eq('الجرد اتحفظ بأرقامه', await A.evaluate(() => { const s = jrdSaved(); return [s.length, s[0].stock, s[0].date === todayISO(), !!$('#p-jrd tr[data-s]')]; }), [1, 100000, true, true]);
     await A.click('#jrSave'); await A.settle(200);
     eq('حفظ نفس اليوم تاني بيحدّث نفس الجرد مش جرد جديد', await A.evaluate(() => jrdSaved().length), 1);
+    /* جرد قديم بالأرقام بس، وفرق المخزون في تقرير الأرباح (بطلبه 17/10/2026) */
+    await A.click('#jrOld'); await A.waitForSelector('#joD');
+    const oldD = await A.evaluate(() => addDays(todayISO(), -60));
+    await A.fill('#joD', oldD); await A.fill('#joN', '500000'); await A.fill('#joC', '300000'); await A.fill('#joS', '150000'); await A.click('#joOk'); await A.settle(200);
+    eq('جرد قديم: بيتحفظ بأرقامه زي ما هي، والجرد الجديد بيتقارن بيه ومخزونه مبيتملاش منه', await A.evaluate(d => { const o = jrdSaved().find(x => x.date === d), cur = jrdSaved()[0];
+      return [jrdSaved().length, !!o.n.old, jrdTot(o.n, o.stock).net, o.stock, jrdLines(o.n, o.stock).map(x => x.a), $('#p-jrd').textContent.includes('(قديم)'), cur.stock, $('#jrS').value.replace(/\D/g, '')]; }, oldD),
+      [2, true, 50000000, 15000000, [30000000, 15000000, 5000000, 50000000], true, 100000, '1000']);
+    eq('جرد قديم: نفس التاريخ مرتين أو تاريخ النهارده مش بيتسجلوا', await A.evaluate(async d => { const n0 = jrdSaved().length;
+      for (const x of [d, todayISO()]) { jrdOldModal(); $('#joD').value = x; $('#joN').value = '1'; $('#joOk').click(); closeModal(); } return jrdSaved().length - n0; }, oldD), 0);
+    eq('الأرباح من جرد لجرد: سطر فرق المخزون والربح بيتظبط بيه، وفترة مش من جرد لجرد مفيهاش السطر', await A.evaluate(d => {
+      const f = addDays(d, 1), t = todayISO(), R = profitReport(f, t), x = profitOf(f, t), at = k => R.sum.findIndex(r => r[0].includes(k)), dd = 100000 - 15000000;
+      const R2 = profitReport(addDays(d, 3), t);
+      return [R.sum[at('نقص المخزون')][1] === fmtP(-dd), R.sum[at('الربح قبل الشركاء')][1] === fmtP(x.before + dd), R.fin[1] === fmtP(x.after + dd), R.note.includes('الفرق في المخزون'),
+        at('المخزون (من الجرد)') === -1 ? 0 : 1, R2.sum.some(r => r[0].includes('المخزون (من الجرد)')), R2.note.includes('من يوم جرد لحد يوم جرد')]; }, oldD), [true, true, true, true, 1, false, true]);
+    eq('جرد قديم من غير مخزون مبيدخلش في فرق المخزون', await A.evaluate(d => { const n0 = db.stks.length; jrdOldModal(); $('#joD').value = addDays(d, -1); $('#joN').value = '400000'; $('#joOk').click();
+      const o = db.stks[db.stks.length - 1], r = [db.stks.length - n0, !!o.n.noStock, jrdTot(o.n, o.stock).net, !!stockDiff(addDays(d, -1), todayISO())];
+      db.stks.forEach(x => { if (x.n.old) x.del = true; }); saveDB(); renderJrd(); return r; }, oldD), [1, true, 40000000, false]);
 
     /* مساهم شهري: رأس مال من غير خزنة، وسحب من الخزنة مش مصروف */
     const vb1 = await vbal(A), pf0 = await A.evaluate(() => profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()));

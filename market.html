@@ -366,7 +366,7 @@ body{font-size:var(--f3);line-height:1.6}
   حركة السوق — تطبيق الشريك (فلاش أون)
   -------------------------------------
   - الشريك بيسجل اللي حصّله من عملاء السوق. قفل كلمة السر اختياري من الإعدادات (fo_mkt_lock، على الموبايل ده بس): الربط بييجي من "رابط الربط" اللي مصطفى بيبعته (#marketjoin=...).
-  - كل حاجة متخزنة على الموبايل في fo_mkt_v1، وبتتبعت لشيت "حركة السوق" (منفصل عن شيت الحسابات) أول ما يبقى فيه نت.
+  - كل حاجة متخزنة على الموبايل في fo_mkt_v1 (IndexedDB قاعدة fo_mkt، ونسخة في localStorage طول ما فيه مكان)، وبتتبعت لشيت "حركة السوق" (منفصل عن شيت الحسابات) أول ما يبقى فيه نت.
   - مفيش اعتماد على "حالة النت" اللي المتصفح بيقولها: بنجرب الطلب ونتعامل مع الفشل، واللي متبعتش بيفضل مستني ويتبعت لوحده.
   - كل عملية ليها id ثابت، فمفيش تكرار أبداً حتى لو اتبعتت كذا مرة.
   - المبالغ بالقرش كأرقام صحيحة (زي برنامج الحسابات). العملية: {id, t:'pay', cid, cname, newc, amt, m: cash|insta|voda, ts, upd, del}
@@ -416,22 +416,76 @@ const bindDate = id => {
 const dateOf = id => { const v = $('#' + id).value; return isDay(v) && v <= today() ? v : today(); };
 const fmtN = p => (p < 0 ? '-' : '') + fmt(p);
 
-/* ====================== التخزين على الموبايل ====================== */
-const LS = 'fo_mkt_v1';
-let S;
-function load() {
-  let d = null; try { d = JSON.parse(localStorage.getItem(LS)); } catch (e) {}
+/* ====================== التخزين على الموبايل ======================
+   الأساس IndexedDB (قاعدة fo_mkt، نفس المفتاح fo_mkt_v1) لأن مساحته مئات الميجات، و localStorage نسخة تانية بتتكتب
+   على طول طول ما فيه مكان (حده ~5 ميجا). كل حفظ بيزوّد sv، وأول الفتح بياخد الأحدث من الاتنين. لو localStorage اتملى
+   بيتشال منه النسخة بعد ما الحفظ في IndexedDB يتأكد، والشغل بيكمّل على IndexedDB. لو IndexedDB مش شغال = زي الأول بالظبط */
+const LS = 'fo_mkt_v1', IDB_N = 'fo_mkt', IDB_S = 'kv';
+let S, ready = false, saveLater = false, useIdb = !!window.indexedDB, idbOk = false, lsOff = false;
+function fill(d) {
   S = Object.assign({u: '', k: '', dev: '', cursor: 0, ops: {}, st: {}, cust: {}, sup: {}, newc: [], lastOk: 0}, d || {});
   if (!S.dev) S.dev = Array.from(crypto.getRandomValues(new Uint8Array(3)), x => x.toString(36).padStart(2, '0')).join('');
 }
-function save() { try { localStorage.setItem(LS, JSON.stringify(S)); stoWarn(); } catch (e) { toast('الموبايل مش قادر يحفظ. كلّم مصطفى.', 6000); } }
+function load() { let d = null; try { d = JSON.parse(localStorage.getItem(LS)); } catch (e) {} fill(d); }
+let idbP = null;
+const idb = () => idbP || (idbP = new Promise((res, rej) => {
+  const r = indexedDB.open(IDB_N, 1);
+  r.onupgradeneeded = () => r.result.createObjectStore(IDB_S);
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); r.onblocked = () => rej(new Error('blocked'));
+}));
+function idbGet() {
+  return Promise.race([
+    idb().then(db => new Promise((res, rej) => { const q = db.transaction(IDB_S).objectStore(IDB_S).get(LS); q.onsuccess = () => res(q.result ? JSON.parse(q.result) : null); q.onerror = () => rej(q.error); })),
+    new Promise((res, rej) => setTimeout(() => rej(new Error('slow')), 5000))]);
+}
+/* الكتابة في IndexedDB واحدة ورا التانية، ولو جه حفظ وهي شغالة بيتكتب آخر واحد بس */
+let idbNext = null, idbBusy = false;
+async function idbWrite(j) {
+  idbNext = j; if (idbBusy) return; idbBusy = true;
+  while (idbNext !== null) {
+    const v = idbNext; idbNext = null;
+    try {
+      const db = await idb();
+      await new Promise((res, rej) => { const t = db.transaction(IDB_S, 'readwrite'); t.objectStore(IDB_S).put(v, LS); t.oncomplete = res; t.onerror = t.onabort = () => rej(t.error); });
+      idbOk = true;
+      if (lsOff) try { localStorage.removeItem(LS); } catch (e) {}
+    } catch (e) { idbOk = false; if (lsOff) toast('الموبايل مش قادر يحفظ. كلّم مصطفى.', 6000); }
+  }
+  idbBusy = false;
+}
+function save() {
+  if (!ready) { saveLater = true; return; }
+  S.sv = (S.sv || 0) + 1;
+  const j = JSON.stringify(S);
+  if (useIdb) idbWrite(j);
+  if (!lsOff) try { localStorage.setItem(LS, j); } catch (e) { if (useIdb) lsOff = true; else toast('الموبايل مش قادر يحفظ. كلّم مصطفى.', 6000); }
+  stoWarn();
+}
 load();
-/* تنبيه المساحة: لو اللي متخزن على الموبايل وصل ~80% من 5 ميجا (حد المتصفح التقريبي) بيظهر تنبيه صغير مرة واحدة في الفتحة. مبيمسحش أي حاجة */
+/* أول الفتح: بيقرا IndexedDB (من غير نت)، ولو نسخته أحدث بياخدها. أول مرة بعد التحديث بينقل النسخة القديمة ليه وبيسيبها زي ما هي */
+const booted = (async () => {
+  if (useIdb) try {
+    const d = await idbGet();
+    if (d && (d.sv || 0) > (S.sv || 0)) fill(d);
+    else { const j = JSON.stringify(S); if (d && JSON.stringify(d) === j) idbOk = true; else idbWrite(j); }
+  } catch (e) { useIdb = false; }
+  ready = true;
+  if (saveLater) { saveLater = false; save(); }
+})();
+/* تنبيه المساحة: لو المساحة قربت تخلص (80%) بيظهر تنبيه صغير مرة واحدة في الفتحة. مبيمسحش أي حاجة.
+   على IndexedDB بيسأل المتصفح عن مساحته (مرة كل 5 دقايق بالكتير)، ومن غيره زي الأول على حد 5 ميجا */
 const STO_MAX = 5 * 1024 * 1024, STO_WARN = 0.8;
-let stoWarned = false;
+let stoWarned = false, stoAsk = 0;
 function stoUsed() { let n = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); n += k.length + (localStorage.getItem(k) || '').length; } } catch (e) {} return n; }
-function stoWarn() { if (stoWarned || stoUsed() < STO_MAX * STO_WARN) return; stoWarned = true; setTimeout(() => toast('مساحة التطبيق على الموبايل قربت تتملي. كلّم مصطفى.', 6000), 0); }
-setTimeout(stoWarn, 1500);
+const stoToast = () => { stoWarned = true; setTimeout(() => toast('مساحة التطبيق على الموبايل قربت تتملي. كلّم مصطفى.', 6000), 0); };
+function stoWarn() {
+  if (stoWarned || !ready) return;
+  if (!useIdb) { if (stoUsed() >= STO_MAX * STO_WARN) stoToast(); return; }
+  const st = navigator.storage; if (!st || !st.estimate || Date.now() - stoAsk < 300000) return;
+  stoAsk = Date.now();
+  st.estimate().then(e => { if (!stoWarned && e && e.quota && e.usage / e.quota >= STO_WARN) stoToast(); }).catch(() => {});
+}
+booted.then(() => setTimeout(stoWarn, 1500));
 /* تخزين دائم: من غيره المتصفح ممكن يمسح بيانات التطبيق لوحده لو مساحة الموبايل قلّت (والحركات اللي لسه متبعتتش تضيع) */
 let stoP = null;
 (async () => { try { const st = navigator.storage; if (st && st.persist) stoP = (st.persisted && await st.persisted()) || await st.persist(); } catch (e) { stoP = false; } })();
@@ -440,7 +494,7 @@ const bump = o => { o.upd = Math.max(nowS(), (o.upd || 0) + 1); };
 
 /* رابط الربط: فيه لينك شيت السوق ومفتاحه بعد علامة # (مبيتبعتش لأي سيرفر) */
 const unb64u = str => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
-(function join() {
+booted.then(function join() {
   const m = location.hash.match(/marketjoin=([\w-]+)/);
   if (!m) return;
   let o = null; try { o = JSON.parse(unb64u(m[1])); } catch (e) {}
@@ -449,7 +503,7 @@ const unb64u = str => decodeURIComponent(escape(atob(str.replace(/-/g, '+').repl
   if (S.u !== o.u) { S.cursor = 0; S.st = {}; S.cust = {}; S.sup = {}; Object.values(S.ops).forEach(x => { delete x.sy; }); }
   S.u = o.u; S.k = o.k; S.bad = false; save();
   setTimeout(() => toast('✔ التطبيق اتربط. ممكن تحطه على الشاشة الرئيسية.', 5000), 300);
-})();
+});
 
 /* ====================== الحسابات ====================== */
 const stOf = o => S.st['st_' + o.id];
@@ -571,7 +625,7 @@ const tgText = o => { const a = fmt(o.amt), w = {cash: 'كاش', tr: 'تحويل
     : o.t === 'cnt' ? `قفّل يومه: عدّ ${a} كاش${o.amt === o.sys ? ' — مظبوط ✓' : ` — المفروض ${fmtN(o.sys)}، ${o.amt < o.sys ? 'ناقص' : 'زيادة'} ${fmt(o.amt - o.sys)}`}` : 'حركة ' + a; };
 const view = o => o.t === 'cnt' ? [dayOf(o.ts) + ' ' + timeOf(o.ts), 'تقفيل اليوم', o.amt / 100, 'تقفيل يوم', o.amt === o.sys ? 'مظبوط' : 'المفروض ' + o.sys / 100] : [dayOf(o.ts) + ' ' + timeOf(o.ts), isCustOp(o) ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat + (o.note && o.note !== o.cat ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, o.t === 'pay' ? M_SAID[o.m] || o.m : csTr(o) ? 'بيع كاش — ' + M_SAID.tr : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة', rt: 'مرتجع/شغل'}[o.t], o.t === 'rt' ? o.note || '' : ''];
 async function sync() {
-  if (!S.u || S.bad) return;
+  if (!ready || !S.u || S.bad) return;
   if (syncing) { again = true; return; }
   syncing = true; syncAt = Date.now(); let changed = false;
   try {
@@ -610,7 +664,7 @@ const pollGap = () => { const i = Date.now() - Math.max(lastAct, lastNew); retur
 function poll() { clearTimeout(pollT); pollMs = pollGap(); pollT = setTimeout(() => { if (!document.hidden) sync(); poll(); }, pollMs); }
 function woke() { lastAct = Date.now(); if (pollMs > 5000) { if (Date.now() - syncAt > 5000) sync(); poll(); } }
 ['pointerdown', 'keydown'].forEach(t => addEventListener(t, woke, {passive: true, capture: true}));
-poll();
+booted.then(poll);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { lastAct = Date.now(); sync(); poll(); } });
 addEventListener('pageshow', () => sync());
 
@@ -1457,8 +1511,7 @@ function renderPin() {
 }
 if (pinGet()) showLock(); else $('#lock').classList.remove('on');
 
-route();
-setTimeout(sync, 200);
+booted.then(() => { route(); setTimeout(sync, 200); });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
 /* النسخة الجديدة (lib/swup.js) بتتفتح لوحدها بس لو مفيش نافذة مفتوحة ولا خانة فيها كلام ولا حد بيكتب،
    والتطبيق في الخلفية أو محدش لمسه 20 ثانية */

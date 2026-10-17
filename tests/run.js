@@ -1872,14 +1872,41 @@ const T0 = Date.now();
     await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); o.amt = 80000; bump(o); save(); sync(); }); await M.settle(500); await bg(A, 'mkSync()'); await A.settle(400);
     eq('الشريك عدّل بعد ما اتسجلت: الحركة عند مصطفى اتعدلت', await exO('غدا'), [true, 80000, 'done', false]);
     eq('والشريك لسه ينفع يعدّل (مفيش قفل)', await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); editSheet(o); const ok = !!$('#eOk'); closeModal(); return ok; }), true);
-    eq('تنبيه المساحة: تحت 80% مفيش تنبيه، وفوقها تنبيه صغير مرة واحدة، ومفيش حاجة اتمسحت', await M.evaluate(async () => {
-      const before = localStorage.getItem(LS), n0 = Object.keys(S.ops).length; stoWarned = false; $('#toast').textContent = ''; stoWarn(); await new Promise(r => setTimeout(r, 30));
-      const low = $('#toast').textContent.includes('قربت تتملي') || stoWarned;
-      localStorage.setItem('zz_fill_test', 'x'.repeat(4300000)); stoWarn(); await new Promise(r => setTimeout(r, 30));
-      const hi = $('#toast').textContent.includes('قربت تتملي'); $('#toast').textContent = ''; stoWarn(); await new Promise(r => setTimeout(r, 30));
-      const once = !$('#toast').textContent; localStorage.removeItem('zz_fill_test'); stoWarned = false;
-      return [low, hi, once, localStorage.getItem(LS) === before, Object.keys(S.ops).length === n0];
-    }), [false, true, true, true, true]);
+    eq('تنبيه المساحة: بيسأل المتصفح عن مساحة IndexedDB، تحت 80% مفيش تنبيه، وفوقها تنبيه صغير مرة واحدة، ومفيش حاجة اتمسحت', await M.evaluate(async () => {
+      const wait = () => new Promise(r => setTimeout(r, 30)), has = () => $('#toast').textContent.includes('قربت تتملي'), est = navigator.storage.estimate;
+      const before = localStorage.getItem(LS), n0 = Object.keys(S.ops).length; stoWarned = false; $('#toast').textContent = '';
+      navigator.storage.estimate = async () => ({usage: 10, quota: 100}); stoAsk = 0; stoWarn(); await wait();
+      const low = has() || stoWarned;
+      localStorage.setItem('zz_fill_test', 'x'.repeat(4300000)); stoAsk = 0; stoWarn(); await wait();
+      const lsFull = has() || stoWarned; localStorage.removeItem('zz_fill_test');
+      navigator.storage.estimate = async () => ({usage: 85, quota: 100}); stoAsk = 0; stoWarn(); await wait();
+      const hi = has(); $('#toast').textContent = ''; stoAsk = 0; stoWarn(); await wait();
+      const once = !$('#toast').textContent; navigator.storage.estimate = est; stoWarned = false;
+      return [useIdb, low, lsFull, hi, once, localStorage.getItem(LS) === before, Object.keys(S.ops).length === n0];
+    }), [true, false, false, true, true, true, true]);
+    /* الحفظ في IndexedDB: نسخته = اللي على الشاشة، ولو localStorage اتملى الحفظ بيكمّل والفتح الجاي بيجيب كل حاجة */
+    const idbIdle = P => P.waitForFunction(() => !idbBusy && idbNext === null);
+    await M.evaluate(() => save()); await idbIdle(M);
+    eq('IndexedDB: نفس النسخة اللي في localStorage بالظبط', await M.evaluate(async () => { const d = await idbGet(); return [d.sv === S.sv, JSON.stringify(d) === localStorage.getItem(LS), JSON.stringify(d) === JSON.stringify(S)]; }), [true, true, true]);
+    const nOps = await M.evaluate(() => { for (let n = 6e6; n > 1000; n = Math.floor(n * 0.9)) try { localStorage.setItem('zz_fill_test', 'x'.repeat(n)); break; } catch (e) {}
+      S.zzPad = 'y'.repeat(1500000); $('#toast').textContent = ''; save(); return Object.keys(S.ops).length; });
+    await idbIdle(M);
+    eq('localStorage اتملى: مفيش "مش قادر يحفظ"، والنسخة اتشالت منه بعد ما اتحفظت في IndexedDB', await M.evaluate(() => [lsOff, $('#toast').textContent.includes('مش قادر'), localStorage.getItem(LS), idbOk]), [true, false, null, true]);
+    const M2 = await DM.newPage(); await M2.goto(base + 'market.html'); await M2.waitForFunction(() => ready);
+    eq('localStorage اتملى: الفتح الجاي جاب كل حاجة من IndexedDB', await M2.evaluate(() => [(S.zzPad || '').length, Object.keys(S.ops).length, !!S.u]), [1500000, nOps, true]);
+    await M2.close();
+    await M.evaluate(() => { localStorage.removeItem('zz_fill_test'); delete S.zzPad; lsOff = false; S.sv += 1000; save(); }); await idbIdle(M);
+    eq('بعد ما المكان فضي: رجع يكتب في الاتنين', await M.evaluate(async () => [!!localStorage.getItem(LS), (await idbGet()).sv === S.sv]), [true, true]);
+    /* أول فتح بعد التحديث: النسخة القديمة (localStorage بس) بتتنقل لـ IndexedDB وبتفضل زي ما هي */
+    eq('النقل: موبايل قديم عليه localStorage بس، أول فتح بينقلها لـ IndexedDB ومبيمسحهاش', await M.evaluate(async () => {
+      const old = JSON.parse(localStorage.getItem(LS)); delete old.sv; old.u = ''; old.ops = {m_old1: {id: 'm_old1', t: 'pay', amt: 12300, cname: 'تجربة قديم', ts: 1, upd: 1}};
+      return JSON.stringify(old);
+    }).then(async old => {
+      const ctx = await browser.newContext(); const P = await ctx.newPage(); await P.goto(base + 'market.html'); await P.evaluate(v => localStorage.setItem('fo_mkt_v1', v), old);
+      await P.reload(); await P.waitForFunction(() => ready && !idbBusy && idbNext === null);
+      const r = await P.evaluate(async () => { const d = await idbGet(); return [!!d && !!d.ops.m_old1, !!S.ops.m_old1, !!localStorage.getItem(LS)]; });
+      await ctx.close(); return r;
+    }), [true, true, true]);
     await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); o.del = true; bump(o); save(); sync(); }); await M.settle(500); await bg(A, 'mkSync()'); await A.settle(400);
     eq('الشريك مسحها: اتشالت من الخزنة عند مصطفى', await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(x => x.cat === 'غدا'); return IDX.tx.get('t_mk_' + o.id).del; }), true);
     await exA('تاكسي', 300);

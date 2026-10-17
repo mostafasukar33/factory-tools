@@ -918,8 +918,8 @@ const T0 = Date.now();
     eq('لوحة النهارده اتشالت من الرئيسية', await A.$('#hDash'), null);
     const SR = await A.evaluate(() => [searchAll('لفة تجربة').length, searchAll('1350').map(r => r.title)[0] || '', searchAll('سلفة').length, searchAll('x').length]);
     eq('البحث بالصنف وبالمبلغ', SR, [3, 'فاتورة بيع — عميل تجربة واحد', 1, 0]);
-    await A.evaluate(() => go('home')); await A.settle(150); await A.click('#bSearch'); await A.click('#bSearchAll'); await A.fill('#saQ', 'سلفة'); await A.settle(400);
-    eq('البحث في الحركات', (await A.textContent('#saR')).includes('مسحوبات الشركاء'), true); await A.click('#saX2'); await A.click('#bSearch');
+    await A.evaluate(() => go('home')); await A.settle(150); await A.click('#bSearchAll'); await A.fill('#saQ', 'سلفة'); await A.settle(400);
+    eq('البحث في الحركات', (await A.textContent('#saR')).includes('مسحوبات الشركاء'), true); await A.click('#saX2'); await A.fill('#hSearch', ''); await A.settle(150);
     eq('البحث في الحسابات: كل قسم بيطلع حساباته بس (الموردين موردين بس، والسوق سوق بس)', await A.evaluate(() => {
       const t0 = tab, r = [];
       for (const k of ['sup', 'mkt']) { tab = k; $('#hSearch').value = 'تجربة'; renderList(); const s = $$('#hList .pt').map(el => P.get(el.dataset.id).sec); r.push(s.length > 0 && s.every(x => x === k)); }
@@ -1168,21 +1168,54 @@ const T0 = Date.now();
     eq('رسالة التراجع: صغيرة فوق مكان الاسم، مش فوق أي زرار، وبتختفي في أقل من 5 ثواني', await A.evaluate(async () => {
       toastUndo('اتلغت حركة تجربة طويلة شوية علشان نشوف الاسم بيتقص ولا لأ', () => {});
       await Promise.all($('#toast').getAnimations().map(a => a.finished));   // بعد حركة الظهور (foUp) مش في نصها
-      const t = $('#toast').getBoundingClientRect(), hit = [...$$('.top button')].filter(b => b.offsetParent).some(b => { const r = b.getBoundingClientRect(); return r.right > t.left && r.left < t.right && r.bottom > t.top && r.top < t.bottom; });
+      /* كلمة المزامنة (#bSyncM) بقت سطر صغير تحت الاسم نفسه (بطلبه 17/10/2026)، فالرسالة بتغطيها مكان الاسم عادي */
+      const t = $('#toast').getBoundingClientRect(), hit = [...$$('.top button')].filter(b => b.offsetParent && b.id !== 'bSyncM').some(b => { const r = b.getBoundingClientRect(); return r.right > t.left && r.left < t.right && r.bottom > t.top && r.top < t.bottom; });
       return [t.top < 20, t.height < 50, hit]; }), [true, true, false]);
     eq('رسالة التراجع اختفت لوحدها في أقل من 5 ثواني', await A.waitForFunction(() => getComputedStyle($('#toast')).display === 'none', null, {timeout: 5000}).then(() => true, () => false), true);
     await A.evaluate(() => { tab = 'mkt'; go('home'); }); await A.settle(200);
     eq('الموبايل: مفيش زرار الليلي فوق، وزرار الحساب الجديد مش نفس ＋ بتاع التسجيل السريع، وسطر "آخر دفعة" تحت الاسم', await A.evaluate(() => [!!$('#bTheme').offsetParent, $('#bNewParty').textContent.includes('＋'), !!$('#bNewParty svg'),
       [...$$('#hList .lpy')].some(x => x.offsetParent && x.textContent.startsWith('آخر دفعة'))]), [false, false, true, true]);
-    eq('الموبايل: مفيش خانة بحث كبيرة، والزراير (بحث، التقارير، الجرد، حساب جديد) في سطر واحد كبار ومتباعدين', await A.evaluate(() => {
-      const bs = ['#bSearch', '#hRep', '#hJrd', '#bNewParty'].map(x => $(x).getBoundingClientRect());
-      return [getComputedStyle($('#hSearch')).display, bs.every(r => Math.abs(r.top - bs[0].top) < 2 && r.height >= 52 && r.width >= 70), bs.slice(1).every((r, i) => Math.abs(r.right - bs[i].left) >= 6 || Math.abs(bs[i].right - r.left) >= 6)]; }), ['none', true, true]);
-    await A.click('#bSearch'); await A.fill('#hSearch', 'تجربة واحد'); await A.settle(200);
-    eq('العدسة بتفتح خانة الاسم وبتفلتر القايمة', await A.evaluate(() => [getComputedStyle($('#hSearch')).display !== 'none', $$('#hList .pt').length]), [true, 1]);
+    eq('الموبايل: خانة البحث على طول فوق القايمة (من غير زرار عدسة)، والزراير (التقارير، الجرد، حساب جديد) في سطر واحد كبار ومتباعدين', await A.evaluate(() => {
+      const bs = ['#hRep', '#hJrd', '#bNewParty'].map(x => $(x).getBoundingClientRect()), q = $('#hSearch').getBoundingClientRect();
+      return [!!$('#hSearch').offsetParent, !!$('#bSearch').offsetParent, q.bottom <= $('#hList').getBoundingClientRect().top + 1, bs.every(r => Math.abs(r.top - bs[0].top) < 2 && r.height >= 50 && r.width >= 70), bs.slice(1).every((r, i) => Math.abs(r.right - bs[i].left) >= 6 || Math.abs(bs[i].right - r.left) >= 6)]; }), [true, false, true, true, true]);
+    await A.fill('#hSearch', 'تجربة واحد'); await A.settle(200);
+    eq('الكتابة في خانة البحث بتفلتر القايمة على طول', await A.evaluate(() => $$('#hList .pt').length), 1);
     await A.click('#bSearchAll'); await A.settle(400);
     eq('"في الحركات" بيدوّر في كل الحركات على اللي مكتوب', await A.evaluate(() => [$('#saQ').value, $$('#saR .cm').length > 0]), ['تجربة واحد', true]);
-    await A.evaluate(() => closeModal()); await A.click('#bSearch'); await A.settle(150);
-    eq('دوسة تانية على العدسة بتقفل الخانة وترجع القايمة كلها', await A.evaluate(() => [getComputedStyle($('#hSearch')).display, $('#hSearch').value, $$('#hList .pt').length > 1]), ['none', '', true]);
+    await A.evaluate(() => closeModal()); await A.fill('#hSearch', ''); await A.settle(150);
+    eq('مسح خانة البحث بيرجّع القايمة كلها', await A.evaluate(() => $$('#hList .pt').length > 1), true);
+    /* تعديلات الشكل والسهولة (بطلبه 17/10/2026) */
+    eq('الآلة الحاسبة جوه الخانة: بتحسب العملية وبتسيب الرقم العادي زي ما هو', await A.evaluate(() => [calcExpr('40*525'), calcExpr('٤٠×٥٢٥'), calcExpr('1500+2300'), calcExpr('(10+5)/2'), calcExpr('12'), calcExpr('-5'), calcExpr('5*')]), [21000, 21000, 3800, 7.5, null, null, null]);
+    eq('شريط اللون حسب آخر دفعة، و"له عندنا" تحت الرصيد السالب', await A.evaluate(() => {
+      const t = todayISO(), mk = (name, rows) => { const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name, phone: '', note: '', noTot: false, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p); rows.forEach(r => { const x = addEntry(Object.assign({party: p.id, desc: 'بند', dr: 0, cr: 0}, r)); if (r.kind === 'pay') applyAmounts(x); }); return p; };
+      const ps = [mk('لون تجربة أ', [{kind: 'man', date: addDays(t, -90), dr: 100000}, {kind: 'pay', date: addDays(t, -3), amt: 1000, method: 'نقدي', vault: 'v_main'}]),
+        mk('لون تجربة ب', [{kind: 'man', date: addDays(t, -45), dr: 100000}]), mk('لون تجربة ج', [{kind: 'man', date: addDays(t, -90), dr: 100000}]),
+        mk('لون تجربة د', [{kind: 'pay', date: t, amt: 5000, method: 'نقدي', vault: 'v_main'}])];
+      tab = 'mkt'; $('#hSearch').value = 'لون تجربة'; renderList();
+      const r = ps.map(p => { const el = $(`#hList .pt[data-id="${p.id}"]`); return el ? ['age-g', 'age-y', 'age-r'].find(c => el.classList.contains(c)) || '-' : 'x'; });
+      const neg = $(`#hList .pt[data-id="${ps[3].id}"]`).textContent.includes('له عندنا');
+      ps.forEach(p => { p.del = true; db.entries.forEach(e => { if (e.party === p.id) e.del = true; }); }); $('#hSearch').value = ''; renderList();
+      return [r, neg]; }), [['age-g', 'age-y', 'age-r', '-'], true]);
+    eq('ملخص الأرباح: الداخل كله فوق وبعده الخارج وبعدين الربح، بنفس الأرقام', await A.evaluate(() => {
+      const y = todayISO().slice(0, 4) + '-01-01', R = profitReport(y, todayISO()), x = profitOf(y, todayISO()), L = R.sum.map(r => r[0].trim()), at = k => L.indexOf(k);
+      const lastIn = Math.max(at('صافي المبيعات'), ...L.map((l, i) => l.startsWith('+ ') ? i : -1)), firstOut = Math.min(...L.map((l, i) => l.startsWith('− ') || l === 'صافي المشتريات' ? i : 99));
+      return [lastIn < firstOut, at('إجمالي الخارج') < at('الربح قبل الشركاء'), R.sum[at('إجمالي الخارج')][1] === fmtP(x.purch + x.exp), R.sum[at('الربح قبل الشركاء')][1] === fmtP(x.before)]; }), [true, true, true, true]);
+    eq('الرسم البياني بيعرض الشهور اللي فيها شغل بس', await A.evaluate(() => { const rw = (m, s, e) => ({empty: e, raw: {m, s, p: s / 2}}), d = document.createElement('div');
+      d.innerHTML = profitChart([rw('يناير', 100), rw('فبراير', 0, true), rw('مارس', 300), rw('أبريل', 0, true)]); return [...d.querySelectorAll('.rchb .c small')].map(x => x.textContent); }), ['يناير', 'مارس']);
+    eq('"حفظ وسجّل تاني" في المصروف: بيحفظ ويفتح النافذة فاضية بنفس التاريخ والخزنة', await A.evaluate(() => {
+      const n0 = db.txs.length, d = todayISO(); txModal('exp'); $('#txA').value = '40*5'; $('#txA').dispatchEvent(new Event('change', {bubbles: true}));
+      const calc = $('#txA').value.replace(/\D/g, ''); $('#txD').value = d; const v = $('#txV').value; $('#txAgain').click();
+      const r = [calc, db.txs.length - n0, db.txs[db.txs.length - 1].amt, !!$('#txAgain'), $('#txD').value === d, $('#txV').value === v, $('#txA').value];
+      db.txs[db.txs.length - 1].del = true; closeModal(); route(); return r; }), ['200', 1, 20000, true, true, true, '']);
+    eq('"حفظ وسجّل تاني" مش موجود في التعديل ولا التحويل', await A.evaluate(() => { const t = db.txs.find(x => !x.del && x.type === 'exp'); txModal('exp', t); const a = !!$('#txAgain'); closeModal(); txModal('tr'); const b = !!$('#txAgain'); closeModal(); return [a, b]; }), [false, false]);
+    eq('رقم الوارد على أيقونة البرنامج بيمشي مع عداد الوارد', await A.evaluate(() => { const got = [], s0 = navigator.setAppBadge, c0 = navigator.clearAppBadge;
+      navigator.setAppBadge = n => (got.push(n), Promise.resolve()); navigator.clearAppBadge = () => (got.push(0), Promise.resolve());
+      appBadgeN = -1; mkBell(); mkBell(); const n = mkCreds() ? mkPending().length : 0; navigator.setAppBadge = s0; navigator.clearAppBadge = c0; return [got.length, got[0] === n]; }), [1, true]);
+    eq('اسحب لتحت يحدّث: سحبة طويلة من أول الصفحة بتزامن، والقصيرة لأ', await A.evaluate(async () => {
+      const s0 = syncNow; let n = 0; syncNow = async () => { n++; }; scrollTo(0, 0);
+      const ev = (type, y) => { const e = new Event(type, {bubbles: true}); Object.defineProperty(e, 'touches', {value: y === null ? [] : [{clientY: y}]}); $('#hList').dispatchEvent(e); };
+      const pull = async d => { ev('touchstart', 100); ev('touchmove', 100 + d); ev('touchend', null); await new Promise(r => setTimeout(r, 30)); };
+      await pull(30); const a = n; await pull(120); const b = n; syncNow = s0; return [a, b, $('#ptr').classList.contains('on')]; }), [0, 1, false]);
     await A.click('#hSortB'); await A.settle(150);
     eq('زرار الترتيب الصغير فوق القايمة بيغيّر الترتيب', await A.evaluate(() => [$('#hSort').value, $('#hSortB').textContent.includes('بالاسم')]), ['name', true]);
     await A.click('#hSortB'); await A.click('#hSortB'); await A.settle(150);
@@ -2018,7 +2051,7 @@ const T0 = Date.now();
     await A.click('nav button[data-go=sup]'); await A.settle(150);
     eq('الموردين تبويب لوحده تحت وفيه موردين بس', await A.evaluate(() => [$('nav button.on').dataset.go, $$('#hList .pt').length > 0 && $$('#hList .pt').every(x => x.classList.contains('sup')), $$('#hTabs button[data-t]').length]), ['sup', true, 0]);
     await A.click('#hList .pt'); await A.settle(150);
-    eq('صفحة المورد: الموردين هو المتعلّم والرجوع بيرجع للموردين', [await A.evaluate(() => $('nav button.on').dataset.go), (await A.click('#ppBack'), await A.settle(150), await A.evaluate(() => location.hash))], ['sup', '#sup']);
+    eq('صفحة المورد: الموردين هو المتعلّم والرجوع بيرجع للموردين', [await A.evaluate(() => $('nav button.on').dataset.go), (await A.click('#ppBack2'), await A.settle(150), await A.evaluate(() => location.hash))], ['sup', '#sup']);
     await A.click('nav button[data-go=home]'); await A.click('#hRep'); await A.settle(150);
     eq('زرار التقارير في العملاء بيفتح التقارير', await A.evaluate(() => location.hash), '#rep');
     eq('حساب طويل: آخر 30 سطر بس وزرار واحد للأقدم، والرصيد السابق في عمود الرصيد، وكل دوسة بتفرد 30 وفيه طي', await A.evaluate(async () => {

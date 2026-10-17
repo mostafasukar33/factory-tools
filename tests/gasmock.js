@@ -42,6 +42,8 @@ function makeGas(opts = {}) {
     /* تليجرام: بنسجل كل طلب، وبنرد زي تليجرام (tg.updates = الرسايل اللي اتبعتت للبوت) */
     UrlFetchApp: {fetch: (url, o) => {
       tg.calls.push({url, body: o && o.payload ? (typeof o.payload === 'string' ? JSON.parse(o.payload) : o.payload) : null});   // sendDocument بيبعت object (ملف)
+      /* وسيط إشعارات الأيفون (functions/push.js): tg.relay(body) بيرد زيه، والافتراضي "وصل" (201) لكل جهاز */
+      if (/\/push$/.test(String(url))) { const b = JSON.parse(o.payload), r = tg.relay ? tg.relay(b) : {code: 200, body: {ok: true, st: b.subs.map(() => 201)}}; return {getContentText: () => typeof r.body === 'string' ? r.body : JSON.stringify(r.body), getResponseCode: () => r.code}; }
       const m = String(url).split('/').pop();
       const tok = (String(url).match(/bot([^/]+)\//) || [])[1] || '';
       const body = !/^\d{5,}:[\w-]{20,}$/.test(tok) || (tg.valid && !tg.valid.includes(tok)) ? {ok: false, error_code: 401, description: 'Unauthorized'} : m === 'getMe' ? {ok: true, result: {username: 'test_souq_bot'}} : m === 'getUpdates' ? {ok: true, result: tg.updates} : {ok: true, result: {}};

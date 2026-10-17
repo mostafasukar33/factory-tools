@@ -104,3 +104,24 @@ self.addEventListener('fetch', e => {
     }).catch(() => saved(req.url).then(r => r || caches.match('index.html')).then(r => r && plain(r)))
   );
 });
+
+// إشعارات الوارد (functions/push.js بيبعتها من شيت السوق): رقم على أيقونة الحسابات + إشعار.
+// الآيفون لازم كل رسالة يطلع معاها إشعار، وإلا بيلغي الاشتراك. مبنقراش ولا بنكتب أي بيانات هنا
+self.addEventListener('push', e => {
+  let m = {}; try { m = e.data ? e.data.json() : {}; } catch (x) { m = {b: e.data ? e.data.text() : ''}; }
+  const n = Math.max(0, Math.round(Number(m.n) || 0));
+  const badge = 'setAppBadge' in self.navigator ? (n ? self.navigator.setAppBadge(n) : self.navigator.clearAppBadge()).catch(() => {}) : Promise.resolve();
+  e.waitUntil(badge.then(() => self.registration.showNotification(m.t || '📥 حركة السوق', {
+    body: m.b || '', tag: 'mkt', renotify: true, icon: new URL('icons/icon-192.png', SCOPE).href, data: {u: m.u || 'accounts.html#mkt'}
+  })));
+});
+// دوسة على الإشعار: لو الحسابات مفتوحة تروح للوارد، وإلا تتفتح على الوارد
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const u = new URL((e.notification.data && e.notification.data.u) || 'accounts.html#mkt', SCOPE).href;
+  e.waitUntil(self.clients.matchAll({type: 'window', includeUncontrolled: true}).then(l => {
+    const c = l.find(x => /\/accounts(\.html)?$/.test(new URL(x.url).pathname));
+    if (c) { c.postMessage({t: 'go-mkt'}); return c.focus(); }
+    return self.clients.openWindow(u);
+  }));
+});

@@ -1315,7 +1315,7 @@ const T0 = Date.now();
     /* تليجرام من الحسابات لمصطفى: نسخة يومية وملخص وتنبيه. على نفس البوت، ومن غير ما يتكتب أي حاجة في شيت الحركات (الشريك مبيشوفهاش) */
     const tgDocs = () => sheets.mkt.tg.calls.filter(c => c.url.endsWith('/sendDocument'));
     const mkRows0 = sheets.mkt.sheets['الحركات'].rows.length;
-    eq('كود شيت السوق نسخة 5، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [5, null]);
+    eq('كود شيت السوق نسخة 6، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [6, null]);
     {
       /* كود شيت السوق نسخة 4 قدام نسخة 3 القديمة بآلاف السطور: نفس الردود ونفس الشيت بالظبط، والقراية أقل بكتير */
       const oldMk = fs.readFileSync(path.join(__dirname, 'fixtures/mkt-sheet-v3.gs'), 'utf8'), newMk = await A.evaluate(() => marketScript());
@@ -1350,6 +1350,75 @@ const T0 = Date.now();
     await A.click('#smUpd'); await A.settle(150);
     eq('تحديث كود الشيت: زرار ثابت في الإعدادات بيفتح الخطوات (من جوه الجدول، ولو مش لاقيه) وفيه لينك جدول حركة السوق نفسه', await A.evaluate(() => [$('#modal').textContent.includes('الإضافات (Extensions)'), $('#modal').textContent.includes('بحساب جوجل تاني'), !!$('#modal a[href*="docs.google.com/spreadsheets/d/ss1"]'), db.cfg.mkSheetUrl]), [true, true, true, 'https://docs.google.com/spreadsheets/d/ss1/edit']);
     await A.click('#muX');
+    {
+      /* إشعارات الأيفون: الوسيط نفسه (functions/push.js) بمثال RFC 8291 بالحرف، وتوقيع VAPID، ومبيبعتش غير لشركات الإشعارات */
+      const src = fs.readFileSync(path.join(__dirname, '../functions/push.js'), 'utf8');
+      const PX = await import('data:text/javascript,' + encodeURIComponent(src));
+      const u8 = s => new Uint8Array(Buffer.from(s, 'base64url'));
+      const asPub = u8('BP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A8');
+      const asJwk = {kty: 'EC', crv: 'P-256', x: Buffer.from(asPub.slice(1, 33)).toString('base64url'), y: Buffer.from(asPub.slice(33)).toString('base64url'), d: 'yfWPiYE-n46HLnH0KqZOF1fJJU3MYrct3AELtAQ-oRw', ext: true};
+      const asKp = {privateKey: await crypto.subtle.importKey('jwk', asJwk, {name: 'ECDH', namedCurve: 'P-256'}, true, ['deriveBits']), publicKey: await crypto.subtle.importKey('raw', asPub, {name: 'ECDH', namedCurve: 'P-256'}, true, [])};
+      const rfcSub = {endpoint: 'https://web.push.apple.com/x', keys: {p256dh: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4', auth: 'BTBZMqHH6r4Tts7J_aSIgg'}};
+      const body = await PX._t.encrypt(rfcSub, 'When I grow up, I want to be a watermelon', {as: asKp, salt: u8('DGv6ra1nlYgDCS1FRnbzlw')});
+      const kp = await crypto.subtle.generateKey({name: 'ECDSA', namedCurve: 'P-256'}, true, ['sign', 'verify']), vjwk = await crypto.subtle.exportKey('jwk', kp.privateKey);
+      const vh = (await PX._t.vapid(rfcSub.endpoint, vjwk)).match(/^vapid t=([^.]+)\.([^.]+)\.([^,]+), k=(.+)$/);
+      const vok = await crypto.subtle.verify({name: 'ECDSA', hash: 'SHA-256'}, kp.publicKey, u8(vh[3]), new TextEncoder().encode(vh[1] + '.' + vh[2]));
+      eq('إشعارات: الوسيط بيشفّر زي مثال RFC 8291 بالحرف، والتوقيع سليم، ومبيبعتش لأي موقع غير شركات الإشعارات', [Buffer.from(body).toString('base64url'), vok, JSON.parse(Buffer.from(vh[2], 'base64url')).aud, await PX._t.sendOne({s: {endpoint: 'https://evil.example.com/x', keys: rfcSub.keys}, k: vjwk}, 'x')],
+        ['DGv6ra1nlYgDCS1FRnbzlwAAEABBBP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A_yl95bQpu6cVPTpK4Mqgkf1CXztLVBSt2Ks3oZwbuwXPXLWyouBWLVWGNWQexSgSxsj_Qulcy4a-fN', true, 'https://web.push.apple.com', 400]);
+
+      /* التفعيل من الإعدادات (إذن الإشعارات والاشتراك متقلّدين علشان المتصفح اللي من غير شاشة) */
+      const pushCalls = () => sheets.mkt.tg.calls.filter(c => /\/push$/.test(c.url)).map(c => c.body);
+      await A.evaluate(() => {
+        window.__sub = null;
+        const pm = {getSubscription: async () => window.__sub, subscribe: async o => (window.__sub = {endpoint: 'https://web.push.apple.com/TEST1', options: {applicationServerKey: o.applicationServerKey.buffer},
+          toJSON() { return {endpoint: this.endpoint, keys: {p256dh: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4', auth: 'BTBZMqHH6r4Tts7J_aSIgg'}}; }, unsubscribe: async () => { window.__sub = null; return true; }})};
+        Object.defineProperty(navigator.serviceWorker, 'ready', {value: Promise.resolve({pushManager: pm}), configurable: true});
+        Object.defineProperty(Notification, 'permission', {get: () => 'granted', configurable: true});
+        Notification.requestPermission = async () => 'granted';
+        renderMktSettings();
+      });
+      await A.settle(400);
+      const devId = await A.evaluate(() => db.cfg.dev);
+      await A.click('#pnOn'); await A.settle(600);
+      const subs = JSON.parse(sheets.mkt.props.PUSH_SUBS || '{}');
+      eq('إشعارات: "فعّل" بيسجّل الموبايل ده في شيت السوق بمفتاحه، والمفتاح الخاص في القاعدة المتشفرة بس', [Object.keys(subs), subs[devId] && subs[devId].s.endpoint, !!(subs[devId] && subs[devId].k.d), await A.evaluate(() => !!(db.cfg.push.on && db.cfg.push.jwk.d && db.cfg.push.pub)), !!(await A.$('#pnTest'))],
+        [[devId], 'https://web.push.apple.com/TEST1', true, true, true]);
+      const p0 = pushCalls().length;
+      await A.click('#pnTest'); await A.settle(500);
+      const tst = pushCalls().slice(p0);
+      eq('إشعارات: "جرّب الإشعار" بيبعت تجربة للموبايل ده بس عن طريق الوسيط', [tst.length, tst[0] && tst[0].subs.length, tst[0] && tst[0].m.t, (await A.textContent('#pnE')).trim()], [1, 1, '✅ تجربة', '']);
+      sheets.mkt.tg.relay = b => ({code: 404, body: '<html>Not found</html>'});
+      await A.click('#pnTest'); await A.settle(500);
+      eq('إشعارات: لو الوسيط مش شغال على كلاود فلير الرسالة بتقول كده', (await A.textContent('#pnE')).includes('وسيط الإشعارات مش بيرد (404)'), true);
+      sheets.mkt.tg.relay = null;
+
+      /* عملية من الشريك (على شيت سوق تجريبي لوحده علشان الوارد الحقيقي ميتلمسش): إشعار بالكلام اللي في تليجرام، والرقم = الوارد المستني وقت آخر فتح + الجديد */
+      {
+        const G = makeGas(); G.load(await A.evaluate(() => marketScript()));
+        const K = 'Push-Key-1234', gp = o => JSON.parse(G.post(JSON.stringify(Object.assign({key: K}, o))));
+        const gcalls = () => G.tg.calls.filter(c => /\/push$/.test(c.url)).map(c => c.body);
+        gp({action: 'ping'});
+        gp({action: 'psub', dev: 'd1', sub: {endpoint: 'https://web.push.apple.com/G1', keys: {p256dh: 'x', auth: 'y'}}, jwk: {d: 'z'}});
+        gp({action: 'pseen', n: 2});
+        const op = (id, upd, del, amt) => ({id, kind: 'op', upd, del: !!del, view: ['', 'عميل إشعار', 'دفعة', '', ''], data: {id, t: 'pay', cname: 'عميل إشعار', amt: amt || 50000, m: 'cash', ts: upd}});
+        gp({action: 'push', who: 'm', rows: [op('opPN1', 1001), op('opPN2', 1002)]});
+        gp({action: 'push', who: 'm', rows: [op('opPN1', 1003, false, 70000)]});
+        gp({action: 'push', who: 'p', rows: [op('opPN3', 1004)]});   // من الحسابات نفسها: مفيش إشعار
+        const got = gcalls();
+        eq('إشعارات: عملية جديدة من الشريك = إشعار ورقم الأيقونة بيزيد، والتعديل إشعار من غير ما الرقم يزيد، واللي من الحسابات مفيش', [got.length, got.map(x => x.m.n), got[0].m.b.split('\n').length, got[1].m.b.startsWith('✏️'), got[0].m.u],
+          [2, [4, 4], 2, true, 'accounts.html#mkt']);
+        G.tg.relay = b => ({code: 200, body: {ok: true, st: b.subs.map(() => 410)}});
+        gp({action: 'push', who: 'm', rows: [op('opPN4', 1005)]});
+        G.tg.relay = null;
+        eq('إشعارات: الأيفون لغى الاشتراك (410) = الشيت بيشيله لوحده، وبعدها الوسيط مبيتكلمش', [JSON.parse(G.props.PUSH_SUBS), (gp({action: 'push', who: 'm', rows: [op('opPN5', 1006)]}), gcalls().length)], [{}, 3]);
+      }
+      /* الرقم الحقيقي من البرنامج بيروح للشيت، والاشتراك بيرجع لوحده أول فتحة */
+      await A.evaluate(() => { pushSeenN = -1; pushRenewDb = null; db.cfg.push.at = 0; mkBell(); });
+      await A.waitForFunction(() => pushSeenN >= 0, null, {timeout: 8000});
+      eq('إشعارات: رقم الوارد الحقيقي بيروح للشيت، والاشتراك اللي اتشال بيرجع لوحده', [sheets.mkt.props.PUSH_N, await A.evaluate(() => String(mkPending().length)), Object.keys(JSON.parse(sheets.mkt.props.PUSH_SUBS))], [await A.evaluate(() => String(mkPending().length)), await A.evaluate(() => String(mkPending().length)), [devId]]);
+      await A.click('#pnOff'); await A.settle(400);
+      eq('إشعارات: "اقفل" بيشيله من الشيت ومفيش إشعارات تاني', [JSON.parse(sheets.mkt.props.PUSH_SUBS), await A.evaluate(() => db.cfg.push.on), !!(await A.$('#pnOn'))], [{}, false, true]);
+    }
     const TD = await A.evaluate(() => db.entries.filter(e => !e.del && e.kind === 'pay').map(e => e.date).sort().pop());
     /* الإرسال اللوحده بعد المزامنة (من غير تاريخ) بيستخدم الساعة الحقيقية، فلو الاختبار اشتغل بعد 8 بالليل كان بيبعت نسخة النهارده في النص. هنا بنجرب بتواريخ ثابتة بس */
     await A.evaluate(() => { window.__tgA = tgAfterSync; window.tgAfterSync = d => d ? window.__tgA(d) : Promise.resolve(); });
@@ -1912,7 +1981,7 @@ const T0 = Date.now();
     eq('صفحة العملاء: إجمالي اللي على العملاء ظاهر', await M.evaluate(() => { const t = [...customers().values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0); return $('#main .ctot .money').textContent === fmt(t); }), true);
     await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(500);
     eq('وصل لمصطفى في الوارد', await A.evaluate(() => mkPending().filter(o => o.t === 'cs').map(o => [o.buyer, o.amt])), [['مشتري تجربة', 450000]]);
-    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 5', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 5]);
+    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 6', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 6]);
     const csV0 = await A.evaluate(() => vaultBal('v_mkt'));
     await A.evaluate(() => { const o = mkPending().find(x => x.t === 'cs'); mkMove(o, {amt: o.amt, date: todayISO(), vault: 'v_mkt', to: ''}); saveDB(); });
     eq('اتنقل إيراد في خزنة السوق (مبيعات نقدي) من غير ما يتعمل عميل', await A.evaluate(([v0, p0]) => [vaultBal('v_mkt') - v0, db.txs.filter(t => t.id.startsWith('t_mk_') && t.type === 'inc' && t.cat === 'c_inc1' && !t.del).length > 0, db.parties.length], [csV0, csP0]), [450000, true, csP0]);

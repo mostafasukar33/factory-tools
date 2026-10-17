@@ -689,6 +689,31 @@ html[data-theme=dark] .fab2,html[data-theme=dark] .cbar{background:linear-gradie
 /* الفاتورة أنضف (بطلبه 15/10/2026): "+ صنف كمان" عريض تحت البنود، و"زي آخر فاتورة" و"من عرض سعر" زراير رفيعة صغيرة جنب بعض */
 #modal .mtools #dcAdd{flex:1 1 100%;min-height:44px;border:1.5px dashed var(--gold);background:var(--gold-l);color:var(--gold-d);font-weight:800;font-size:var(--f2)}
 #modal .mtools :is(#dcLast,#dcQuote){min-height:34px;font-size:var(--f1);color:var(--sub);border-color:var(--line);background:var(--row);overflow:hidden;text-overflow:ellipsis}
+/* الفاتورة جدول (بطلبه 17/10/2026): كل صنف سطر رفيع، والسطر اللي بتكتب فيه دهبي فاتح، والاقتراحات طايرة فوق السطور */
+#modal .lhd,#dcLines .li{display:grid;grid-template-columns:22px minmax(0,1fr) 64px 58px 72px 76px 26px;gap:4px;align-items:center}
+#modal .lhd{padding:0 6px 4px;font-size:var(--f1);font-weight:800;color:var(--sub)}
+#modal .lhd span{text-align:center;white-space:nowrap}#modal .lhd span:nth-child(2){text-align:start}
+#dcLines{border:1.5px solid var(--line);border-radius:10px;margin-bottom:10px;background:var(--card)}
+#dcLines .li{position:relative;border:0;border-bottom:1px solid var(--line);border-radius:0;margin:0;padding:3px 6px;box-shadow:none;background:transparent}
+#dcLines .li:first-child{border-radius:9px 9px 0 0}#dcLines .li:last-child{border-bottom:0;border-radius:0 0 9px 9px}
+#dcLines .li:focus-within{background:var(--gold-l)}
+#dcLines .badge{width:22px;height:22px;background:none;color:var(--sub);font-size:var(--f1)}
+#dcLines .inp{min-height:36px;padding:4px 6px;font-size:var(--f2);border-radius:8px;width:100%}
+#dcLines select.inp{padding:4px 2px}
+#dcLines .lt2{min-height:36px;background:none;font-size:var(--f2);justify-content:flex-start;padding:0 2px;overflow:hidden;white-space:nowrap}
+#dcLines .ibtn.d{width:26px;height:26px;min-height:0;padding:0;font-size:var(--f1);background:transparent}
+#dcLines .sg .sr{padding:6px 10px}
+#dcLines .li.blank .ibtn.d{visibility:hidden}
+#dcLines .lnm{position:relative;min-width:0}
+#dcLines .sg{position:absolute;top:100%;right:0;width:min(320px,80vw);z-index:6;margin:2px 0 0;box-shadow:var(--shadow)}
+.dtot small{display:block;font-size:var(--f1);font-weight:700;opacity:.8}
+@media (max-width:640px){
+  #modal .lhd,#dcLines .li{grid-template-columns:14px minmax(0,1fr) 44px 40px 54px 56px 18px;gap:3px}
+  #dcLines select.inp{-webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;background-image:none}
+  #modal .lhd{padding:0 4px 4px}#dcLines .li{padding:3px 4px}
+  #dcLines .inp{padding:4px 2px}#dcLines .badge{width:14px}
+  #dcLines .ibtn.d{width:20px;height:24px;border:0}
+}
 .mkvb{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 10px;background:var(--gold-l);border:1.5px solid var(--gold);border-radius:12px;padding:10px 14px;margin-bottom:10px}
 .mkvb span{font-weight:800;font-size:var(--f2)}.mkvb b{font-size:var(--f4);direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums lining-nums;white-space:nowrap}.mkvb b small{font-size:var(--f1);color:var(--gold-d)}
 .mkvb i{grid-column:1/-1;font-style:normal;font-size:var(--f1);color:var(--gold-d);font-weight:700}
@@ -2565,9 +2590,9 @@ function docModal(p, kind, e, opts = {}) {
     ${e && kind === 'inv' && isFwdSrc(p) ? `<div class="fwbox ${fwState(e)}"><span>${FW_TAG[fwState(e)]}${fwState(e) !== 'no' && fwdMain(p) ? ` <small>(في حساب ${esc(fwdMain(p).name)})</small>` : ''}</span>${fwState(e) !== 'ok' && fwdMain(p) ? `<button class="btn gold sm" id="fwOne" type="button">📤 ${fwState(e) === 'chg' ? 'انقل التعديل' : 'انقلها للحساب الأساسي'}</button>` : ''}${fwState(e) === 'no' ? '<button class="btn line sm" id="fwMk" type="button">✓ دي متنقلة بالفعل</button>' : ''}${e.fwMan && !fwCopyOf(e) ? '<button class="btn line sm" id="fwUn" type="button">↩ رجّعها متنقلتش</button>' : ''}</div>` : ''}
     ${e && e.fwFrom ? `<div class="fwbox from"><span>↩ الفاتورة دي منقولة من حساب ${esc((P.get((E.get(e.fwFrom) || {}).party) || {}).name || 'فرعي')}. التعديل يكون هناك وبعدين "انقل التعديل".</span></div>` : ''}
     <div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${e ? e.date : opts.mk ? isoOf(opts.mk.ts) : todayISO()}"></div>
+    <div class="lhd"><span>#</span><span>الصنف</span><span>الوحدة</span><span>الكمية</span><span>السعر</span><span>الإجمالي</span><span></span></div>
     <div id="dcLines"></div>
-    <div class="mtools"><button class="btn line sm" id="dcAdd" type="button">+ صنف كمان</button>
-      ${lastDoc ? `<button class="btn line sm" id="dcLast" type="button">↻ زي آخر ${ret ? 'مرتجع' : 'فاتورة'} (${dispDate(lastDoc.date)})</button>` : ''}
+    <div class="mtools">${lastDoc ? `<button class="btn line sm" id="dcLast" type="button">↻ زي آخر ${ret ? 'مرتجع' : 'فاتورة'} (${dispDate(lastDoc.date)})</button>` : ''}
       ${fill && kind === 'inv' ? '<button class="btn line sm" id="dcQuote" type="button">📋 من عرض سعر</button>' : ''}</div>
     ${fill && kind === 'inv' ? '<div id="dcQ" style="display:none"></div>' : ''}
     <details class="mmore" ${(e && (e.disc || e.note)) ? 'open' : ''}><summary>+ خصم أو ملاحظة</summary>
@@ -2576,7 +2601,7 @@ function docModal(p, kind, e, opts = {}) {
     ${e ? histHtml(e) : ''}
     <div id="dcWarn"></div>
     <div class="mfoot">
-      <div class="dtot"><span>${ret ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}</span><b id="dcTot">0</b></div>
+      <div class="dtot"><span>${ret ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}<small id="dcDs"></small></span><b id="dcTot">0</b></div>
       ${!isNew ? `<div class="msec">${kind === 'inv' ? '<button class="btn line sm" id="dcDlv" type="button">🚚 إذن تسليم</button>' : ''}<button class="btn red sm" id="dcDel" type="button">${ret ? 'إلغاء المرتجع' : 'إلغاء الفاتورة'}</button></div>` : ''}
       <div class="mrow"><button class="btn gold" id="dcOk" type="button">${isNew ? 'حفظ الفاتورة' : nl ? 'حفظ البنود' : 'حفظ التعديل'}</button><button class="btn line" id="dcX" type="button">رجوع</button></div></div>`, true);
   if ($('#fwMk')) $('#fwMk').onclick = () => { e.fwMan = true; touch(e); saveDB(); closeModal(); route(); toast('✔ اتعلّمت إنها متنقلة (من غير ما تتنقل تاني)'); };
@@ -2589,62 +2614,91 @@ function docModal(p, kind, e, opts = {}) {
       const q = Math.round(num(el.querySelector('[data-f=qty]').value) * 1000) / 1000, pr = toP(el.querySelector('[data-f=price]').value), lt = Math.round(q * pr);
       el.querySelector('.lt2').textContent = lt ? fmtP(lt) : '—'; t += lt;
     });
-    t -= toP($('#dcDisc').value);
+    const ds = toP($('#dcDisc').value); t -= ds;
+    $('#dcDs').textContent = ds ? 'بعد خصم ' + fmtP(ds) : '';
     $('#dcTot').textContent = fmtP(t) + ' ' + CUR; $('#dcTot').style.color = t < 0 ? 'var(--red)' : '';
     if (mkT !== null) $('#dcMk').innerHTML = t === mkT ? '<span style="color:var(--green)">✓ مطابق لإجمالي شريكك</span>' : `<span style="color:var(--red)">الفرق عن إجمالي شريكك: ${fmtP(t - mkT)}</span>`;
   };
-  const draw = ls => {
-    $('#dcLines').innerHTML = ls.map((l, i) => `<div class="li">
-      <div class="lh"><span class="badge">${i + 1}</span><input class="inp" data-f="name" placeholder="اسم الصنف" value="${esc(l.name)}" autocomplete="off">${ls.length > 1 ? `<button class="ibtn d" data-del="${i}" type="button">✕</button>` : ''}</div>
-      <div class="sg"></div>
-      <div class="g4"><div><label>الوحدة</label><select class="inp" data-f="unit">${[...new Set(UNITS.concat(l.unit ? [l.unit] : []))].map(u => `<option ${u === l.unit ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select></div>
-        <div><label>الكمية</label><input class="inp num" data-f="qty" inputmode="decimal" placeholder="0" value="${esc(l.qty)}"></div>
-        <div><label>السعر</label><input class="inp num" data-f="price" placeholder="0" value="${esc(l.price)}"></div>
-        <div><label>الإجمالي</label><div class="lt2">—</div></div></div></div>`).join('');
-    $$('#dcLines [data-f=price]').forEach(bindMoney);
-    $$('#dcLines [data-f=qty]').forEach(el => el.addEventListener('input', () => { el.value = normDigits(el.value).replace(/[^\d.]/g, ''); }));
-    $$('#dcLines input').forEach(el => el.addEventListener('input', calc));
+  /* البنود جدول (بطلبه 17/10/2026): كل صنف سطر واحد، وآخر سطر فاضي دايماً وأول ما يتكتب فيه بيطلع تحته سطر فاضي جديد بوحدة السطر اللي قبله.
+     Enter أو "التالي" في كيبورد الموبايل بينقل: الاسم ← الوحدة ← الكمية ← السعر ← اسم السطر اللي بعده */
+  const isBlank = li => !li.querySelector('[data-f=name]').value.trim() && !li.querySelector('[data-f=qty]').value.trim() && !li.querySelector('[data-f=price]').value.trim();
+  const rowHtml = l => `<div class="li">
+      <span class="badge"></span><div class="lnm"><input class="inp" data-f="name" placeholder="اسم الصنف" value="${esc(l.name)}" autocomplete="off" enterkeyhint="next"><div class="sg"></div></div>
+      <select class="inp" data-f="unit" enterkeyhint="next">${[...new Set(UNITS.concat(l.unit ? [l.unit] : []))].map(u => `<option ${u === l.unit ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select>
+      <input class="inp num" data-f="qty" inputmode="decimal" placeholder="0" value="${esc(l.qty)}" enterkeyhint="next">
+      <input class="inp num" data-f="price" placeholder="0" value="${esc(l.price)}" enterkeyhint="next">
+      <div class="lt2">—</div><button class="ibtn d" data-del type="button" tabindex="-1" aria-label="مسح السطر">✕</button></div>`;
+  const setUnit = (li, u) => { const s = li.querySelector('[data-f=unit]'); if (![...s.options].some(o => o.value === u)) s.add(new Option(u)); s.value = u; };
+  /* أرقام السطور والسطر الفاضي الأخير (من غير ما يترسم حاجة تانية، علشان مكان الكتابة ميضيعش) */
+  const tidy = () => {
+    let L = $$('#dcLines .li');
+    if (!L.length || !isBlank(L[L.length - 1])) {
+      const prev = L[L.length - 1];
+      $('#dcLines').insertAdjacentHTML('beforeend', rowHtml({name: '', unit: prev ? prev.querySelector('[data-f=unit]').value : 'كيلو', qty: '', price: ''}));
+      bindRow($('#dcLines').lastElementChild);
+      L = $$('#dcLines .li');
+    }
+    L.forEach((li, i) => { li.querySelector('.badge').textContent = i + 1; li.classList.toggle('blank', i === L.length - 1); });
+  };
+  /* السطر الفاضي الأخير بياخد وحدة السطر اللي قبله لو اتغيرت */
+  const syncBlank = li => { const nx = li.nextElementSibling; if (nx && nx.classList.contains('blank') && isBlank(nx)) setUnit(nx, li.querySelector('[data-f=unit]').value); };
+  const FLD = ['name', 'unit', 'qty', 'price'];
+  const bindRow = li => {
+    const el = li.querySelector('[data-f=name]'), box = li.querySelector('.sg');
+    bindMoney(li.querySelector('[data-f=price]'));
+    const q = li.querySelector('[data-f=qty]');
+    q.addEventListener('input', () => { q.value = normDigits(q.value).replace(/[^\d.]/g, ''); });
+    li.querySelectorAll('input').forEach(x => x.addEventListener('input', () => { calc(); if (li.classList.contains('blank') && !isBlank(li)) tidy(); }));
+    li.querySelector('[data-f=unit]').addEventListener('change', () => syncBlank(li));
+    li.querySelectorAll('[data-f]').forEach(x => x.addEventListener('keydown', ev => {
+      if (ev.key !== 'Enter' || ev.isComposing) return;
+      ev.preventDefault();
+      const k = FLD.indexOf(x.dataset.f);
+      if (k < FLD.length - 1) return li.querySelector(`[data-f=${FLD[k + 1]}]`).focus();
+      x.blur(); tidy();   // الخروج من السعر بيحسب لو كاتب حسبة
+      const nx = li.nextElementSibling; if (nx) { nx.querySelector('[data-f=name]').focus(); nx.scrollIntoView({block: 'nearest'}); }
+    }));
     /* اقتراحات الاسم: أصناف الحساب ده بس بآخر سعر واتكتب إمتى (مش أصناف باقي العملاء). دوسة = الاسم والوحدة والسعر */
-    $$('#dcLines [data-f=name]').forEach(el => {
-      const li = el.closest('.li'), box = li.querySelector('.sg');
-      let rows = [];
-      const hide = () => { box.classList.remove('on'); box.innerHTML = ''; };
-      const show = () => {
-        const q = norm(el.value);
-        const a = mine.filter(x => !q || norm(x.name).includes(q)).slice(0, 5);
-        rows = a;
-        if (!rows.length || (rows.length === 1 && norm(rows[0].name) === q)) return hide();
-        box.innerHTML = rows.map((x, i) => (i === 0 ? `<div class="sh">${base === 'inv' ? 'اتباع للحساب ده قبل كده' : 'اتشرى من الحساب ده قبل كده'}</div>` : '')
-          + `<div class="sr" data-i="${i}"><span>${esc(x.name)}${x.date ? `<small>${esc(x.unit || '')} — آخر مرة ${dispDate(x.date)}</small>` : x.unit ? `<small>${esc(x.unit)}</small>` : ''}</span>${x.price ? `<b>${fmtP(x.price)}</b>` : ''}</div>`).join('');
-        box.classList.add('on');
-      };
-      box.onmousedown = ev => ev.preventDefault();
-      box.onclick = ev => {
-        const r = ev.target.closest('.sr'); if (!r) return;
-        const x = rows[+r.dataset.i]; if (!x) return;
-        el.value = x.name;
-        if (x.unit) { const s = li.querySelector('[data-f=unit]'); if (![...s.options].some(o => o.value === x.unit)) s.add(new Option(x.unit)); s.value = x.unit; }
-        if (x.price) li.querySelector('[data-f=price]').value = fmtP(x.price);
-        hide(); calc(); li.querySelector('[data-f=qty]').focus();
-      };
-      el.addEventListener('focus', show); el.addEventListener('input', show);
-      el.addEventListener('blur', () => setTimeout(hide, 200));
-    });
-    $$('#dcLines [data-f=name]').forEach(el => el.addEventListener('change', () => {
-      const li = el.closest('.li'), pr = li.querySelector('[data-f=price]');
+    let rows = [];
+    const hide = () => { box.classList.remove('on'); box.innerHTML = ''; };
+    const show = () => {
+      const q = norm(el.value);
+      const a = mine.filter(x => !q || norm(x.name).includes(q)).slice(0, 5);
+      rows = a;
+      if (!rows.length || (rows.length === 1 && norm(rows[0].name) === q)) return hide();
+      box.innerHTML = rows.map((x, i) => (i === 0 ? `<div class="sh">${base === 'inv' ? 'اتباع للحساب ده قبل كده' : 'اتشرى من الحساب ده قبل كده'}</div>` : '')
+        + `<div class="sr" data-i="${i}"><span>${esc(x.name)}${x.date ? `<small>${esc(x.unit || '')} — آخر مرة ${dispDate(x.date)}</small>` : x.unit ? `<small>${esc(x.unit)}</small>` : ''}</span>${x.price ? `<b>${fmtP(x.price)}</b>` : ''}</div>`).join('');
+      box.classList.add('on');
+    };
+    box.onmousedown = ev => ev.preventDefault();
+    box.onclick = ev => {
+      const r = ev.target.closest('.sr'); if (!r) return;
+      const x = rows[+r.dataset.i]; if (!x) return;
+      el.value = x.name;
+      if (x.unit) { setUnit(li, x.unit); syncBlank(li); }
+      if (x.price) li.querySelector('[data-f=price]').value = fmtP(x.price);
+      hide(); calc(); tidy(); li.querySelector('[data-f=qty]').focus();
+    };
+    el.addEventListener('focus', show); el.addEventListener('input', show);
+    el.addEventListener('blur', () => setTimeout(hide, 200));
+    el.addEventListener('change', () => {
+      const pr = li.querySelector('[data-f=price]');
       if (!el.value.trim() || pr.value) return;
       const x = lastPrice(p.id, base, el.value) || book.get(norm(el.value));
       if (!x) return;
-      if (x.unit) { const s = li.querySelector('[data-f=unit]'); if (![...s.options].some(o => o.value === x.unit)) s.add(new Option(x.unit)); s.value = x.unit; }
+      if (x.unit) { setUnit(li, x.unit); syncBlank(li); }
       if (x.price) pr.value = fmtP(x.price);
       calc();
-    }));
-    $$('#dcLines [data-del]').forEach(b => b.onclick = () => { const ls2 = readLines(); ls2.splice(+b.dataset.del, 1); draw(ls2); });
-    calc();
+    });
+    li.querySelector('[data-del]').onclick = () => { li.remove(); tidy(); calc(); };
+  };
+  const draw = ls => {
+    $('#dcLines').innerHTML = ls.map(rowHtml).join('');
+    $$('#dcLines .li').forEach(bindRow);
+    tidy(); calc();
   };
   draw(lines);
   bindMoney($('#dcDisc')); $('#dcDisc').addEventListener('input', calc);
-  $('#dcAdd').onclick = () => { const ls = readLines(); const last = ls[ls.length - 1]; ls.push({name: '', unit: last ? last.unit : 'كيلو', qty: '', price: ''}); draw(ls); const n = $$('#dcLines [data-f=name]'); n[n.length - 1].focus(); };
   $('#dcX').onclick = closeModal;
   if ($('#dcLast')) $('#dcLast').onclick = () => { draw(lastDoc.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty), price: fmtP(l.price)}))); toast('اتنسخت أصناف آخر ' + (ret ? 'مرتجع' : 'فاتورة') + '. راجع الكميات والأسعار.', 3000); };
   let warned = false, fromQuote = '';

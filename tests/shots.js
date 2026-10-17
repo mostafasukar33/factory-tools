@@ -158,6 +158,8 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-party-' + sfx, go: accEval(`tab = 'mkt'; go('p/' + ${party}.id)`), full: true},
   {name: 'acc-entry-' + sfx, go: accEval(`entryModal(${party}, E.get([...E.values()].filter(e => e.party === ${party}.id && e.kind === 'inv').pop().id))`)},
   {name: 'acc-inv-' + sfx, go: accEval(`docModal(${party}, 'inv')`)},
+  {name: 'acc-inv-edit-' + sfx, go: async A => { await accEval(`docModal(${party}, 'inv', [...E.values()].filter(e => e.party === ${party}.id && e.kind === 'inv' && !e.del && (e.lines || []).length > 1).pop())`)(A); await A.focus('#dcLines .li:nth-child(2) [data-f=qty]'); }},
+  {name: 'acc-inv-sug-' + sfx, go: async A => { await accEval(`docModal(${party}, 'inv')`)(A); await A.focus('#dcLines [data-f=name]'); }},
   {name: 'acc-pay-' + sfx, go: accEval(`payModal(${party}, 'pay')`)},
   {name: 'acc-quick-' + sfx, go: accEval('quickModal()')},
   {name: 'acc-cash-' + sfx, go: accGo('cash'), full: true},

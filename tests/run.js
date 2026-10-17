@@ -357,6 +357,18 @@ const T0 = Date.now();
     eq('بعد فاتورة 1400−50 ودفع 400', await bal(A, 'عميل تجربة واحد'), 270000 + 135000 - 40000);
     eq('الدفعة دخلت الخزنة', await vbal(A, 'v_main'), 140000);
     await A.click('#ppRet'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.fill('.li [data-f=qty]', '1'); await A.fill('.li [data-f=price]', '350'); await A.click('#dcOk'); await closed(A);
+    /* الفاتورة جدول: آخر سطر فاضي دايماً، والجديد بوحدة اللي قبله، وEnter بينقل، و✕ بيمسح */
+    await A.click('#fbDoc');
+    eq('الفاتورة الجديدة بسطر فاضي واحد ومن غير زرار "+ صنف"', [await A.$$eval('#dcLines .li', l => l.length), !!(await A.$('#dcAdd'))], [1, false]);
+    await A.selectOption('#dcLines .li:nth-child(1) [data-f=unit]', 'لفة'); await A.fill('#dcLines .li:nth-child(1) [data-f=name]', 'صنف جدول تجربة');
+    eq('أول ما يتكتب في الأخير بيطلع سطر فاضي بوحدته', await A.evaluate(() => [$$('#dcLines .li').length, $('#dcLines .li:nth-child(2) [data-f=unit]').value, $('#dcLines .li:nth-child(2) .badge').textContent]), [2, 'لفة', '2']);
+    await A.focus('#dcLines .li:nth-child(1) [data-f=name]'); await A.keyboard.press('Enter');
+    eq('Enter من الاسم للوحدة', await A.evaluate(() => document.activeElement.dataset.f), 'unit');
+    await A.focus('#dcLines .li:nth-child(1) [data-f=price]'); await A.keyboard.press('Enter');
+    eq('Enter من السعر لاسم السطر اللي بعده والنافذة مفتوحة', await A.evaluate(() => [document.activeElement === $('#dcLines .li:nth-child(2) [data-f=name]'), $('#modal').classList.contains('on') || !!$('#dcOk')]), [true, true]);
+    await A.click('#dcLines .li:nth-child(1) [data-del]');
+    eq('✕ بيمسح السطر ويفضل سطر فاضي', await A.$$eval('#dcLines .li', l => l.length), 1);
+    await A.click('#dcX'); await closed(A);
     await A.click('#ppAdj'); await A.fill('#adAmt', '15'); await A.fill('#adNote', 'جبر كسور'); await A.click('#adOk'); await closed(A);
     eq('بعد مرتجع 350 وخصم 15', await bal(A, 'عميل تجربة واحد'), 365000 - 35000 - 1500);
     await A.click('#fbPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await closed(A);

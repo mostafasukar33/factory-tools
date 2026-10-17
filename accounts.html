@@ -4328,7 +4328,22 @@ function ldgReport(L, from, to) {
     cols: [{h: 'التاريخ', w: 12, c: 'dt'}, {h: 'البيان', w: 30, c: 'l'}, {h: 'التفاصيل', w: 28, c: 'l'}, {h: 'وارد', w: 15, c: 'n'}, {h: 'منصرف', w: 15, c: 'n'}],
     rows, sum: [['الوارد', fmtP(tin)], ['المنصرف', fmtP(tout)], ...G.map(g => ['  ' + g.nm, (g.dir === 'in' ? '+ ' : '− ') + fmtP(g.tot)])], fin: ['الصافي', fmtP(tin - tout)]};
 }
+/* دفتر الخزنة بالتاريخ: لما الصفحة تترسم تاني لوحدها (مزامنة، حركة جت من جهاز تاني، رجوع من نافذة) السطر اللي قدامك
+   بيفضل في مكانه بالظبط (بطلبه 17/10/2026: كانت بتنط ليوم قبله أو بعده أو لأول/آخر الصفحة). التنقل بإيدك (ldgScroll) مش بيتثبّت */
+const ldgKey = i => { const x = ldgItemsL[i]; return x && x.m && x.m.r ? x.m.r.id + '|' + (x.dir || '') : ''; };
+function ldgAnchor() {
+  const rows = $$('#ldg .ldr'), top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hh')) || 0;
+  const el = rows.find(r => r.getBoundingClientRect().bottom > top + 1);
+  return el ? {k: ldgKey(+el.dataset.i), y: el.getBoundingClientRect().top} : null;
+}
+function ldgRestore(a) {
+  const el = $$('#ldg .ldr').find(r => ldgKey(+r.dataset.i) === a.k); if (!el) return;
+  const d = el.getBoundingClientRect().top - a.y; if (Math.abs(d) < 1) return;
+  let box = el.parentElement; while (box && box !== document.body && !(box.scrollHeight > box.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
+  if (box && box !== document.body) box.scrollTop += d; else window.scrollBy(0, d);
+}
 function renderCash() {
+  const anc = cashView === 'date' && !ldgScroll && $('#p-cash').classList.contains('on') ? ldgAnchor() : null;
   const pg = $('#p-cash');
   if (!db.vaults.length) {
     pg.innerHTML = `<div class="card"><h2>الخزنة</h2>
@@ -4437,6 +4452,7 @@ function renderCash() {
     $$('#ldgSum .kty').forEach(el => tap(el, () => { const g = ldgGroups(LD).find(x => x.key === el.dataset.sk); if (g) cashTypeSheet(ldgTitle(), g.k, g.arr.slice().reverse(), open, !cashVault && nV > 1, g.nm); }));
     $('#ldgPdf').onclick = () => exportReport(ldgReport(LD, from, to), 'preview');
     ldgScroll = false;
+    if (anc) ldgRestore(anc);
   }
   $('#cSet').onclick = vaultSettings;
   $('#cPart').onclick = () => go('part');

@@ -454,6 +454,15 @@ const T0 = Date.now();
         r.push([...$$('#ldg .ldd')].every(el => { const b = el.querySelector('.ldbal'); return b && +b.dataset.b0 === bal(el.dataset.d) && +b.dataset.b1 === bal(addDays(el.dataset.d, 1)) && b.textContent.includes(fmtP(bal(el.dataset.d))); }) && $$('#ldg .ldd').length > 0);
       }
       ldgScope = 'me'; return r; }), [true, true, true]);
+    eq('دفتر الخزنة بالتاريخ: لما الصفحة تترسم تاني (حركة جديدة فوق) السطر اللي قدامك ميتحركش، والأيام مش بتتقدّر بالتقريب', await A.evaluate(async () => {
+      const now = nowS(), v = vaultsL()[0].id, ids = [];
+      const add = (d, k) => { const x = {id: 't_anc' + k, type: 'exp', vault: v, amt: 1000 + k, cat: catsL('exp')[0].id, date: d, note: 'تثبيت ' + k, at: now, upd: now, del: false, hist: []}; db.txs.push(x); IDX.tx.set(x.id, x); ids.push(x.id); };
+      for (let k = 0; k < 40; k++) add(k < 20 ? '2001-03-01' : '2001-03-02', k);
+      cashView = 'date'; ldgScope = 'me'; cashVault = ''; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; ldgScroll = false; go('cash'); renderCash();
+      const el0 = [...$$('#ldg .ldr')][25]; el0.scrollIntoView({block: 'center'}); await new Promise(r => setTimeout(r, 50));
+      const a = ldgAnchor(); for (let k = 40; k < 46; k++) add('2001-03-03', k); renderCash();
+      const el = $$('#ldg .ldr').find(r => ldgKey(+r.dataset.i) === a.k), r = [!!a && !!el && Math.abs(el.getBoundingClientRect().top - a.y) < 2, getComputedStyle($('#ldg .ldd')).contentVisibility !== 'auto'];
+      ids.forEach(id => { const x = IDX.tx.get(id); x.del = true; touch(x); }); saveDB(); renderCash(); return r; }), [true, true]);
     eq('الخزنة: العدسة بتدوّر في كل التواريخ (خزني + خزنة السوق) بالملاحظة والمبلغ، والدوس بيفتح الحركة', await A.evaluate(() => {
       cashView = 'date'; cashVault = ''; go('cash'); renderCash(); $('#cSrch').click(); const q = $('#csQ'), r = [!!q];
       q.value = 'بنزين دفتر'; q.dispatchEvent(new Event('input')); r.push(window.__ldg.hasMk ? $$('#csR .ldr').length === 1 && $('#csR').textContent.includes('60') : true);

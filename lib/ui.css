@@ -180,7 +180,7 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
 .ldg{border-top:6px solid var(--gold)}
 .ldtt{padding:12px 18px 8px;font-weight:800;font-size:var(--f4)}
 .ldg>.seg{margin:0 14px 10px}
-.ldd{border-top:1px solid var(--line);content-visibility:auto;contain-intrinsic-size:auto 120px;scroll-margin-top:calc(var(--hh,64px) + 12px)}
+.ldd{border-top:1px solid var(--line);scroll-margin-top:calc(var(--hh,64px) + 12px)}
 .ldh{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px;background:var(--row)}
 .ldw{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
 .ldw>b{font-size:var(--f3)}

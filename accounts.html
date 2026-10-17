@@ -4292,6 +4292,8 @@ function ldgGroups(L) {
   L.forEach(x => { const key = x.g === 'exp' ? 'exp:' + x.m.r.cat : x.g, e = by.get(key) || by.set(key, {key, k: x.g, dir: x.dir, nm: ldgName(x), arr: []}).get(key); e.arr.push(x.m); });
   return [...by.values()].map(e => Object.assign(e, {tot: e.arr.reduce((n, m) => n + m.amt, 0)})).sort((a, b) => b.tot - a.tot);
 }
+/* جوه اليوم: الداخل (الأخضر) فوق والخارج (الأحمر) تحته وبينهم خط رفيع (بطلبه 17/10/2026)، وكل مجموعة بترتيبها */
+const ldgSplit = R => { const i = R.filter(x => x.dir === 'in'), o = R.filter(x => x.dir !== 'in'); return i.length && o.length ? [...i, '|', ...o] : [...i, ...o]; };
 function ldgHtml(L) {
   const nV = vaultsL().length, sc0 = ldgSc(), showV = sc0 === 'all' || (sc0 === 'me' && !cashVault && nV > 1);
   const F = ldgFilter === 'all' ? L : L.filter(x => x.dir === ldgFilter);
@@ -4305,8 +4307,8 @@ function ldgHtml(L) {
     const b0 = ldgBal(d), b1 = ldgBal(addDays(d, 1));
     return `<div class="ldd" data-d="${d}"><div class="ldh"><div class="ldw"><b>${AR_DAYS[dowOf(d)]} · ${dispDate(d)}</b><small class="ldbal" data-b0="${b0}" data-b1="${b1}">بدأ بـ <b>${fmtP(b0)}</b> · ${d >= todayISO() ? 'دلوقتي' : 'قفل على'} <b${b1 < 0 ? ' class="neg"' : ''}>${fmtP(b1)}</b></small></div>
       <div class="ldt">${di ? `<b class="n in">+ ${fmtP(di)}</b>` : ''}${dout ? `<b class="n out">− ${fmtP(dout)}</b>` : ''}</div></div>
-      ${rows.slice().reverse().map(x => { const m = x.m, i = F.indexOf(x), vid = m.r.type === 'tr' || m.parts || m.side === 'mkt' ? '' : m.r.vault, bits = [ldgName(x), ldgWhat(m, ldgName(x)), showV && vid ? vName(vid) : ''].filter(Boolean);
-        return `<div class="ldr" data-i="${i}" role="button" tabindex="0"><div class="ldm"><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n ${x.dir}">${x.dir === 'in' ? '+' : '−'} ${fmtP(m.amt)}</b></div>`; }).join('')}</div>`;
+      ${ldgSplit(rows.slice().reverse()).map(x => x === '|' ? '<div class="ldsep"></div>' : (x => { const m = x.m, i = F.indexOf(x), vid = m.r.type === 'tr' || m.parts || m.side === 'mkt' ? '' : m.r.vault, bits = [ldgName(x), ldgWhat(m, ldgName(x)), showV && vid ? vName(vid) : ''].filter(Boolean);
+        return `<div class="ldr" data-i="${i}" role="button" tabindex="0"><div class="ldm"><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n ${x.dir}">${x.dir === 'in' ? '+' : '−'} ${fmtP(m.amt)}</b></div>`; })(x)).join('')}</div>`;
   }).join('');
   const sc = ldgSc(), hasM = sc !== 'me' || db.vaults.some(v => v.id === MKV && !v.del), pend = hasM ? mkPending().length : 0;
   const note = [sc !== 'me' ? `${MK_PN} معاه دلوقتي <b class="n">${fmtP(vaultBal(MKV))}</b>` : '', ''].filter(Boolean).join(' · ');

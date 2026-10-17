@@ -193,6 +193,7 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
 .ldr>.n{font-size:var(--f4)}
 .n.in{color:var(--green)}.n.out{color:var(--red)}
 .ldr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line);cursor:pointer}
+.ldsep{height:3px;background:var(--line)}
 .ldm{min-width:0}
 .ldm>b{display:block;font-size:var(--f3)}
 .ldm small{display:block;font-size:var(--f2);color:var(--sub);font-weight:600;line-height:1.5}

@@ -386,6 +386,7 @@ nav svg{width:26px;height:26px}
 .pg tr.op td{background:#EFE6CF;font-weight:800}
 .pg tr.pay td{background:#DDF1E3;color:#14632C;font-weight:800;border-bottom-color:#B9DFC4}
 .pg tr.ret td{background:#FFF1E0;color:#8A4B00}
+.pg tr.sep td{border-top:2px solid #9A9A9A}
 .pg tr.bnc td{background:#FDE3E1;color:#B3261E;font-weight:800}
 .pg td.n{direction:ltr;font-weight:800;font-size:16.5px}
 .pg td.q{font-weight:700;font-size:15.5px}
@@ -4323,7 +4324,8 @@ function ldgReport(L, from, to) {
   const F = ldgFilter === 'all' ? L : L.filter(x => x.dir === ldgFilter), rows = [];
   ldgDays(F).forEach(({d, rows: R, in: di, out: dout}) => {
     rows.push({grp: `${AR_DAYS[dowOf(d)]} ${dispDate(d)}${di ? ' — وارد ' + fmtP(di) : ''}${dout ? ' — منصرف ' + fmtP(dout) : ''}`});
-    R.forEach(x => rows.push({cells: [dispDate(x.m.date), x.m.who, [ldgName(x), ldgWhat(x.m, ldgName(x)), x.m.mk ? 'من السوق' : ''].filter(Boolean).join(' — '), x.dir === 'in' ? fmtP(x.m.amt) : '', x.dir === 'out' ? fmtP(x.m.amt) : ''], cls: x.dir === 'in' ? 'pay' : 'ret'}));
+    let sep = false;   // نفس الشاشة: الوارد فوق والمنصرف تحته وبينهم خط (بطلبه 17/10/2026)
+    ldgSplit(R).forEach(x => { if (x === '|') return sep = true; rows.push({cells: [dispDate(x.m.date), x.m.who, [ldgName(x), ldgWhat(x.m, ldgName(x)), x.m.mk ? 'من السوق' : ''].filter(Boolean).join(' — '), x.dir === 'in' ? fmtP(x.m.amt) : '', x.dir === 'out' ? fmtP(x.m.amt) : ''], cls: (x.dir === 'in' ? 'pay' : 'ret') + (sep ? ' sep' : '')}); sep = false; });
   });
   const tin = ldgSum(F, 'in'), tout = ldgSum(F, 'out'), G = ldgGroups(F);
   return {title: ldgTitle(), period: rangeText(from, to),

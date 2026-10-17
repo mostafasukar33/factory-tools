@@ -454,6 +454,11 @@ const T0 = Date.now();
         r.push([...$$('#ldg .ldd')].every(el => { const b = el.querySelector('.ldbal'); return b && +b.dataset.b0 === bal(el.dataset.d) && +b.dataset.b1 === bal(addDays(el.dataset.d, 1)) && b.textContent.includes(fmtP(bal(el.dataset.d))); }) && $$('#ldg .ldd').length > 0);
       }
       ldgScope = 'me'; return r; }), [true, true, true]);
+    eq('دفتر الخزنة بالتاريخ: جوه اليوم الداخل فوق والخارج تحته وبينهم خط، في الشاشة والـ PDF', await A.evaluate(() => {
+      cashView = 'date'; ldgScope = 'me'; cashVault = ''; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; go('cash'); renderCash();
+      const days = [...$$('#ldg .ldd')], ok = days.every(d => { const k = [...d.children].filter(e => e.matches('.ldr,.ldsep')).map(e => e.matches('.ldsep') ? '|' : ldgItemsL[+e.dataset.i].dir === 'in' ? 'i' : 'o').join(''); return /^i*(\|o+)?$|^o*$/.test(k) && (k.includes('i') && k.includes('o')) === k.includes('|'); });
+      const R = ldgReport(ldgItems('2001-03-01', '2001-03-03'), '2001-03-01', '2001-03-03'), seq = R.rows.map(r => r.grp ? 'g' : r.cls.includes('sep') ? 'S' : r.cls.startsWith('pay') ? 'i' : 'o').join('');
+      return [days.some(d => d.querySelector('.ldsep')), ok, !/o[iS]/.test(seq.replace(/g/g, ' ').split(' ').join('|')) && seq.split('g').every(s => /^i*(So*)?$|^o*$/.test(s))]; }), [true, true, true]);
     eq('دفتر الخزنة بالتاريخ: لما الصفحة تترسم تاني (حركة جديدة فوق) السطر اللي قدامك ميتحركش، والأيام مش بتتقدّر بالتقريب', await A.evaluate(async () => {
       const now = nowS(), v = vaultsL()[0].id, ids = [];
       const add = (d, k) => { const x = {id: 't_anc' + k, type: 'exp', vault: v, amt: 1000 + k, cat: catsL('exp')[0].id, date: d, note: 'تثبيت ' + k, at: now, upd: now, del: false, hist: []}; db.txs.push(x); IDX.tx.set(x.id, x); ids.push(x.id); };

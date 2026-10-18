@@ -2396,15 +2396,15 @@ const T0 = Date.now();
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
     {   // فحص البيانات (lib/doctor.js): البيانات السليمة مفيهاش غلط، وكل غلطة بنحطها بقصد بيمسكها، ومبيغيّرش حاجة
       const R = await A.evaluate(async () => {
-        await drLoad(); clearTimeout(drT);
-        const clean = await docRun(true), keep = JSON.stringify(db), out = {cleanBad: clean.bad.map(x => x.t), txt: docText(clean, 'x').includes('كله سليم') || !!clean.warn.length};
+        window.__st = 'a'; await drLoad(); window.__st = 'b'; clearTimeout(drT);
+        const clean = await docRun(true); window.__st = 'c'; const keep = JSON.stringify(db), out = {cleanBad: clean.bad.map(x => x.t), txt: docText(clean, 'x').includes('كله سليم') || !!clean.warn.length};
         const p = liveParties()[0], v = vaultsAll()[0], d = '2026-11-01', at = nowS();
         db.entries.push({id: 'dz1', party: p.id, kind: 'pay', date: d, amt: 50000, cr: 40000, dr: 0, vault: v.id, at, upd: at, desc: 'دفعة'},
           {id: 'dz2', party: 'nope', kind: 'adj', date: d, dr: 100, cr: 0, at, upd: at, desc: 'يتيمة'},
           {id: 'dz3', party: p.id, kind: 'adj', date: d, dr: 700, cr: 0, at, upd: at, desc: 'خصم'}, {id: 'dz4', party: p.id, kind: 'adj', date: d, dr: 700, cr: 0, at: at + 60000, upd: at, desc: 'خصم'},
           {id: 'dz5', party: p.id, kind: 'adj', date: '2026-13-40', dr: 100, cr: 0, at, upd: at, desc: 'تاريخ'});
         db.txs.push({id: 'tz1', type: 'tr', vault: v.id, to: v.id, amt: 100, date: d, at, upd: at}, {id: 'tz2', type: 'exp', vault: v.id, cat: 'c_none', amt: 1e12, date: d, at, upd: at});
-        reindex();
+        reindex(); window.__st = 'd';
         const k = (await docRun(false)).bad.concat((await docRun(false)).warn).map(x => x.k.split(':')[0]);
         out.kinds = [...new Set(k)].sort();
         const vb = window.vaultBal, bl = window.balance;
@@ -2414,7 +2414,7 @@ const T0 = Date.now();
         /* أول فحص بيحفظ الموجود من غير تنبيه، وبعده أي غلطة جديدة بتتقال على طول */
         delete db.cfg.doc; out.first = docKeep(await docRun(false)).length;
         db.entries.push({id: 'dz6', party: 'nope2', kind: 'adj', date: d, dr: 100, cr: 0, at, upd: at, desc: 'جديدة'}); reindex();
-        await docNow(); out.toast = $('#toast').textContent; out.homeLine = (renderHome(), !!$('#hDoc'));
+        window.__st = 'e'; await docNow(); window.__st = 'f'; out.toast = $('#toast').textContent; out.homeLine = (renderHome(), !!$('#hDoc'));
         const after = JSON.stringify(Object.assign(JSON.parse(JSON.stringify(db)), {entries: db.entries.filter(e => !/^dz/.test(e.id)), txs: db.txs.filter(t => !/^tz/.test(t.id)), cfg: JSON.parse(keep).cfg}));
         out.same = after === keep;
         db = JSON.parse(keep); reindex(); delete db.cfg.doc; flushSave(); renderHome();
@@ -2433,7 +2433,7 @@ const T0 = Date.now();
       await A.evaluate(() => { closeModal(); delete db.cfg.doc; flushSave(); go('home'); }); await A.settle(300);
     }
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2 ? D2.errs : [], DM ? DM.errs : []), []);
-  } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); console.log('    ' + (e.stack || '').split('\n').filter(l => /run\.js/.test(l)).slice(0, 3).join(' | ')); if (NAVS.length) console.log('    تحميل صفحات كامل:', NAVS.slice(-25).join(' || ')); try { if (global.__A) console.log('    حالة الحسابات بعدها:', JSON.stringify(await global.__A.evaluate(() => ({db: !!db, lock: $('#lock').classList.contains('on'), swUp: sessionStorage.getItem('sw_up'), now: Date.now()})))); } catch (x) {} if (process.env.DBG) console.log(e.stack); }
+  } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); console.log('    ' + (e.stack || '').split('\n').filter(l => /run\.js/.test(l)).slice(0, 3).join(' | ')); if (NAVS.length) console.log('    تحميل صفحات كامل:', NAVS.slice(-25).join(' || ')); try { if (global.__A) console.log('    حالة الحسابات بعدها:', JSON.stringify(await global.__A.evaluate(() => ({db: !!db, lock: $('#lock').classList.contains('on'), swUp: sessionStorage.getItem('sw_up'), now: Date.now(), st: window.__st, dz: db && db.entries.some(e => /^dz/.test(e.id)), dr: typeof docRun})))); } catch (x) {} if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();
   if (SWP) {   // نتيجة قسم ٢٣ اللي اشتغل في نفس الوقت
     const {code, out} = await SWP, m = out.match(/(\d+) نجح، (\d+) فشل/);

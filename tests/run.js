@@ -89,7 +89,7 @@ async function newDevice(browser, base, sheets) {
     const tok = (r.request().url().match(/bot([^/]+)\//) || [])[1] || '', v = sheets.mkt.tg.valid;
     r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body: JSON.stringify(v && !v.includes(decodeURIComponent(tok)) ? {ok: false, error_code: 401, description: 'Unauthorized'} : {ok: true, result: {username: 'test_souq_bot'}})});
   });
-  ctx.page = async url => { const p = await ctx.newPage(); await p.addInitScript(v => { window.__tkOff0 = v; }, OFF); p.on('pageerror', e => (ctx.errs.push(e.message), process.env.DBG && console.log('PAGEERR', e.message))); p.on('crash', () => process.env.DBG && console.log('CRASH')); p.on('close', () => process.env.DBG && console.log('PAGE CLOSED')); p.on('console', m => { if (process.env.DBG && m.type() === 'error') console.log('CONSOLE', m.text().slice(0, 120)); }); p.on('framenavigated', f => { if (process.env.DBG && f === p.mainFrame()) console.log('NAV', new Date().toISOString().slice(14, 23), f.url().slice(0, 80)); }); await p.goto(base + url); return p; };
+  ctx.page = async url => { const p = await ctx.newPage(); await p.addInitScript(v => { window.__tkOff0 = v; }, OFF); p.on('pageerror', e => (ctx.errs.push(e.message), process.env.DBG && console.log('PAGEERR', e.message))); p.on('crash', () => process.env.DBG && console.log('CRASH')); p.on('close', () => process.env.DBG && console.log('PAGE CLOSED')); p.on('console', m => { if (process.env.DBG && m.type() === 'error') console.log('CONSOLE', m.text().slice(0, 120)); }); p.on('framenavigated', f => { if (f !== p.mainFrame()) return; if (process.env.DBG) console.log('NAV', new Date().toISOString().slice(14, 23), f.url().slice(0, 80)); }); p.__n = 0; p.on('domcontentloaded', () => { if (p.__n++) NAVS.push(new Date().toISOString().slice(11, 23) + ' ' + p.url().slice(0, 80)); }); await p.goto(base + url); return p; };
   return ctx;
 }
 async function unlock(A, first) {
@@ -170,6 +170,7 @@ const RUN = {sw: SW_NEED, base: FULL || MODES.includes('acc'), sync: FULL || MOD
 /* التشغيل الكامل: قسم ٢٣ (الفتح السريع، ~20 ثانية) ليه جهاز وسيرفر لوحده ومبيعتمدش على بيانات الأقسام التانية،
    فبيشتغل في عملية تانية في نفس الوقت (--only=sw). SW_SERIAL=1 = يشتغل ورا الباقي زي الأول */
 let SWP = null;
+const NAVS = [];   // تحميل كامل لأي صفحة (مش تغيير #) بيتطبع لو الاختبار وقف، علشان نعرف مين عمل reload
 if (FULL && RUN.sw && !process.env.SW_SERIAL && !process.argv.includes('--dry')) {
   RUN.sw = false; let out = '';
   const ch = require('child_process').spawn(process.execPath, [__filename, '--only=sw'], {cwd: ROOT, env: Object.assign({}, process.env, {SW_SERIAL: '1'})});
@@ -309,7 +310,7 @@ const T0 = Date.now();
     const colOk = async (name, X, root, sel) => { const [n, spread, off] = await numCol(X, root, sel); if (n < 2 && !RUN.base) return;   // --only=smoke/mkt بيتخطى إدخال البيانات (٣–٩)، فمفيش أرقام كفاية تتقارن
       eq(`${name}: الأرقام تحت بعض (${n} رقم)`, [n >= 2, spread <= 1, off], [true, true, []]); };
     sec('١) كلمة السر والتشفير');
-    const A = await D1.page('accounts.html');
+    const A = global.__A = await D1.page('accounts.html');
     await unlock(A, true);
     await A.click('#bLock'); await A.waitForSelector('#lkP'); await A.fill('#lkP', '999999'); await A.settle(2000);
     eq('كلمة سر غلط وقت الكتابة مفيهاش رسالة ولا بتفتح', [await A.textContent('#lkErr'), await A.evaluate(() => $('#lock').classList.contains('on'))], ['', true]);
@@ -2432,7 +2433,7 @@ const T0 = Date.now();
       await A.evaluate(() => { closeModal(); delete db.cfg.doc; flushSave(); go('home'); }); await A.settle(300);
     }
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2 ? D2.errs : [], DM ? DM.errs : []), []);
-  } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }
+  } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); console.log('    ' + (e.stack || '').split('\n').filter(l => /run\.js/.test(l)).slice(0, 3).join(' | ')); if (NAVS.length) console.log('    تحميل صفحات كامل:', NAVS.slice(-8).join(' || ')); try { if (global.__A) console.log('    حالة الحسابات بعدها:', JSON.stringify(await global.__A.evaluate(() => ({db: !!db, lock: $('#lock').classList.contains('on'), swUp: sessionStorage.getItem('sw_up'), now: Date.now()})))); } catch (x) {} if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();
   if (SWP) {   // نتيجة قسم ٢٣ اللي اشتغل في نفس الوقت
     const {code, out} = await SWP, m = out.match(/(\d+) نجح، (\d+) فشل/);

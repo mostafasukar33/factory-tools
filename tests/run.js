@@ -1290,7 +1290,7 @@ const T0 = Date.now();
     await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll());
     await A.click('#smHelp'); await A.click('#mhCopy'); const mkCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.mkt.load(mkCode); await A.click('#mhX');
     await A.fill('#smUrl', MKT_URL); await A.click('#smGo'); await A.settle(2500);
-    await A.evaluate(() => putSet('tgOpts', {bk: false, sum: false, al: false, wk: false, mo: false, nl: false}));   // رسايل الحسابات على تليجرام بتتجرب لوحدها تحت، علشان متدخلش وسط رسايل الشريك
+    await A.evaluate(() => putSet('tgOpts', {bk: false, sum: false, al: false, wk: false, mo: false, nl: false, dr: false}));   // رسايل الحسابات على تليجرام بتتجرب لوحدها تحت، علشان متدخلش وسط رسايل الشريك
     const mkc = await A.evaluate(() => getSet('mktSheet', null));
     eq('شيت السوق اتربط ومقفول على مفتاح اتعمل لوحده ومش في الكود', [!!(mkc && mkc.k), mkCode.includes(mkc.k) || /TEST-|script\.google\.com\/macros/.test(mkCode), JSON.parse(sheets.mkt.post(JSON.stringify({key: 'Other-Key-123', action: 'ping'}))).error, JSON.parse(sheets.mkt.get()).ok], [true, false, 'key', false]);
     eq('كود شيت الحسابات الأساسي متلمسش (مفيش تليجرام ولا إذن زيادة)', await A.evaluate(() => /UrlFetchApp|telegram|DriveApp|ScriptApp/.test(scriptFor())), false);
@@ -1422,7 +1422,7 @@ const T0 = Date.now();
     const TD = await A.evaluate(() => db.entries.filter(e => !e.del && e.kind === 'pay').map(e => e.date).sort().pop());
     /* الإرسال اللوحده بعد المزامنة (من غير تاريخ) بيستخدم الساعة الحقيقية، فلو الاختبار اشتغل بعد 8 بالليل كان بيبعت نسخة النهارده في النص. هنا بنجرب بتواريخ ثابتة بس */
     await A.evaluate(() => { window.__tgA = tgAfterSync; window.tgAfterSync = d => d ? window.__tgA(d) : Promise.resolve(); });
-    await A.evaluate(() => { putSet('tgOpts', {bk: true, sum: true, al: true, wk: false, mo: false, nl: false}); db.cfg.tg = {}; });
+    await A.evaluate(() => { putSet('tgOpts', {bk: true, sum: true, al: true, wk: false, mo: false, nl: false, dr: false}); db.cfg.tg = {}; });
     /* لو جه وقت إرسال حقيقي (بالساعة الحقيقية) قبل الاختبار، الشيت بيكون علّم إن نسخة اليوم ده اتبعتت فالاختبار بيفشل حسب الساعة. نبدأ من شيت لسه مبعتش */
     Object.keys(sheets.mkt.props).filter(k => k.startsWith('ONCE_')).forEach(k => delete sheets.mkt.props[k]);
     const d0 = tgDocs().length, m0 = tgTexts().length;
@@ -1441,7 +1441,7 @@ const T0 = Date.now();
     await A.settle(600);
     const al1 = tgTexts().length; await A.evaluate(() => tgSyncFail()); await A.settle(300);
     eq('تليجرام: تنبيه لو المزامنة واقفة أكتر من نص ساعة، ومرة واحدة بس', [tgTexts()[al1 - 1].includes('المزامنة مع شيت الحسابات واقفة'), tgTexts().length - al1], [true, 0]);
-    await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: true, al: true, wk: false, mo: false, nl: false}); db.cfg.tg = {}; });
+    await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: true, al: true, wk: false, mo: false, nl: false, dr: false}); db.cfg.tg = {}; });
     const d1 = tgDocs().length;
     await bg(A, `tgAfterSync(new Date('2001-01-02T21:00:00'))`);
     eq('تليجرام: لو النسخة اليومية مقفولة من الإعدادات مبتتبعتش', tgDocs().length - d1, 0);
@@ -1450,7 +1450,7 @@ const T0 = Date.now();
     {
       const thu = await A.evaluate(d => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + (4 - x.getDay() + 7) % 7); return isoOf(x.getTime()); }, TD);
       const nlId = await A.evaluate(() => { const e = db.entries.find(e => !e.del && e.kind === 'inv' && P.get(e.party) && !P.get(e.party).del); e.mkNL = 1; return e.id; });
-      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: false, wk: true, mo: false, nl: true}); db.cfg.tg = {}; });
+      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: false, wk: true, mo: false, nl: true, dr: false}); db.cfg.tg = {}; });
       const w0 = tgTexts().length;
       await bg(A, `tgAfterSync(new Date('${thu}T21:00:00'))`);
       const got = tgTexts().slice(w0);
@@ -1458,6 +1458,14 @@ const T0 = Date.now();
       await bg(A, `tgAfterSync(new Date('${thu}T21:30:00'))`);
       eq('تليجرام: ملخص الأسبوع بالمصروفات وتنبيه الفواتير اللي بنودها متكتبتش، مرة واحدة حتى من جهاز تاني', [got.length, got.some(x => x.startsWith('🗓 ملخص الأسبوع') && x.includes('تحصيل من العملاء') && x.includes('رصيد الخزن آخر الأسبوع')), got.some(x => x.startsWith('📝 فواتير بنودها لسه متكتبتش: 1')), tgTexts().length - w0], [2, true, true, 2]);
       await A.evaluate(id => { delete db.entries.find(e => e.id === id).mkNL; }, nlId);
+      /* فحص البيانات الأسبوعي: رسالة لوحدها حتى لو كله سليم، ومرة واحدة حتى من جهاز تاني */
+      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: false, wk: false, mo: false, nl: false, dr: true}); db.cfg.tg = {}; });
+      const r0 = tgTexts().length;
+      await bg(A, `tgAfterSync(new Date('${thu}T21:00:00'))`);
+      const dr = tgTexts().slice(r0);
+      await A.evaluate(() => { db.cfg.tg = {}; });   // جهاز تاني
+      await bg(A, `tgAfterSync(new Date('${thu}T21:30:00'))`);
+      eq('تليجرام: فحص البيانات الأسبوعي اتبعت مرة واحدة بالنتيجة', [dr.length, dr[0] && dr[0].startsWith('🩺 فحص البيانات الأسبوعي') && /حركة · .* حساب/.test(dr[0]), tgTexts().length - r0], [1, true, 1]);
       eq('تليجرام: الصبح مفيش فواتير ناقصة = مفيش رسالة', await A.evaluate(() => nlSum().empty || nlSum().text.startsWith('📥')), true);
     }
     {
@@ -1466,7 +1474,7 @@ const T0 = Date.now();
       const v0 = await A.evaluate(() => dataVer);
       eq('تجربة الاسترجاع: النسخة اتفكت في الذاكرة واتطابقت سجل بسجل، ومن غير ما البيانات تتلمس', [await bg(A, 'bkVerify().then(r => r.ok)'), await A.evaluate(() => dataVer) - v0], [true, 0]);
       const nm = await A.evaluate(d => { const x = new Date(d.slice(0, 7) + '-01T10:00:00'); x.setMonth(x.getMonth() + 1); return isoOf(x.getTime()); }, TD);
-      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: true, wk: false, mo: true, nl: false}); db.cfg.tg = {}; });
+      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: true, wk: false, mo: true, nl: false, dr: false}); db.cfg.tg = {}; });
       clearOnce();
       let t0 = tgTexts().length;
       await bg(A, `tgAfterSync(new Date('${nm}T10:00:00'))`);
@@ -1480,7 +1488,7 @@ const T0 = Date.now();
       await A.evaluate(() => { backupData = window.__bd; });
       eq('تجربة الاسترجاع: لو النسخة مش مطابقة بيوصل تنبيه لوحده', [got.length, !!got[0] && got[0].includes('تجربة استرجاع النسخة الاحتياطية الشهرية فشلت'), await A.evaluate(() => db.cfg.tg.rt.ok)], [1, true, false]);
       /* النسخة اليومية مبتتبعتش بقالها يومين = تنبيه تليجرام وسطر أحمر في الرئيسية، وأول ما تتبعت بيختفي */
-      await A.evaluate(() => { putSet('tgOpts', {bk: true, sum: false, al: true, wk: false, mo: false, nl: false}); db.cfg.tg = {rt: {m: '2000-01'}, ci: 'x', bkBad: nowS() - 3 * 86400000}; window.__tb = tgBackup; tgBackup = async () => null; });
+      await A.evaluate(() => { putSet('tgOpts', {bk: true, sum: false, al: true, wk: false, mo: false, nl: false, dr: false}); db.cfg.tg = {rt: {m: '2000-01'}, ci: 'x', bkBad: nowS() - 3 * 86400000}; window.__tb = tgBackup; tgBackup = async () => null; });
       clearOnce(); t0 = tgTexts().length;
       await bg(A, `tgAfterSync(new Date('2001-03-05T21:00:00'))`);
       got = tgTexts().slice(t0);
@@ -1493,7 +1501,7 @@ const T0 = Date.now();
       eq('إنذار: النسخة اللي جهاز تاني بعتها النهارده محسوبة (مش إنذار على اللاب)', await A.evaluate(() => { const c = tgCfg(); c.bkBad = nowS() - 3 * 86400000; bkWatch(true); return c.bkBad; }), 0);
       /* الاختبارات على GitHub فشلت على آخر تعديل = رسالة مرة واحدة من كل الأجهزة، وسطر في الرئيسية لحد ما تنجح تاني */
       CI_MOCK = [{id: 7, conclusion: 'cancelled'}, {id: 6, conclusion: 'failure', created_at: '2026-10-14T10:00:00Z'}, {id: 5, conclusion: 'success'}];
-      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: true, wk: false, mo: false, nl: false}); db.cfg.tg = {rt: {m: '2001-04'}}; });
+      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: true, wk: false, mo: false, nl: false, dr: false}); db.cfg.tg = {rt: {m: '2001-04'}}; });
       clearOnce(); t0 = tgTexts().length;
       await bg(A, `tgAfterSync(new Date('2001-04-02T10:00:00'))`);
       await A.evaluate(() => { db.cfg.tg = {rt: {m: '2001-04'}}; });   // جهاز تاني
@@ -1526,11 +1534,11 @@ const T0 = Date.now();
       await R.click('tr[data-id]'); await R.waitForSelector('#bk');
       eq('قارئ النسخ: كشف الحساب بيوصل لنفس الرصيد', await R.evaluate(() => document.querySelector('tr.tot td.n').textContent === money(balOf(parties().find(p => p.name === document.querySelector('h2').textContent.split(' — ')[0]).id))), true);
       await R.close(); fs.unlinkSync(bkFile);
-      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: false, wk: false, mo: false, nl: false}); db.cfg.tg = {}; });
+      await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: false, wk: false, mo: false, nl: false, dr: false}); db.cfg.tg = {}; });
     }
     eq('تليجرام: مفيش أي سطر اتكتب في شيت الحركات بتاع الشريك', sheets.mkt.sheets['الحركات'].rows.length, mkRows0);
     eq('آخر تحديث للبرنامج: بيظهر بوقت النشر، ومبيظهرش لو المتصفح معرفوش', await A.evaluate(() => { const lm = new Date('2026-10-11T15:40:00').getTime(); return [verText(lm, lm + 60000).includes(dispDate('2026-10-11')), verText(lm, lm + 500)]; }), [true, '']);
-    await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: false, wk: false, mo: false, nl: false}); db.cfg.tg = {}; });
+    await A.evaluate(() => { putSet('tgOpts', {bk: false, sum: false, al: false, wk: false, mo: false, nl: false, dr: false}); db.cfg.tg = {}; });
 
     const mlink = await A.evaluate(() => mktLink());
     DM = await newDevice(browser, base, sheets);
@@ -2385,6 +2393,44 @@ const T0 = Date.now();
 
     sec('١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
+    {   // فحص البيانات (lib/doctor.js): البيانات السليمة مفيهاش غلط، وكل غلطة بنحطها بقصد بيمسكها، ومبيغيّرش حاجة
+      const R = await A.evaluate(async () => {
+        await drLoad(); clearTimeout(drT);
+        const clean = await docRun(true), keep = JSON.stringify(db), out = {cleanBad: clean.bad.map(x => x.t), txt: docText(clean, 'x').includes('كله سليم') || !!clean.warn.length};
+        const p = liveParties()[0], v = vaultsAll()[0], d = '2026-11-01', at = nowS();
+        db.entries.push({id: 'dz1', party: p.id, kind: 'pay', date: d, amt: 50000, cr: 40000, dr: 0, vault: v.id, at, upd: at, desc: 'دفعة'},
+          {id: 'dz2', party: 'nope', kind: 'adj', date: d, dr: 100, cr: 0, at, upd: at, desc: 'يتيمة'},
+          {id: 'dz3', party: p.id, kind: 'adj', date: d, dr: 700, cr: 0, at, upd: at, desc: 'خصم'}, {id: 'dz4', party: p.id, kind: 'adj', date: d, dr: 700, cr: 0, at: at + 60000, upd: at, desc: 'خصم'},
+          {id: 'dz5', party: p.id, kind: 'adj', date: '2026-13-40', dr: 100, cr: 0, at, upd: at, desc: 'تاريخ'});
+        db.txs.push({id: 'tz1', type: 'tr', vault: v.id, to: v.id, amt: 100, date: d, at, upd: at}, {id: 'tz2', type: 'exp', vault: v.id, cat: 'c_none', amt: 1e12, date: d, at, upd: at});
+        reindex();
+        const k = (await docRun(false)).bad.concat((await docRun(false)).warn).map(x => x.k.split(':')[0]);
+        out.kinds = [...new Set(k)].sort();
+        const vb = window.vaultBal, bl = window.balance;
+        window.vaultBal = (id, b) => vb(id, b) + 1; window.balance = (id, b) => bl(id, b) + 1;   // معادلة "باظت" في تعديل جاي
+        out.broke = [...new Set((await docRun(false)).bad.map(x => x.k.split(':')[0]))].filter(x => x === 'vb2' || x === 'bal2').sort();
+        window.vaultBal = vb; window.balance = bl;
+        /* أول فحص بيحفظ الموجود من غير تنبيه، وبعده أي غلطة جديدة بتتقال على طول */
+        delete db.cfg.doc; out.first = docKeep(await docRun(false)).length;
+        db.entries.push({id: 'dz6', party: 'nope2', kind: 'adj', date: d, dr: 100, cr: 0, at, upd: at, desc: 'جديدة'}); reindex();
+        await docNow(); out.toast = $('#toast').textContent; out.homeLine = (renderHome(), !!$('#hDoc'));
+        const after = JSON.stringify(Object.assign(JSON.parse(JSON.stringify(db)), {entries: db.entries.filter(e => !/^dz/.test(e.id)), txs: db.txs.filter(t => !/^tz/.test(t.id)), cfg: JSON.parse(keep).cfg}));
+        out.same = after === keep;
+        db = JSON.parse(keep); reindex(); delete db.cfg.doc; flushSave(); renderHome();
+        return out;
+      });
+      eq('فحص البيانات: البيانات التجريبية السليمة مفيهاش غلط أكيد', R.cleanBad, []);
+      eq('فحص البيانات: مسك كل غلطة اتحطت بقصد', R.kinds, ['cat', 'date', 'neg', 'payamt', 'sc', 'trself', 'twin']);
+      eq('فحص البيانات: لو حسبة الرصيد باظت بيكشفها (الخزنة والعميل)', R.broke, ['bal2', 'vb2']);
+      eq('فحص البيانات: أول فحص على الجهاز مبينبّهش على القديم', R.first, 0);
+      eq('فحص البيانات: الغلطة الجديدة بتتقال على طول وتظهر في الرئيسية', [/حاجة جديدة/.test(R.toast), R.homeLine], [true, true]);
+      eq('فحص البيانات: مغيّرش أي حركة', R.same, true);
+      await A.evaluate(() => go('set')); await A.settle(300);
+      if (!(await A.evaluate(() => !!$('#sDocGo').offsetParent))) await A.click('#sDoc >> xpath=../h2');   // الكارت مقفول (كروت الإعدادات بتتفتح بدوسة)
+      await A.click('#sDocGo'); await A.waitForSelector('#drX');
+      eq('فحص البيانات: زرار "افحص دلوقتي" بيفتح النتيجة', await A.evaluate(() => /حركة ·/.test($('#modal').textContent) && /آخر فحص/.test($('#sDoc').textContent)), true);
+      await A.evaluate(() => { closeModal(); delete db.cfg.doc; flushSave(); go('home'); }); await A.settle(300);
+    }
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2 ? D2.errs : [], DM ? DM.errs : []), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();

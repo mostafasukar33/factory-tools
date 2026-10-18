@@ -1626,6 +1626,12 @@ body{font-size:var(--f3);line-height:1.6}
     </div>
     <span class="qh"><button class="qb" type="button" aria-label="شرح">؟</button><span class="qt" hidden>الملف متقفل بكلمة السر بتاعتك، فمحدش يقدر يفتحه من غيرها. احتفظ بيه في مكان آمن. ولو تنبيهات تليجرام شغالة (في حركة السوق)، بتوصلك نسخة كل يوم على تليجرام.</span></span>
   </div>
+  <div class="card">
+    <h2>✅ فحص البيانات</h2>
+    <div id="sDoc"></div>
+    <button class="btn line" id="sDocGo" type="button">افحص دلوقتي</button>
+    <span class="qh"><button class="qb" type="button" aria-label="شرح">؟</button><span class="qt" hidden>بيتأكد إن الحسابات راكبة على بعض: كل حركة ليها صاحب، ورصيد كل عميل وكل خزنة طالع نفس الرقم لما يتحسب بطريقتين، ومفيش تاريخ أو مبلغ مستحيل أو حركة شكلها متكررة. بيشتغل لوحده بعد أي تسجيل، ولو ظهرت مشكلة جديدة بيقولك على طول (وعلى تليجرام)، وكل أسبوع بيبعت تقرير. مبيصلّحش ولا بيغيّر أي حاجة لوحده.</span></span>
+  </div>
   <button class="sadvT" id="sAdvT" type="button">⚙ إعدادات متقدمة <i>▾</i></button>
   <div class="card sadv">
     <h2>🔗 النسخة على Google Sheet</h2>
@@ -1853,6 +1859,7 @@ function saveDB(now) {
   if (now) return flushSave();
   saveT = setTimeout(flushSave, 250);
   schedSync();
+  docSoon();
 }
 function flushSave() {
   clearTimeout(saveT); saveT = null;
@@ -2073,7 +2080,7 @@ function landingHash() {
 }
 function unlocked() {
   $('#lock').classList.remove('on'); $('#lockBox').innerHTML = '';
-  lastAct = Date.now(); kashName(); forgetCashBook(); idbDel('askmiss').catch(() => {});   // بقايا الشات القديم اللي اتشال (قايمة "مفهمتهاش")
+  lastAct = Date.now(); kashName(); forgetCashBook(); docSoon(); idbDel('askmiss').catch(() => {});   // بقايا الشات القديم اللي اتشال (قايمة "مفهمتهاش")
   if (db.vaults.length && ensurePayCats()) saveDB();   // بنود الخزنة الثابتة (تحصيل من عميل / دفعات للموردين) زي ما كانت بتتعمل وقت الفتح
   /* أول شاشة بعد القفل: الوارد لو فيه حاجة مستنية أو تعارض، وإلا العملاء (أو آخر صفحة كان فيها) */
   try { if (!location.hash) { const h = landingHash(); if (h) location.hash = h; } } catch (e) {}
@@ -2106,7 +2113,8 @@ function renderHome() {
   if (au && !au.ok) probs.unshift(au.msg);
   const lb = db.cfg.lastBackup || 0, every = db.cfg.sheetOk ? 30 : 7, days = Math.floor((nowS() - lb) / 86400000);
   $('#nlRem').innerHTML = '';   // تنبيه الفواتير اللي بنودها لسه: في الوارد بس (بطلب صاحب المشروع)
-  $('#chk').innerHTML = chkAlertHtml() + safeAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '');
+  $('#chk').innerHTML = chkAlertHtml() + safeAlertHtml() + (probs.length ? `<div class="sync warn">⚠️ المراجعة لقت ${probs.length} مشكلة: ${esc(probs.slice(0, 3).join(' — '))}</div>` : '') + docAlertHtml();
+  if ($('#hDoc')) $('#hDoc').onclick = docOpen;
   const bal = allBalances();
   let ly = 0, al = 0; bal.forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });   // الحساب الفرعي ميدخلش في الإجماليات
   const net = ly - al;
@@ -3500,7 +3508,7 @@ function renderSettings() {
   refreshBio(); renderMktSettings();
   $('#sVer').textContent = verText();
   const c = db.cfg;
-  renderSetStat();
+  renderSetStat(); renderDocBox();
   const lk = lockDate(), lim = limitsOf();
   $('#sLock').innerHTML = lk ? `<div class="sync ok">🔒 مقفول لحد ${dispDate(lk)}</div><div class="g2"><input class="inp" type="date" id="sLockD" value="${lk}"><button class="btn gold sm" id="sLockGo" type="button">غيّر يوم القفل</button></div><button class="btn line sm" id="sUnlock" type="button" style="margin-top:8px">افتح الفترة (محتاج كلمة السر)</button>`
     : `<div class="g2"><input class="inp" type="date" id="sLockD" value="${todayISO().slice(0, 8)}01"><button class="btn gold sm" id="sLockGo" type="button">اقفل لحد اليوم ده</button></div>`;
@@ -5381,6 +5389,69 @@ function loadClaude() {
   if (window.claudeOpen) return window.claudeOpen();
   clP = clP || clScript(4).catch(e => { clP = null; throw e; });
   clP.then(() => window.claudeOpen()).catch(() => toast('مش قادر يفتح دلوقتي، اتأكد من النت وجرّب تاني.'));
+}
+/* "فحص البيانات" (lib/doctor.js): قراية بس، مبيصلّحش ولا بيغيّر حاجة. بيتحمّل بعد فتح البرنامج.
+   - docSoon: بعد أي حفظ بـ 5 ثواني فحص سريع، وأي مشكلة جديدة (k مكانش في seen) تتقال على طول: toast وتليجرام (drq لو النت مقطوع).
+     أول فحص على الجهاز بيحفظ الموجود من غير تنبيه (التقرير الأسبوعي بيقوله).
+   - الأسبوعي (فحص كامل) في tgAfterSync مع ملخص الأسبوع، وزرار "افحص دلوقتي" في الإعدادات (docOpen). */
+let drP = null, drT = null;
+function drScript(n) {
+  return new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'lib/doctor.js'; sc.onload = ok; sc.onerror = () => { sc.remove(); no(); }; document.head.appendChild(sc); })
+    .then(() => window.docRun || (n > 0 ? new Promise(r => setTimeout(r, 700)).then(() => drScript(n - 1)) : Promise.reject()));
+}
+const drLoad = () => drP = drP || drScript(4).catch(e => { drP = null; throw e; });
+const drHash = a => { let h = 5381; for (const ch of a.slice().sort().join('|')) h = (h * 33 + ch.charCodeAt(0)) >>> 0; return h.toString(36); };
+function docSoon() { clearTimeout(drT); drT = setTimeout(docNow, 5000); }
+/* نتيجة الفحص بتتحفظ في db.cfg.doc: seen (المشاكل اللي اتقالت) وlast (آخر نتيجة للإعدادات والرئيسية) */
+function docKeep(r) {
+  const c = db.cfg.doc = db.cfg.doc || {}, all = r.bad.concat(r.warn);
+  const fresh = c.seen ? all.filter(x => !c.seen.includes(x.k)) : [];
+  c.seen = all.map(x => x.k);
+  c.last = {at: r.at, b: r.bad.length, w: r.warn.length, x: all.filter(x => !x.k.startsWith('sc:')).length, top: all.slice(0, 3).map(x => x.t)};
+  flushSave();
+  return fresh;
+}
+async function docNow() {
+  if (!db || !cryptoKey) return;
+  const d0 = db; let r;
+  try { await drLoad(); r = await window.docRun(false); } catch (e) { return; }
+  if (db !== d0) return;
+  const fresh = docKeep(r);
+  if (document.body.dataset.pg === 'set') renderDocBox();
+  if (!fresh.length) return;
+  toast(`⚠️ الفحص لقى حاجة جديدة: ${fresh[0].t}${fresh.length > 1 ? ` (و${fresh.length - 1} كمان)` : ''}`, 7000);
+  if (document.body.dataset.pg === 'home') renderHome();
+  if (typeof tgOpts !== 'function' || !mkCreds() || !tgOpts().dr) return;
+  const q = {text: window.docText({bad: fresh.filter(x => r.bad.includes(x)), warn: fresh.filter(x => r.warn.includes(x)), info: [], ms: 0, n: r.n}, '🩺 فحص البيانات لقى حاجة جديدة دلوقتي:'), v: drHash(fresh.map(x => x.k))};
+  const j = await tgCall('tgmsg', {text: q.text, once: {k: 'drnew', v: q.v}});
+  if (!j && db === d0) { db.cfg.doc.drq = q; flushSave(); }   // النت مقطوع: تتبعت مع أول مزامنة (tgAfterSync)
+}
+function docAlertHtml() {
+  const l = (db.cfg.doc || {}).last;
+  return l && l.x ? `<div class="sync warn" id="hDoc" role="button">⚠️ فحص البيانات لقى ${l.x} حاجة محتاجة تبص عليها، دوس هنا</div>` : '';
+}
+function renderDocBox() {
+  const l = (db.cfg.doc || {}).last, el = $('#sDoc'); if (!el) return;
+  $('#sDocGo').onclick = docOpen;
+  if (!l) return el.innerHTML = '<p class="hint">لسه مفيش فحص على الجهاز ده.</p>';
+  const when = `${dispDate(isoOf(l.at))} ${new Date(l.at).toLocaleTimeString('ar-EG', {hour: 'numeric', minute: '2-digit'})}`;
+  el.innerHTML = l.b + l.w ? `<div class="sync warn">⚠️ آخر فحص (${esc(when)}): ${l.b + l.w} حاجة محتاجة تبص عليها</div>` : `<div class="sync ok">✅ آخر فحص (${esc(when)}): كله سليم</div>`;
+}
+async function docOpen() {
+  const d0 = db; let r;
+  modal('<h3>✅ فحص البيانات</h3><div class="card empty">بفحص…</div>');
+  try { await drLoad(); r = await window.docRun(true); } catch (e) { closeModal(); return toast('مش قادر يفتح دلوقتي، اتأكد من النت وجرّب تاني.'); }
+  if (db !== d0) return;
+  docKeep(r);
+  const row = (x, cls) => `<div class="sync ${cls} drr"${x.go ? ` data-go="${esc(x.go)}" role="button"` : ''}>${cls === 'warn' && r.bad.includes(x) ? '❌' : '⚠️'} ${esc(x.t)}</div>`;
+  modal(`<h3>✅ فحص البيانات</h3>
+    ${r.bad.length + r.warn.length ? r.bad.map(x => row(x, 'warn')).join('') + r.warn.map(x => row(x, '')).join('') : '<div class="sync ok">✅ كله سليم</div>'}
+    <p class="hint">${r.n.e} حركة · ${r.n.p} حساب · ${r.n.t} حركة خزنة · ${r.n.v} خزن${r.ms ? ` · الحفظ ${(r.ms / 1000).toFixed(1)} ثانية` : ''}${r.info.map(t => '<br>' + esc(t)).join('')}</p>
+    <p class="hint">الفحص مبيغيّرش حاجة لوحده. دوس على أي سطر يفتحلك مكانه.</p>
+    <button class="btn line" id="drX" type="button">تمام</button>`);
+  $('#drX').onclick = closeModal;
+  $$('.drr[data-go]').forEach(el => el.onclick = () => { closeModal(); go(el.dataset.go); });
+  renderDocBox();
 }
 /* مكتبات الـ PDF تقيلة (حوالي 600 كيلو)، فبتتحمّل بس أول مرة حد يعمل PDF مش مع كل فتحة للبرنامج */
 let pdfLibsP = null;
@@ -7503,7 +7574,7 @@ function mktUpdateHelp() {
    once (في شيت السوق) بيمنع إن جهازين يبعتوا نفس النسخة أو نفس الملخص. الاختيارات إعداد مشترك set اسمه tgOpts (كلها شغالة من الأول).
    لو كود الشيت قديم (VER < 3) بيرد error 'action'، فبنستنى 6 ساعات قبل ما نجرب تاني (علشان منبعتش ملف كبير على الفاضي). */
 const TG_FAIL_MS = 30 * 60000;
-const tgOpts = () => Object.assign({bk: true, sum: true, al: true, wk: true, mo: true, nl: true}, getSet('tgOpts', {}) || {});
+const tgOpts = () => Object.assign({bk: true, sum: true, al: true, wk: true, mo: true, nl: true, dr: true}, getSet('tgOpts', {}) || {});
 const tgCfg = () => db.cfg.tg = db.cfg.tg || {};
 const tgOld = j => !!(j && j.ok === false && j.error === 'action');
 const tgRes = (j, okMsg) => !j ? 'معرفتش أوصل لشيت السوق. جرّب تاني.' : tgOld(j) ? 'كود شيت السوق قديم: حدّثه الأول (التحذير الأصفر فوق).' : j.dup ? 'اتبعت قبل كده النهارده.' : j.sent ? okMsg : 'البوت لسه مش شغال: احفظ التوكن وابعتله "ابدأ" وجرّب التنبيه.';
@@ -7604,7 +7675,8 @@ async function tgAfterSync(now = new Date(nowS())) {
   const W = weekDone(now), M = monthDone(now);
   const needWk = o.wk && (c.wk || '') < W.to, needMo = o.mo && (c.mo || '') < M.m, needNl = o.nl && now.getHours() >= 7 && c.nl !== t;
   const mo = t.slice(0, 7), needRt = (c.rt || {}).m !== mo, needCi = c.ci !== t;
-  if (!needBk && !needSum && !needWk && !needMo && !needNl && !needRt && !needCi) return;
+  const needDr = o.dr && (c.dr || '') < W.to, drq = o.dr && (db.cfg.doc || {}).drq;
+  if (!needBk && !needSum && !needWk && !needMo && !needNl && !needRt && !needCi && !needDr && !drq) return;
   tgBusy = true;
   try {
     /* الأول نسأل الشيت (سؤال صغير): الكود جديد؟ والبوت شغال؟ علشان منبعتش ملف النسخة على الفاضي */
@@ -7612,7 +7684,7 @@ async function tgAfterSync(now = new Date(nowS())) {
     if (!st || db !== d0) return;
     if (!st.v || st.v < 3) { c.old = nowS(); return; }
     if (needCi) { await ciCheck(t, st.chat); if (db !== d0) return; }
-    if (!st.chat) { c.bk = t; c.sum = day; c.wk = W.to; c.mo = M.m; c.nl = t; if (needRt) c.rt = {m: mo, skip: 1}; return; }   // مفيش بوت شغال: نجرب بكره
+    if (!st.chat) { c.bk = t; c.sum = day; c.wk = W.to; c.mo = M.m; c.nl = t; c.dr = W.to; if (drq) delete db.cfg.doc.drq; if (needRt) c.rt = {m: mo, skip: 1}; return; }   // مفيش بوت شغال: نجرب بكره
     if (needBk) {
       const j = await tgBackup(true, t);
       if (db !== d0) return;
@@ -7644,6 +7716,12 @@ async function tgAfterSync(now = new Date(nowS())) {
       await one('mo', M.m, S);
     }
     if (needNl && db === d0) await one('nl', t, nlSum());
+    /* فحص البيانات: مشكلة جديدة متبعتتش وقتها (النت كان مقطوع)، والتقرير الأسبوعي (حتى لو كله سليم) */
+    if (drq && db === d0) { const j = await tgCall('tgmsg', {text: drq.text, once: {k: 'drnew', v: drq.v}}); if (j && j.ok && db === d0) delete db.cfg.doc.drq; }
+    if (needDr && db === d0) {
+      let r = null; try { await drLoad(); r = await window.docRun(true); } catch (e) {}
+      if (r && db === d0) { docKeep(r); await one('dr', W.to, {text: window.docText(r, `🩺 فحص البيانات الأسبوعي (لحد ${dispDate(W.to)})`), empty: false}); }
+    }
   } finally { tgBusy = false; if (db === d0) flushSave(); }
 }
 /* تنبيه واحد لكل سبب كل كام ساعة بالكتير */
@@ -7701,7 +7779,7 @@ function renderMktSettings() {
       <div class="krow" style="grid-template-columns:1fr auto"><textarea class="inp" id="tgTok" rows="2" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:var(--f2);min-height:54px;resize:none" placeholder="الصق توكن البوت هنا"></textarea><button class="btn gold" id="tgSave" type="button" style="width:auto;padding:0 14px">حفظ التوكن</button></div>
       <button class="btn line sm" id="tgTest" type="button" style="margin-top:8px">جرّب التنبيه</button>
       <div class="fld" id="tgMine" style="margin-top:12px"><label>يوصلك كمان من الحسابات (على نفس البوت، وشريكك مبيشوفش منه حاجة)</label>
-        ${[['bk', '💾 نسخة احتياطية كل يوم (متقفلة بكلمة السر)'], ['sum', '📊 ملخص اليوم بعد 8 بالليل (أو الصبح لو متبعتش)'], ['wk', '📅 ملخص الأسبوع الخميس 8 بالليل (من الجمعة للخميس)'], ['mo', '📅 ملخص الشهر آخر يوم فيه 8 بالليل'], ['nl', '📝 كل يوم الصبح: الفواتير اللي بنودها لسه متكتبتش والوارد المستني'], ['al', '⚠️ تنبيه لو المزامنة وقفت أو حصل تعارض']].map(([k, n]) => `<div class="chkrow"><input type="checkbox" id="tgo_${k}" data-tgo="${k}" ${tgOpts()[k] ? 'checked' : ''}><label for="tgo_${k}">${n}</label></div>`).join('')}
+        ${[['bk', '💾 نسخة احتياطية كل يوم (متقفلة بكلمة السر)'], ['sum', '📊 ملخص اليوم بعد 8 بالليل (أو الصبح لو متبعتش)'], ['wk', '📅 ملخص الأسبوع الخميس 8 بالليل (من الجمعة للخميس)'], ['mo', '📅 ملخص الشهر آخر يوم فيه 8 بالليل'], ['nl', '📝 كل يوم الصبح: الفواتير اللي بنودها لسه متكتبتش والوارد المستني'], ['al', '⚠️ تنبيه لو المزامنة وقفت أو حصل تعارض'], ['dr', '🩺 فحص البيانات: تقرير كل أسبوع، وعلى طول لو ظهرت مشكلة جديدة']].map(([k, n]) => `<div class="chkrow"><input type="checkbox" id="tgo_${k}" data-tgo="${k}" ${tgOpts()[k] ? 'checked' : ''}><label for="tgo_${k}">${n}</label></div>`).join('')}
         <div class="g2" style="margin-top:6px"><button class="btn line sm" id="tgSumNow" type="button">ابعت ملخص النهارده</button><button class="btn line sm" id="tgBkNow" type="button">ابعت نسخة دلوقتي</button></div></div>
       <p class="hint">التوكن بيتحفظ جوه شيت السوق بس (مش في البرنامج ولا على الجهاز). شريكك ملوش دعوة بتليجرام.</p>
       <div class="sech"><span>📲 إشعارات الموبايل ورقم الوارد على الأيقونة</span></div>

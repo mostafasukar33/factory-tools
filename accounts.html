@@ -7631,7 +7631,7 @@ async function tgBackup(once, t = todayISO()) {
 }
 /* ---------- حزمة الأمان: إنذار مبكر وتجربة استرجاع النسخة ----------
    - bkBad: من إمتى النسخة اليومية بتفشل تتبعت على تليجرام (بيتصفّر أول ما تتبعت). يومين = تنبيه تليجرام وسطر أحمر في الرئيسية.
-   - ciBad: الاختبارات على GitHub فشلت على آخر تعديل اتنشر (بنسأل GitHub مرة في اليوم، والرسالة مرة واحدة لكل تعديل بـ once).
+   - ciBad: الاختبارات على GitHub فشلت على آخر تعديل اتنشر (بنسأل GitHub مرة في اليوم، وكل ساعة طول ما السطر الأحمر ظاهر ciAt، والرسالة مرة واحدة لكل تعديل بـ once).
    - rt: تجربة الاسترجاع الشهرية (bkVerify): نفس ملف النسخة بيتفك في الذاكرة بس ويتقارن بالموجود سجل بسجل. مبتلمسش البيانات ولا بتظهر حاجة،
      ونتيجتها سطر في ملخص الشهر، ولو فيه فرق تنبيه لوحده. */
 const BK_LATE = 2 * 86400000;
@@ -7656,7 +7656,7 @@ async function bkVerify() {
   return {ok, p: data.parties, e: data.entries};
 }
 async function ciCheck(t, chat) {
-  const c = tgCfg(), d0 = db; c.ci = t;
+  const c = tgCfg(), d0 = db; c.ci = t; c.ciAt = nowS();
   let run;
   try { const r = await fetch(CI_RUNS, {cache: 'no-store'}); if (!r.ok) throw 0; run = ((await r.json()).workflow_runs || []).find(x => x.conclusion === 'success' || x.conclusion === 'failure'); }
   catch (e) { if (db === d0) c.ci = ''; return; }   // GitHub مردش: نجرب المرة الجاية
@@ -7674,7 +7674,7 @@ async function tgAfterSync(now = new Date(nowS())) {
   const needBk = o.bk && c.bk !== t, needSum = o.sum && (c.sum || '') < day;
   const W = weekDone(now), M = monthDone(now);
   const needWk = o.wk && (c.wk || '') < W.to, needMo = o.mo && (c.mo || '') < M.m, needNl = o.nl && now.getHours() >= 7 && c.nl !== t;
-  const mo = t.slice(0, 7), needRt = (c.rt || {}).m !== mo, needCi = c.ci !== t;
+  const mo = t.slice(0, 7), needRt = (c.rt || {}).m !== mo, needCi = c.ci !== t || !!c.ciBad && nowS() - (c.ciAt || 0) > 3600000;   // والسطر الأحمر ظاهر: كل ساعة، علشان يختفي بعد ما الاختبارات تنجح
   const needDr = o.dr && (c.dr || '') < W.to, drq = o.dr && (db.cfg.doc || {}).drq;
   if (!needBk && !needSum && !needWk && !needMo && !needNl && !needRt && !needCi && !needDr && !drq) return;
   tgBusy = true;

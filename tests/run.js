@@ -1510,7 +1510,10 @@ const T0 = Date.now();
       got = tgTexts().slice(t0);
       eq('إنذار: الاختبارات فشلت على آخر تعديل = رسالة مرة واحدة حتى من جهاز تاني، وسطر في الرئيسية', [got.length, !!got[0] && got[0].includes('الاختبارات فشلت عليه') && got[0].includes('رجّع للنسخة السليمة'), await A.evaluate(() => db.cfg.tg.ciBad), (await A.textContent('#chk')).includes('الاختبارات فشلت عليه')], [1, true, 6, true]);
       CI_MOCK = [{id: 8, conclusion: 'success'}, {id: 6, conclusion: 'failure'}];
-      await bg(A, `tgAfterSync(new Date('2001-04-03T10:00:00'))`);
+      await bg(A, `tgAfterSync(new Date('2001-04-02T11:30:00'))`);
+      eq('إنذار: والسطر ظاهر مبيسألش GitHub تاني قبل ساعة', await A.evaluate(() => db.cfg.tg.ciBad), 6);
+      await A.evaluate(() => { db.cfg.tg.ciAt = nowS() - 2 * 3600000; });
+      await bg(A, `tgAfterSync(new Date('2001-04-02T12:00:00'))`);   // نفس اليوم: بعد ساعة بيسأل تاني
       eq('إنذار: لما الاختبارات تنجح تاني السطر بيختفي', [await A.evaluate(() => db.cfg.tg.ciBad), (await A.textContent('#chk')).includes('الاختبارات فشلت')], [0, false]);
       CI_MOCK = [{id: 1, conclusion: 'success'}];
 

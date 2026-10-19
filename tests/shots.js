@@ -183,7 +183,8 @@ const ACC = (sfx, vp, extra = {}) => [
 const SCREENS = [
   ...ACC('m', MOB),
   {name: 'ah-card-m', app: 'acc', vp: MOB, full: true, go: accEval(`window.AH_CARD = true; cashView = 'type'; cashMode = 'week'; cashDay = ''; cashOpenV = false; go('cash'); renderCash()`)},
-  {name: 'ah-rep-m', app: 'acc', vp: MOB, full: true, go: accEval(`window.AH_CARD = true; go('rep'); repKind = 'ah'; repMode = 'range'; repFrom = addDays(todayISO(), -7); repTo = todayISO(); renderReports()`)},
+  {name: 'ah-rep-m', app: 'acc', vp: MOB, full: true, go: accEval(`window.AH_CARD = true; go('rep'); repKind = 'ah'; repMode = 'week'; repDay = addDays(todayISO(), -3); renderReports()`)},
+  {name: 'ah-rep-pdf-m', app: 'acc', vp: MOB, full: true, go: accEval(`window.AH_CARD = true; go('rep'); repKind = 'ah'; repMode = 'week'; repDay = addDays(todayISO(), -3); renderReports(); $('#rpPdf').click()`)},
   {name: 'acc-lock-m', app: 'acc', vp: MOB, go: accEval("$('#bLock').click()")},
   ...ACC('l', LAP),
   {name: 'acc-party-l1100', app: 'acc', vp: LAP2, go: accEval(`go('p/' + ${party}.id)`)},

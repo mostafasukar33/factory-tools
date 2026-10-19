@@ -121,7 +121,7 @@ function mktState() {
   sp('v1', 'مورد تجربة الخامات', 9000000, iso(100), [[iso(80), 'ppay', 'دفعة نقدي', -2500000, ''], [iso(30), 'pur', 'فاتورة مشتريات', 10100000, 'خامة تجربة 2000 كيلو'], [iso(10), 'ppay', 'دفعة تحويل', -6000000, ''], [iso(2), 'pur', 'فاتورة مشتريات', 1850000, 'خامة تجربة 300 كيلو، صبغة تجربة 20 كيلو']]);
   sp('v2', 'مورد تجربة الكرتون', 0, iso(100), [[iso(22), 'pur', 'فاتورة مشتريات', 600000, 'كرتون تجربة 500 كرتونة'], [iso(5), 'ppay', 'دفعة نقدي', -400000, '']]);
   sp('v3', 'مورد تجربة النحاس', 4350000, iso(100), [[iso(40), 'pur', 'فاتورة مشتريات', 2200000, 'نحاس تجربة 50 كيلو']]);
-  sp('v4', 'مورد تجربة البلاستيك', 0, iso(100), []);
+  sp('v4', 'مورد تجربة البلاستيك', 0, iso(100), [[iso(6), 'ppay', 'دفعة نقدي زيادة', -300000, '']]);   // اتدفعله زيادة = عليه
   return {u: 'https://script.google.com/macros/s/SHOT-MKT/exec', k: 'Shot-Key', dev: 'sh01', cursor: 1, ops, st, cust, sup, newc: [], lastOk: NOW, cSort: 'owe'};
 }
 
@@ -210,6 +210,7 @@ const SCREENS = [
   {name: 'mkt-spend-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { nav('x'); document.activeElement && document.activeElement.blur(); }); }},
   {name: 'mkt-sup-m', app: 'mkt', vp: MOB, full: true, go: mktGo('v')},
   {name: 'mkt-supacc-m', app: 'mkt', vp: MOB, full: true, go: mktGo('v/v1')},
+  {name: 'mkt-supneg-m', app: 'mkt', vp: MOB, full: true, go: mktGo('v/v4')},
   {name: 'mkt-suppay-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { spTab = 'spay'; spPick = ''; nav('x'); document.activeElement && document.activeElement.blur(); }); }},
   {name: 'mkt-suppick-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { spTab = 'spay'; spPick = 'v1'; spBack = 'v/v1'; nav('x'); document.activeElement && document.activeElement.blur(); }); }},
   {name: 'mkt-sup-m-dark', app: 'mkt', vp: MOB, dark: true, go: mktGo('v')},

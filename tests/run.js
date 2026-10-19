@@ -2232,6 +2232,11 @@ const T0 = Date.now();
       const r = await M.evaluate(() => { const c = Object.values(S.cust).find(x => !x.del); const b0 = c.bal; c.bal = -150000; nav('c'); const row = $(`#lists .pt[data-c="${c.id}"] .a`).textContent; nav('p/' + c.id); const box = $('#cBox').textContent; c.bal = b0; nav(''); return [row, box.includes('له عندنا') && box.includes('1,500')]; });
       eq('عميل دافع زيادة: زي الحسابات بالظبط (الرقم بالأحمر وتحته "له عندنا")، مش شرطة', r, ['1,500له عندنا', true]);
     }
+    {
+      /* مورد اتدفعله زيادة: زي قايمة موردين الحسابات (الرقم وتحته "عليه")، وفي صفحته وفي اختيار "دفعت لمورد" */
+      const r = await M.evaluate(() => { const v = Object.values(S.sup).find(x => !x.del); const b0 = v.bal; v.bal = -150000; nav('v'); const row = $(`#vL .pt[data-v="${v.id}"] .a`).textContent; nav('v/' + v.id); const box = $('#main .cust').textContent; v.bal = b0; nav(''); return [row, box.includes('عليه') && box.includes('1,500') && !box.includes('-')]; });
+      eq('مورد اتدفعله زيادة: الرقم وتحته "عليه" زي الحسابات بالظبط، مش شرطة', r, ['1,500عليه', true]);
+    }
     }   // نهاية أقسام السوق
     }   // نهاية RUN.sync
     if (RUN.smoke) {

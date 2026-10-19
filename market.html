@@ -921,7 +921,7 @@ function newCustomer() {
 const supWord = b => b > 0 ? 'ليه' : b < 0 ? 'عليه' : 'خالص';
 const supLast = v => { const d = v.r.length ? v.r[v.r.length - 1][0] : '', n = daysAgo(d); return v.pend.length ? `⏳ ${v.pend.length === 1 ? 'دفعة' : v.pend.length + ' دفعات'} عند مصطفى` : n < 0 ? 'مفيش حركات آخر 3 شهور' : n === 0 ? 'آخر حركة النهارده' : n === 1 ? 'آخر حركة امبارح' : `آخر حركة من ${n} ${n <= 10 ? 'أيام' : 'يوم'}`; };
 function drawSuppliers(q0) {
-  const all = [...suppliers().values()].sort((a, b) => b.bal - a.bal || a.name.localeCompare(b.name, 'ar'));
+  const all = [...suppliers().values()].sort((a, b) => Math.abs(b.bal) - Math.abs(a.bal) || a.name.localeCompare(b.name, 'ar'));
   const owe = all.reduce((a, v) => a + (v.bal > 0 ? v.bal : 0), 0), n = all.filter(v => v.bal > 0).length;
   $('#main').innerHTML = `<section class="ctot"><div class="m"><span>إجمالي اللي ليهم</span><small>${n} ${n === 1 ? 'مورد ليه' : n <= 10 ? 'موردين ليهم' : 'مورد ليهم'} فلوس</small></div><b class="money">${fmt(owe)}</b></section>
     <input class="search" id="vq" type="search" placeholder="🔍 دوّر على مورد…" autocomplete="off" value="${esc(q0 || '')}">
@@ -929,7 +929,7 @@ function drawSuppliers(q0) {
   const draw = () => {
     const q = norm($('#vq').value), l = q ? all.filter(v => norm(v.name).includes(q)) : all;
     $('#vL').innerHTML = !all.length ? '<div class="empty">لسه الموردين منزلوش. استنى ثواني والنت شغال.</div>'
-      : `<div class="lbl"><span>${q ? 'نتيجة البحث' : 'كل الموردين'} (${l.length})</span></div>` + (l.length ? `<div class="ctb"><div class="pth"><span>المورد</span><span>ليه</span></div>${l.map(v => `<div class="pt" data-v="${esc(v.id)}"><div class="m"><b class="nm">${esc(v.name)}</b><small class="lp">${esc(supLast(v))}</small></div><div class="a"><b class="${v.bal > 0 ? 'money' : 'z'}">${v.bal > 0 ? fmt(v.bal) : v.bal < 0 ? 'عليه ' + fmt(v.bal) : '—'}</b></div></div>`).join('')}</div>` : '<div class="empty">مفيش مورد بالاسم ده</div>');
+      : `<div class="lbl"><span>${q ? 'نتيجة البحث' : 'كل الموردين'} (${l.length})</span></div>` + (l.length ? `<div class="ctb"><div class="pth"><span>المورد</span><span>ليه</span></div>${l.map(v => `<div class="pt" data-v="${esc(v.id)}"><div class="m"><b class="nm">${esc(v.name)}</b><small class="lp">${esc(supLast(v))}</small></div><div class="a">${v.bal < 0 ? `<b class="money">${fmt(v.bal)}</b><small class="cr">عليه</small>` : `<b class="${v.bal > 0 ? 'money' : 'z'}">${v.bal > 0 ? fmt(v.bal) : '—'}</b>`}</div></div>`).join('')}</div>` : '<div class="empty">مفيش مورد بالاسم ده</div>');
     $$('#vL .pt[data-v]').forEach(r => r.onclick = () => nav('v/' + r.dataset.v));
   };
   draw(); $('#vq').oninput = draw;
@@ -1175,9 +1175,9 @@ function drawSpend() {
       bindAmt($('#amt'));
       const pk = () => {
         const q = norm($('#sn').value), cur = spPick && suppliers().get(spPick);
-        if (cur) { $('#vpk').innerHTML = `<div class="vsel"><span>ليه دلوقتي</span><b class="money">${fmtN(cur.bal)}</b><button type="button" id="vX">تغيير</button></div>`; $('#vX').onclick = () => { spPick = ''; $('#sn').value = ''; pk(); $('#sn').focus(); }; return; }
+        if (cur) { $('#vpk').innerHTML = `<div class="vsel"><span>${cur.bal < 0 ? 'عليه' : 'ليه'} دلوقتي</span><b class="money">${fmt(cur.bal)}</b><button type="button" id="vX">تغيير</button></div>`; $('#vX').onclick = () => { spPick = ''; $('#sn').value = ''; pk(); $('#sn').focus(); }; return; }
         const l = vs.filter(v => !q || norm(v.name).includes(q));
-        $('#vpk').innerHTML = l.length ? `<div class="vlist">${l.map(v => `<button type="button" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="money">${v.bal > 0 ? fmt(v.bal) : '—'}</b></button>`).join('')}</div>` : q && vs.length ? '<p class="hint" style="margin:6px 0 0">مش في قايمة الموردين. هيتسجل بالاسم ده ومصطفى يربطه.</p>' : '';
+        $('#vpk').innerHTML = l.length ? `<div class="vlist">${l.map(v => `<button type="button" data-v="${esc(v.id)}"><span>${esc(v.name)}</span><b class="money">${v.bal > 0 ? fmt(v.bal) : v.bal < 0 ? 'عليه ' + fmt(v.bal) : '—'}</b></button>`).join('')}</div>` : q && vs.length ? '<p class="hint" style="margin:6px 0 0">مش في قايمة الموردين. هيتسجل بالاسم ده ومصطفى يربطه.</p>' : '';
         $$('#vpk button[data-v]').forEach(b => { b.addEventListener('mousedown', e => e.preventDefault()); b.onclick = () => { spPick = b.dataset.v; $('#sn').value = S.sup[spPick].name; pk(); $('#amt').focus(); }; });
       };
       $('#sn').oninput = () => { spPick = byN.get(norm($('#sn').value)) || ''; pk(); };

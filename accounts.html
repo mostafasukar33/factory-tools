@@ -1737,7 +1737,9 @@ document.addEventListener('change', ev => {
   el.value = String(v); el.dispatchEvent(new Event('input', {bubbles: true}));
 }, true);
 const toP = s => Math.round(num(s) * 100);                                   // جنيه → قرش
-const fmtP = p => { p = Math.round(+p || 0); const a = Math.abs(p); return (p < 0 ? '-' : '') + (a / 100).toLocaleString('en-US', {minimumFractionDigits: a % 100 ? 2 : 0, maximumFractionDigits: 2}); };
+/* toLocaleString كان بيعمل منسّق جديد مع كل رقم (أبطأ حاجة في البرنامج مع الحركات الكتير)، فبنعمل الاتنين مرة واحدة ونفس الشكل بالظبط */
+const NF0 = new Intl.NumberFormat('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2}), NF2 = new Intl.NumberFormat('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const fmtP = p => { p = Math.round(+p || 0); const a = Math.abs(p); return (p < 0 ? '-' : '') + (a % 100 ? NF2 : NF0).format(a / 100); };
 const pad2 = n => String(n).padStart(2, '0');
 /* حركة الأرقام: لو الرقم اتغير عن آخر مرة اتعرض فيها، بيعدّ من القديم للجديد في نص ثانية */
 const numPrev = new Map();
@@ -1865,14 +1867,26 @@ function flushSave() {
   if (!db || !cryptoKey) return saveChain;
   const snap = db, key = cryptoKey, salt = saltU8;
   saveChain = saveChain.then(async () => {
-    try {
-      await idbPut('vault', await seal(key, salt, snap));
-      await idbPut('meta', {pending: pendingRecs().length, at: nowS()});
-      saveFailed = false;
-    } catch (e) {
-      console.error(e);
-      if (!saveFailed) toast('تحذير: الجهاز مش قادر يحفظ. اتأكد إن فيه مساحة، ونزّل نسخة احتياطية حالاً.', 7000);
-      saveFailed = true;
+    const box = await seal(key, salt, snap).catch(e => e);
+    /* الآيفون ساعات بيقطع الاتصال بالتخزين لما البرنامج يقعد في الخلفية، فالاتصال القديم يفضل بايظ وكل حفظ يفشل.
+       لو فشل: نفتح اتصال جديد ونجرب تاني مرة واحدة قبل ما نقول إن الحفظ فشل */
+    for (let i = 0; i < 2; i++) {
+      try {
+        if (box instanceof Error) throw box;
+        await idbPut('vault', box);
+        await idbPut('meta', {pending: pendingRecs().length, at: nowS()});
+        saveFailed = false;
+        return;
+      } catch (e) {
+        console.error(e);
+        if (i || box instanceof Error) {
+          if (!saveFailed) toast(e && e.name === 'QuotaExceededError' ? 'تحذير: الجهاز مش قادر يحفظ، المساحة خلصت. فضّي شوية مساحة ونزّل نسخة احتياطية حالاً.' : 'تحذير: الجهاز مش قادر يحفظ دلوقتي. اقفل البرنامج خالص وافتحه تاني، ولو الرسالة رجعت نزّل نسخة احتياطية.', 7000);
+          saveFailed = true;
+          return;
+        }
+        try { if (idbP) (await idbP).close(); } catch (x) {}
+        idbP = null;
+      }
     }
   });
   return saveChain;
@@ -5468,9 +5482,11 @@ function docSoon() { clearTimeout(drT); drT = setTimeout(docNow, 5000); }
 function docKeep(r) {
   const c = db.cfg.doc = db.cfg.doc || {}, all = r.bad.concat(r.warn);
   const fresh = c.seen ? all.filter(x => !c.seen.includes(x.k)) : [];
+  const before = JSON.stringify([c.seen, c.last && Object.assign({}, c.last, {at: 0})]);
   c.seen = all.map(x => x.k);
   c.last = {at: r.at, b: r.bad.length, w: r.warn.length, x: all.filter(x => !x.k.startsWith('sc:')).length, top: all.slice(0, 3).map(x => x.t)};
-  flushSave();
+  /* لو النتيجة زي اللي قبلها مفيش حفظ زيادة (الحفظ بيشفّر الحسابات كلها، وده كان بيحصل بعد كل حفظ). الوقت بيتحفظ مع الحفظ الجاي */
+  if (before !== JSON.stringify([c.seen, Object.assign({}, c.last, {at: 0})])) flushSave();
   return fresh;
 }
 async function docNow() {

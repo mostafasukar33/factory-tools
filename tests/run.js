@@ -2427,6 +2427,11 @@ const T0 = Date.now();
       await A.click('#sDocGo'); await A.waitForSelector('#drX');
       eq('فحص البيانات: زرار "افحص دلوقتي" بيفتح النتيجة', await A.evaluate(() => /حركة ·/.test($('#modal').textContent) && /آخر فحص/.test($('#sDoc').textContent)), true);
       await A.evaluate(() => { closeModal(); delete db.cfg.doc; flushSave(); go('home'); }); await A.settle(300);
+      /* الآيفون بيقطع الاتصال بالتخزين في الخلفية: الحفظ بيفتح اتصال جديد ويكمّل من غير رسالة "مش قادر يحفظ" */
+      eq('الحفظ بعد ما الاتصال بالتخزين اتقطع: اتحفظ من غير تحذير', await A.evaluate(async () => {
+        await flushSave(); idbP = Promise.resolve({transaction() { throw new Error('Connection to Indexed Database server lost'); }, close() {}});
+        db.cfg.__t = 7; await flushSave(); const ok = !saveFailed && !!(await idbGet('vault')); delete db.cfg.__t; await flushSave(); return ok;
+      }), true);
     }
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2 ? D2.errs : [], DM ? DM.errs : []), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); console.log('    ' + (e.stack || '').split('\n').filter(l => /run\.js/.test(l)).slice(0, 3).join(' | ')); if (NAVS.length) console.log('    تحميل صفحات كامل:', NAVS.slice(-25).join(' || ')); try { if (global.__A) console.log('    حالة الحسابات بعدها:', JSON.stringify(await global.__A.evaluate(() => ({db: !!db, lock: $('#lock').classList.contains('on'), swUp: sessionStorage.getItem('sw_up'), now: Date.now(), st: window.__st, dz: db && db.entries.some(e => /^dz/.test(e.id)), dr: typeof docRun})))); } catch (x) {} if (process.env.DBG) console.log(e.stack); }

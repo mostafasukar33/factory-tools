@@ -1990,6 +1990,7 @@ async function showLock(msg) {
   /* أول ما توقف كتابة (نص ثانية) وهي 6 حروف أو أكتر، بيجرب يفتح لوحده */
   $('#lkP').oninput = () => { clearTimeout(tm); if ($('#lkP').value.length >= 6) tm = setTimeout(() => go(true), 450); };
   if ($('#lkBio')) $('#lkBio').onclick = async () => {
+    window.bioAsked = true;   // بعد ما البصمة اتطلبت مفيش تحديث لوحده على شاشة القفل (كان بيعمل reload فالبصمة تطلع تاني، بطلبه 19/10/2026)
     $('#lkErr').textContent = '';
     try { const pw = await bioGetPass(bio); await go(false, pw); }
     catch (e) { $('#lkErr').textContent = e && e.name === 'NotAllowedError' ? 'اتلغت البصمة. اكتب كلمة السر.' : 'البصمة مش شغالة دلوقتي. اكتب كلمة السر.'; if ($('#lkP')) $('#lkP').focus(); }
@@ -6224,7 +6225,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {upd
   document.addEventListener('touchend', () => { on = false; }, {passive: true});
   addEventListener('hashchange', () => setZ(1));
 })();
-window.swSafe = () => !db && $('#lock').classList.contains('on') && !!$('#lkP') && !$('#lkP').value;
+window.swSafe = () => !db && !window.bioAsked && $('#lock').classList.contains('on') && !!$('#lkP') && !$('#lkP').value;
 </script>
 <script>
 'use strict';

@@ -313,6 +313,7 @@ const T0 = Date.now();
     const A = global.__A = await D1.page('accounts.html');
     await unlock(A, true);
     await A.click('#bLock'); await A.waitForSelector('#lkP'); await A.fill('#lkP', '999999'); await A.settle(2000);
+    eq('بصمة الوجه: بعد ما اتطلبت شاشة القفل مبتتحدثش لوحدها (البصمة متطلعش مرتين)', await A.evaluate(() => { const v = $('#lkP').value; $('#lkP').value = ''; const a = window.swSafe(), b0 = window.bioAsked; window.bioAsked = true; const b = window.swSafe(); window.bioAsked = b0; $('#lkP').value = v; return [a, b]; }), [true, false]);
     eq('كلمة سر غلط وقت الكتابة مفيهاش رسالة ولا بتفتح', [await A.textContent('#lkErr'), await A.evaluate(() => $('#lock').classList.contains('on'))], ['', true]);
     await A.click('#lkGo'); await A.settle(1500);
     eq('كلمة سر غلط بترفض', await A.textContent('#lkErr'), 'كلمة السر غلط');

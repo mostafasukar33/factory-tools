@@ -833,7 +833,7 @@ html[data-theme=dark] .cnet b{color:var(--ink)}html[data-theme=dark] .cnet b.neg
 }
 .dnav{display:flex;align-items:center;justify-content:center;gap:6px}
 .cyr{display:flex;align-items:center;gap:8px;margin-top:8px;font-weight:700;font-size:var(--f2);color:var(--sub)}.cyr .inp{flex:1;min-width:0}
-@media (max-width:999.98px){#p-cash #cPick.pkh{display:none}#p-cash #cPick.pkh+#cVault{grid-column:1/-1}}
+@media (max-width:999.98px){#p-cash #cPick.pkh{display:none}#p-cash #cPer.pk #cPick.pkh{display:block;padding:0 10px 8px}#p-cash #cPick.pkh+#cVault{grid-column:1/-1}}
 .dnav button{width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:22px;font-weight:800;line-height:1;cursor:pointer;color:var(--ink);padding:0}
 .dnav span{min-width:112px;text-align:center;border:1px solid var(--gold);background:var(--gold-l);border-radius:10px;padding:6px 10px;font-weight:800;font-size:var(--f2);color:var(--gold-d);white-space:nowrap}
 .dnav button:active{transform:scale(.94)}
@@ -841,7 +841,7 @@ html[data-theme=dark] .dnav button{background:var(--row);border-color:var(--fiel
 html[data-theme=dark] .dnav span{color:var(--ink)}
 @media (max-width:640px){#p-cash>.card .dnav{grid-column:1/-1}}
 @media (min-width:1000px){#p-cash>.card{grid-template-columns:auto auto 1fr 1fr}}
-/* الخزنة على الموبايل: كارت واحد للفترة والملخص. فوق "‹ اليوم ›" وزرار صغير "يوم ▾" بيفتح يوم/أسبوع/شهر/من–إلى (مش بيتستخدموا كتير)، وتحتهم الملخص */
+/* الخزنة على الموبايل: كارت الفترة: النهارده/الأسبوع/الشهر/من لـ ظاهرين على طول (بطلبه 18/10/2026)، وتحتهم "‹ الفترة ›"، والدوس على اسم الفترة بيفتح خانة التاريخ */
 .kmode,.ktoday{border:1px solid var(--line);background:var(--row);color:var(--sub);border-radius:999px;padding:3px 12px;font:inherit;font-weight:800;font-size:var(--f1);cursor:pointer;white-space:nowrap;min-height:32px;line-height:1.2}
 .ktoday{border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
 html[data-theme=dark] .ktoday{color:var(--ink)}
@@ -849,12 +849,11 @@ html[data-theme=dark] .ktoday{color:var(--ink)}
 #cPer.pk .kmode .kch{transform:rotate(180deg)}
 @media (max-width:999.98px){
   #p-cash>#cPer{display:flex;flex-direction:column;gap:0;padding:0;margin-bottom:8px;border-radius:14px;overflow:hidden;border-top:3px solid var(--gold)}
-  #cPer .kpr{order:-1;display:flex;align-items:center;gap:6px;padding:7px 10px}
-  #cPer .dnav{flex:none;gap:5px;margin-inline-end:auto}
+  #cPer .kpr{display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px}
+  #cPer .dnav{flex:none;gap:5px}
   #cPer .dnav button{width:34px;height:34px;font-size:20px;border-radius:9px}
   #cPer .dnav span{min-width:0;padding:4px 12px;font-size:var(--f2);border-radius:9px}
-  #p-cash>#cPer .seg{display:none;margin:0 10px 8px;padding:3px;gap:3px;border-radius:10px}
-  #p-cash>#cPer.pk .seg{display:grid}
+  #p-cash>#cPer .seg{display:grid;margin:8px 10px 0;padding:3px;gap:3px;border-radius:10px}
   #cPer .seg button{min-height:34px;font-size:var(--f2);border-radius:8px;padding:0 4px}
   #cPer #cPick:not(.pkh){padding:0 10px 8px}
   #cPer .ksum{border:0;border-radius:0;margin:0;border-top:1px solid var(--line)}
@@ -4075,7 +4074,6 @@ function vaultMoves(vid, from, to) {
 let cashMode = 'day', cashVault = '', cashDay = '', cashMonth = '', cashYear = '', cashFrom = '', cashTo = '';
 function cashRange() {
   const t = todayISO();
-  if (cashView === 'date') return ldgRange();
   if (cashMode === 'day') { const d = cashDay || t; return [d, d]; }
   if (cashMode === 'week') { const f = weekStart(cashDay || t); return [f, addDays(f, 6)]; }
   if (cashMode === 'month') { const m = cashMonth || t.slice(0, 7), [y, mo] = m.split('-').map(Number); return [m + '-01', m + '-' + pad2(new Date(y, mo, 0).getDate())]; }
@@ -4095,7 +4093,6 @@ const AR_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'ما
 /* خانة اسم اليوم/الشهر/السنة وأسهم السابق والتالي في الخزنة */
 function cashNavLabel() {
   const t = todayISO();
-  if (cashView === 'date') { const [f, l] = ldgRange(); const sd = x => x.slice(8) + '/' + x.slice(5, 7); return sd(f) + ' ← ' + sd(l); }
   if (cashMode === 'day') { const d = cashDay || t; return AR_DAYS[dowOf(d)] + (d === t ? ' · النهارده' : ''); }
   if (cashMode === 'week') { const [f, l] = cashRange(); const sd = x => x.slice(8) + '/' + x.slice(5, 7); return sd(f) + ' ← ' + sd(l); }
   if (cashMode === 'month') { const [y, m] = (cashMonth || t.slice(0, 7)).split('-'); return AR_MONTHS[+m - 1] + ' ' + y; }
@@ -4103,7 +4100,6 @@ function cashNavLabel() {
 }
 function cashStep(n) {
   const t = todayISO();
-  if (cashView === 'date') return ldgStep(n);
   if (cashMode === 'day') cashDay = addDays(cashDay || t, n);
   else if (cashMode === 'week') cashDay = addDays(weekStart(cashDay || t), 7 * n);
   else if (cashMode === 'month') { const [y, m] = (cashMonth || t.slice(0, 7)).split('-').map(Number), d = new Date(y, m - 1 + n, 1); cashMonth = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`; }
@@ -4116,18 +4112,14 @@ function cashStep(n) {
    مفيش رصيد أول/آخر الفترة، والتحويل بين خزني بيبان بس لما تختار خزنة، وتسوية الجرد مش بتبان خالص (بتظبط الرصيد بس). */
 let cashSide = 'me';   // قديم: النصين بقوا ظاهرين مع بعض
 /* يوم/أسبوع/شهر/من–إلى: على الموبايل زرار صغير "يوم ▾" بيفتحهم (مش بيتستخدموا كتير)، وعلى اللاب ظاهرين على طول */
-const CASH_MODES = [['day', 'يوم'], ['week', 'أسبوع'], ['month', 'شهر'], ['range', 'من–إلى']];
-let cashPickM = false;
+const CASH_MODES = [['day', 'النهارده'], ['week', 'الأسبوع'], ['month', 'الشهر'], ['range', 'من لـ']];
 let cashOpenV = false;
 /* دفتر الخزنة بالتاريخ (cashView = 'date'): كل الخزن مع بعض يوم ورا يوم، الأقدم فوق، من غير أي رصيد. اختيار التبويب بيتفتكر على الجهاز بس */
 let cashView = 'type';
 try { if (localStorage.getItem('fo_cash_view') === 'date') cashView = 'date'; } catch (e) {}
-/* ldgScope: الدفتر بتاع مين (بطلب صاحب المشروع، زي الدفتر الورق): 'all' المصنع كله (خزني + عهدة أحمد، والتسليم بينهم مش داخل ولا خارج)
-   الاختيار بـ 3 زراير مكتوب عليها (#ldgS) تحت "بالنوع | بالتاريخ"، مش بالدوس على مربعات الرصيد (كان مخفي وبيلخبط)،
-   'me' خزني بس، 'mk' عهدة أحمد بس. الاختيار بالدوس على مربعات الرصيد فوق (الإجمالي / رصيد الخزن / خزنة السوق) */
+/* ldgScope: ورقة الدفتر PDF بقت للمصنع كله بس (زراير المصنع كله/خزني/عهدة أحمد اتشالت بطلبه 18/10/2026، الشاشة بتوري الاتنين مع بعض) */
 let ldgScope = 'all';
-let ldgMode = 'w2', ldgEnd = '', ldgFrom = '', ldgTo = '', ldgFilter = 'all', ldgSumOpen = false, ldgScroll = false, ldgItemsL = [];
-const LDG_MODES = [['w1', 'أسبوع'], ['w2', 'أسبوعين'], ['w3', '3 أسابيع'], ['m1', 'شهر'], ['range', 'من–إلى']], LDG_DAYS = {w1: 7, w2: 14, w3: 21, m1: 30};
+let ldgFilter = 'all', ldgScroll = false;
 /* بطلب صاحب المشروع (علشان النقل للدفتر الورق يبقى سهل): كل كارت = صفحة صاحبه في الدفتر، بالأسامي.
    حركة السوق (أحمد): تحصيل عملاء السوق كامل، سطر لكل عميل في اليوم وتحته "5 تحويل لمصطفى و 5 عهدة مع أحمد"، وقصاده في الطلع "تحويل لمصطفى"،
    ومصروفاته ودفعاته للموردين "من أحمد". حركتي: "عملاء السوق" = الجزء اللي وصلني بس ("كريم حوّلك" وتحته إجمالي الدفعة)، ومصروفاتي ودفعاتي.
@@ -4157,9 +4149,6 @@ function cashGroup(m, side) {
   if (r.type === 'inc') return side === 'mkt' && r.cat === 'c_inc1' ? 'cs' : 'inc';
   return side === 'mkt' ? 'mkexp' : 'exp';
 }
-/* حركة السوق: تحويلات عملاء السوق اللي نزلت في خزني بتتحسب في تحصيل السوق، ونسخة منها "تحويل لمصطفى" في الطلع */
-const mkXfers = (from, to) => vaultMoves('', from, to).filter(m => m.src === 'pay' && m.r.kind === 'pay' && isMkCust(m.r))
-  .flatMap(m => [Object.assign({}, m, {sign: 1}), Object.assign({}, m, {sign: -1, mkOut: true})]);
 /* دفعات نفس عميل السوق في نفس اليوم = سطر واحد. في السوق: المبلغ كله وتحته التقسيمة. في حركتي: اللي وصلني وتحته إجمالي الدفعة */
 function mkColMerge(arr, side) {
   const by = new Map(), tot = new Map();
@@ -4184,7 +4173,6 @@ function cashTable(title, arr, all, cls, day) {
 /* اسم الفترة الصغير جنب عنوان الكارت */
 function cashPerTxt() {
   const t = todayISO(), [f, l] = cashRange();
-  if (cashView === 'date') return dispDate(f) + ' ← ' + dispDate(l);
   if (cashMode === 'day') return f === t ? 'النهارده' : f === addDays(t, -1) ? 'امبارح' : dispDate(f);
   if (cashMode === 'week') return 'الأسبوع';
   if (cashMode === 'month') return cashNavLabel();
@@ -4197,30 +4185,6 @@ function lastHand() {
   if (!d) return '';
   const n = Math.round((new Date(todayISO()) - new Date(d)) / 864e5);
   return n <= 0 ? 'النهارده' : n === 1 ? 'امبارح' : n === 2 ? 'من يومين' : n <= 10 ? `من ${n} أيام` : dispDate(d);
-}
-/* كارت حركة نص واحد: دخل وطلع كبار، وتحتهم الأنواع. بيرجّع كمان الحركات متقسمة بالنوع للنافذة */
-function kstHtml(key, title, side, mv, cls) {
-  const by = {}, sum = a => a.reduce((n, m) => n + m.amt, 0);
-  mv.forEach(m => { m.side = side; const g = cashGroup(m, side); if (g) (by[g] = by[g] || []).push(m); });
-  if (side === 'mkt' && by.col) by.col = mkColMerge(by.col, side);
-  if (side === 'me' && by.mkcol) by.mkcol = mkColMerge(by.mkcol, side);
-  const ks = CG_ORD.filter(k => by[k]), tot = t => ks.filter(k => CG[k][1] === t).reduce((n, k) => n + sum(by[k]), 0);
-  return {by, in: tot('in'), out: tot('out'), html: `<section class="kst ${cls}" id="kst-${key}"><div class="ksh">${title}<small>${esc(cashPerTxt())}</small></div>
-    <div class="kio"><div class="kin"><span>⬇ داخل</span><b class="n" data-ck="c:${key}:in" data-cnt="${tot('in')}">${fmtP(tot('in'))}</b></div><div class="kout"><span>⬆ خارج</span><b class="n" data-ck="c:${key}:out" data-cnt="${tot('out')}">${fmtP(tot('out'))}</b></div></div>
-    ${ks.length ? ks.map(k => `<div class="kty kt${CG[k][1]}" data-k="${key}:${k}" role="button" tabindex="0"><span class="l"><i class="kdot"></i>${CG[k][0]}<em>${by[k].length}</em></span><span class="r"><b class="n">${fmtP(sum(by[k]))}</b><i class="kgo">›</i></span></div>`).join('')
-      : '<div class="kno">مفيش حركة</div>'}</section>`};
-}
-/* نافذة نوع واحد: كل حركاته بخط كبير، والدوس على حركة بيفتحها للتعديل */
-function cashTypeSheet(title, k, arr, open, showV, nm) {
-  const tot = arr.reduce((n, m) => n + m.amt, 0), day = cashMode === 'day' && cashView !== 'date';
-  modal(`<div class="ksheet ksh-${CG[k][1]}"><div class="ksh2"><button class="kback" id="kshB" type="button" aria-label="رجوع">→</button><span>${esc(nm || CG[k][0])}<small>${esc(title)} · ${esc(cashPerTxt())} · ${arr.length} ${arr.length === 1 ? 'حركة' : arr.length === 2 ? 'حركتين' : 'حركات'}</small></span><b class="n">${fmtP(tot)}</b></div>
-    <div class="kits" id="kitsL"></div>
-    <button class="btn line" id="kshX" type="button">رجوع</button></div>`);
-  $('#kshX').onclick = $('#kshB').onclick = closeModal;
-  kitsDraw(arr, (m, i) => {
-      const what = (m.what || '').replace(/حركة السوق( — )?/, '').trim(), vid = m.r.type === 'tr' ? '' : m.r.vault;
-      const bits = [day && m.at ? dispTime(m.at) : dispDate(m.date), what && what !== m.who ? what : '', showV && vid ? vName(vid) : ''].filter(Boolean);
-      return `<div class="kit" data-i="${i}" role="button" tabindex="0"><div><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n">${fmtP(m.amt)}</b></div>`; }, open);
 }
 /* قايمة حركات النافذة: 60 حركة وزرار "اعرض كمان" (القايمة الطويلة كانت بتهنّج الموبايل) */
 function kitsDraw(arr, row, open, empty) {
@@ -4256,26 +4220,11 @@ function cashSearch(open) {
   };
   $('#csQ').oninput = draw; draw(); setTimeout(() => { const q = $('#csQ'); if (q) q.focus(); }, 50);
 }
-function ldgRange() {
-  const t = todayISO();
-  if (ldgMode === 'range') return [ldgFrom || addDays(t, -13), ldgTo || t];
-  const e = ldgEnd || t;
-  return [addDays(e, -(LDG_DAYS[ldgMode] - 1)), e];
-}
-function ldgStep(n) {
-  if (ldgMode === 'range') return;
-  const t = todayISO(), e = addDays(ldgEnd || t, n * LDG_DAYS[ldgMode]);
-  ldgEnd = e >= t ? '' : e; ldgScroll = true; renderCash();
-}
 function ldgItems(from, to) {
   const L = [], mkc = [], hasM = db.vaults.some(v => v.id === MKV && !v.del), sc = hasM ? ldgScope : 'me';
     if (sc === 'me') {
     vaultMoves(cashVault, from, to).forEach(m => { Object.assign(m, {mk: isMkRec(m.r), side: 'me'}); const g = cashGroup(m, 'me'); if (g === 'mkcol') mkc.push(m); else if (g) L.push({m, g}); });
     mkColMerge(mkc, 'me').forEach(m => L.push({m, g: 'mkcol'}));
-  } else if (sc === 'mk') {
-    /* نفس كارت "حركة السوق" بالظبط: التحصيل كامل (والتحويلات اللي نزلت عندي) وقصاده "تحويل لمصطفى" والتسليم */
-    vaultMoves(MKV, from, to).concat(mkXfers(from, to)).forEach(m => { Object.assign(m, {mk: isMkRec(m.r), side: 'mkt'}); const g = cashGroup(m, 'mkt'); if (g === 'col') mkc.push(m); else if (g) L.push({m, g}); });
-    mkColMerge(mkc, 'mkt').forEach(m => L.push({m: Object.assign(m, {side: 'mkt'}), g: 'col'}));
   } else {
     /* المصنع كله: أي تحويل (بين خزني أو بيني وبين أحمد) فلوس بتتنقل جوه المصنع فمش بيظهر. تحصيل عميل السوق سطر واحد بالكاش اللي مع أحمد والتحويل اللي جالي */
     vaultMoves('', from, to).forEach(m => { if (m.r.type === 'tr') return; Object.assign(m, {mk: isMkRec(m.r), side: 'me'}); const g = cashGroup(m, 'me'); if (g === 'mkcol') mkc.push(m); else if (g) L.push({m, g}); });
@@ -4289,12 +4238,10 @@ function ldgItems(from, to) {
 const ldgSc = () => db.vaults.some(v => v.id === MKV && !v.del) ? ldgScope : 'me';
 const ldgTitle = () => ldgSc() === 'all' ? 'دفتر المصنع كله' : ldgSc() === 'mk' ? 'عهدة ' + MK_PN : cashVault ? 'دفتر ' + vName(cashVault) : 'دفتري';
 /* رصيد الدفتر أول اليوم d (قبله): نفس الخزن اللي الدفتر بيعرضها. المصنع كله = خزني + خزنة السوق. من الأرصدة الحقيقية (vaultBal) فبيبان فيه أي تسوية جرد أو تحويل مش ظاهر في السطور */
-const ldgBal = d => { const s = ldgSc(); return s === 'all' ? vaultBal('', d) + vaultBal(MKV, d) : s === 'mk' ? vaultBal(MKV, d) : vaultBal(cashVault || '', d); };
 const ldgSum = (L, dir) => L.filter(x => x.dir === dir).reduce((n, x) => n + x.m.amt, 0);
 const ldgName = x => x.g === 'exp' ? cName(x.m.r.cat) : CG[x.g][0];
 const ldgWhat = (m, nm) => { const w = (m.what || '').replace(/حركة السوق( — )?/, '').trim(); return w && w !== m.who && w !== nm ? w : ''; };
 const ldgDays = L => { const by = new Map(); L.forEach(x => (by.get(x.m.date) || by.set(x.m.date, []).get(x.m.date)).push(x)); return [...by.entries()].map(([d, rows]) => ({d, rows, in: ldgSum(rows, 'in'), out: ldgSum(rows, 'out')})); };
-const ldgDayWord = n => n === 1 ? 'يوم' : n === 2 ? 'يومين' : n <= 10 ? n + ' أيام' : n + ' يوم';
 /* الملخص بالبند: الداخل صف لكل نوع، والخارج المصروفات صف لكل بند وباقي الأنواع صف لكل نوع. الأكبر فوق */
 function ldgGroups(L) {
   const by = new Map();
@@ -4303,30 +4250,6 @@ function ldgGroups(L) {
 }
 /* جوه اليوم: الداخل (الأخضر) فوق والخارج (الأحمر) تحته وبينهم خط رفيع (بطلبه 17/10/2026)، وكل مجموعة بترتيبها */
 const ldgSplit = R => { const i = R.filter(x => x.dir === 'in'), o = R.filter(x => x.dir !== 'in'); return i.length && o.length ? [...i, '|', ...o] : [...i, ...o]; };
-function ldgHtml(L) {
-  const nV = vaultsL().length, sc0 = ldgSc(), showV = sc0 === 'all' || (sc0 === 'me' && !cashVault && nV > 1);
-  const F = ldgFilter === 'all' ? L : L.filter(x => x.dir === ldgFilter);
-  ldgItemsL = F;
-  const tin = ldgSum(L, 'in'), tout = ldgSum(L, 'out'), G = ldgGroups(L);
-  const gRow = g => `<div class="kty kt${g.dir}" data-sk="${esc(g.key)}" role="button" tabindex="0"><span class="l"><i class="kdot"></i>${esc(g.nm)}<em>${g.arr.length}</em></span><span class="r"><b class="n">${fmtP(g.tot)}</b><i class="kgo">›</i></span></div>`;
-  const sum = `<section class="ldsum" id="ldgSum"><div class="kio"><div class="kin"><span>⬇ داخل</span><b class="n">${fmtP(tin)}</b></div><div class="kout"><span>⬆ خارج</span><b class="n">${fmtP(tout)}</b></div></div>
-    <button type="button" class="ldsb${ldgSumOpen ? ' on' : ''}" id="ldgSumB">بالبند <i class="kch">▾</i></button>
-    <div class="ldsg"${ldgSumOpen ? '' : ' hidden'}>${G.filter(g => g.dir === 'in').map(gRow).join('')}${G.filter(g => g.dir === 'out').map(gRow).join('')}</div></section>`;
-  const days = ldgDays(F).reverse().map(({d, rows, in: di, out: dout}) => {   // الأحدث فوق (بطلب صاحب المشروع)، والـ PDF بيفضل الأقدم فوق زي الدفتر الورق
-    const b0 = ldgBal(d), b1 = ldgBal(addDays(d, 1));
-    return `<div class="ldd" data-d="${d}"><div class="ldh"><div class="ldw"><b>${AR_DAYS[dowOf(d)]} · ${dispDate(d)}</b><small class="ldbal" data-b0="${b0}" data-b1="${b1}">بدأ بـ <b>${fmtP(b0)}</b> · ${d >= todayISO() ? 'دلوقتي' : 'قفل على'} <b${b1 < 0 ? ' class="neg"' : ''}>${fmtP(b1)}</b></small></div>
-      <div class="ldt">${di ? `<b class="n in">+ ${fmtP(di)}</b>` : ''}${dout ? `<b class="n out">− ${fmtP(dout)}</b>` : ''}</div></div>
-      ${ldgSplit(rows.slice().reverse()).map(x => x === '|' ? '<div class="ldsep"></div>' : (x => { const m = x.m, i = F.indexOf(x), vid = m.r.type === 'tr' || m.parts || m.side === 'mkt' ? '' : m.r.vault, bits = [ldgName(x), ldgWhat(m, ldgName(x)), showV && vid ? vName(vid) : ''].filter(Boolean);
-        return `<div class="ldr" data-i="${i}" role="button" tabindex="0"><div class="ldm"><b>${esc(m.who)}</b><small>${m.mk ? '<span class="mkb">🏪 من السوق</span> ' : ''}${esc(bits.join(' · '))}</small></div><b class="n ${x.dir}">${x.dir === 'in' ? '+' : '−'} ${fmtP(m.amt)}</b></div>`; })(x)).join('')}</div>`;
-  }).join('');
-  const sc = ldgSc(), hasM = sc !== 'me' || db.vaults.some(v => v.id === MKV && !v.del), pend = hasM ? mkPending().length : 0;
-  const note = [sc !== 'me' ? `${MK_PN} معاه دلوقتي <b class="n">${fmtP(vaultBal(MKV))}</b>` : '', ''].filter(Boolean).join(' · ');
-  return `${sum}<section class="ldg" id="ldg"><div class="ldtt">${sc === 'me' && cashVault ? `<span>📅 ${esc(ldgTitle())} <a class="kclr" id="kAll">✕ كل خزني</a></span>` : `<span>📅 ${esc(ldgTitle())}</span>`}${note ? `<small class="ldnt">${note}</small>` : ''}</div>
-    ${pend && sc !== 'me' ? `<a class="ldpend" href="#mkt">📥 فيه ${pend} ${pend === 1 ? 'حركة' : pend === 2 ? 'حركتين' : 'حركات'} من ${MK_PN} لسه في الوارد — مش محسوبة هنا</a>` : ''}
-    <div class="seg s3" id="ldgF">${[['all', 'الكل'], ['in', 'داخل'], ['out', 'خارج']].map(([k, n]) => `<button type="button" data-v="${k}" class="${ldgFilter === k ? 'on' : ''}">${n}</button>`).join('')}</div>
-    ${days || '<div class="kno">مفيش حركة في الفترة دي</div>'}
-    <div class="ldpdf"><button type="button" class="btn gold" id="ldgPdf">📄 ورقة الدفتر PDF</button></div></section>`;
-}
 /* ورقة الدفتر PDF: بتتبع الفلتر والفترة والخزنة المختارة، من غير رصيد */
 function ldgReport(L, from, to) {
   const F = ldgFilter === 'all' ? L : L.filter(x => x.dir === ldgFilter), rows = [];
@@ -4340,16 +4263,146 @@ function ldgReport(L, from, to) {
     cols: [{h: 'التاريخ', w: 12, c: 'dt'}, {h: 'البيان', w: 30, c: 'l'}, {h: 'التفاصيل', w: 28, c: 'l'}, {h: 'وارد', w: 15, c: 'n'}, {h: 'منصرف', w: 15, c: 'n'}],
     rows, sum: [['الوارد', fmtP(tin)], ['المنصرف', fmtP(tout)], ...G.map(g => ['  ' + g.nm, (g.dir === 'in' ? '+ ' : '− ') + fmtP(g.tot)])], fin: ['الصافي', fmtP(tin - tout)]};
 }
+/* ============ شاشة الخزنة (بطلبه 18/10/2026): المصنع كله = معايا + مع أحمد، الاتنين مع بعض في نفس الشاشة ============
+   كل حركة فلوس سطر واحد: وارد أو منصرف، ومين اللي عملها (me = خزني، mk = خزنة السوق مع أحمد).
+   دفعات نفس العميل سطر واحد وفيه التقسيمة: منك، وصلتك (أحمد حصّلها وحوّلها على خزني، e_mk_)، ومعاه (فضلت في خزنة السوق).
+   الفلوس اللي بتتنقل بيني وبين أحمد مش وارد ولا منصرف: سطر رمادي "وصلك من أحمد". التحويل بين خزني مبيظهرش، وتسوية الجرد سطر رمادي.
+   "قفل اليوم" من الرصيد الحقيقي (vaultBal)، ولو بدأ + وارد − منصرف ± التسوية مش = القفل بيتلوّن أحمر. عرض بس، مفيش أي حاجة بتتكتب */
+const hasMkv = () => db.vaults.some(v => v.id === MKV && !v.del);
+function fbMoves(from, to) {
+  const R = [], X = [], A = [];
+  const push = (m, side) => {
+    const r = m.r;
+    if (r.type === 'tr') { if (m.sign) X.push({m, date: m.date, amt: m.amt, k: m.sign > 0 ? 'hand' : 'give'}); return; }
+    if (ADJ_CATS.has(r.cat)) { A.push({m, date: m.date, amt: m.sign * m.amt}); return; }
+    const g = cashGroup(m, side === 'mk' ? 'mkt' : 'me'); if (!g) return;
+    const cust = m.src === 'pay' && r.kind === 'pay';
+    m.side = side === 'mk' ? 'mkt' : 'me';
+    R.push({m, g, side, date: m.date, at: m.at || 0, amt: m.amt, dir: CG[g][1], part: !cust ? side : side === 'mk' ? 'ca' : isMkRec(r) ? 'tr' : 'me', party: m.src === 'pay' ? r.party : ''});
+  };
+  vaultMoves('', from, to).forEach(m => push(m, 'me'));
+  if (hasMkv()) vaultMoves(MKV, from, to).forEach(m => { if (m.r.type !== 'tr') push(m, 'mk'); });
+  R.forEach(x => { if (x.part === 'tr') X.push({m: x.m, date: x.date, amt: x.amt, k: 'tr'}); });
+  return {R, X, A};
+}
+const fbSum = (L, f) => L.reduce((n, x) => n + (!f || f(x) ? x.amt : 0), 0);
+const fbSd = d => `${d.slice(8)}/${d.slice(5, 7)}` + (d.slice(0, 4) === todayISO().slice(0, 4) ? '' : `/${d.slice(0, 4)}`);
+const fbWho = side => side === 'mk' ? `<em class="fbw">${MK_PN}</em>` : 'منك';
+/* سطور الحركات: دفعات نفس الحساب سطر واحد (by = مفتاح التجميع)، والباقي كل حركة سطر */
+function fbGroup(L, key) {
+  const by = new Map();
+  L.forEach(x => { const k = key(x); (by.get(k) || by.set(k, {k, dir: x.dir, g: x.g, L: []}).get(k)).L.push(x); });
+  return [...by.values()].map(o => Object.assign(o, {amt: fbSum(o.L), at: Math.min(...o.L.map(x => x.at)),
+    me: fbSum(o.L, x => x.part === 'me'), mk: fbSum(o.L, x => x.part === 'mk'), tr: fbSum(o.L, x => x.part === 'tr'), ca: fbSum(o.L, x => x.part === 'ca')}));
+}
+/* التقسيمة تحت العميل: منك، وصلتك، معاه */
+function fbCustSub(o) {
+  const ah = o.tr + o.ca;
+  if (!ah) return 'منك';
+  const tail = o.tr && o.ca ? `${fmtP(o.tr)} وصلتك · ${fmtP(o.ca)} معاه` : o.tr ? (o.me ? fmtP(o.tr) + ' وصلتك' : 'وصلتك كله') : (o.me ? fmtP(o.ca) + ' ' : '') + 'فضلت معاه';
+  return (o.me ? `منك ${fmtP(o.me)} · ` : '') + `${fbWho('mk')} · ${tail}`;
+}
+const fbName = o => { const x = o.L[0], p = x.party && P.get(x.party); return p ? p.name : x.m.who; };
+function fbKind(x) {
+  const r = x.m.r;
+  if (x.g === 'part') return 'الشركاء';
+  if (x.g === 'ivcap' || x.g === 'ivdraw') return 'المساهمين';
+  if (x.m.src === 'pay') { const p = P.get(r.party); return p && p.sec === 'sup' ? 'دفعة مورد' : 'دفعة'; }
+  return r.note ? cName(r.cat) : x.dir === 'in' ? 'إيراد' : 'مصروف';
+}
+function fbSub(o) {
+  const x = o.L[0], hm = hasMkv();
+  if (x.m.src === 'pay' && x.m.r.kind === 'pay') return hm ? fbCustSub(o) : '';
+  const who = !hm ? '' : o.me && o.mk ? `منك ${fmtP(o.me)} · ${MK_PN} ${fmtP(o.mk)}` : fbWho(x.side);
+  return [who, esc(fbKind(x))].filter(Boolean).join(' · ');
+}
+/* اليوم في الدفتر: الوارد فوق والمنصرف تحته، وكل دفعات الحساب في اليوم سطر واحد */
+function fbDayRows(R) {
+  const G = fbGroup(R, x => x.party ? 'p:' + x.party + ':' + x.dir : 't:' + x.m.r.id);
+  const s = (a, b) => a.at - b.at;
+  return [...G.filter(o => o.dir === 'in').sort(s), ...G.filter(o => o.dir !== 'in').sort(s)];
+}
+function fbDays(from, to) {
+  const {R, X, A} = fbMoves(from, to), t = todayISO(), by = new Map(), hm = hasMkv();
+  const day = d => by.get(d) || by.set(d, {d, R: [], X: [], A: []}).get(d);
+  R.forEach(x => day(x.date).R.push(x)); X.forEach(x => day(x.date).X.push(x)); A.forEach(x => day(x.date).A.push(x));
+  let last = to < t ? to : t; by.forEach((v, d) => { if (d > last) last = d; });
+  const bal = d => vaultBal('', d) + (hm ? vaultBal(MKV, d) : 0), out = [];
+  for (let d = last; d >= from; d = addDays(d, -1)) {
+    const o = by.get(d);
+    if (!o) { out.push({d, none: true}); continue; }
+    const b0 = bal(d), n = addDays(d, 1), me = vaultBal('', n), mk = hm ? vaultBal(MKV, n) : 0, din = fbSum(o.R, x => x.dir === 'in'), dout = fbSum(o.R, x => x.dir !== 'in'), adj = fbSum(o.A);
+    out.push(Object.assign(o, {b0, me, mk, b1: me + mk, in: din, out: dout, adj, ok: b0 + din - dout + adj === me + mk, rows: fbDayRows(o.R)}));
+  }
+  return out;
+}
+/* الأيام الفاضية ورا بعض سطر واحد */
+function fbEmpty(a, b) {
+  const hm = hasMkv(), bal = vaultBal('', addDays(a, 1)) + (hm ? vaultBal(MKV, addDays(a, 1)) : 0);
+  return `<div class="fbe"><span>${a === b ? AR_DAYS[dowOf(a)] + ' ' + fbSd(a) : `من ${fbSd(b)} لـ ${fbSd(a)}`}</span><span>مفيش حركة · قفل <b class="n">${fmtP(bal)}</b></span></div>`;
+}
+function fbXRows(o, di) {
+  const tr = fbSum(o.X, x => x.k === 'tr'), ha = fbSum(o.X, x => x.k === 'hand'), gv = fbSum(o.X, x => x.k === 'give'), r = [];
+  const row = (k, txt, amt) => `<tr class="fbx" data-x="${di}:${k}" role="button" tabindex="0"><td>${txt}</td><td class="c" colspan="2"><span class="n">${fmtP(amt)}</span></td></tr>`;
+  if (tr || ha) r.push(row('in', `⇄ وصلك من ${MK_PN}${tr && ha ? `: ${fmtP(tr)} تحويل · ${fmtP(ha)} كاش` : tr ? ' تحويل' : ' كاش'}`, tr + ha));
+  if (gv) r.push(row('out', `⇄ إديت ${MK_PN}`, gv));
+  if (o.A.length) r.push(row('adj', 'تسوية جرد ' + (o.adj < 0 ? '−' : '+'), Math.abs(o.adj)));
+  return r.join('');
+}
+function fbDateHtml(days) {
+  const hm = hasMkv(), html = [];
+  for (let i = 0; i < days.length; i++) {
+    const o = days[i];
+    if (o.none) { let j = i; while (j + 1 < days.length && days[j + 1].none) j++; html.push(fbEmpty(o.d, days[j].d)); i = j; continue; }
+    const t = o.d === todayISO(), firstOut = o.rows.findIndex(x => x.dir !== 'in');
+    html.push(`<section class="fbd" data-d="${o.d}"><div class="fbh"><b>${AR_DAYS[dowOf(o.d)]} ${fbSd(o.d)}</b><span>بدأ بـ <b class="n">${fmtP(o.b0)}</b></span></div>
+      <table class="fbt"><thead><tr><th>البيان</th><th class="c">وارد</th><th class="c">منصرف</th></tr></thead><tbody>
+      ${o.rows.map((x, j) => `<tr class="fbr${j && j === firstOut ? ' fbs' : ''}" data-r="${i}:${j}" data-ak="${o.d}|${esc(x.k)}" role="button" tabindex="0"><td><b>${esc(fbName(x))}</b>${(s => s ? `<small>${s}</small>` : '')(fbSub(x))}</td><td class="c">${x.dir === 'in' ? `<span class="n in">${fmtP(x.amt)}</span>` : ''}</td><td class="c">${x.dir !== 'in' ? `<span class="n out">${fmtP(x.amt)}</span>` : ''}</td></tr>`).join('')}
+      ${fbXRows(o, i)}
+      <tr class="fbtot"><td>إجمالي اليوم</td><td class="c"><span class="n in">${fmtP(o.in)}</span></td><td class="c"><span class="n out">${fmtP(o.out)}</span></td></tr></tbody></table>
+      <div class="fbf${o.ok ? '' : ' bad'}"><b>${t ? 'لحد دلوقتي' : 'قفل اليوم بـ'} <span class="n" data-b1="${o.b1}">${fmtP(o.b1)}</span> ${o.ok ? '✓' : '⚠ مش راكب'}</b>${hm ? `<span class="fbc"><i class="me">معاك <b class="n">${fmtP(o.me)}</b></i><i class="mk">مع ${MK_PN} <b class="n">${fmtP(o.mk)}</b></i></span>` : ''}</div></section>`);
+  }
+  return html.join('') || '<div class="fbe"><span>مفيش حركة في الفترة دي</span></div>';
+}
+/* بالنوع: كل عميل/مورد/بند سطر واحد بإجماليه في الفترة، الأكبر فوق */
+function fbTypeGroups(from, to) {
+  const {R} = fbMoves(from, to), key = x => x.party ? 'p:' + x.party + ':' + x.dir : x.g === 'part' || x.g === 'ivcap' || x.g === 'ivdraw' ? x.g : 'c:' + x.dir + ':' + (x.m.r.cat || x.g);
+  const G = fbGroup(R, key).sort((a, b) => b.amt - a.amt);
+  return {inG: G.filter(o => o.dir === 'in'), outG: G.filter(o => o.dir !== 'in')};
+}
+const fbTypeName = o => { const x = o.L[0]; return x.party ? fbName(o) : x.g === 'part' ? 'الشركاء' : x.g === 'ivcap' || x.g === 'ivdraw' ? 'المساهمين' : cName(x.m.r.cat); };
+function fbTypeRow(o, i, dir) {
+  const hm = hasMkv(), cust = o.L[0].m.src === 'pay' && o.L[0].m.r.kind === 'pay', ah = o.tr + o.ca + o.mk, me = o.me;
+  const badge = !hm ? '' : `<em class="fbg">${me && ah ? 'الاتنين' : ah ? MK_PN : 'منك'}</em>`;
+  const chips = !hm ? '' : cust ? [me && ah ? `<i class="fbp me">${fmtP(me)} منك</i>` : '', o.tr ? `<i class="fbp me">${fmtP(o.tr)} وصلتك</i>` : '', o.ca ? `<i class="fbp mk">${fmtP(o.ca)} فضلت معاه</i>` : ''].join('')
+    : me && ah ? `${fmtP(me)} منك · ${fmtP(ah)} من ${MK_PN}` : '';
+  return `<div class="fbr" data-g="${dir}:${i}" role="button" tabindex="0"><div class="fbm"><b>${esc(fbTypeName(o))}${badge}</b>${chips ? `<small>${chips}</small>` : ''}</div><b class="n ${dir}">${fmtP(o.amt)}</b></div>`;
+}
+const fbPer = () => cashMode === 'day' ? (!cashDay || cashDay === todayISO() ? 'النهارده' : cashDay === addDays(todayISO(), -1) ? 'امبارح' : 'يوم ' + fbSd(cashDay)) : cashMode === 'week' ? 'في الأسبوع' : cashMode === 'month' ? 'في الشهر' : 'في الفترة';
+function fbTypeHtml(T) {
+  const card = (id, title, L, dir) => `<section class="fbk" id="${id}"><div class="fbkh"><b>${title} ${fbPer()}</b><b class="n ${dir}">${fmtP(fbSum(L))}</b></div>
+    ${L.length ? L.map((o, i) => fbTypeRow(o, i, dir)).join('') : '<div class="kno">مفيش حركة</div>'}</section>`;
+  return `<div class="kss two">${card('fbIn', 'اتحصّل', T.inG, 'in')}${card('fbOut', 'اتدفع', T.outG, 'out')}</div>`;
+}
+/* نافذة سطر: كل الحركات اللي جواه، والدوس على حركة بيفتحها للتعديل */
+function fbSheet(title, sub, arr, open, dir) {
+  const tot = arr.reduce((n, m) => n + (dir ? m.amt : m.sign * m.amt), 0);
+  modal(`<div class="ksheet ksh-${dir || (tot < 0 ? 'out' : 'in')}"><div class="ksh2"><button class="kback" id="kshB" type="button" aria-label="رجوع">→</button><span>${esc(title)}<small>${esc(sub)} · ${arr.length} ${arr.length === 1 ? 'حركة' : arr.length === 2 ? 'حركتين' : 'حركات'}</small></span><b class="n">${fmtP(Math.abs(tot))}</b></div>
+    <div class="kits" id="kitsL"></div><button class="btn line" id="kshX" type="button">رجوع</button></div>`);
+  $('#kshX').onclick = $('#kshB').onclick = closeModal;
+  kitsDraw(arr, (m, i) => {
+    const bits = [dispDate(m.date), m.side === 'mkt' || isMkv(m.r.vault) ? MK_PN : m.r.type === 'tr' ? '' : vName(m.r.vault), (m.what || '').replace(/حركة السوق( — )?/, '').trim()].filter(Boolean);
+    return `<div class="kit" data-i="${i}" role="button" tabindex="0"><div><b>${esc(m.who)}</b><small>${esc(bits.join(' · '))}</small></div><b class="n">${dir ? '' : m.sign < 0 ? '− ' : '+ '}${fmtP(m.amt)}</b></div>`; }, open);
+}
 /* دفتر الخزنة بالتاريخ: لما الصفحة تترسم تاني لوحدها (مزامنة، حركة جت من جهاز تاني، رجوع من نافذة) السطر اللي قدامك
    بيفضل في مكانه بالظبط (بطلبه 17/10/2026: كانت بتنط ليوم قبله أو بعده أو لأول/آخر الصفحة). التنقل بإيدك (ldgScroll) مش بيتثبّت */
-const ldgKey = i => { const x = ldgItemsL[i]; return x && x.m && x.m.r ? x.m.r.id + '|' + (x.dir || '') : ''; };
 function ldgAnchor() {
-  const rows = $$('#ldg .ldr'), top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hh')) || 0;
+  const rows = $$('#fbL [data-ak]'), top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hh')) || 0;
   const el = rows.find(r => r.getBoundingClientRect().bottom > top + 1);
-  return el ? {k: ldgKey(+el.dataset.i), y: el.getBoundingClientRect().top} : null;
+  return el ? {k: el.dataset.ak, y: el.getBoundingClientRect().top} : null;
 }
 function ldgRestore(a) {
-  const el = $$('#ldg .ldr').find(r => ldgKey(+r.dataset.i) === a.k); if (!el) return;
+  const el = $$('#fbL [data-ak]').find(r => r.dataset.ak === a.k); if (!el) return;
   const d = el.getBoundingClientRect().top - a.y; if (Math.abs(d) < 1) return;
   let box = el.parentElement; while (box && box !== document.body && !(box.scrollHeight > box.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
   if (box && box !== document.body) box.scrollTop += d; else window.scrollBy(0, d);
@@ -4364,16 +4417,12 @@ function renderCash() {
     $('#cNew').onclick = () => { ensureVaults(); renderCash(); };
     return;
   }
-  const vs = vaultsAll().filter(v => !v.shut || vaultBal(v.id)), hasM = db.vaults.some(v => v.id === MKV && !v.del), mkB = hasM ? vaultBal(MKV) : 0, meB = vaultBal(''), total = meB + mkB;
-  if (cashVault && !vs.some(v => v.id === cashVault)) cashVault = '';
-  if (cashVault) { cashOpenV = true; ldgScope = 'me'; }
+  cashVault = ''; ldgScope = 'all'; ldgFilter = 'all';
+  const vs = vaultsAll().filter(v => !v.shut || vaultBal(v.id)), hasM = hasMkv(), mkB = hasM ? vaultBal(MKV) : 0, meB = vaultBal(''), total = meB + mkB;
   const [from, to] = cashRange(), t = todayISO(), nV = vs.length, dv = cashView === 'date';
-  const LD = dv ? ldgItems(from, to) : null;
-  const meTitle = cashVault ? `<span>🏭 حركة ${esc(vName(cashVault))} <a class="kclr" id="kAll">✕ كل خزني</a></span>` : '<span>🏭 حركتي</span>';
-  const me = dv ? {in: ldgSum(LD, 'in'), out: ldgSum(LD, 'out'), by: {}, html: ''} : kstHtml('me', meTitle, 'me', vaultMoves(cashVault, from, to).map(m => Object.assign(m, {mk: isMkRec(m.r)})), 'me');
-  const mk0 = hasM && !dv ? kstHtml('mk', '<span>🏪 حركة السوق</span>', 'mkt', vaultMoves(MKV, from, to).concat(mkXfers(from, to)), 'mk') : null;
-  const mk = mk0 && Object.keys(mk0.by).length ? mk0 : null;   // مفيش حركة سوق في الفترة = الكارت مبيظهرش
-  const tiles = vs.map(v => { const b = vaultBal(v.id); return `<div class="kv${cashVault === v.id ? ' on' : ''}${b < 0 ? ' neg' : ''}" data-v="${esc(v.id)}" role="button" tabindex="0"><span>${esc(v.name)}</span><b class="n" data-ck="c:v:${esc(v.id)}" data-cnt="${b}">${fmtP(b)}</b>${b < 0 ? '<a class="kfix">⚠ راجعها</a>' : v.shut ? '<a class="kshut">🔒 مقفولة، حوّل رصيدها</a>' : ''}</div>`; }).join('');
+  const D = dv ? fbDays(from, to) : null, T = dv ? null : fbTypeGroups(from, to), pend = hasM ? mkPending().length : 0;
+  const tiles = vs.map(v => { const b = vaultBal(v.id); return `<div class="kv${b < 0 ? ' neg' : ''}" data-v="${esc(v.id)}" role="button" tabindex="0"><span>${esc(v.name)}</span><b class="n" data-ck="c:v:${esc(v.id)}" data-cnt="${b}">${fmtP(b)}</b>${b < 0 ? '<a class="kfix">⚠ راجعها</a>' : v.shut ? '<a class="kshut">🔒 مقفولة، حوّل رصيدها</a>' : ''}</div>`; }).join('');
+  const perW = {day: 'لليوم', week: 'للأسبوع', month: 'للشهر'}[cashMode] || 'للفترة';
   pg.innerHTML = `
     <div class="cbar">
       <button class="btn green" id="cRecv" type="button" title="استلمت من عميل">💵 <span class="lg">استلمت من عميل</span><span class="sh">تحصيل</span></button>
@@ -4381,11 +4430,10 @@ function renderCash() {
       <button class="btn redf" id="cExp" type="button"><span class="lg">− </span>مصروف</button>
       <button class="btn gold" id="cInc" type="button"><span class="lg">+ </span>إيراد</button>
     </div>
-    <div class="kb${hasM ? ' two' : ''}">
-      <div class="kbme"><div class="kbm${cashOpenV ? ' on' : ''}" id="kMe" role="button" tabindex="0"><span>🏭 رصيد الخزن <i class="kch">▾</i><small>${cashOpenV ? 'دوس على خزنة تشوف حركتها' : 'الفلوس اللي معاك' + (nV > 1 ? ' · ' + (nV === 2 ? 'خزنتين' : nV + ' خزن') : '')}</small></span><b class="n${meB < 0 ? ' neg' : ''}" data-ck="c:me" data-cnt="${meB}">${fmtP(meB)}</b></div>
+    <div class="kb kf">
+      <div class="kbme"><div class="kfl">${hasM ? 'المصنع كله دلوقتي' : 'معاك دلوقتي'}</div><b class="n kfn${total < 0 ? ' neg' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)}</b>
+        <div class="kfc"><span class="kfme${nV > 1 ? ' tap' : ''}" id="kMe"${nV > 1 ? ' role="button" tabindex="0"' : ''}>معاك <b class="n${meB < 0 ? ' neg' : ''}" data-ck="c:me" data-cnt="${meB}">${fmtP(meB)}</b>${nV > 1 ? ` <i class="kch">▾</i>` : ''}</span>${hasM ? `<span class="kfmk" id="kMk">مع ${MK_PN} <b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></span>` : ''}</div>
         <div class="kvs"${cashOpenV ? '' : ' hidden'}>${tiles}</div></div>
-      ${hasM ? `<div class="kbk" id="kMk"><span>🏪 خزنة السوق<small>مع الشريك</small></span><b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></div>
-      <div class="kbt"><span>الإجمالي<small>خزني + السوق</small></span><b class="n${total < 0 ? ' neg' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)}</b></div>` : ''}
       <div class="ktools">
         <button class="btn line kmore" id="cMore" type="button" title="أدوات الخزنة" aria-label="أدوات الخزنة">⋯</button>
         <button class="btn line" id="cOpen2" type="button" title="عدّ الفلوس: اكتب الفلوس اللي معاك فعلاً">✎ <span>عدّ الفلوس</span></button>
@@ -4395,46 +4443,32 @@ function renderCash() {
       </div>
     </div>
     <div class="kvrow"><div class="seg s2" id="cView"><button type="button" data-v="type" class="${dv ? '' : 'on'}">بالنوع</button><button type="button" data-v="date" class="${dv ? 'on' : ''}">بالتاريخ</button></div><button type="button" class="ksrch" id="cSrch" title="دوّر في الخزنة" aria-label="دوّر في الخزنة">🔍</button></div>
-    ${dv && hasM ? `<div class="seg s3" id="ldgS">${[['all', 'المصنع كله'], ['me', 'خزني'], ['mk', 'عهدة ' + MK_PN]].map(([k, n]) => `<button type="button" data-v="${k}" class="${ldgScope === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
-    <div class="card${cashPickM ? ' pk' : ''}" id="cPer">
-      ${dv ? `<div class="seg s5" id="cMode">${LDG_MODES.map(([k, n]) => `<button type="button" data-m="${k}" class="${ldgMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>`
-        : `<div class="seg s4" id="cMode">${CASH_MODES.map(([k, n]) => `<button type="button" data-m="${k}" class="${cashMode === k || (k === 'range' && cashMode === 'year') ? 'on' : ''}">${n}</button>`).join('')}</div>`}
-      <div class="kpr">${(dv ? ldgMode : cashMode) === 'range' ? '' : `<div class="dnav"><button type="button" id="cPrev" title="السابق">›</button><span id="cNavL">${cashNavLabel()}</span><button type="button" id="cNext" title="التالي">‹</button></div>`}
-        ${(dv ? ldgMode !== 'range' && ldgEnd && ldgEnd !== t : cashMode === 'day' && cashDay && cashDay !== t) ? '<button type="button" class="ktoday" id="cToday">↺ النهارده</button>' : ''}
-        <button type="button" class="kmode" id="cModeB">${dv ? LDG_MODES.find(([k]) => k === ldgMode)[1] : (CASH_MODES.find(([k]) => k === cashMode) || CASH_MODES[3])[1]} <i class="kch">▾</i></button></div>
-      <div id="cPick"${(dv ? ldgMode : cashMode) === 'range' ? '' : ' class="pkh"'}>${dv ? (ldgMode === 'range' ? `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div>` : `<label class="cyr">لحد يوم <input class="inp" type="date" id="lEnd" value="${ldgEnd || t}"></label>`) : cashMode === 'day' || cashMode === 'week' ? `<input class="inp" type="date" id="cDay" value="${cashDay || t}">`
+    <div class="card" id="cPer">
+      <div class="seg s4" id="cMode">${CASH_MODES.map(([k, n]) => `<button type="button" data-m="${k}" class="${cashMode === k || (k === 'range' && cashMode === 'year') ? 'on' : ''}">${n}</button>`).join('')}</div>
+      ${cashMode === 'range' ? '' : `<div class="kpr"><div class="dnav"><button type="button" id="cPrev" title="السابق">›</button><span id="cNavL">${cashNavLabel()}</span><button type="button" id="cNext" title="التالي">‹</button></div>
+        ${cashMode === 'day' && cashDay && cashDay !== t ? '<button type="button" class="ktoday" id="cToday">↺ النهارده</button>' : ''}</div>`}
+      <div id="cPick"${cashMode === 'range' ? '' : ' class="pkh"'}>${cashMode === 'day' || cashMode === 'week' ? `<input class="inp" type="date" id="cDay" value="${cashDay || t}">`
         : cashMode === 'month' ? `<input class="inp" type="month" id="cMonth" value="${cashMonth || t.slice(0, 7)}">`
         : cashMode === 'year' ? `<input class="inp num" id="cYear" inputmode="numeric" value="${cashYear || t.slice(0, 4)}">`
         : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div><label class="cyr">أو سنة كاملة <input class="inp num" id="cYr" inputmode="numeric" placeholder="${t.slice(0, 4)}" value="${from.slice(5) === '01-01' && to === from.slice(0, 4) + '-12-31' ? from.slice(0, 4) : ''}"></label>`}</div>
-    ${dv ? `<div class="ksum"><table>
-      <tr><th>البيان</th><th>${dv && hasM && ldgScope !== 'me' ? (ldgScope === 'all' ? 'المصنع كله' : 'عهدة ' + MK_PN) : cashVault ? esc(vName(cashVault)) : 'الخزنة'}</th>${mk0 ? '<th class="mk">السوق</th>' : ''}</tr>
-      <tr class="in"><td>⬇ داخل</td><td class="n m">${fmtP(me.in)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.in)}</td>` : ''}</tr>
-      <tr class="out"><td>⬆ خارج</td><td class="n m">${fmtP(me.out)}</td>${mk0 ? `<td class="n k">${fmtP(mk0.out)}</td>` : ''}</tr>
-      <tr class="net"><td>الصافي</td><td class="n m${me.in < me.out ? ' neg' : ''}">${fmtP(me.in - me.out)}</td>${mk0 ? `<td class="n k${mk0.in < mk0.out ? ' neg' : ''}">${fmtP(mk0.in - mk0.out)}</td>` : ''}</tr></table></div>` : ''}
     </div>
-    ${dv ? ldgHtml(LD) : `<div class="kss${mk ? ' two' : ''}">${me.html}${mk ? mk.html : ''}</div>`}
+    ${pend ? `<a class="ldpend" href="#mkt">📥 فيه ${pend} ${pend === 1 ? 'حركة' : pend === 2 ? 'حركتين' : 'حركات'} من ${MK_PN} لسه في الوارد ومش محسوبة هنا</a>` : ''}
+    ${dv ? `<button type="button" class="btn gold fbpdf" id="ldgPdf">📄 ورقة الدفتر PDF ${perW}</button><div id="fbL">${fbDateHtml(D)}</div>` : fbTypeHtml(T)}
     `;
   const tap = (el, f) => { el.onclick = f; el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); f(ev); } }; };
-  tap($('#kMe'), () => { cashOpenV = !cashOpenV; if (!cashOpenV) cashVault = ''; renderCash(); });
-  $$('#p-cash .kv').forEach(el => tap(el, () => {
-    cashVault = cashVault === el.dataset.v ? '' : el.dataset.v; ldgScope = 'me'; renderCash();
-    if (cashVault) { const k = $('#kst-me'); if (k && k.scrollIntoView) k.scrollIntoView({behavior: 'smooth', block: 'start'}); }
-  }));
-  $$('#p-cash .kfix').forEach(a => a.onclick = ev => { ev.stopPropagation(); openingModal(); });
-  $$('#p-cash .kshut').forEach(a => a.onclick = ev => { ev.stopPropagation(); cashVault = a.closest('.kv').dataset.v; txModal('tr'); });
-  if ($('#kAll')) $('#kAll').onclick = ev => { ev.stopPropagation(); cashVault = ''; renderCash(); };
   const open = m => {
-    if (m.parts) return m.side === 'mkt' ? cashTypeSheet('حركة السوق', 'col', m.parts, open) : cashTypeSheet('حركتي', 'mkcol', m.parts, open);   // دفعة مجمّعة من عميل سوق: أجزاءها وكل جزء بيتفتح لوحده
+    if (m.parts) return fbSheet(m.who, cashPerTxt(), m.parts, open, 'in');
     const op = isMkRec(m.r) && mkDb().ops[m.r.id.slice(5)];   // حركة جاية من الشريك: نافذتها فيها "دي دفعة لمورد" للمصروف
     if (op && MK_T[op.t] && (m.side === 'mkt' || op.t === 'exp')) return mkOpMenu(op);
     if (m.src === 'tx') m.r.pt ? partnerTxModal(m.r) : m.r.iv && ivGet(m.r.iv) ? ivTxModal(m.r) : txModal(m.r.type, m.r); else { const p = P.get(m.r.party); if (p) payModal(p, m.r.kind, m.r); }
   };
+  const openG = (o, title) => o.L.length === 1 ? open(o.L[0].m) : fbSheet(title, cashPerTxt(), o.L.map(x => x.m).sort((a, b) => b.date.localeCompare(a.date) || b.at - a.at), open, o.dir === 'in' ? 'in' : 'out');
+  if (nV > 1) tap($('#kMe'), () => { cashOpenV = !cashOpenV; renderCash(); });
+  /* الدوس على خزنة بيفتح حركاتها في الفترة في نافذة (الشاشة نفسها مبتتغيرش) */
+  $$('#p-cash .kv').forEach(el => tap(el, () => fbSheet(vName(el.dataset.v), cashPerTxt(), vaultMoves(el.dataset.v, from, to), open)));
+  $$('#p-cash .kfix').forEach(a => a.onclick = ev => { ev.stopPropagation(); openingModal(); });
+  $$('#p-cash .kshut').forEach(a => a.onclick = ev => { ev.stopPropagation(); cashVault = a.closest('.kv').dataset.v; txModal('tr'); });
   tap($('#cSrch'), () => cashSearch(open));
-  $$('#ldgS button').forEach(b => b.onclick = () => { ldgScope = b.dataset.v; cashVault = ''; cashOpenV = false; ldgScroll = true; renderCash(); });
-  $$('#p-cash .kty').forEach(el => tap(el, () => {
-    const [key, k] = el.dataset.k.split(':'), s = key === 'mk' ? mk : me;
-    cashTypeSheet(key === 'mk' ? 'حركة السوق' : cashVault ? 'حركة ' + vName(cashVault) : 'حركتي', k, s.by[k], open, key === 'me' && !cashVault && nV > 1);
-  }));
   $('#cRecv').onclick = () => pickParty('pay');
   $('#cPayS').onclick = () => pickParty('ppay');
   $('#cExp').onclick = () => txModal('exp');
@@ -4442,29 +4476,32 @@ function renderCash() {
   $('#cTr').onclick = () => txModal('tr');
   $$('#cView button').forEach(b => b.onclick = () => {
     if (b.dataset.v === cashView) return;
-    cashView = b.dataset.v; cashPickM = false; ldgScroll = cashView === 'date';
+    cashView = b.dataset.v; ldgScroll = cashView === 'date';
     try { localStorage.setItem('fo_cash_view', cashView); } catch (e) {}
     renderCash();
   });
   $$('#cMode button').forEach(b => b.onclick = () => {
-    if (dv) { if (b.dataset.m === 'range' && ldgMode !== 'range') [ldgFrom, ldgTo] = ldgRange(); ldgMode = b.dataset.m; cashPickM = false; ldgScroll = true; return renderCash(); }
-    if (b.dataset.m === 'range' && cashMode !== 'range') { [cashFrom, cashTo] = cashRange(); } cashMode = b.dataset.m; cashPickM = false; renderCash(); });
-  $('#cModeB').onclick = () => { cashPickM = !cashPickM; $('#cPer').classList.toggle('pk', cashPickM); };
-  if ($('#cToday')) $('#cToday').onclick = () => { if (dv) { ldgEnd = ''; ldgScroll = true; } else cashDay = ''; renderCash(); };
-  if ($('#cPrev')) { $('#cPrev').onclick = () => cashStep(-1); $('#cNext').onclick = () => cashStep(1); }
-  const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); renderCash(); }; };
+    if (b.dataset.m === 'range' && cashMode !== 'range') { [cashFrom, cashTo] = cashRange(); }
+    if (b.dataset.m === 'day' && cashMode !== 'day') cashDay = '';
+    cashMode = b.dataset.m; ldgScroll = true; renderCash(); });
+  if ($('#cNavL')) $('#cNavL').onclick = () => $('#cPer').classList.toggle('pk');
+  if ($('#cToday')) $('#cToday').onclick = () => { cashDay = ''; ldgScroll = true; renderCash(); };
+  if ($('#cPrev')) { $('#cPrev').onclick = () => { ldgScroll = true; cashStep(-1); }; $('#cNext').onclick = () => { ldgScroll = true; cashStep(1); }; }
+  const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); ldgScroll = true; renderCash(); }; };
   bindI('#cDay', v => cashDay = v); bindI('#cMonth', v => cashMonth = v); bindI('#cYear', v => cashYear = normDigits(v).replace(/\D/g, '').slice(0, 4));
-  bindI('#cFrom', v => dv ? ldgFrom = v : cashFrom = v); bindI('#cTo', v => dv ? ldgTo = v : cashTo = v);
-  bindI('#lEnd', v => { ldgEnd = v >= t ? '' : v; ldgScroll = true; });
+  bindI('#cFrom', v => cashFrom = v); bindI('#cTo', v => cashTo = v);
   bindI('#cYr', v => { const y = normDigits(v).replace(/\D/g, '').slice(0, 4); if (y.length === 4) { cashFrom = y + '-01-01'; cashTo = y + '-12-31'; } });
   if (dv) {
-    $$('#ldgF button').forEach(b => b.onclick = () => { ldgFilter = b.dataset.v; renderCash(); });
-    $$('#ldg .ldr').forEach(el => tap(el, () => open(ldgItemsL[+el.dataset.i].m)));
-    $('#ldgSumB').onclick = () => { ldgSumOpen = !ldgSumOpen; renderCash(); };
-    $$('#ldgSum .kty').forEach(el => tap(el, () => { const g = ldgGroups(LD).find(x => x.key === el.dataset.sk); if (g) cashTypeSheet(ldgTitle(), g.k, g.arr.slice().reverse(), open, !cashVault && nV > 1, g.nm); }));
-    $('#ldgPdf').onclick = () => exportReport(ldgReport(LD, from, to), 'preview');
+    $$('#fbL .fbr').forEach(el => tap(el, () => { const [i, j] = el.dataset.r.split(':').map(Number), o = D[i].rows[j]; openG(o, fbName(o)); }));
+    $$('#fbL .fbx').forEach(el => tap(el, () => {
+      const [i, k] = el.dataset.x.split(':'), o = D[+i], arr = k === 'adj' ? o.A : o.X.filter(x => k === 'out' ? x.k === 'give' : x.k !== 'give');
+      fbSheet(k === 'adj' ? 'تسوية جرد' : k === 'out' ? 'إديت ' + MK_PN : 'وصلك من ' + MK_PN, AR_DAYS[dowOf(o.d)] + ' ' + fbSd(o.d), arr.map(x => x.m), open, k === 'adj' ? '' : 'in');
+    }));
+    $('#ldgPdf').onclick = () => exportReport(ldgReport(ldgItems(from, to), from, to), 'preview');
     ldgScroll = false;
     if (anc) ldgRestore(anc);
+  } else {
+    $$('#p-cash .fbk .fbr').forEach(el => tap(el, () => { const [dir, i] = el.dataset.g.split(':'), o = (dir === 'in' ? T.inG : T.outG)[+i]; openG(o, fbTypeName(o)); }));
   }
   $('#cSet').onclick = vaultSettings;
   $('#cPart').onclick = () => go('part');

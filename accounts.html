@@ -4379,23 +4379,6 @@ function fbTypeRow(o, i, dir) {
   return `<div class="fbr" data-g="${dir}:${i}" role="button" tabindex="0"><div class="fbm"><b>${esc(fbTypeName(o))}${badge}</b>${chips ? `<small>${chips}</small>` : ''}</div><b class="n ${dir}">${fmtP(o.amt)}</b></div>`;
 }
 const fbPer = () => cashMode === 'day' ? (!cashDay || cashDay === todayISO() ? 'النهارده' : cashDay === addDays(todayISO(), -1) ? 'امبارح' : 'يوم ' + fbSd(cashDay)) : cashMode === 'week' ? 'في الأسبوع' : cashMode === 'month' ? 'في الشهر' : 'في الفترة';
-/* كارت أحمد في "بالنوع": حصّل كام، صرف كام، وصلك كام، والباقي معاه */
-function fbAhmed(from, to) {
-  const {R, X} = fbMoves(from, to);
-  const col = fbSum(R, x => x.dir === 'in' && x.party && (x.part === 'ca' || x.part === 'tr')), cs = fbSum(R, x => x.dir === 'in' && x.side === 'mk' && !x.party);
-  const sp = fbSum(R, x => x.dir !== 'in' && x.side === 'mk'), tr = fbSum(X, x => x.k === 'tr'), ha = fbSum(X, x => x.k === 'hand'), gv = fbSum(X, x => x.k === 'give');
-  return {col, cs, got: col + cs, sp, tr, ha, gv, now: vaultBal(MKV)};
-}
-function fbAhmedHtml(from, to, pend) {
-  if (!hasMkv()) return '';
-  const a = fbAhmed(from, to), ln = (t, v, c, s) => `<div class="fah"><span>${t}${s ? `<small>${s}</small>` : ''}</span><b class="n ${c || ''}">${fmtP(v)}</b></div>`;
-  return `<section class="fbk fak" id="fbAh"><div class="fbkh"><b>${MK_PN} ${fbPer()}</b>${pend ? `<em class="fbg">و ${pend} لسه في الوارد</em>` : ''}</div>
-    ${ln('حصّل', a.got, 'in', [a.col ? fmtP(a.col) + ' من العملا' : '', a.cs ? fmtP(a.cs) + ' بيع نقدي' : ''].filter(Boolean).join(' · '))}
-    ${ln('صرف', a.sp, 'out')}
-    ${ln('وصلك منه', a.tr + a.ha, '', [a.tr ? fmtP(a.tr) + ' تحويل' : '', a.ha ? fmtP(a.ha) + ' كاش' : ''].filter(Boolean).join(' · '))}
-    ${a.gv ? ln('إديته', a.gv) : ''}
-    <div class="fah fan"><span>معاه دلوقتي</span><b class="n">${fmtP(a.now)}</b></div></section>`;
-}
 function fbTypeHtml(T) {
   const card = (id, title, L, dir) => `<section class="fbk" id="${id}"><div class="fbkh"><b>${title} ${fbPer()}</b><b class="n ${dir}">${fmtP(fbSum(L))}</b></div>
     ${L.length ? L.map((o, i) => fbTypeRow(o, i, dir)).join('') : '<div class="kno">مفيش حركة</div>'}</section>`;
@@ -4470,7 +4453,7 @@ function renderCash() {
         : `<div class="g2"><input class="inp" type="date" id="cFrom" value="${from}"><input class="inp" type="date" id="cTo" value="${to}"></div><label class="cyr">أو سنة كاملة <input class="inp num" id="cYr" inputmode="numeric" placeholder="${t.slice(0, 4)}" value="${from.slice(5) === '01-01' && to === from.slice(0, 4) + '-12-31' ? from.slice(0, 4) : ''}"></label>`}</div>
     </div>
     ${pend ? `<a class="ldpend" href="#mkt">📥 فيه ${pend} ${pend === 1 ? 'حركة' : pend === 2 ? 'حركتين' : 'حركات'} من ${MK_PN} لسه في الوارد ومش محسوبة هنا</a>` : ''}
-    ${dv ? `<button type="button" class="btn gold fbpdf" id="ldgPdf">📄 ورقة الدفتر PDF ${perW}</button><div id="fbL">${fbDateHtml(D)}</div>` : (window.AH_CARD ? fbAhmedHtml(from, to, pend) : '') + fbTypeHtml(T)}
+    ${dv ? `<button type="button" class="btn gold fbpdf" id="ldgPdf">📄 ورقة الدفتر PDF ${perW}</button><div id="fbL">${fbDateHtml(D)}</div>` : fbTypeHtml(T)}
     `;
   const tap = (el, f) => { el.onclick = f; el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); f(ev); } }; };
   const open = m => {
@@ -5325,7 +5308,8 @@ function buildReport() {
       sum: [['باع', fmtP(S)], ...(T('ret') || T('oth') ? [['  فواتير', fmtP(T('inv'))], ...(T('ret') ? [['  مرتجع', '− ' + fmtP(T('ret'))]] : []), ...(T('oth') ? [['  خصم وتسويات', (T('oth') < 0 ? '− ' : '+ ') + fmtP(Math.abs(T('oth')))]] : [])] : []),
         ['حصّل', fmtP(C)], ...(T('ah') && T('ah') !== C ? [[`  ${MK_PN} حصّل`, fmtP(T('ah'))], ['  انت حصّلت', fmtP(C - T('ah'))]] : []),
         [d > 0 ? 'عملاء السوق زادوا' : d < 0 ? 'عملاء السوق قلّوا' : 'عملاء السوق زي ما هم', fmtP(Math.abs(d)), 'sub'],
-        ['كان عليهم أول الفترة', fmtP(all0)], ...(pend ? [[`⚠ ${pend} ${pend === 1 ? 'حركة' : pend === 2 ? 'حركتين' : 'حركات'} لسه في الوارد ومش محسوبة`, '']] : [])],
+        ['كان عليهم أول الفترة', fmtP(all0)]],
+      warn: pend ? `⚠ ${pend} ${pend === 1 ? 'حركة' : pend === 2 ? 'حركتين' : 'حركات'} من ${MK_PN} لسه في الوارد ومش محسوبة هنا` : '',   // على الشاشة بس، مش في الـ PDF
       fin: ['عليهم آخر الفترة', fmtP(all1)]};
   }
   /* المبيعات أو المشتريات بالصنف (المرتجع بيتخصم) */
@@ -5360,7 +5344,7 @@ function renderReports() {
   const needRange = repKind === 'ah' || repKind === 'cash' || repKind === 'item' || repKind === 'profit';
   const jw = isWide() ? 0 : ivWaiting();
   $('#p-rep').innerHTML = (isWide() ? '' : `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b></div><div class="tstrip"><button class="btn line sm" id="rpJrd" type="button">📦 الجرد والمساهمون${jw ? ` (${jw})` : ''}</button></div>`) + `
-    <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف'], ...(window.AH_CARD ? [['ah', MK_PN]] : [])].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف'], ['ah', MK_PN]].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="card">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'col' ? `<div class="seg s2" id="rpCM">${[['week', 'أسبوعي'], ['month', 'شهري']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repColMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
@@ -5376,6 +5360,7 @@ function renderReports() {
     ${repKind === 'profit' ? profitChart(R.rows) : ''}
     ${R.rows.some(r => !r.empty) ? `<div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''} ${repKind === 'profit' ? 'pft' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
       ${R.rows.filter(r => !r.empty).map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
+    ${R.warn ? `<a class="ldpend" href="#mkt">${esc(R.warn)}</a>` : ''}
     <div class="card" style="margin-top:10px">${R.sum.map(([a, b, st]) => `<div class="bl ${st || ''}"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
     <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>
     <div class="mrow3" style="margin-top:10px;grid-template-columns:1fr 1fr"><button class="btn green" id="rpShare" type="button">📲 ابعت PDF واتساب</button><button class="btn gold" id="rpPdf" type="button">معاينة / تنزيل PDF</button></div>`;

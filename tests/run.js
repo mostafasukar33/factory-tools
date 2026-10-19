@@ -2396,7 +2396,9 @@ const T0 = Date.now();
     sec('١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);
     {   // فحص البيانات (lib/doctor.js): البيانات السليمة مفيهاش غلط، وكل غلطة بنحطها بقصد بيمسكها، ومبيغيّرش حاجة
-      const R = await A.evaluate(async () => {
+      /* بيشتغل في الصفحة بـ bg (من غير ما نستنى الـ Promise من بره): كان بيقع ساعات بـ "Execution context was destroyed"
+         من غير أي تنقل (الصفحة بتكمّل لآخرها سليمة)، زي المزامنة اللي فوق بالظبط */
+      const R = await bg(A, '(' + (async () => {
         window.__st = 'a'; await drLoad(); window.__st = 'b'; clearTimeout(drT);
         const clean = await docRun(true); window.__st = 'c'; const keep = JSON.stringify(db), out = {cleanBad: clean.bad.map(x => x.t), txt: docText(clean, 'x').includes('كله سليم') || !!clean.warn.length};
         const p = liveParties()[0], v = vaultsAll()[0], d = '2026-11-01', at = nowS();
@@ -2420,7 +2422,8 @@ const T0 = Date.now();
         out.same = after === keep;
         db = JSON.parse(keep); reindex(); delete db.cfg.doc; flushSave(); renderHome();
         return out;
-      });
+      }) + ')()');
+      if (typeof R === 'string') throw new Error(R);
       eq('فحص البيانات: البيانات التجريبية السليمة مفيهاش غلط أكيد', R.cleanBad, []);
       eq('فحص البيانات: مسك كل غلطة اتحطت بقصد', R.kinds, ['cat', 'date', 'neg', 'payamt', 'sc', 'trself', 'twin']);
       eq('فحص البيانات: لو حسبة الرصيد باظت بيكشفها (الخزنة والعميل)', R.broke, ['bal2', 'vb2']);

@@ -7,6 +7,7 @@ node tests/run.js --only=mkt    # حركة السوق (حوالي دقيقة و�
 node tests/run.js --only=acc    # كل حاجة ما عدا السوق (حوالي دقيقة)
 node tests/run.js --only=smoke  # تعديل شكل بس: الصفحات بتفتح من غير أخطاء (حوالي 15 ثانية)
 node tests/run.js --changed --dry   # يقول هيشغّل إيه بس
+node tests/speed.js             # السرعة: حسابات كبيرة على معالج أبطأ 4 مرات (حوالي نص دقيقة، --changed بيشغّله مع الحسابات وlib)
 ```
 
 ## صور الشاشات قبل وبعد (`shots.js`)

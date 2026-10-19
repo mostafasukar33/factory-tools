@@ -1984,7 +1984,8 @@ async function showLock(msg) {
   let busy = false, tm = 0;
   /* silent = فتح تلقائي أثناء الكتابة: لو كلمة السر لسه ناقصة أو غلط مفيش رسالة ولا مسح */
   const go = async (silent, pwIn) => {
-    const pw = pwIn || $('#lkP').value; if (!pw || busy) return;
+    if (busy || !$('#lkP')) return;   // الفتح التلقائي بعد نص ثانية ممكن ييجي بعد ما اتفتح بالزرار والخانة اتشالت
+    const pw = pwIn || $('#lkP').value; if (!pw) return;
     busy = true;
     if (!silent) { $('#lkGo').disabled = true; $('#lkErr').textContent = '⏳ بفتح…'; }
     try {

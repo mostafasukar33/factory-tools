@@ -142,7 +142,7 @@ function changedModes() {
     else if (f === 'market.html' || f === 'market.webmanifest') m = 'mkt';
     else if (f === 'cash.html') m = 'acc';
     else if (f === 'payroll.html' || f === 'payroll.webmanifest' || f === 'tests/payroll.js') m = 'payroll';
-    else if (/^(tests\/(run|gasmock)\.js|lib\/|sw\.js|fonts\/)/.test(f)) m = 'full';
+    else if (/^(tests\/(run|gasmock|speed)\.js|lib\/|sw\.js|fonts\/)/.test(f)) m = 'full';
     else if (/\.(html|webmanifest)$/.test(f) || /^(icons|calculator)\//.test(f)) m = 'smoke';
     if (m) { modes.add(m); why.push(`${f} → ${m}`); }
   }
@@ -162,6 +162,11 @@ if (MODES.includes('payroll')) {
   MODES = MODES.filter(m => m !== 'payroll');
   if (r.status) process.exit(r.status);
   if (!MODES.length) process.exit(0);
+}
+/* اختبار السرعة (tests/speed.js، ~نص دقيقة): في --changed لما الحسابات أو lib أو الاختبارات تتغير (GitHub بيشغّله دايماً بعد الرفع) */
+if (process.argv.includes('--changed') && !process.argv.includes('--dry') && MODES.some(m => m === 'full' || m === 'acc')) {
+  console.log('\n— السرعة: node tests/speed.js —');
+  if (spawnSync(process.execPath, [path.join(__dirname, 'speed.js')], {stdio: 'inherit'}).status) fails++;
 }
 if (process.argv.includes('--changed') && !MODES.length) { console.log('\n✔ مفيش اختبار مطلوب للتغيير ده'); process.exit(0); }
 if (!MODES.length || MODES.includes('full') || (MODES.includes('acc') && MODES.includes('mkt'))) MODES = ['full'];

@@ -423,52 +423,37 @@ const T0 = Date.now();
       saveDB(); window.__ldg = {E, mk, v2, ids: [pc, pm, ps], hasMk};
       return hasMk;
     });
-    const ldgOpen = (js) => A.evaluate(js => { cashView = 'date'; ldgScope = 'me'; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; ldgSumOpen = false; cashVault = ''; cashOpenV = false; cashPickM = false; go('cash'); renderCash(); return eval(js); }, js);
-    eq('دفتر الخزنة بالتاريخ: الأيام الأحدث فوق، التحويل بين خزنتين وتسوية الجرد مش ظاهرين، والاستلام من السوق ظاهر، وعميل السوق سطر مجمّع', await ldgOpen(`(() => {
-      const ds = [...$$('#ldg .ldd')].map(x => x.dataset.d), tx = $('#ldg').textContent;
-      return [ds.join(), !tx.includes('تحويل:'), !tx.includes('جرد تجربة الدفتر'), window.__ldg.hasMk ? tx.includes('كاش من شريك السوق') : true, tx.includes('عميل سوق دفتر تجربة حوّلك'), !!$('#cView button.on') && $('#cView button.on').dataset.v === 'date', !$('#kst-me'), !tx.includes('رصيد')];
-    })()`), ['2001-03-03,2001-03-02,2001-03-01', true, true, true, true, true, true, true]);
-    eq('دفتر الخزنة: إجمالي الداخل والخارج = كارت حركتي "بالنوع" (من غير خزنة ومع خزنة مختارة)', await A.evaluate(() => {
-      const r = []; for (const v of ['', 'v_ldg2']) {
-        cashVault = v; cashView = 'type'; const k = kstHtml('me', '', 'me', vaultMoves(v, '2001-03-01', '2001-03-03').map(m => Object.assign(m, {mk: isMkRec(m.r)})), 'me');
-        const L = ldgItems('2001-03-01', '2001-03-03'); r.push(ldgSum(L, 'in') === k.in && ldgSum(L, 'out') === k.out && k.in > 0 && k.out > 0);
-      }
-      cashVault = ''; cashView = 'date'; return r; }), [true, true]);
-    if (ldgSetup) {
-      eq('دفتر المصنع كله: التسليم من أحمد والتحويلات مش ظاهرين، تحصيل عميل السوق سطر واحد (كاش أحمد + تحويلي)، ومصروف أحمد خارج، والصافي = زيادة خزني + عهدة أحمد', await A.evaluate(() => {
-        cashView = 'date'; ldgScope = 'all'; cashVault = ''; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; go('cash'); renderCash();
-        const L = ldgItems('2001-03-01', '2001-03-03'), tx = $('#ldg').textContent, adj = db.txs.filter(t => !t.del && ADJ_CATS.has(t.cat) && t.date >= '2001-03-01' && t.date <= '2001-03-03').reduce((n, t) => n + (t.type === 'inc' ? t.amt : -t.amt), 0);
-        const bal = d => vaultBal('', d) + vaultBal('v_mkt', d), col = L.filter(x => x.m.who === 'عميل سوق دفتر تجربة');
-        return [!tx.includes('كاش من شريك السوق') && !L.some(x => x.m.r.type === 'tr'), col.length === 1 && col[0].m.amt === 300000 && col[0].dir === 'in', L.some(x => x.m.r.note === 'بنزين دفتر تجربة' && x.dir === 'out'),
-          ldgSum(L, 'in') - ldgSum(L, 'out') === bal('2001-03-04') - bal('2001-03-01') - adj, $('#ldg .ldtt').textContent.includes('المصنع كله'), $('#ldgS button.on').dataset.v === 'all']; }), [true, true, true, true, true, true]);
-      eq('دفتر عهدة أحمد = كارت حركة السوق، والزراير التلاتة (المصنع كله / خزني / عهدة أحمد) بتغيّر الدفتر، ومربعات الرصيد مبتغيّرهوش', await A.evaluate(() => {
-        $('#ldgS button[data-v=mk]').click(); const r = [ldgScope, $('#ldgS button.on').textContent.includes('عهدة')];
-        cashView = 'type'; const k = kstHtml('mk', '', 'mkt', vaultMoves('v_mkt', '2001-03-01', '2001-03-03').concat(mkXfers('2001-03-01', '2001-03-03')), 'mk'); cashView = 'date';
-        const L = ldgItems('2001-03-01', '2001-03-03'); r.push(ldgSum(L, 'in') === k.in && ldgSum(L, 'out') === k.out);
-        renderCash(); $('#ldgS button[data-v=me]').click(); r.push(ldgScope, $('#ldg .ldtt').textContent.includes('دفتري')); $('#ldgS button[data-v=all]').click(); r.push(ldgScope);
-        $('#kMe').click(); r.push(ldgScope, cashOpenV); $('#kMe').click(); return r; }), ['mk', true, true, 'me', true, 'all', 'all', true]);
-    }
-    eq('دفتر الخزنة: سطر "بدأ بـ · قفل على" تحت كل يوم = الرصيد الحقيقي أول اليوم وآخره، في المصنع كله وخزني وعهدة أحمد', await A.evaluate(() => {
-      const r = []; for (const sc of ['all', 'me', 'mk']) {
-        cashView = 'date'; ldgScope = sc; cashVault = ''; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; go('cash'); renderCash();
-        const bal = d => ldgSc() === 'all' ? vaultBal('', d) + vaultBal('v_mkt', d) : ldgSc() === 'mk' ? vaultBal('v_mkt', d) : vaultBal('', d);
-        r.push([...$$('#ldg .ldd')].every(el => { const b = el.querySelector('.ldbal'); return b && +b.dataset.b0 === bal(el.dataset.d) && +b.dataset.b1 === bal(addDays(el.dataset.d, 1)) && b.textContent.includes(fmtP(bal(el.dataset.d))); }) && $$('#ldg .ldd').length > 0);
-      }
-      ldgScope = 'me'; return r; }), [true, true, true]);
-    eq('دفتر الخزنة بالتاريخ: جوه اليوم الداخل فوق والخارج تحته وبينهم خط، في الشاشة والـ PDF', await A.evaluate(() => {
-      cashView = 'date'; ldgScope = 'me'; cashVault = ''; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; go('cash'); renderCash();
-      const days = [...$$('#ldg .ldd')], ok = days.every(d => { const k = [...d.children].filter(e => e.matches('.ldr,.ldsep')).map(e => e.matches('.ldsep') ? '|' : ldgItemsL[+e.dataset.i].dir === 'in' ? 'i' : 'o').join(''); return /^i*(\|o+)?$|^o*$/.test(k) && (k.includes('i') && k.includes('o')) === k.includes('|'); });
+    const ldgOpen = (js) => A.evaluate(js => { cashView = 'date'; cashMode = 'range'; cashFrom = '2001-03-01'; cashTo = '2001-03-03'; cashOpenV = false; go('cash'); renderCash(); return eval(js); }, js);
+    const ldgGo = () => { cashView = 'date'; cashMode = 'range'; cashFrom = '2001-03-01'; cashTo = '2001-03-03'; cashOpenV = false; ldgScroll = false; go('cash'); renderCash(); };
+    eq('الخزنة بالتاريخ: الأيام الأحدث فوق، التحويل بين خزنتين مش ظاهر وتسوية الجرد سطر رمادي، وعميل السوق سطر واحد، ومفيش زراير المصنع كله/خزني/عهدة أحمد', await ldgOpen(`(() => {
+      const ds = [...$$('#fbL .fbd')].map(x => x.dataset.d), tx = $('#fbL').textContent, d2 = $('#fbL .fbd[data-d="2001-03-02"]');
+      const rows = [...d2.querySelectorAll('.fbr')].filter(r => r.textContent.includes('عميل سوق دفتر تجربة'));
+      return [ds.join(), !tx.includes('تحويل:'), !tx.includes('جرد تجربة الدفتر'), d2.textContent.includes('تسوية جرد'), rows.length, !$('#ldgS'), !$('#ldgF'), !$('#cPer .ksum'), $('#cView button.on').dataset.v];
+    })()`), ['2001-03-03,2001-03-02,2001-03-01', true, true, true, 1, true, true, true, 'date']);
+    eq('الخزنة بالتاريخ: وارد ومنصرف كل يوم = ورقة الدفتر بالظبط (بطريقتين)، و"قفل اليوم" = الرصيد الحقيقي وراكب ✓', await ldgOpen(`(() => {
+      const bal = d => vaultBal('', d) + (window.__ldg.hasMk ? vaultBal('v_mkt', d) : 0), L = ldgItems('2001-03-01', '2001-03-03'), D = fbDays('2001-03-01', '2001-03-03');
+      return [D.every(o => o.none || (o.in === ldgSum(L.filter(x => x.m.date === o.d), 'in') && o.out === ldgSum(L.filter(x => x.m.date === o.d), 'out'))),
+        $$('#fbL .fbd').length === 3 && [...$$('#fbL .fbd')].every(el => +el.querySelector('.fbf [data-b1]').dataset.b1 === bal(addDays(el.dataset.d, 1)) && el.querySelector('.fbh').textContent.includes(fmtP(bal(el.dataset.d))) && !el.querySelector('.fbf.bad')),
+        D.filter(o => !o.none).every(o => o.ok)];
+    })()`), [true, true, true]);
+    if (ldgSetup) eq('الخزنة بالتاريخ: تسليم أحمد سطر رمادي "وصلك من أحمد" مش وارد ولا منصرف، وعميل السوق مكتوب تحته منك ومعاه، ومصروف أحمد منصرف وعليه اسمه', await ldgOpen(`(() => {
+      const d3 = $('#fbL .fbd[data-d="2001-03-03"]'), x = d3.querySelector('.fbx'), c = [...$$('#fbL .fbr')].find(r => r.textContent.includes('عميل سوق دفتر تجربة')), b = [...d3.querySelectorAll('.fbr')].find(r => r.textContent.includes('بنزين دفتر تجربة'));
+      return [!!x && x.textContent.includes('وصلك من أحمد') && x.textContent.includes('كاش') && x.querySelector('.n').textContent === '770', c.querySelector('small').textContent, !!b && !!b.querySelector('td:last-child .n.out') && b.querySelector('small').textContent.includes('أحمد')];
+    })()`), [true, 'منك 1,000 · أحمد · 2,000 فضلت معاه', true]);
+    eq('الخزنة بالتاريخ: جوه اليوم الوارد فوق والمنصرف تحته وبينهم خط، في الشاشة والـ PDF', await A.evaluate(ldgGo => {
+      eval('(' + ldgGo + ')')();
+      const days = [...$$('#fbL .fbd')], ok = days.every(d => { const k = [...d.querySelectorAll('.fbr')].map(r => (r.classList.contains('fbs') ? '|' : '') + (r.querySelector('td:nth-child(2) .n') ? 'i' : 'o')).join(''); return /^i*(\|o+)?$|^o*$/.test(k) && (k.includes('i') && k.includes('o')) === k.includes('|'); });
       const R = ldgReport(ldgItems('2001-03-01', '2001-03-03'), '2001-03-01', '2001-03-03'), seq = R.rows.map(r => r.grp ? 'g' : r.cls.includes('sep') ? 'S' : r.cls.startsWith('pay') ? 'i' : 'o').join('');
-      return [days.some(d => d.querySelector('.ldsep')), ok, !/o[iS]/.test(seq.replace(/g/g, ' ').split(' ').join('|')) && seq.split('g').every(s => /^i*(So*)?$|^o*$/.test(s))]; }), [true, true, true]);
-    eq('دفتر الخزنة بالتاريخ: لما الصفحة تترسم تاني (حركة جديدة فوق) السطر اللي قدامك ميتحركش، والأيام مش بتتقدّر بالتقريب', await A.evaluate(async () => {
+      return [days.some(d => d.querySelector('.fbs')), ok, !/o[iS]/.test(seq.replace(/g/g, ' ').split(' ').join('|')) && seq.split('g').every(s => /^i*(So*)?$|^o*$/.test(s))]; }, ldgGo.toString()), [true, true, true]);
+    eq('الخزنة بالتاريخ: لما الصفحة تترسم تاني (حركة جديدة فوق) السطر اللي قدامك ميتحركش، والأيام مش بتتقدّر بالتقريب', await A.evaluate(async ldgGo => {
       const now = nowS(), v = vaultsL()[0].id, ids = [];
       const add = (d, k) => { const x = {id: 't_anc' + k, type: 'exp', vault: v, amt: 1000 + k, cat: catsL('exp')[0].id, date: d, note: 'تثبيت ' + k, at: now, upd: now, del: false, hist: []}; db.txs.push(x); IDX.tx.set(x.id, x); ids.push(x.id); };
       for (let k = 0; k < 40; k++) add(k < 20 ? '2001-03-01' : '2001-03-02', k);
-      cashView = 'date'; ldgScope = 'me'; cashVault = ''; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; ldgScroll = false; go('cash'); renderCash();
-      const el0 = [...$$('#ldg .ldr')][25]; el0.scrollIntoView({block: 'center'}); await new Promise(r => setTimeout(r, 50));
+      eval('(' + ldgGo + ')')();
+      const el0 = [...$$('#fbL [data-ak]')][25]; el0.scrollIntoView({block: 'center'}); await new Promise(r => setTimeout(r, 50));
       const a = ldgAnchor(); for (let k = 40; k < 46; k++) add('2001-03-03', k); renderCash();
-      const el = $$('#ldg .ldr').find(r => ldgKey(+r.dataset.i) === a.k), r = [!!a && !!el && Math.abs(el.getBoundingClientRect().top - a.y) < 2, getComputedStyle($('#ldg .ldd')).contentVisibility !== 'auto'];
-      ids.forEach(id => { const x = IDX.tx.get(id); x.del = true; touch(x); }); saveDB(); renderCash(); return r; }), [true, true]);
+      const el = $$('#fbL [data-ak]').find(r => r.dataset.ak === a.k), r = [!!a && !!el && Math.abs(el.getBoundingClientRect().top - a.y) < 2, getComputedStyle($('#fbL .fbd')).contentVisibility !== 'auto'];
+      ids.forEach(id => { const x = IDX.tx.get(id); x.del = true; touch(x); }); saveDB(); renderCash(); return r; }, ldgGo.toString()), [true, true]);
     eq('الخزنة: العدسة بتدوّر في كل التواريخ (خزني + خزنة السوق) بالملاحظة والمبلغ، والدوس بيفتح الحركة', await A.evaluate(() => {
       cashView = 'date'; cashVault = ''; go('cash'); renderCash(); $('#cSrch').click(); const q = $('#csQ'), r = [!!q];
       q.value = 'بنزين دفتر'; q.dispatchEvent(new Event('input')); r.push(window.__ldg.hasMk ? $$('#csR .ldr').length === 1 && $('#csR').textContent.includes('60') : true);
@@ -477,22 +462,23 @@ const T0 = Date.now();
       q.value = 'كلمة مش موجودة خالص'; q.dispatchEvent(new Event('input')); r.push($$('#csR .ldr').length === 0);
       q.value = 'مورد دفتر تجربة'; q.dispatchEvent(new Event('input')); $('#csR .ldr').click(); r.push(!!$('#modal h3') && !$('#csQ')); closeModal();
       return r; }), [true, true, true, true, true, true]);
-    eq('دفتر الخزنة: زرار "نقلته" و"اعرض اللي لسه" اتشالوا', await ldgOpen(`[!$('#ldg .ldb'), !$('#ldgRest'), !$('#ldg').textContent.includes('نقلت')]`), [true, true, true]);
-    eq('دفتر الخزنة: الفلتر "خارج" مفيهوش سطر داخل، والبند بيفتح نافذة بحركاته', await A.evaluate(() => {
-      cashView = 'date'; const r = [];
-      ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'out'; go('cash'); renderCash();
-      r.push($$('#ldg .ldr .n.in').length === 0, $$('#ldg .ldr .n.out').length > 0);
-      ldgFilter = 'all'; ldgSumOpen = true; renderCash(); const g = $('#ldgSum .kty.ktout[data-sk^="exp:"]'); r.push(!!g); g.click(); r.push($$('#modal .kit').length > 0); closeModal();
-      return r; }), [true, true, true, true]);
-    eq('دفتر الخزنة: ورقة الـ PDF عدد عناوين الأيام = الأيام، والمجاميع زي الشاشة', await A.evaluate(() => {
-      cashView = 'date'; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgFilter = 'all'; cashVault = ''; go('cash'); renderCash();
-      const L = ldgItems('2001-03-01', '2001-03-03'), R = ldgReport(L, '2001-03-01', '2001-03-03');
-      return [R.rows.filter(x => x.grp !== undefined).length, $$('#ldg .ldd').length, R.sum[0][1] === fmtP(ldgSum(L, 'in')), R.sum[1][1] === fmtP(ldgSum(L, 'out')), R.fin[1] === fmtP(ldgSum(L, 'in') - ldgSum(L, 'out')), R.cols.length === R.rows.find(x => x.cells).cells.length]; }), [3, 3, true, true, true, true]);
-    await A.evaluate(() => { cashView = 'date'; ldgMode = 'range'; ldgFrom = '2001-03-01'; ldgTo = '2001-03-03'; ldgSumOpen = true; cashVault = ''; go('cash'); renderCash(); }); await A.settle(200);
-    await colOk('الحسابات — دفتر الخزنة', A, '#ldg', '.n'); await segOk(A, 'الحسابات — دفتر الخزنة');
-    await A.evaluate(() => { cashPickM = true; renderCash(); }); await A.settle(150); await segOk(A, 'الحسابات — دفتر الخزنة (اختيارات الفترة مفتوحة)');
+    eq('الخزنة بالتاريخ: زرار "نقلته" و"اعرض اللي لسه" اتشالوا', await ldgOpen(`[!$('#fbL .ldb'), !$('#ldgRest'), !$('#fbL').textContent.includes('نقلت')]`), [true, true, true]);
+    eq('الخزنة بالنوع: اتحصّل/اتدفع = وارد/منصرف "بالتاريخ" لنفس الفترة، كل حساب سطر واحد، والدوس على سطر بيفتح حركاته، والدوس على خزنة بيفتح حركاتها من غير ما يغيّر الشاشة', await A.evaluate(() => {
+      cashView = 'type'; cashMode = 'range'; cashFrom = '2001-03-01'; cashTo = '2001-03-03'; cashOpenV = true; go('cash'); renderCash();
+      const D = fbDays('2001-03-01', '2001-03-03').filter(o => !o.none), cnt = s => Math.round(parseFloat($(s + ' .fbkh .n').textContent.replace(/,/g, '')) * 100);
+      const rows = [...$$('#fbIn .fbr')].filter(r => r.textContent.includes('عميل سوق دفتر تجربة')), r = [cnt('#fbIn') === D.reduce((n, o) => n + o.in, 0), cnt('#fbOut') === D.reduce((n, o) => n + o.out, 0), rows.length];
+      rows[0].click(); r.push($$('#modal .kit').length); closeModal();
+      const v = $('#p-cash .kv[data-v="v_ldg2"]'); v.click(); r.push($$('#modal .kit').length >= 2, cashVault === '', !!$('#fbIn')); closeModal();
+      cashOpenV = false; cashView = 'date'; return r; }), [true, true, 1, ldgSetup ? 2 : 0, true, true, true]);
+    eq('ورقة الدفتر PDF: عدد عناوين الأيام = الأيام، والمجاميع زي الشاشة', await A.evaluate(ldgGo => {
+      eval('(' + ldgGo + ')')();
+      const L = ldgItems('2001-03-01', '2001-03-03'), R = ldgReport(L, '2001-03-01', '2001-03-03'), D = fbDays('2001-03-01', '2001-03-03').filter(o => !o.none);
+      return [R.rows.filter(x => x.grp !== undefined).length, $$('#fbL .fbd').length, R.sum[0][1] === fmtP(D.reduce((n, o) => n + o.in, 0)), R.sum[1][1] === fmtP(D.reduce((n, o) => n + o.out, 0)), R.fin[1] === fmtP(ldgSum(L, 'in') - ldgSum(L, 'out')), R.cols.length === R.rows.find(x => x.cells).cells.length, R.title]; }, ldgGo.toString()), [3, 3, true, true, true, true, ldgSetup ? 'دفتر المصنع كله' : 'دفتري']);
+    await A.evaluate(ldgGo => eval('(' + ldgGo + ')')(), ldgGo.toString()); await A.settle(200);
+    await colOk('الحسابات — الخزنة بالتاريخ (الوارد)', A, '#fbL .fbd', 'tr:not(.fbx) td.c:nth-child(2) .n'); await colOk('الحسابات — الخزنة بالتاريخ (المنصرف)', A, '#fbL .fbd', 'td.c:last-child .n'); await segOk(A, 'الحسابات — الخزنة بالتاريخ');
+    await A.evaluate(() => { $('#cPer').classList.add('pk'); }); await A.settle(150); await segOk(A, 'الحسابات — الخزنة بالتاريخ (خانة التاريخ مفتوحة)');
     /* تنضيف بيانات الدفتر والرجوع لـ "بالنوع" */
-    await A.evaluate(() => { const g = window.__ldg; [...g.E, ...g.mk].forEach(x => { x.del = true; touch(x); }); g.ids.forEach(i => { P.get(i).del = true; touch(P.get(i)); }); g.v2.del = true; touch(g.v2); cashView = 'type'; cashPickM = false; cashVault = ''; saveDB(); go('mkt'); });
+    await A.evaluate(() => { const g = window.__ldg; [...g.E, ...g.mk].forEach(x => { x.del = true; touch(x); }); g.ids.forEach(i => { P.get(i).del = true; touch(P.get(i)); }); g.v2.del = true; touch(g.v2); cashView = 'type'; cashMode = 'day'; cashDay = ''; cashVault = ''; saveDB(); go('mkt'); });
     {   // المصنع والتجارة (lib/fac.js): القاموس بيفهم الكلام الحر، والمجموع = تقرير الأرباح + برّه الحسبة، والاختيار بيتحفظ
       await A.evaluate(() => { const now = nowS(), v = vaultsL()[0].id, d = '2001-05-10', ids = [];
         [['كهربا المصنع', 100000], ['كساره', 20000], ['جاز العربيه', 5000], ['حسن عيسي', 300000], ['حسن ابو شوشه', 7000], ['جمعيه', 50000], ['كسر ابيض', 40000], ['حاجه غريبه خالص', 3000]]
@@ -1765,57 +1751,50 @@ const T0 = Date.now();
     eq('بعد نقل الكل: خزنة السوق (المخفية) = اللي مع الشريك، ورصيدها ظاهر فوق في حركة السوق للعرض بس', [await vbal(A, 'v_mkt'), finalCash, await A.evaluate(() => mkPending().length), (await A.textContent('#mkStat [data-st=cash] b')).replace(/\D/g, '') === String(finalCash / 100), !!(await A.$('#mkStat input, #mkStat button'))], [175000, 175000, 0, true, false]);
     eq('خزنة السوق: مش في الاختيارات ولا vaultBal("")، بس ليها سطر أزرق فوق و"إجمالي النقدية" فيه فلوسها (زي الدفتر)', await A.evaluate(() => {
       const all = db.vaults.filter(v => !v.del && v.id !== 'v_mkt').reduce((s, v) => s + vaultBal(v.id), 0);
-      cashVault = ''; go('cash'); renderCash(); const r = [vaultsL().some(v => v.id === 'v_mkt'), vaultOpts('').includes('v_mkt'), vaultBal('') === all, !!$('#p-cash .kbk'), +$('#p-cash [data-ck="c:total"]').dataset.cnt === all + vaultBal('v_mkt'), +$('#p-cash [data-ck="c:me"]').dataset.cnt === all,
+      cashVault = ''; go('cash'); renderCash(); const r = [vaultsL().some(v => v.id === 'v_mkt'), vaultOpts('').includes('v_mkt'), vaultBal('') === all, !!$('#p-cash #kMk'), +$('#p-cash [data-ck="c:total"]').dataset.cnt === all + vaultBal('v_mkt'), +$('#p-cash [data-ck="c:me"]').dataset.cnt === all,
         vaultMoves('', todayISO(), todayISO()).some(m => m.who === 'كاش من شريك السوق' && m.sign === 1), vaultMoves('', todayISO(), todayISO()).some(m => m.r.vault === 'v_mkt' && m.r.type !== 'tr')];
       go('mkt'); return r; }), [false, false, true, true, true, true, true, false]);
     eq('خزنة السوق فوق رقم بس: الدوس عليها مبيفتحش حاجة، ومفيش "سلّمك"', await A.evaluate(() => {
       cashVault = ''; go('cash'); renderCash(); const k = $('#kMk'), noHand = !k.textContent.includes('سلّمك'); k.click();
       const r = [noHand, $('#mask').classList.contains('on'), k.hasAttribute('role')]; closeModal(); go('mkt'); return r; }), [true, false, false]);
-    eq('الخزنة: كارت حركتي وكارت السوق مع بعض: دخل/طلع = مجموع الأنواع، مفيش رصيد أول/آخر، والدوس على نوع بيفتح حركاته، والدوس على خزنة بيفلتر عليها', await A.evaluate(() => {
-      cashMode = 'day'; cashDay = ''; cashVault = ''; cashOpenV = false; go('cash'); renderCash();
-      const tx = k => [...$$('#kst-' + k + ' .kty .l')].map(x => x.textContent);
-      const sumOk = k => { const rows = t => [...$$('#kst-' + k + ' .kty.kt' + t + ' .n')].reduce((n, e) => n + Math.round(parseFloat(e.textContent.replace(/,/g, '')) * 100), 0);
-        return +$('#kst-' + k + ' .kin .n').dataset.cnt === rows('in') && +$('#kst-' + k + ' .kout .n').dataset.cnt === rows('out'); };
-      const me = tx('me'), mk = tx('mk');
-      const r = [!!$('#kst-mk'), $('#p-cash .kvs').hidden, me.some(x => x.includes('استلام من أحمد')), !me.some(x => x.includes('مصروفات من')), mk.some(x => x.includes('تحصيل من العملاء')), mk.some(x => x.includes('دفعات موردين من أحمد')), mk.some(x => x.includes('مصروفات من أحمد')), mk.some(x => x.includes('سلّم لمصطفى كاش')), sumOk('me'), sumOk('mk'), !/رصيد أول|رصيد آخر/.test($('#p-cash .kss').textContent)];
-      const ty = $('#kst-me .kty'); ty.click();
-      r.push($('#mask').classList.contains('on') && $$('#modal .kit').length === +ty.querySelector('em').textContent); closeModal();
-      $('#kMe').click(); r.push($('#p-cash .kvs').hidden);
-      const v = $('#p-cash .kv'), id = v.dataset.v; v.click();
-      r.push(cashVault === id, $('#kst-me .ksh').textContent.includes(vName(id)), sumOk('me'));
-      cashVault = ''; cashOpenV = false; go('mkt'); return r; }), [true, true, true, true, true, true, true, true, true, true, true, true, false, true, true, true]);
+    eq('الخزنة بالنوع: اتحصّل واتدفع = مجموع سطورهم، ومفيش رصيد أول/آخر، وتسليم أحمد مش وارد ولا منصرف، والدوس على سطر بيفتح حركاته، والدوس على خزنة مبيغيّرش الشاشة', await A.evaluate(() => {
+      cashView = 'type'; cashMode = 'day'; cashDay = ''; cashVault = ''; cashOpenV = false; go('cash'); renderCash();
+      const n = e => Math.round(parseFloat(e.textContent.replace(/,/g, '')) * 100), sumOk = s => n($(s + ' .fbkh .n')) === [...$$(s + ' .fbr>.n')].reduce((a, e) => a + n(e), 0);
+      const r = [sumOk('#fbIn'), sumOk('#fbOut'), $$('#fbOut .fbr').some(x => x.querySelector('.fbg') && x.querySelector('.fbg').textContent === 'أحمد'), !/رصيد أول|رصيد آخر|سلّم/.test($('#p-cash .kss').textContent), $('#p-cash .kvs').hidden];
+      $('#fbOut .fbr').click(); r.push($('#mask').classList.contains('on')); closeModal();
+      if ($('#kMe').hasAttribute('role')) { $('#kMe').click(); r.push(!$('#p-cash .kvs').hidden); } else { cashOpenV = true; renderCash(); r.push(true); }
+      $('#p-cash .kv').click(); r.push($('#mask').classList.contains('on') && !!$('#modal .ksheet'), cashVault === '', !!$('#fbIn')); closeModal();
+      cashOpenV = false; go('mkt'); return r; }), [true, true, true, true, true, true, true, true, true, true]);
     eq('تسوية الجرد: بتظبط الرصيد بس، ومش بتبان في الخزنة ولا في مصروفات الأرباح', await A.evaluate(() => {
       const y0 = todayISO().slice(0, 4) + '-01-01', p0 = profitOf(y0, todayISO()).exp, b0 = vaultBal('');
       const t = {id: 'x_adjtest', type: 'exp', amt: 12300, vault: vaultsL()[0].id, cat: ensureAdjCat('exp'), note: 'جرد تجربة', date: todayISO(), at: nowS(), upd: nowS(), del: false, hist: []};
-      db.txs.push(t); IDX.tx.set(t.id, t); cashVault = ''; cashMode = 'day'; cashDay = ''; go('cash'); renderCash();
+      db.txs.push(t); IDX.tx.set(t.id, t); cashVault = ''; cashView = 'type'; cashMode = 'day'; cashDay = ''; go('cash'); renderCash();
       const r = [vaultBal('') === b0 - 12300, profitOf(y0, todayISO()).exp === p0, !$('#p-cash .kss').textContent.includes('تسوية'), !$('#p-cash .kss').textContent.includes('جرد تجربة')];
       t.del = true; touch(t); saveDB(); go('mkt'); return r; }), [true, true, true, true]);
-    eq('الخزنة: الأدوات شريط جوه كارت الرصيد، "يوم ▾" بيفتح يوم/أسبوع/شهر/من–إلى ويقفل بعد الاختيار، و"↺ النهارده" بيظهر في يوم قديم بس ويرجّع للنهارده', await A.evaluate(() => {
-      cashMode = 'day'; cashDay = ''; cashVault = ''; cashOpenV = false; cashPickM = false; go('cash'); renderCash();
-      const r = [['#cOpen2', '#cTr', '#cSet', '#cPart'].every(s => !!$('#p-cash .kb ' + s)), !$('#p-cash > .ktools'), !$('#cPer .ksum'), !$('#cToday'), $('#cModeB').textContent.includes('يوم')];
-      $('#cModeB').click(); r.push($('#cPer').classList.contains('pk'));
-      $('#cMode [data-m=week]').click(); r.push(cashMode === 'week', $('#cPer').classList.contains('pk'), $('#cModeB').textContent.includes('أسبوع'));
+    eq('الخزنة: الأدوات جوه الكارت الأسود، النهارده/الأسبوع/الشهر/من لـ ظاهرين على طول، والأسبوع من السبت للجمعة، و"↺ النهارده" بيظهر في يوم قديم بس ويرجّع للنهارده', await A.evaluate(() => {
+      cashMode = 'day'; cashDay = ''; cashVault = ''; cashOpenV = false; go('cash'); renderCash();
+      const vis = e => !!e && getComputedStyle(e).display !== 'none';
+      const r = [['#cOpen2', '#cTr', '#cSet', '#cPart'].every(s => !!$('#p-cash .kf ' + s)), !$('#p-cash > .ktools'), !$('#cPer .ksum'), !$('#cToday'), vis($('#cMode')), $$('#cMode button').map(b => b.textContent).join('|')];
+      $('#cMode [data-m=week]').click(); const [f, l] = cashRange(); r.push(cashMode === 'week', dowOf(f) === 6 && dowOf(l) === 5 && f <= todayISO() && todayISO() <= l);
       cashMode = 'day'; cashDay = addDays(todayISO(), -3); renderCash(); r.push(!!$('#cToday'));
       $('#cToday').click(); r.push(cashDay === '', !$('#cToday'), $('#cNavL').textContent.includes('النهارده'));
-      go('mkt'); return r; }), [true, true, true, true, true, true, true, false, true, true, true, true, true]);
-    eq('الخزنة: "عملاء السوق" في حركتي (كريم حوّلك وتحته إجمالي الدفعة)، وفي حركة السوق التحصيل كامل سطر لكل عميل وتحته "تحويل لمصطفى و عهدة مع أحمد" وقصاده "تحويل لمصطفى"، والشركاء سطر لوحده، واللي مفيهوش حركة مبيظهرش (حتى كارت السوق)', await A.evaluate(() => {
+      go('mkt'); return r; }), [true, true, true, true, true, 'النهارده|الأسبوع|الشهر|من لـ', true, true, true, true, true, true]);
+    eq('الخزنة: عميل السوق سطر واحد فيه "منك" (حصّلته بنفسك) و"وصلتك" (تحويل أحمد) و"معاه" (كاش مع أحمد)، وتحويل أحمد في "وصلك من أحمد"، والشركاء سطر لوحده، واليوم الفاضي "مفيش حركة"', await A.evaluate(() => {
       const d = todayISO(), now = nowS(), pid = mkEnsureParty('mkt', {newName: 'عميل سوق تجربة التحويل'});
-      const e1 = addEntry({party: pid, kind: 'pay', amt: 100000, date: d, vault: 'v_mkt', method: 'نقدي', note: 'حركة السوق'}), e2 = addEntry({party: pid, kind: 'pay', amt: 50000, date: d, vault: 'v_main', method: 'تحويل', note: 'حركة السوق — إنستا'});
-      [e1, e2].forEach(applyAmounts);
+      const e1 = addEntry({party: pid, kind: 'pay', amt: 100000, date: d, vault: 'v_mkt', method: 'نقدي', note: 'حركة السوق'}), e2 = addEntry({id: 'e_mk_tsttr1', party: pid, kind: 'pay', amt: 50000, date: d, vault: 'v_main', method: 'تحويل', note: 'حركة السوق — إنستا'}), e3 = addEntry({party: pid, kind: 'pay', amt: 20000, date: d, vault: 'v_main', method: 'نقدي'});
+      [e1, e2, e3].forEach(applyAmounts);
       const t = {id: 'x_pttest', type: 'exp', amt: 7700, vault: 'v_main', cat: 'c_pdraw', pt: 'pt_x', note: 'مسحوبات تجربة', date: d, at: now, upd: now, del: false, hist: []};
       db.txs.push(t); IDX.tx.set(t.id, t);
-      const me = kstHtml('me', '', 'me', vaultMoves('', d, d), 'me'), mk = kstHtml('mk', '', 'mkt', vaultMoves('v_mkt', d, d).concat(mkXfers(d, d)), 'mk');
-      const g = (mk.by.col || []).find(m => m.parts && m.r.party === pid);
-      cashMode = 'day'; cashDay = ''; cashVault = ''; go('cash'); renderCash();
-      const mc = (me.by.mkcol || []).find(m => m.r === e2);
-      const r = [!!mc && [mc.who, mc.what, mc.amt].join('|'), !(me.by.col || []).some(m => m.r === e2), !!g && g.amt, g && g.what, (mk.by.mkTr || []).some(m => m.r === e2 && m.amt === 50000),
-        (me.by.part || []).some(m => m.r === t), !(me.by.exp || []).some(m => m.r === t), !!$('#kst-me [data-k="me:mkcol"]'), !!$('#kst-mk [data-k="mk:mkTr"]'), $$('#kst-me .kty').length === Object.keys(me.by).length && Object.values(me.by).every(a => a.length) && !!$('#kst-me [data-k="me:ivcap"]') === !!me.by.ivcap];
-      $('#kst-mk [data-k="mk:col"]').click();
-      const kit = [...$$('#modal .kit')].find(x => x.textContent.includes('عميل سوق تجربة التحويل')); kit.click();
-      r.push($$('#modal .kit').length); closeModal();
-      cashDay = '2001-01-01'; renderCash(); r.push(!$('#kst-mk'), $('#p-cash .kss').className); cashDay = '';
-      [e1, e2, t].forEach(x => { x.del = true; touch(x); }); P.get(pid).del = true; touch(P.get(pid)); saveDB(); go('mkt'); return r; }),
-      ['عميل سوق تجربة التحويل حوّلك|إجمالي الدفعة 1,500|50000', true, 150000, '500 تحويل لمصطفى و 1,000 عهدة مع أحمد', true, true, true, true, true, true, 2, true, 'kss']);
+      cashMode = 'day'; cashDay = ''; cashVault = ''; cashView = 'type'; go('cash'); renderCash();
+      const row = [...$$('#fbIn .fbr')].find(x => x.textContent.includes('عميل سوق تجربة التحويل')), part = [...$$('#fbOut .fbr')].find(x => x.textContent.includes('الشركاء'));
+      const r = [row.querySelector('.fbg').textContent, [...row.querySelectorAll('.fbp')].map(x => x.textContent).join('|'), row.querySelector('.n').textContent, !!part];
+      row.click(); r.push($$('#modal .kit').length); closeModal();
+      cashView = 'date'; renderCash();
+      const dr = [...$$('#fbL .fbd[data-d="' + d + '"] .fbr')].filter(x => x.textContent.includes('عميل سوق تجربة التحويل')), D = fbDays(d, d)[0];
+      r.push(dr.length, dr[0].querySelector('small').textContent, D.X.filter(x => x.k === 'tr').reduce((n, x) => n + x.amt, 0) >= 50000, $('#fbL .fbd .fbx').textContent.includes('وصلك من أحمد'));
+      cashDay = '2001-01-01'; renderCash(); r.push(!!$('#fbL .fbe') && $('#fbL .fbe').textContent.includes('مفيش حركة')); cashDay = ''; cashView = 'type';
+      [e1, e2, e3, t].forEach(x => { x.del = true; touch(x); }); P.get(pid).del = true; touch(P.get(pid)); saveDB(); go('mkt'); return r; }),
+      ['الاتنين', '200 منك|500 وصلتك|1,000 فضلت معاه', '1,700', true, 3, 1, 'منك 200 · أحمد · 500 وصلتك · 1,000 معاه', true, true, true]);
     /* الشريك كتب مصروف وهو دفعة لمورد: مصطفى بيحوّلها من عنده، وبيرجّعها لو غلط */
     const cv0 = await A.evaluate(() => { const o = Object.values(db.mkt.ops).find(o => o.t === 'exp'); return {id: o.id, mk: vaultBal('v_mkt'), exp: profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp}; });
     await A.evaluate(() => { cashSide = 'mkt'; go('cash'); }); await A.settle(300);   // الصفحة بتفتح بعد تغيير العنوان (وبتقفل أي نافذة)
@@ -1823,7 +1802,7 @@ const T0 = Date.now();
     await A.click('#omS'); await A.settle(150); await A.fill('#spQ', 'مورد تجربة'); await A.settle(100); await A.click('#spL .pt'); await A.settle(300);
     eq('تحويل مصروف الشريك لدفعة مورد: المصروف اتشال، ودفعة مورد من خزنة السوق بنفس المبلغ، ورصيد السوق زي ما هو، والأرباح نزل منها', await A.evaluate(c => {
       const o = db.mkt.ops[c.id], t = IDX.tx.get('t_mk_' + c.id), e = E.get('e_mk_' + c.id);
-      return [t.del, e.kind, e.vault, e.amt, mkT(o), mkState(o), vaultBal('v_mkt') === c.mk, c.exp - profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp, $$('#kst-mk .kty .l').some(x => x.textContent.includes('مصروفات من'))]; }, cv0), [true, 'ppay', 'v_mkt', 25000, 'spay', 'done', true, 25000, false]);
+      return [t.del, e.kind, e.vault, e.amt, mkT(o), mkState(o), vaultBal('v_mkt') === c.mk, c.exp - profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp, $$('#fbOut .fbr').some(x => /مصروفات من/.test(x.textContent))]; }, cv0), [true, 'ppay', 'v_mkt', 25000, 'spay', 'done', true, 25000, false]);
     await A.evaluate(id => mkOpMenu(db.mkt.ops[id]), cv0.id); await A.settle(150); await A.click('#omE'); await A.settle(150); await A.click('#aeOk'); await A.settle(300);
     eq('"رجّعها مصروف" بترجّعها زي ما كانت', await A.evaluate(c => { const o = db.mkt.ops[c.id]; return [IDX.tx.get('t_mk_' + c.id).del, E.get('e_mk_' + c.id).del, mkT(o), mkState(o), vaultBal('v_mkt') === c.mk, profitOf(todayISO().slice(0, 4) + '-01-01', todayISO()).exp === c.exp]; }, cv0), [false, true, 'exp', 'done', true, true]);
     await A.evaluate(() => { cashSide = 'me'; go('mkt'); });
@@ -2371,20 +2350,19 @@ const T0 = Date.now();
     sec('قاعدة التبويبات: سطر واحد ونفس الارتفاع ومفيش كلام مقطوع');
     /* أي مجموعة تبويبات (.seg) ظاهرة: كل زرار نفس الارتفاع، الكلام مش ملفوف على سطرين ولا متقطع */
     for (const k of ['profit', 'col', 'debt', 'tot', 'cash', 'item']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
-    await A.evaluate(() => { cashPickM = true; go('cash'); }); await A.settle(200); await segOk(A, 'الحسابات — الخزنة (يوم/أسبوع/شهر مفتوحين)'); await A.evaluate(() => { cashPickM = false; });
+    await A.evaluate(() => { cashView = 'type'; go('cash'); renderCash(); $('#cPer').classList.add('pk'); }); await A.settle(200); await segOk(A, 'الحسابات — الخزنة (النهارده/الأسبوع/الشهر/من لـ)');
     await A.evaluate(() => { mkView = 'arch'; mkAMode = 'day'; go('mkt'); renderMkt(); }); await A.settle(200); if (await A.$('#maMode')) await segOk(A, 'الحسابات — أرشيف الوارد'); await A.evaluate(() => { mkView = 'in'; });
         await A.evaluate(() => go('set')); await A.settle(200); await segOk(A, 'الحسابات — الإعدادات');
     if (DM) { const MX = DM.pages().find(p => p.url().includes('market.html')); if (MX) for (const h of ['', 'a', 's']) { await MX.evaluate(h => nav(h), h); await MX.settle(300); await segOk(MX, 'حركة السوق (' + (h || 'الرئيسية') + ')'); } }
 
     sec('قاعدة الأرقام: تحت بعض في عمود واحد (الحسابات والخزنة والسوق)');
     /* كل رقم في القايمة (وإجمالي القسم بتاعها) بيبدأ من نفس الخط على الشمال بالظبط: مفيش رقم داخل ورقم خارج */
-    await A.evaluate(() => { go('cash'); cashMode = 'year'; renderCash(); }); await A.settle(300);
-    await colOk('الحسابات — الخزنة (حركتي)', A, '#kst-me', '.kty .n');
-    if (await A.$('#kst-mk')) await colOk('الحسابات — الخزنة (حركة السوق)', A, '#kst-mk', '.kty .n');
-    if (await A.evaluate(() => !isWide() && !$('#p-cash .kb.two') && $$('#p-cash .kb :is(.kbm,.kbk,.kbt)>.n').length > 1)) await colOk('الحسابات — الخزنة (الأرصدة فوق)', A, '#p-cash .kb', '.kbm>.n,.kbk>.n,.kbt>.n');   // مع خزنة السوق الأرصدة صف واحد جنب بعض
-    if (await A.evaluate(() => !isWide())) eq('الخزنة على الموبايل: مفيش جدول ملخص في "بالنوع" (بس في "بالتاريخ")، وداخل/خارج ظاهرين فوق كارت حركتي، والأدوات ورا ⋯', await A.evaluate(() => {
-      const v = e => e && getComputedStyle(e).display !== 'none', r = [!$('#p-cash .ksum'), v($('#kst-me .kio')), v($('#cMore')), !v($('#cTr'))];
-      $('#cMore').click(); r.push($$('#modal .kmenu [data-b]').length === 4); $('#modal [data-b=cOpen2]').click(); r.push($('#mask').classList.contains('on') && !$('#modal .kmenu')); closeModal(); const v0 = cashView; cashView = 'date'; renderCash(); r.push(v($('#cPer .ksum'))); cashView = v0; renderCash(); return r; }), [true, true, true, true, true, true, true]);
+    await A.evaluate(() => { go('cash'); cashView = 'type'; cashMode = 'year'; renderCash(); }); await A.settle(300);
+    await colOk('الحسابات — الخزنة (اتحصّل)', A, '#fbIn', '.n');
+    await colOk('الحسابات — الخزنة (اتدفع)', A, '#fbOut', '.n');
+    if (await A.evaluate(() => !isWide())) eq('الخزنة على الموبايل: الأدوات ورا ⋯ جوه الكارت الأسود', await A.evaluate(() => {
+      const v = e => e && getComputedStyle(e).display !== 'none', r = [v($('#cMore')), !v($('#cTr')), !!$('#p-cash .kf #cMore')];
+      $('#cMore').click(); r.push($$('#modal .kmenu [data-b]').length === 4); $('#modal [data-b=cOpen2]').click(); r.push($('#mask').classList.contains('on') && !$('#modal .kmenu')); closeModal(); return r; }), [true, true, true, true, true]);
     await A.evaluate(() => { mkView = 'in'; go('mkt'); renderMkt(); }); await A.settle(300);
     for (const [nm, root] of [['الوارد (جاهزين للنقل)', '#mqReady'], ['الوارد (محتاجين قرارك)', '#mqDec']]) if (await A.evaluate(r => $$(r + ' .mqa>.n').length >= 2, root)) await colOk('الحسابات — ' + nm, A, root, '.mqa>.n');
     await A.evaluate(() => { cashMode = 'day'; go('home'); }); await A.settle(300);

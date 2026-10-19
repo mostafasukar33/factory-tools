@@ -928,6 +928,15 @@ const T0 = Date.now();
       return [W.title, W.fin[1] === fmtP(want.mkt + want.site), W.sum[0][1].startsWith(fmtP(want.mkt) + ' ('), W.sum[1][1].startsWith(fmtP(want.site) + ' ('), want.site >= 33300, row && row.cells[4] === W.fin[1] && row.cells[3] === (want.mkt > want.site ? 'السوق' : want.site > want.mkt ? 'المواقع' : '—'), M.title, wk.every(n => /^من |^[^\d]/.test(n)), $('#p-rep .ldg th').textContent];
     });
     eq('تقرير التحصيل: أسبوعي = دفعات السوق والمواقع بالظبط، والشهري نفس الرقم للشهر ده', CR, ['التحصيل الأسبوعي', true, true, true, true, true, 'التحصيل الشهري', true, 'الأسبوع']);
+    /* تقرير أحمد: عملاء السوق بس، باع وحصّل في الأسبوع (سبت→جمعة)، وأول + باع − حصّل = آخر بالقرش، ومن غير مصاريف */
+    await A.click('#rpK button[data-v=ah]'); await A.settle(200);
+    eq('تقرير أحمد: عملاء السوق بس، باع − حصّل = الفرق بين أول وآخر الفترة، وسطر الوارد مش في الـ PDF', await A.evaluate(() => {
+      const [f, t] = repRange(), ps = liveParties().filter(p => p.sec === 'mkt' && !p.noTot); let s = 0, c = 0;
+      db.entries.forEach(e => { if (e.del || e.kind === 'open' || e.date < f || e.date > t || !ps.some(p => p.id === e.party)) return; const v = (e.dr || 0) - (e.cr || 0); e.kind === 'pay' ? c -= v : s += v; });
+      const R = buildReport(), b0 = ps.reduce((a, p) => a + balance(p.id, f), 0), b1 = ps.reduce((a, p) => a + balance(p.id, addDays(t, 1)), 0);
+      const g = k => (R.sum.find(r => r[0] === k) || [])[1];
+      return [repMode, dowOf(f), dowOf(t), g('باع') === fmtP(s), g('حصّل') === fmtP(c), R.fin[1] === fmtP(b1), b0 - b1 === c - s, R.sum.every(r => !/الوارد|مصروف|مصاريف/.test(r[0])), R.rows.every(r => !r.id || P.get(r.id).sec === 'mkt'), $('#p-rep .ldg th').textContent];
+    }), ['week', 6, 5, true, true, true, true, true, true, 'العميل']);
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('لوحة النهارده اتشالت من الرئيسية', await A.$('#hDash'), null);
     const SR = await A.evaluate(() => [searchAll('لفة تجربة').length, searchAll('1350').map(r => r.title)[0] || '', searchAll('سلفة').length, searchAll('x').length]);

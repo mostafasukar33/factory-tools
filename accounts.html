@@ -7813,8 +7813,10 @@ async function tgAlarm(k, text, every = 6 * 3600000) {
   if (!j && db) { a[k] = 0; flushSave(); }   // الشيت مردش (النت): نجرب المرة الجاية
 }
 function tgSyncFail() {
-  const c = tgCfg(), now = nowS();
-  if (!c.fail0) { c.fail0 = now; return; }
+  const c = tgCfg(), now = nowS(), gap = now - (c.failAt || 0);
+  c.failAt = now;
+  /* لو آخر فشل من بدري (البرنامج كان مقفول في النص) ده فشل جديد، مش "واقفة من ساعات": البرنامج وهو مفتوح بيعيد كل نص دقيقة */
+  if (!c.fail0 || gap > 10 * 60000) { c.fail0 = now; return; }
   if (now - c.fail0 < TG_FAIL_MS) return;
   const n = pendingRecs().length;
   tgAlarm('sync', `⚠️ الحسابات (${isWide() ? 'اللاب' : 'الموبايل'}): المزامنة مع شيت الحسابات واقفة من ${Math.round((now - c.fail0) / 60000)} دقيقة.\nالسبب: ${syncErr === 'key' ? 'الشيت رفض المفتاح السري' : syncWhy || syncErr}\n${n ? n + ' حركة لسه متبعتتش للشيت (متسجلة على الجهاز).' : ''}\nافتح البرنامج ← الإعدادات ← المزامنة.`);

@@ -6221,7 +6221,11 @@ initSetCards();
 let lastHash = '', wasWide = isWide();
 addEventListener('resize', () => { if (isWide() !== wasWide) { wasWide = isWide(); route(); } });
 if (!CHECKS_ON) { $('#sChkDays').closest('.card').style.display = 'none'; $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(4,1fr)'; }
-$$('nav button[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
+/* دوسة تانية على تبويب انت فيه = يطلعك أول الصفحة (بطلبه 21/10/2026) */
+$$('nav button[data-go]').forEach(b => b.onclick = () => {
+  if (b.classList.contains('on') && (location.hash.slice(1) || 'home') === b.dataset.go && !$('#p-party.on') && !$('#mask.on')) return window.scrollTo({top: 0, behavior: 'smooth'});
+  go(b.dataset.go);
+});
 $('#bSet').onclick = () => go('set');
 $('#bCl').onclick = $('#nCl').onclick = () => loadClaude();
 $('#bTheme').onclick = () => { uiSet({theme: document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'}); if ($('#uiTheme')) bindUI(); };

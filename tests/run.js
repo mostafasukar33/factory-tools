@@ -1235,6 +1235,18 @@ const T0 = Date.now();
 
     sec('١٤ب) راحة العين واستغلال المساحة (ماتدوسش حاجة مكان حاجة)');
     await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
+    {   // دوسة تانية على التبويب اللي انت فيه = أول الصفحة، ودوسة على تبويب تاني بتنقل عادي
+      const r = [];
+      for (const g of ['home', 'cash']) {
+        await A.evaluate(g => go(g), g); await A.settle(150);
+        await A.evaluate(() => { const d = document.createElement('div'); d.id = 'tallT'; d.style.height = '3000px'; document.querySelector('.page.on').append(d); window.scrollTo(0, 1200); });
+        await A.click(`nav button[data-go=${g}]`);
+        await A.waitForFunction(() => scrollY === 0, null, {timeout: 3000}).catch(() => {});
+        r.push([g, await A.evaluate(() => scrollY), await A.evaluate(() => location.hash.slice(1) || 'home')]);
+        await A.evaluate(() => $('#tallT').remove());
+      }
+      eq('دوسة تانية على نفس التبويب بتطلعك أول الصفحة', r, [['home', 0, 'home'], ['cash', 0, 'cash']]);
+    }
     {   // القفل وانت جوه حساب، وبعد ما تفتح ترجع: القايمة لازم تترسم تاني (كانت بتطلع فاضية والإجماليات بس)
       await A.evaluate(() => go('')); await A.settle(150); await openParty(A, 'عميل تجربة واحد');
       await A.evaluate(() => { const sl = showLock; window.__nl = 0; showLock = m => { window.__nl++; showLock = sl; return sl(m); }; lockNow(); lockNow(); }); await A.waitForSelector('#lock.on', {state: 'attached'});

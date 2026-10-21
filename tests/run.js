@@ -77,6 +77,7 @@ async function newDevice(browser, base, sheets) {
   ctx.on('page', p => { p.settle = settle; });
   await ctx.route('https://script.google.com/**', r => {
     if (ctx.netDown) return r.abort('failed');
+    if (ctx.netOnce > 0) { ctx.netOnce--; return r.abort('failed'); }   // النت اتهز لحظة
     const q = r.request(), g = q.url().includes('TEST-CASH') ? sheets.cash : q.url().includes('TEST-MKT') ? sheets.mkt : sheets.acc;
     if (ctx.pageOnce > 0 && g === sheets.acc) { ctx.pageOnce--; return r.fulfill({status: 200, contentType: 'text/html', body: '<html>Google error</html>'}); }   // جوجل بيرد بصفحة خطأ لحظية
     if (!g.ctx.doPost) return r.fulfill({status: 200, contentType: 'text/html', body: '<html>no script</html>'});
@@ -729,6 +730,28 @@ const T0 = Date.now();
       eq('جوجل فضل يرد بصفحة: الإعدادات بتقول موصلتش وبتعرض كلام جوجل نفسه، والحركة لسه مستنية', [st3.includes('موصلتش'), st3.includes('جوجل كاتب: Google error'), st3.includes('1 مستني'), D1.pageOnce], [true, true, true, 0]);
       await A.evaluate(() => syncNow(true)); await A.waitForFunction(() => !syncing && !pendingRecs().length);
       eq('المرة اللي بعدها نجحت: رجعت ✔ متزامن', (await A.textContent('#sStat')).includes('✔ متزامن'), true);
+      {   // النت وقع مرة: بيعيد لوحده ومبيقولش "مش واصل"
+        await A.evaluate(() => { const p = liveParties()[0]; p.note = 'تجربة نت بيقطع'; p.upd = nowS(); saveDB(); clearTimeout(syncT); });
+        await A.waitForFunction(() => !syncing); D1.netOnce = 1; await A.evaluate(() => syncNow());
+        await A.waitForFunction(() => !syncing && !pendingRecs().length, null, {timeout: 20000}).catch(() => {});
+        eq('النت وقع مرة وقت المزامنة: اتعادت لوحدها ونجحت', [D1.netOnce, await A.evaluate(() => [syncErr, pendingRecs().length])], [0, ['', 0]]);
+      }
+      {   // حركة اتسجلت والمزامنة شغالة: بتتبعت أول ما تخلص (مش بعد 30 ثانية)
+        await A.waitForFunction(() => !syncing);
+        await A.evaluate(() => { syncNow(); const p = liveParties()[0]; p.note = 'تجربة وهي شغالة'; p.upd = nowS(); saveDB(true); clearTimeout(syncT); syncNow(); });
+        await A.waitForFunction(() => !syncing && !pendingRecs().length && !syncAgain, null, {timeout: 15000}).catch(() => {});
+        eq('حركة اتسجلت والمزامنة شغالة: اتبعتت بعدها على طول', await A.evaluate(() => pendingRecs().length), 0);
+      }
+      {   // اللاب اتقفل والحركة لسه متبعتتش: بتتبعت لحظة ما الصفحة تستخبى
+        await A.waitForFunction(() => !syncing);
+        const pid = await A.evaluate(() => { const p = liveParties()[0]; p.note = 'تجربة اللاب اتقفل'; p.upd = nowS(); saveDB(); clearTimeout(syncT); return p.id; });
+        const onSheet = () => sheets.acc.sheets['السجلات'].rows.some(r => r[0] === pid && String(r[r.length - 1]).includes('تجربة اللاب اتقفل'));
+        const sent = await A.evaluate(() => pushOnHide());
+        for (let i = 0; i < 50 && !onSheet(); i++) await A.waitForFunction(() => true, null, {polling: 100});
+        eq('الصفحة استخبت: الحركة وصلت الشيت من غير مزامنة كاملة', [sent, onSheet()], [true, true]);
+        await bg(A, 'syncNow()');
+        eq('المزامنة اللي بعدها: مفيش تعارض ولا حاجة مستنية', await A.evaluate(() => [pendingRecs().length, (db.cfg.clash || []).filter(c => !c.seen).length, syncErr]), [0, 0, '']);
+      }
       eq('رسالة صفحة جوجل لشيت كان شغال: مشغول لحظة مش تسجيل دخول', await A.evaluate(() => { const e = new Error('page'); e.code = 'page'; return netWhy(e); }), 'جوجل كان مشغول لحظة، وهحاول تاني لوحدي');
     }
 

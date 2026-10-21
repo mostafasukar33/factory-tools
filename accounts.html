@@ -2113,7 +2113,7 @@ function unlocked() {
 ['pointerdown', 'keydown', 'scroll'].forEach(ev => addEventListener(ev, () => lastAct = Date.now(), {passive: true, capture: true}));
 setInterval(() => { if (db && Date.now() - lastAct > LOCK_IDLE) lockNow('اتقفل لوحده بعد 10 دقايق من غير استخدام'); }, 20000);
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { hiddenAt = Date.now(); flushSave(); }
+  if (document.hidden) { hiddenAt = Date.now(); flushSave(); pushOnHide(); }
   else if (db && hiddenAt && Date.now() - hiddenAt > LOCK_HIDDEN) lockNow();
   else if (db) { lastAct = Date.now(); syncNow(); }
 });
@@ -3295,11 +3295,12 @@ const accOld = () => !!(db && db.cfg.sheetOk && db.cfg.accV && db.cfg.accV < ACC
 
 /* لو الشيت كان شغال قبل كده وجوجل رد بصفحة خطأ (زحمة أو قفل الشيت أو عطل لحظي)، بنستنى ثانيتين ونعيد لوحدنا مرتين قبل ما نقول إن فيه مشكلة.
    الإرسال آمن يتعاد: الشيت بيكتب كل سجل بالـ id بتاعه فوق نفسه */
-async function callSheet(body, url = db.cfg.sheetUrl, key = db.cfg.sheetKey, ms = 45000) {
-  const tries = db && db.cfg.sheetOk && url === db.cfg.sheetUrl ? 3 : 1;
+async function callSheet(body, url = db.cfg.sheetUrl, key = db.cfg.sheetKey, ms = 45000, tries) {
+  tries = tries || (db && db.cfg.sheetOk && url === db.cfg.sheetUrl ? 3 : 1);
   for (let t = 1; ; t++) {
     try { return await callSheet1(body, url, key, ms); }
-    catch (e) { if (e.code !== 'page' || t >= tries) throw e; await new Promise(r => setTimeout(r, 2000)); }
+    /* جوجل رد بصفحة أو الطلب وقع من غير رد (النت اتهز لحظة): نستنى ونعيد. الإرسال آمن يتعاد */
+    catch (e) { if ((e.code !== 'page' && e.name !== 'TypeError') || t >= tries) throw e; await new Promise(r => setTimeout(r, 2000 * t)); }
   }
 }
 async function callSheet1(body, url, key, ms) {
@@ -3376,13 +3377,26 @@ function recSum(kind, r) {
 }
 /* نفس البيانات (من غير الوقت وعلامات الجهاز وسجل التعديلات) = مفيش تعارض حقيقي */
 const sameData = (a, b) => { const c = o => { const x = Object.assign({}, o); ['id', 'upd', 'sy', 'big', 'hist', 'del'].forEach(k => delete x[k]); return JSON.stringify(Object.keys(x).sort().map(k => [k, x[k]])); }; return !!a.del === !!b.del && c(a) === c(b); };
-let syncing = false, syncT = null, syncErr = '', syncWhy = '', lastPullAt = 0;
+let syncing = false, syncT = null, syncErr = '', syncWhy = '', lastPullAt = 0, syncAgain = false;
 function schedSync() { clearTimeout(syncT); syncT = setTimeout(() => syncNow(), 1500); }
+/* اللاب بيتقفل أو البرنامج بيستخبى وفيه حركات لسه متبعتتش: بنبعتها على طول بطلب بيكمّل حتى لو الصفحة نامت (keepalive، لحد 60 ألف حرف).
+   مبنعلّمهاش "اتبعتت" هنا: المزامنة الجاية بتسحب الأول وبتتأكد زي العادي (الحركة اللي وصلت مبتتبعتش تاني ومش تعارض) */
+function pushOnHide() {
+  if (!db || syncing || !db.cfg.sheetUrl || !db.cfg.sheetOk) return false;
+  let rows = pendingRecs().slice(0, 50).map(([kind, r]) => [kind, r, sheetData(r)]).filter(([k, r, d]) => JSON.stringify(d).length <= CELL_MAX)
+    .map(([kind, r, d]) => ({id: r.id, kind, upd: r.upd, del: !!r.del, view: viewOf(kind, r).map(clipCell), data: d}));
+  const bodyOf = rs => JSON.stringify({key: db.cfg.sheetKey, action: 'push', rows: rs});
+  let body = bodyOf(rows);
+  while (rows.length > 1 && new Blob([body]).size > 60000) { rows = rows.slice(0, Math.ceil(rows.length / 2)); body = bodyOf(rows); }
+  if (!rows.length || new Blob([body]).size > 60000) return false;
+  try { fetch(db.cfg.sheetUrl, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body, keepalive: true}).catch(() => {}); } catch (e) { return false; }
+  return true;
+}
 async function syncNow(manual) {
   if (!db) return;
   if (!db.cfg.sheetUrl || !db.cfg.sheetOk) { if (manual) toast('اربط الشيت الأول من الإعدادات'); return; }
-  if (syncing) return;
-  syncing = true; syncErr = ''; renderSyncBox();
+  if (syncing) { syncAgain = true; return; }   // حركة اتسجلت والمزامنة شغالة: تتبعت أول ما اللي شغالة تخلص، مش بعد 30 ثانية
+  syncing = true; syncAgain = false; syncErr = ''; renderSyncBox();
   const d0 = db;
   let got = 0;
   try {
@@ -3449,6 +3463,7 @@ async function syncNow(manual) {
     if (db === d0) flushSave();
   } finally {
     syncing = false;
+    if (syncAgain && db === d0 && !syncErr) { syncAgain = false; setTimeout(() => syncNow(), 300); }
     if (db === d0) { renderSyncBox(); if (got) { if (Object.entries(STORE).some(([k, a]) => IDX[k].size !== db[a].length)) reindex(); if (!$('#mask').classList.contains('on')) route(); } }
   }
 }
@@ -6808,7 +6823,7 @@ function mkSupRows() {
   return out;
 }
 const mkStView = s => { const o = mkDb().ops[s.op] || {}; return ['', cell(o.cname || o.sname || o.cat || o.buyer || (o.t === 'hand' ? 'تسليم كاش' : '')), o.amt ? o.amt / 100 : '', 'حالة', cell([s.done ? 'اتنقلت' : '', s.ok ? 'وصل' : '', s.back ? 'راجعة: ' + s.back : ''].filter(Boolean).join(' — '))]; };
-let mkBusy = false, mkErr = '', mkLastOk = 0, mkCur = null, mkQ = null;
+let mkBusy = false, mkErr = '', mkWhy = '', mkLastOk = 0, mkCur = null, mkQ = null;
 /* لو فيه مزامنة شغالة، الطلب الجديد مبيضيعش: بيستنى اللي شغالة تخلص ويعيد مرة واحدة (علشان الرصيد الجديد بعد النقل يتبعت على طول، مش بعد 8 ثواني) */
 function mkSync() {
   if (!mkCur) return mkCur = mkSyncOnce().finally(() => { mkCur = null; });
@@ -6825,7 +6840,7 @@ async function mkSyncOnce() {
     ensureMktVault();
     if (mkReconcile()) ch = true;
     if (mkWantPrune()) ch = true;
-    const call = body => callSheet(body, cr.u, cr.k, 30000);
+    const call = body => callSheet(body, cr.u, cr.k, 30000, 3);   // يعيد 3 مرات زي الحسابات قبل ما يقول "مش واصل"
     const sts = Object.values(d.st).filter(s => s.sy !== s.upd), cus = mkCustRows().concat(mkSupRows());
     const all = sts.map(s => ({row: {id: s.id, kind: 'st', upd: s.upd, del: false, view: mkStView(s), data: stripLocal(s)}, s})).concat(cus);
     /* دفعات لحد 100 سطر أو ~400 ألف حرف (سطور الموردين فيها كشف حسابهم) */
@@ -6859,8 +6874,8 @@ async function mkSyncOnce() {
     }
     if (mkReconcile()) ch = true;
     const fl = mkFollow(); if (fl.n) { ch = true; if (!first) edits = fl.msgs; }
-    mkErr = ''; mkLastOk = nowS();
-  } catch (e) { mkErr = String(e.message || e); }
+    mkErr = ''; mkWhy = ''; mkLastOk = nowS();
+  } catch (e) { mkErr = String(e.message || e); mkWhy = mkErr === 'key' ? '' : /^(push|pull)$/.test(mkErr) ? 'الشيت رد بحاجة مش مفهومة' : netWhy(e); }
   finally {
     mkBusy = false;
     if (db === d0) {
@@ -7137,11 +7152,12 @@ function renderMkt() {
   const box = $('#p-mkt'); if (!box || !db) return;
   if (!mkCreds()) { box.innerHTML = `<div class="sech ppbar tb" style="margin-top:0"><a id="mkBack">→<em> الحسابات</em></a></div><div class="card empty">حركة السوق لسه متربطتش.<br><a class="lnk" id="mkSet">اربطها من الإعدادات</a></div>`; $('#mkBack').onclick = () => go('home'); $('#mkSet').onclick = mkGoSettings; return; }
   const n = mkPending().length;
-  box.innerHTML = `<div class="sech ppbar tb" style="margin-top:0"><a id="mkBack">→<em> الحسابات</em></a><b class="tt">📥 وارد السوق</b><span class="mkdot ${mkErr ? 'w' : ''}"><i></i>${mkErr === 'key' ? 'الشيت رفض المفتاح' : mkErr ? 'مش قادر يوصل للشيت' : mkLastOk ? 'متصل' : '…'}</span></div>
+  box.innerHTML = `<div class="sech ppbar tb" style="margin-top:0"><a id="mkBack">→<em> الحسابات</em></a><b class="tt">📥 وارد السوق</b><span class="mkdot ${mkErr ? 'w' : ''}" id="mkDot"><i></i>${mkErr === 'key' ? 'الشيت رفض المفتاح' : mkErr ? 'مش قادر يوصل للشيت' : mkLastOk ? 'متصل' : '…'}</span></div>
     ${mkStat()}
     <div class="seg s2" id="mkTabs"><button type="button" data-v="in" class="${mkView === 'in' ? 'on' : ''}">مستنياك${n ? ` <b class="mkn">${n}</b>` : ''}</button><button type="button" data-v="arch" class="${mkView === 'arch' ? 'on' : ''}">الأرشيف</button></div>
     <div id="mkBody"></div>`;
   $('#mkBack').onclick = () => go('home');
+  $('#mkDot').onclick = () => { if (mkErr) toast(mkErr === 'key' ? 'شيت السوق رفض المفتاح' : 'شيت السوق: ' + (mkWhy || 'مش واصل') + '. بيحاول تاني لوحده', 7000); else mkSync(); };
   $$('#mkTabs button').forEach(b => b.onclick = () => { mkView = b.dataset.v; renderMkt(); });
   mkStatBind();
   if (mkView === 'arch') mkArch(); else mkInbox();
@@ -7854,7 +7870,7 @@ function renderMktSettings() {
   const box = $('#sMkt'); if (!box || !db) return;
   const c = mkCreds();
   box.innerHTML = `<h2>📥 حركة السوق (تطبيق شريكك)</h2>
-    ${c ? `<div class="sync ${mkErr ? 'warn' : 'ok'}">${mkErr === 'key' ? '⚠️ شيت السوق رفض المفتاح.' : mkErr ? '⚠️ آخر اتصال بشيت السوق فشل، وهيحاول تاني لوحده.' : '✔ شيت حركة السوق مربوط.'}</div>
+    ${c ? `<div class="sync ${mkErr ? 'warn' : 'ok'}">${mkErr === 'key' ? '⚠️ شيت السوق رفض المفتاح.' : mkErr ? '⚠️ آخر اتصال بشيت السوق فشل' + (mkWhy ? ': ' + esc(mkWhy) : '') + '، وهيحاول تاني لوحده.' : '✔ شيت حركة السوق مربوط.'}</div>
       <button class="btn green" id="smShareP" type="button">📲 ابعت تطبيق "حركة السوق" لشريكك</button>
       <p class="hint" style="margin:6px 0 12px">ابعته على واتساب شريكك (أو افتحه على موبايله) ← من قايمة كروم (⋮) اختار <b>"إضافة إلى الشاشة الرئيسية"</b>. هيلاقي العملاء على طول، من غير كلمة سر.</p>
       <button class="btn line sm" id="smOpen" type="button">📥 افتح وارد السوق</button>

@@ -1974,11 +1974,11 @@ async function showLock(msg) {
   if (!vault) return renderSetup();
   let bio = null; try { bio = bioOk() && await idbGet('bio'); } catch (e) {}
   $('#lockBox').innerHTML = `
+    ${bio ? '<button class="btn gold big" id="lkBio" type="button" style="margin-bottom:14px">🔓 فتح ببصمة الوجه</button>' : ''}
     <label for="lkP">كلمة السر</label>
-    <input class="inp" id="lkP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" autofocus style="text-align:center;font-size:var(--f4)">
+    <input class="inp" id="lkP" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password"${bio ? '' : ' autofocus'} style="text-align:center;font-size:var(--f4)">
     <div class="err" id="lkErr">${esc(msg || '')}</div>
-    <button class="btn gold big" id="lkGo" type="button">فتح</button>
-    ${bio ? '<button class="btn line" id="lkBio" type="button" style="margin-top:10px">🔓 فتح ببصمة الوجه</button>' : ''}
+    <button class="btn ${bio ? 'line' : 'gold'} big" id="lkGo" type="button">فتح</button>
     <button class="lnk" id="lkAbc" type="button">كلمة السر فيها حروف؟ افتح لوحة الحروف</button>
     <button class="lnk" id="lkForgot" type="button">نسيت كلمة السر؟</button>`;
   let busy = false, tm = 0;
@@ -2004,17 +2004,19 @@ async function showLock(msg) {
   $('#lkP').onkeydown = e => { if (e.key === 'Enter') go(false); };
   /* أول ما توقف كتابة (نص ثانية) وهي 6 حروف أو أكتر، بيجرب يفتح لوحده */
   $('#lkP').oninput = () => { clearTimeout(tm); if ($('#lkP').value.length >= 6) tm = setTimeout(() => go(true), 450); };
+  let bioBusy = false;
   if ($('#lkBio')) $('#lkBio').onclick = async () => {
-    window.bioAsked = true;   // بعد ما البصمة اتطلبت مفيش تحديث لوحده على شاشة القفل (كان بيعمل reload فالبصمة تطلع تاني، بطلبه 19/10/2026)
+    if (bioBusy) return;   // دوستين ورا بعض = طلب بصمة واحد بس
+    bioBusy = true; window.bioAsked = true;   // بعد ما البصمة اتطلبت مفيش تحديث لوحده على شاشة القفل (كان بيعمل reload فالبصمة تطلع تاني، بطلبه 19/10/2026)
     $('#lkErr').textContent = '';
-    try { const pw = await bioGetPass(bio); await go(false, pw); }
-    catch (e) { $('#lkErr').textContent = e && e.name === 'NotAllowedError' ? 'اتلغت البصمة. اكتب كلمة السر.' : 'البصمة مش شغالة دلوقتي. اكتب كلمة السر.'; if ($('#lkP')) $('#lkP').focus(); }
+    try { const pw = await bioGetPass(bio); await go(false, pw); bioBusy = false; }
+    catch (e) { bioBusy = false; $('#lkErr').textContent = e && e.name === 'NotAllowedError' ? 'اتلغت البصمة. اكتب كلمة السر.' : 'البصمة مش شغالة دلوقتي. اكتب كلمة السر.'; if ($('#lkP')) $('#lkP').focus(); }
   };
   $('#lkForgot').onclick = forgotFlow;
   $('#lkAbc').onclick = () => { const i = $('#lkP'); const num = i.inputMode === 'numeric'; i.inputMode = num ? 'text' : 'numeric'; if (num) i.removeAttribute('pattern'); else i.setAttribute('pattern', '[0-9]*'); $('#lkAbc').textContent = num ? 'ارجع للوحة الأرقام' : 'كلمة السر فيها حروف؟ افتح لوحة الحروف'; i.blur(); setTimeout(() => i.focus(), 50); };
-  /* أول ما الشاشة تظهر وفيه بصمة مفعّلة: بيطلب البصمة لوحده مرة واحدة. لو اتلغت أو فشلت، بتكتب كلمة السر أو تدوس الزرار */
-  if (bio && !location.search.includes('nobio')) setTimeout(() => $('#lkBio') && !$('#lkP').value && $('#lkBio').click(), 350);
-  else {
+  /* البصمة بدوسة على الزرار بس (بطلبه 21/10/2026): الطلب من غير لمسة كان بيخلي الأيفون يطلّع كارت "تسجيل الدخول؟" قبل البصمة وساعات يعلق.
+     متعملهاش تطلع لوحدها تاني */
+  if (!bio) {
     /* من غير بصمة: لوحة الأرقام تفتح لوحدها. الأيفون أحياناً بيرفض الفتح التلقائي، فأول لمسة في أي مكان في الشاشة بتفتحها */
     const focusPw = () => { const i = $('#lkP'); if (i && document.activeElement !== i) { try { i.focus({preventScroll: true}); } catch (e) { i.focus(); } } };
     /* الأيفون بيمنع فتح الكيبورد من غير لمسة، فعلى الموبايل بنعرض لوحة أرقام جوه الصفحة نفسها (من غير كيبورد النظام). زرار "لوحة الحروف" بيرجّع الكيبورد العادي */

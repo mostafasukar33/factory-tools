@@ -322,6 +322,19 @@ const T0 = Date.now();
     eq('كلمة سر غلط وقت الكتابة مفيهاش رسالة ولا بتفتح', [await A.textContent('#lkErr'), await A.evaluate(() => $('#lock').classList.contains('on'))], ['', true]);
     await A.click('#lkGo'); await A.settle(1500);
     eq('كلمة سر غلط بترفض', await A.textContent('#lkErr'), 'كلمة السر غلط');
+    {   // البصمة بدوسة بس: الطلب من غير لمسة بيطلّع كارت "تسجيل الدخول؟" على الأيفون قبل البصمة
+      const r = await A.evaluate(async () => {
+        window.PublicKeyCredential = window.PublicKeyCredential || function () {};
+        let n = 0; const g = navigator.credentials.get; navigator.credentials.get = () => { n++; return new Promise(() => {}); };
+        await idbPut('bio', {cid: 'AA', salt: 'AA', iv: 'AA', ct: 'AA'}); await showLock();
+        await new Promise(r => setTimeout(r, 900));
+        const auto = n, btn = !!$('#lkBio'), af = $('#lkP').hasAttribute('autofocus');
+        $('#lkBio').click(); $('#lkBio').click(); await new Promise(r => setTimeout(r, 50));
+        const tap = n; navigator.credentials.get = g; await idbDel('bio'); await showLock();
+        return [auto, btn, af, tap];
+      });
+      eq('بصمة الوجه: متطلعش لوحدها، والزرار ظاهر، ودوستين = طلب واحد', r, [0, true, false, 1]);
+    }
     {   // لوحة الأرقام على الموبايل: دوسة عادية بتمسح رقم، ومطوّلة بتمسح ورا بعض
       const T = await D1.page('accounts.html?nobio');
       await T.addInitScript(() => { const mm = window.matchMedia.bind(window); window.matchMedia = q => /pointer:\s*coarse/.test(q) ? {matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}} : mm(q); });

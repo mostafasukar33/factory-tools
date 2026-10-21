@@ -794,6 +794,7 @@ html[data-theme=dark] .pst th{background:var(--row);color:var(--sub)}
 .sstat b{display:block;font-size:var(--f3)}.sstat small{display:block;font-size:var(--f2);color:var(--sub);font-weight:600}
 .sstat.ok b{color:var(--green)}.sstat.no b{color:var(--red)}
 .sstat .btn{width:auto;flex:none;padding:0 14px;min-height:38px;font-size:var(--f2)}
+.sstat .sylog{margin-top:6px;font-size:var(--f1);color:var(--sub)}.sstat .sylog summary{cursor:pointer;font-weight:700}.sstat .sylog div{padding:2px 0}
 details.adv{margin:4px 0 8px}details.adv>summary{font-weight:700;color:var(--sub);cursor:pointer;padding:6px 0;font-size:var(--f2)}
 /* شاشة القفل: كارت نضيف وخفيف */
 #lock img{width:84px;border-radius:16px;box-shadow:0 2px 12px #0002}
@@ -3377,7 +3378,10 @@ function recSum(kind, r) {
 }
 /* نفس البيانات (من غير الوقت وعلامات الجهاز وسجل التعديلات) = مفيش تعارض حقيقي */
 const sameData = (a, b) => { const c = o => { const x = Object.assign({}, o); ['id', 'upd', 'sy', 'big', 'hist', 'del'].forEach(k => delete x[k]); return JSON.stringify(Object.keys(x).sort().map(k => [k, x[k]])); }; return !!a.del === !!b.del && c(a) === c(b); };
-let syncing = false, syncT = null, syncErr = '', syncWhy = '', lastPullAt = 0, syncAgain = false;
+let SYNC_BATCH = 250000;   // أقصى حجم دفعة واحدة للشيت (حروف)
+let syncing = false, syncT = null, syncErr = '', syncWhy = '', lastPullAt = 0, syncAgain = false, syncAt = 0;
+/* سجل آخر 8 محاولات مزامنة (الوقت، أخدت كام ثانية، نجحت ولا لأ والسبب، اتبعت كام) بيبان في الإعدادات علشان نعرف البطء من فين. على الجهاز بس */
+function syLog(ok, why, n) { const L = (db.cfg.syLog || []).slice(0, 7); L.unshift({at: nowS(), s: Math.round((Date.now() - syncAt) / 100) / 10, ok, why: why || '', n: n || 0}); db.cfg.syLog = L; }
 function schedSync() { clearTimeout(syncT); syncT = setTimeout(() => syncNow(), 1500); }
 /* اللاب بيتقفل أو البرنامج بيستخبى وفيه حركات لسه متبعتتش: بنبعتها على طول بطلب بيكمّل حتى لو الصفحة نامت (keepalive، لحد 60 ألف حرف).
    مبنعلّمهاش "اتبعتت" هنا: المزامنة الجاية بتسحب الأول وبتتأكد زي العادي (الحركة اللي وصلت مبتتبعتش تاني ومش تعارض) */
@@ -3396,9 +3400,9 @@ async function syncNow(manual) {
   if (!db) return;
   if (!db.cfg.sheetUrl || !db.cfg.sheetOk) { if (manual) toast('اربط الشيت الأول من الإعدادات'); return; }
   if (syncing) { syncAgain = true; return; }   // حركة اتسجلت والمزامنة شغالة: تتبعت أول ما اللي شغالة تخلص، مش بعد 30 ثانية
-  syncing = true; syncAgain = false; syncErr = ''; renderSyncBox();
+  syncing = true; syncAgain = false; syncErr = ''; syncAt = Date.now(); renderSyncBox();
   const d0 = db;
-  let got = 0;
+  let got = 0, pushed = 0;
   try {
     /* السحب الأول: علشان لو جهاز تاني عدّل نفس الحركة اللي اتعدّلت هنا ولسه متبعتتش نعرف ونطلّع تنبيه "تعارض"،
        بدل ما واحد يكتب فوق التاني من غير ما حد يحس. الأحدث تعديلاً هو اللي بيكسب زي ما هو */
@@ -3419,10 +3423,13 @@ async function syncNow(manual) {
       db.cfg.cursor = j.next; more = !!j.more;
     }
     if (clash.length) noteClash(clash);
-    let p = pendingRecs(), pushed = 0;
+    let p = pendingRecs();
     while (p.length) {
       /* دفعات صغيرة: 50 حركة كل مرة. السجل الأكبر من خانة الشيت حتى بعد قص سجل التعديلات بيتعلّم ومبيتبعتش */
-      const batch = p.slice(0, 50).map(([kind, r]) => [kind, r, sheetData(r)]).filter(([kind, r, d]) => JSON.stringify(d).length <= CELL_MAX || (r.big = r.upd, false));
+      /* ولحد ~250 ألف حرف في الدفعة: الحركات اللي سجل تعديلاتها كبير كانت بتخلي الدفعة تقيلة على جوجل وتعدّي وقتها فالمزامنة تفضل تعيد */
+      let sz = 0;
+      const batch = p.slice(0, 50).map(([kind, r]) => [kind, r, sheetData(r)]).filter(([kind, r, d]) => JSON.stringify(d).length <= CELL_MAX || (r.big = r.upd, false))
+        .filter((x, i) => { sz += JSON.stringify(x[2]).length; return !i || sz <= SYNC_BATCH; });
       if (!batch.length) { p = pendingRecs(); continue; }
       const rows = batch.map(([kind, r, d]) => ({id: r.id, kind, upd: r.upd, del: !!r.del, view: viewOf(kind, r).map(clipCell), data: d}));
       let j = null;
@@ -3452,12 +3459,13 @@ async function syncNow(manual) {
         const x = new Error(`الشيت فيه ${v && v.n !== undefined ? v.n : '؟'} سجل بس والجهاز فيه ${total}${retry ? '، هعيد الإرسال' : ''}`); x.srv = true; throw x;
       }
     }
-    db.cfg.lastSync = nowS(); lastPullAt = Date.now();
+    db.cfg.lastSync = nowS(); lastPullAt = Date.now(); syLog(true, '', pushed);
     await flushSave();
     if (manual) toast(got ? `اتبعت كل حاجة، ونزل ${got} سجل جديد ✔` : 'كل حاجة متسجلة على الشيت ✔');
     if (typeof tgAfterSync === 'function') setTimeout(() => tgAfterSync(), 2500);   // تليجرام: النسخة اليومية والملخص (آخر script)
   } catch (e) {
     syncErr = e.message === 'key' ? 'key' : String(e.message || e); syncWhy = syncErr === 'key' ? '' : netWhy(e);
+    if (db === d0) syLog(false, syncErr === 'key' ? 'الشيت رفض المفتاح' : syncWhy, pushed);
     if (typeof tgSyncFail === 'function' && db === d0 && (e.srv || syncErr === 'key')) tgSyncFail();   // الشيت بيرد بس رافض (مش النت)
     if (manual) toast(syncErr === 'key' ? 'الشيت رفض المفتاح السري. راجع المفتاح في الإعدادات.' : 'المزامنة فشلت: ' + syncWhy, 7000);
     if (db === d0) flushSave();
@@ -3531,14 +3539,19 @@ function bindUI() {
 /* آخر تحديث للبرنامج = وقت نشر الصفحة (Last-Modified اللي GitHub Pages بيبعته). لو المتصفح معرفوش بيدّي وقت الفتح نفسه، فساعتها مبنعرضش حاجة */
 const PAGE_LM = Date.parse(document.lastModified), PAGE_AT = Date.now();
 const verText = (lm = PAGE_LM, at = PAGE_AT) => lm && at - lm > 3000 ? `آخر تحديث للبرنامج على الجهاز ده: ${dispDate(isoOf(lm))} ${dispTime(lm)}` : '';
+const syLogHtml = L => L && L.length ? `<details class="sylog"><summary>آخر محاولات المزامنة</summary>${L.map(x => `<div>${dispTime(x.at)} ${x.ok ? '✔' : '✖'} ${x.s} ثانية${x.n ? ' · اتبعت ' + x.n : ''}${x.why ? ' · ' + esc(x.why) : ''}</div>`).join('')}</details>` : '';
 function renderSetStat() {
   const c = db.cfg;
   const n = pendingRecs().length, st = $('#sStat'), openSheet = () => { const k = $('#sSheet').parentNode; $('#p-set').classList.add('advon'); k.classList.remove('shut'); k.scrollIntoView({block: 'start', behavior: 'smooth'}); };
     st.className = 'sstat ' + (c.sheetOk ? 'ok' : 'no');
-    st.innerHTML = c.sheetOk ? `<div><b>${syncErr && syncErr !== 'key' ? '⚠️ آخر محاولة مزامنة موصلتش' : '✔ متزامن مع الشيت'}</b><small>${syncErr && syncWhy ? esc(syncWhy) + '<br>' : ''}${c.lastSync ? 'آخر مزامنة ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة'}${n ? ' · ' + n + ' مستني' : ''}</small></div><button class="btn line" id="sStatGo" type="button">زامن دلوقتي</button>`
+    const lastBad = (c.syLog || [])[0] && !c.syLog[0].ok ? c.syLog[0] : null;
+    st.innerHTML = c.sheetOk ? `<div><b>${syncing ? '⏳ بيتبعت دلوقتي (' + Math.round((Date.now() - syncAt) / 1000) + ' ثانية)' : syncErr && syncErr !== 'key' ? '⚠️ آخر محاولة مزامنة موصلتش' : n && lastBad ? '⚠️ آخر محاولة موصلتش' : n ? 'مستني يتبعت' : '✔ متزامن مع الشيت'}</b><small>${syncErr && syncWhy ? esc(syncWhy) + '<br>' : ''}${c.lastSync ? 'آخر مزامنة ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة'}${n ? ' · ' + n + ' مستني' : ''}${syncing && lastBad && lastBad.why ? '<br>المرة اللي فاتت: ' + esc(lastBad.why) : ''}</small>${syLogHtml(c.syLog)}</div><button class="btn line" id="sStatGo" type="button">زامن دلوقتي</button>`
       : `<div><b>الشيت مش مربوط</b><small>البيانات على الجهاز ده بس</small></div><button class="btn gold" id="sStatGo" type="button">اربطه</button>`;
     $('#sStatGo').onclick = () => { if (c.sheetOk && $('#shNow')) $('#shNow').click(); else openSheet(); };
   if ($('#shNow')) $('#shNow').textContent = `زامن دلوقتي (${n} مستني)`;
+  /* العداد "بيتبعت من كام ثانية" بيتحدث كل ثانية والإعدادات قدامك (السجل المفتوح بيفضل مفتوح) */
+  clearTimeout(renderSetStat.t);
+  if (syncing && c.sheetOk) renderSetStat.t = setTimeout(() => { if (db && syncing && $('#p-set.on') && $('#sStat')) { const o = $('#sStat .sylog') && $('#sStat .sylog').open; renderSetStat(); if (o && $('#sStat .sylog')) $('#sStat .sylog').open = true; } }, 1000);
 }
 function renderSettings() {
   bindUI();

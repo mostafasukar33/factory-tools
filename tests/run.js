@@ -322,18 +322,18 @@ const T0 = Date.now();
     eq('كلمة سر غلط وقت الكتابة مفيهاش رسالة ولا بتفتح', [await A.textContent('#lkErr'), await A.evaluate(() => $('#lock').classList.contains('on'))], ['', true]);
     await A.click('#lkGo'); await A.settle(1500);
     eq('كلمة سر غلط بترفض', await A.textContent('#lkErr'), 'كلمة السر غلط');
-    {   // البصمة بدوسة بس: الطلب من غير لمسة بيطلّع كارت "تسجيل الدخول؟" على الأيفون قبل البصمة
+    {   // البصمة بتطلع لوحدها مرة واحدة بس، حتى لو القفل اتطلب مرتين ورا بعض (الرجوع من الخلفية + 10 دقايق من غير لمس)
       const r = await A.evaluate(async () => {
         window.PublicKeyCredential = window.PublicKeyCredential || function () {};
         let n = 0; const g = navigator.credentials.get; navigator.credentials.get = () => { n++; return new Promise(() => {}); };
-        await idbPut('bio', {cid: 'AA', salt: 'AA', iv: 'AA', ct: 'AA'}); await showLock();
+        await idbPut('bio', {cid: 'AA', salt: 'AA', iv: 'AA', ct: 'AA'}); showLock(); await showLock();
         await new Promise(r => setTimeout(r, 900));
-        const auto = n, btn = !!$('#lkBio'), af = $('#lkP').hasAttribute('autofocus');
+        const auto = n, btn = !!$('#lkBio');
         $('#lkBio').click(); $('#lkBio').click(); await new Promise(r => setTimeout(r, 50));
-        const tap = n; navigator.credentials.get = g; await idbDel('bio'); await showLock();
-        return [auto, btn, af, tap];
+        const tap = n; navigator.credentials.get = g; bioBusy = false; await idbDel('bio'); await showLock();
+        return [auto, btn, tap];
       });
-      eq('بصمة الوجه: متطلعش لوحدها، والزرار ظاهر، ودوستين = طلب واحد', r, [0, true, false, 1]);
+      eq('بصمة الوجه: بتطلع لوحدها مرة واحدة بس (شاشتين قفل ورا بعض ودوستين = طلب واحد)', r, [1, true, 1]);
     }
     {   // لوحة الأرقام على الموبايل: دوسة عادية بتمسح رقم، ومطوّلة بتمسح ورا بعض
       const T = await D1.page('accounts.html?nobio');
@@ -1214,7 +1214,9 @@ const T0 = Date.now();
     await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
     {   // القفل وانت جوه حساب، وبعد ما تفتح ترجع: القايمة لازم تترسم تاني (كانت بتطلع فاضية والإجماليات بس)
       await A.evaluate(() => go('')); await A.settle(150); await openParty(A, 'عميل تجربة واحد');
-      await A.evaluate(() => lockNow()); await A.waitForSelector('#lock.on', {state: 'attached'}); await unlock(A); await A.settle(200);
+      await A.evaluate(() => { const sl = showLock; window.__nl = 0; showLock = m => { window.__nl++; showLock = sl; return sl(m); }; lockNow(); lockNow(); }); await A.waitForSelector('#lock.on', {state: 'attached'});
+      eq('القفل مرتين ورا بعض = شاشة قفل واحدة (البصمة متطلعش مرتين)', await A.evaluate(() => window.__nl), 1);
+      await unlock(A); await A.settle(200);
       await A.evaluate(() => history.back()); await A.waitForFunction(() => !location.hash.startsWith('#p/')); await A.settle(200);
       eq('قفل جوه حساب وفتح ورجوع: قايمة العملاء مش فاضية', await A.evaluate(() => $$('#hList .pt').length > 0), true);
     }

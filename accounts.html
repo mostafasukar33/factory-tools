@@ -1936,7 +1936,7 @@ function selfCheck() {
 
 /* ====================== شاشة القفل ====================== */
 const LOCK_IDLE = 10 * 60 * 1000, LOCK_HIDDEN = 5 * 60 * 1000;
-let lastAct = Date.now(), hiddenAt = 0;
+let lastAct = Date.now(), hiddenAt = 0, lockGen = 0, bioBusy = false, locking = false;
 /* ---------- فتح ببصمة الوجه / الإصبع ----------
    بنستخدم مفتاح المرور (passkey) اللي على الجهاز مع خاصية PRF: الموبايل بيدّينا سر ما بيخرجش غير بعد البصمة،
    وبيه بنقفل كلمة السر ونخزنها. فكلمة السر مش بتتخزن مكشوفة، والبصمة هي اللي بتفتحها.
@@ -2004,7 +2004,7 @@ async function showLock(msg) {
   $('#lkP').onkeydown = e => { if (e.key === 'Enter') go(false); };
   /* أول ما توقف كتابة (نص ثانية) وهي 6 حروف أو أكتر، بيجرب يفتح لوحده */
   $('#lkP').oninput = () => { clearTimeout(tm); if ($('#lkP').value.length >= 6) tm = setTimeout(() => go(true), 450); };
-  let bioBusy = false;
+  const gen = ++lockGen;   // شاشة قفل جديدة = أي طلب بصمة لوحده من شاشة قديمة بيتلغي
   if ($('#lkBio')) $('#lkBio').onclick = async () => {
     if (bioBusy) return;   // دوستين ورا بعض = طلب بصمة واحد بس
     bioBusy = true; window.bioAsked = true;   // بعد ما البصمة اتطلبت مفيش تحديث لوحده على شاشة القفل (كان بيعمل reload فالبصمة تطلع تاني، بطلبه 19/10/2026)
@@ -2014,9 +2014,13 @@ async function showLock(msg) {
   };
   $('#lkForgot').onclick = forgotFlow;
   $('#lkAbc').onclick = () => { const i = $('#lkP'); const num = i.inputMode === 'numeric'; i.inputMode = num ? 'text' : 'numeric'; if (num) i.removeAttribute('pattern'); else i.setAttribute('pattern', '[0-9]*'); $('#lkAbc').textContent = num ? 'ارجع للوحة الأرقام' : 'كلمة السر فيها حروف؟ افتح لوحة الحروف'; i.blur(); setTimeout(() => i.focus(), 50); };
-  /* البصمة بدوسة على الزرار بس (بطلبه 21/10/2026): الطلب من غير لمسة كان بيخلي الأيفون يطلّع كارت "تسجيل الدخول؟" قبل البصمة وساعات يعلق.
-     متعملهاش تطلع لوحدها تاني */
-  if (!bio) {
+  /* أول ما الشاشة تظهر وفيه بصمة مفعّلة: بيطلب البصمة لوحده مرة واحدة بس (كارت "استخدام مفتاح المرور" من الأيفون نفسه).
+     كانت بتطلع مرتين لأن القفل كان بيتعمل مرتين ورا بعض لما البرنامج يرجع من الخلفية (locking/lockGen/bioBusy، 21/10/2026).
+     لو الصفحة لسه مش قدامك بيستنى لحد ما تظهر */
+  if (bio && !location.search.includes('nobio')) {
+    const auto = () => { if (gen !== lockGen || !$('#lkBio') || $('#lkP').value) return; if (document.hidden) return document.addEventListener('visibilitychange', auto, {once: true}); $('#lkBio').click(); };
+    setTimeout(auto, 350);
+  } else {
     /* من غير بصمة: لوحة الأرقام تفتح لوحدها. الأيفون أحياناً بيرفض الفتح التلقائي، فأول لمسة في أي مكان في الشاشة بتفتحها */
     const focusPw = () => { const i = $('#lkP'); if (i && document.activeElement !== i) { try { i.focus({preventScroll: true}); } catch (e) { i.focus(); } } };
     /* الأيفون بيمنع فتح الكيبورد من غير لمسة، فعلى الموبايل بنعرض لوحة أرقام جوه الصفحة نفسها (من غير كيبورد النظام). زرار "لوحة الحروف" بيرجّع الكيبورد العادي */
@@ -2087,8 +2091,9 @@ async function forgotFlow() {
   };
 }
 function lockNow(msg) {
-  if (!db) return;
-  flushSave().then(() => { db = null; cryptoKey = null; P = new Map(); E = new Map(); $('#p-party').innerHTML = ''; $('#hList').innerHTML = ''; homeVer = ''; showLock(msg); });   // homeVer فاضي = القايمة اللي اتمسحت لازم تترسم تاني بعد الفتح حتى في الرجوع من حساب
+  if (!db || locking) return;   // الرجوع من الخلفية كان بيقفل مرتين (الخلفية + 10 دقايق من غير لمس) فالبصمة تطلع مرتين
+  locking = true;
+  flushSave().finally(() => { locking = false; }).then(() => { db = null; cryptoKey = null; P = new Map(); E = new Map(); $('#p-party').innerHTML = ''; $('#hList').innerHTML = ''; homeVer = ''; showLock(msg); });   // homeVer فاضي = القايمة اللي اتمسحت لازم تترسم تاني بعد الفتح حتى في الرجوع من حساب
 }
 function landingHash() {
   if (mkCreds() && (mkPending().length || (db.cfg.clash || []).some(c => !c.seen))) return '#mkt';

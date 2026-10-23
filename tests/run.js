@@ -1386,7 +1386,7 @@ const T0 = Date.now();
     /* تليجرام من الحسابات لمصطفى: نسخة يومية وملخص وتنبيه. على نفس البوت، ومن غير ما يتكتب أي حاجة في شيت الحركات (الشريك مبيشوفهاش) */
     const tgDocs = () => sheets.mkt.tg.calls.filter(c => c.url.endsWith('/sendDocument'));
     const mkRows0 = sheets.mkt.sheets['الحركات'].rows.length;
-    eq('كود شيت السوق نسخة 6، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [6, null]);
+    eq('كود شيت السوق نسخة 7، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [7, null]);
     {
       /* كود شيت السوق نسخة 4 قدام نسخة 3 القديمة بآلاف السطور: نفس الردود ونفس الشيت بالظبط، والقراية أقل بكتير */
       const oldMk = fs.readFileSync(path.join(__dirname, 'fixtures/mkt-sheet-v3.gs'), 'utf8'), newMk = await A.evaluate(() => marketScript());
@@ -1478,10 +1478,23 @@ const T0 = Date.now();
         const got = gcalls();
         eq('إشعارات: عملية جديدة من الشريك = إشعار ورقم الأيقونة بيزيد، والتعديل إشعار من غير ما الرقم يزيد، واللي من الحسابات مفيش', [got.length, got.map(x => x.m.n), got[0].m.b.split('\n').length, got[1].m.b.startsWith('✏️'), got[0].m.u],
           [2, [4, 4], 2, true, 'accounts.html#mkt']);
+        /* موبايل الشريك (r: 'mk'): طلبيات مصطفى الجديدة بس، وإشعارات الوارد مبتروحلوش */
+        gp({action: 'psub', dev: 'mk1', r: 'mk', sub: {endpoint: 'https://fcm.googleapis.com/M1', keys: {p256dh: 'x', auth: 'y'}}, jwk: {d: 'z'}});
+        const od = (id, upd, x) => ({id, kind: 'ord', upd, del: false, view: ['', 'عميل طلبية', '', 'طلبية', '10 لفة 16 مم = 50 ك'], data: Object.assign({id, cname: 'عميل طلبية', items: [{n: '16 مم', c: 10, w: 5}], due: '2026-11-02', by: 'مصطفى', st: ''}, x || {})});
+        const g0 = gcalls().length;
+        gp({action: 'push', who: 'a', rows: [od('oPN1', 2001)]});
+        gp({action: 'push', who: 'a', rows: [od('oPN1', 2002, {st: 'done'})]});   // تعديل: مفيش
+        gp({action: 'push', who: 'm', rows: [od('oPN2', 2003, {by: 'أحمد'})]});   // من الشريك نفسه: مفيش
+        gp({action: 'push', who: 'm', rows: [op('opPN6', 2004)]});
+        const og = gcalls().slice(g0);
+        eq('إشعارات: طلبية جديدة من مصطفى = إشعار لموبايل الشريك بس (العميل والأصناف والتسليم)، والتعديل واللي كتبه الشريك مفيش، والوارد لأجهزة الحسابات بس',
+          [og.length, og.map(x => x.subs.map(y => y.s.endpoint)), og[0].m.t, og[0].m.b, og[0].m.u, og[0].m.n, JSON.parse(G.props.PUSH_SUBS).mk1.r],
+          [2, [['https://fcm.googleapis.com/M1'], ['https://web.push.apple.com/G1']], '📋 طلبية جديدة من مصطفى', 'عميل طلبية · 10 لفة 16 مم = 50 ك · التسليم 02/11', 'market.html#ord', undefined, 'mk']);
+        gp({action: 'psub', dev: 'mk1', sub: null});
         G.tg.relay = b => ({code: 200, body: {ok: true, st: b.subs.map(() => 410)}});
         gp({action: 'push', who: 'm', rows: [op('opPN4', 1005)]});
         G.tg.relay = null;
-        eq('إشعارات: الأيفون لغى الاشتراك (410) = الشيت بيشيله لوحده، وبعدها الوسيط مبيتكلمش', [JSON.parse(G.props.PUSH_SUBS), (gp({action: 'push', who: 'm', rows: [op('opPN5', 1006)]}), gcalls().length)], [{}, 3]);
+        eq('إشعارات: الأيفون لغى الاشتراك (410) = الشيت بيشيله لوحده، وبعدها الوسيط مبيتكلمش', [JSON.parse(G.props.PUSH_SUBS), (gp({action: 'push', who: 'm', rows: [op('opPN5', 1006)]}), gcalls().length)], [{}, 5]);
       }
       /* الرقم الحقيقي من البرنامج بيروح للشيت، والاشتراك بيرجع لوحده أول فتحة */
       await A.evaluate(() => { pushSeenN = -1; pushRenewDb = null; db.cfg.push.at = 0; mkBell(); });
@@ -2058,7 +2071,7 @@ const T0 = Date.now();
     eq('صفحة العملاء: إجمالي اللي على العملاء ظاهر', await M.evaluate(() => { const t = [...customers().values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0); return $('#main .ctot .money').textContent === fmt(t); }), true);
     await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(500);
     eq('وصل لمصطفى في الوارد', await A.evaluate(() => mkPending().filter(o => o.t === 'cs').map(o => [o.buyer, o.amt])), [['مشتري تجربة', 450000]]);
-    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 6', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 6]);
+    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 7', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 7]);
     const csV0 = await A.evaluate(() => vaultBal('v_mkt'));
     await A.evaluate(() => { const o = mkPending().find(x => x.t === 'cs'); mkMove(o, {amt: o.amt, date: todayISO(), vault: 'v_mkt', to: ''}); saveDB(); });
     eq('اتنقل إيراد في خزنة السوق (مبيعات نقدي) من غير ما يتعمل عميل', await A.evaluate(([v0, p0]) => [vaultBal('v_mkt') - v0, db.txs.filter(t => t.id.startsWith('t_mk_') && t.type === 'inc' && t.cat === 'c_inc1' && !t.del).length > 0, db.parties.length], [csV0, csP0]), [450000, true, csP0]);
@@ -2342,6 +2355,28 @@ const T0 = Date.now();
       eq('الحسابات: نفس الطلبية ومكتوب أحمد', await A.evaluate(() => [$$('#ordL .oc').length, $('#ordL .oc .who').textContent, $('#ordL .oc .oi').textContent.includes('100 لفة 16 مم أحمر ختم فلاش · 5 ك = 500 ك')]), [1, 'أحمد', true]);
       await A.click('#ordL [data-done]'); await A.settle(200);
       eq('مصطفى داس "اتسلمت": راحت تبويب اتسلمت', await A.evaluate(id => [mkDb().ord[id].st, mkDb().ord[id].doneBy, $$('#ordL .oc').length], o1.id), ['done', 'مصطفى', 0]);
+      /* إشعار الطلبيات لموبايل أحمد: بيفعّله بدوسة من الرئيسية (الإذن والاشتراك متقلّدين) */
+      await M.evaluate(() => {
+        window.__sub = null;
+        const pm = {getSubscription: async () => window.__sub, subscribe: async o => (window.__sub = {endpoint: 'https://fcm.googleapis.com/AHMED1', options: {applicationServerKey: o.applicationServerKey.buffer},
+          toJSON() { return {endpoint: this.endpoint, keys: {p256dh: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4', auth: 'BTBZMqHH6r4Tts7J_aSIgg'}}; }, unsubscribe: async () => { window.__sub = null; return true; }})};
+        Object.defineProperty(navigator.serviceWorker, 'ready', {value: Promise.resolve({pushManager: pm}), configurable: true});
+        Object.defineProperty(Notification, 'permission', {get: () => 'granted', configurable: true});
+        Notification.requestPermission = async () => 'granted';
+        closeModal(); nav('', true);
+      });
+      await M.waitForSelector('#qPn');
+      const pcalls = () => sheets.mkt.tg.calls.filter(c => /\/push$/.test(c.url)).map(c => c.body);
+      const pc0 = pcalls().length;
+      await M.click('#qPn'); await M.waitForFunction(() => S.push && S.push.on && !$('#qPn'));
+      for (let i = 0; i < 60 && pcalls().length === pc0; i++) await M.settle(100);
+      const msub = JSON.parse(sheets.mkt.props.PUSH_SUBS || '{}')[await M.evaluate(() => S.dev)];
+      eq('أحمد فعّل إشعار الطلبيات: موبايله في الشيت كشريك (mk)، وجاله إشعار تجربة، والسطر اختفى', [msub && msub.r, msub && msub.s.endpoint, pcalls().slice(pc0).map(x => [x.m.t, x.subs.length]), await M.evaluate(() => !!$('#qPn'))],
+        ['mk', 'https://fcm.googleapis.com/AHMED1', [['✅ تجربة', 1]], false]);
+      await M.evaluate(() => { location.hash = 'ord'; }); await M.waitForSelector('#ordL');
+      eq('دوسة الإشعار (market.html#ord) بتفتح الطلبيات على طول، واللينك بيرجع للرئيسية', await M.evaluate(() => [location.hash, scr.v]), ['', 'home']);
+      await M.evaluate(() => closeModal()); await M.settle(100);
+      const pc1 = pcalls().length;
       await A.click('#oNew'); await A.waitForSelector('#ordF');
       await A.fill('#oC', 'معرض تجربة الأمل'); await A.fill('#oLs .ln[data-i="0"] .n', 'لفة 16 مم أحمر ختم فلاش');
       await A.evaluate(() => $('#oLs .ln[data-i="0"] .n').dispatchEvent(new Event('blur'))); await A.waitForFunction(() => $('#oLs .ln[data-i="0"] .w').value === '5');
@@ -2351,6 +2386,9 @@ const T0 = Date.now();
       eq('مصطفى كتب طلبية: وزن اللفة جه من آخر مرة (5) و"يوم تاني" = بعد 3 أيام', await A.evaluate(() => { const o = Object.values(mkDb().ord).find(x => x.by === 'مصطفى'); return o && [o.items[0].w, o.items[0].k, o.due === addDays(todayISO(), 3)]; }), [5, 100, true]);
       await A.evaluate(() => closeModal());
       await sync2();
+      const opn = pcalls().slice(pc1);
+      eq('مصطفى كتب طلبية: إشعار واحد راح لموبايل أحمد بس، فيه العميل والأصناف، ودوسته بتفتح الطلبيات', [opn.length, opn[0] && opn[0].subs.map(x => x.s.endpoint), opn[0] && opn[0].m.t, opn[0] && opn[0].m.b.startsWith('معرض تجربة الأمل · 20 لفة 16 مم أحمر ختم فلاش = 100 ك · التسليم '), opn[0] && opn[0].m.u],
+        [1, ['https://fcm.googleapis.com/AHMED1'], '📋 طلبية جديدة من مصطفى', true, 'market.html#ord']);
       eq('أحمد: الأولى اتسلمت (مصطفى) والتانية وصلت مكتوب عليها مصطفى', await M.evaluate(id => { const L = Object.values(S.ord); return [S.ord[id].st, S.ord[id].doneBy, L.filter(o => !o.st).map(o => o.by)]; }, o1.id), ['done', 'مصطفى', ['مصطفى']]);
       /* التسعير */
       await M.evaluate(() => { closeModal(); nav('', true); }); await M.settle(150);

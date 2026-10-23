@@ -6319,7 +6319,7 @@ const HEAD = ['id','النوع','آخر تعديل','رقم المزامنة','�
 const W = HEAD.length;
 const TG = 'https://api.telegram.org/bot';
 const PUSH = 'https://app.flashoneg.com/push';   // وسيط إشعارات الأيفون (functions/push.js في نفس المشروع)
-const VER = 6;   /* 6 = إشعارات الأيفون (رقم الوارد على أيقونة الحسابات): psub/pseen/ptest، وبعد تليجرام بيبعت للوسيط PUSH. 5 = كل رد فيه وقت الشيت t. 2 = نص تليجرام بييجي جاهز من تطبيق الشريك (data.tg). 3 = رسايل من الحسابات لمصطفى (نسخة احتياطية وملخص وتنبيه: tgmsg/tgdoc). 4 = السحب بيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس، والإرسال بيقرا عمود الـ id بس */
+const VER = 7;   /* 7 = إشعار لموبايل الشريك لما مصطفى يكتب طلبية جديدة (psub فيه r: 'mk'، والإشعارات التانية مبتروحلوش). 6 = إشعارات الأيفون (رقم الوارد على أيقونة الحسابات): psub/pseen/ptest، وبعد تليجرام بيبعت للوسيط PUSH. 5 = كل رد فيه وقت الشيت t. 2 = نص تليجرام بييجي جاهز من تطبيق الشريك (data.tg). 3 = رسايل من الحسابات لمصطفى (نسخة احتياطية وملخص وتنبيه: tgmsg/tgdoc). 4 = السحب بيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس، والإرسال بيقرا عمود الـ id بس */
 const MW = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون كاش'};
 function sh_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -6353,13 +6353,14 @@ function doPost(e) {
   if (req.action === 'tgmsg') return out_(tgOnce_(req, () => tgSend_(String(req.text || '').slice(0, 4000))));
   if (req.action === 'psub') return out_(pSub_(req));
   if (req.action === 'pseen') { p.setProperty('PUSH_N', String(Math.max(0, Math.round(Number(req.n) || 0)))); return out_({ok: true, v: VER}); }
+  if (req.action === 'ptest' && req.r === 'mk') return out_(Object.assign({ok: true, v: VER}, pSend_({t: '✅ تجربة', b: 'الإشعارات شغالة. لما مصطفى يكتب طلبية هيجيلك إشعار هنا.', u: 'market.html#ord', g: 'ord'}, String(req.dev || ''), 'mk')));
   if (req.action === 'ptest') return out_(Object.assign({ok: true, v: VER}, pSend_({t: '✅ تجربة', b: 'إشعارات وارد السوق شغالة. أي حاجة شريكك يسجلها هتوصلك هنا.', n: Number(p.getProperty('PUSH_N')) || 0, u: 'accounts.html#mkt'}, String(req.dev || ''))));
   if (req.action === 'tgdoc') return out_(tgOnce_(req, () => tgDoc_(String(req.name || 'backup.json'), String(req.text || ''), String(req.caption || '').slice(0, 1000))));
   return out_({ok: false, error: 'action'});
 }
 function push_(rows, who) {
   const lock = LockService.getScriptLock(); lock.waitLock(30000);
-  const msgs = [];
+  const msgs = [], ords = [];
   let res, nNew = 0;
   try {
     const s = sh_(), last = s.getLastRow();
@@ -6388,6 +6389,8 @@ function push_(rows, who) {
         const m = opMsg_(old, r.data || {}, !!r.del); if (m) msgs.push(m);
         if (!r.del && (!old || old.del)) nNew++;
       }
+      /* طلبية جديدة من الحسابات (مصطفى) = إشعار لموبايل الشريك. view[1] العميل و view[4] الأصناف */
+      if (r.kind === 'ord' && who === 'a' && i === undefined && addAt[r.id] === undefined && !r.del && r.data && !r.data.st) ords.push(r);
       seq++;
       const v = (r.view || []).concat(['', '', '', '', '']).slice(0, 5);
       const line = [r.id, r.kind, r.upd, seq, r.del ? 'نعم' : ''].concat(v, [JSON.stringify(r.data)]);
@@ -6402,6 +6405,7 @@ function push_(rows, who) {
   finally { lock.releaseLock(); }
   if (res.ok && msgs.length) tgSend_(msgs.length > 4 ? msgs.join('\\n') : msgs);
   if (res.ok && msgs.length) pushOps_(msgs, nNew);
+  if (res.ok && ords.length) pushOrd_(ords);
   return res;
 }
 function pull_(since) {
@@ -6512,13 +6516,14 @@ function pSubs_() { try { return JSON.parse(PropertiesService.getScriptPropertie
 function pSub_(req) {
   const p = PropertiesService.getScriptProperties(), all = pSubs_(), dev = String(req.dev || '').slice(0, 20);
   if (!dev) return {ok: false, v: VER, error: 'dev'};
-  if (req.sub && req.sub.endpoint && req.jwk && req.jwk.d) all[dev] = {s: req.sub, k: req.jwk, at: Date.now()};
+  if (req.sub && req.sub.endpoint && req.jwk && req.jwk.d) all[dev] = {s: req.sub, k: req.jwk, at: Date.now(), r: req.r === 'mk' ? 'mk' : ''};
   else delete all[dev];
   p.setProperty('PUSH_SUBS', JSON.stringify(all));
   return {ok: true, v: VER, n: Object.keys(all).length};
 }
-function pSend_(m, only) {
-  const p = PropertiesService.getScriptProperties(), all = pSubs_(), ids = Object.keys(all).filter(d => !only || d === only);
+/* role = 'mk' موبايلات الشريك (الطلبيات بس)، غير كده أجهزة الحسابات (الوارد) */
+function pSend_(m, only, role) {
+  const p = PropertiesService.getScriptProperties(), all = pSubs_(), ids = Object.keys(all).filter(d => (!only || d === only) && (all[d].r || '') === (role || ''));
   if (!ids.length) return {sent: 0, none: true};
   let r; try { r = UrlFetchApp.fetch(PUSH, {method: 'post', contentType: 'application/json', muteHttpExceptions: true, payload: JSON.stringify({subs: ids.map(d => ({s: all[d].s, k: all[d].k})), m: m})}); } catch (e) { return {sent: 0, err: 'net'}; }
   let j = null; try { j = JSON.parse(r.getContentText()); } catch (e) {}
@@ -6527,6 +6532,14 @@ function pSend_(m, only) {
   j.st.forEach((c, i) => { if (c >= 200 && c < 300) sent++; else if (c === 404 || c === 410) { delete all[ids[i]]; gone++; } });
   if (gone) p.setProperty('PUSH_SUBS', JSON.stringify(all));
   return {sent: sent, gone: gone, st: j.st};
+}
+function pushOrd_(ords) {
+  try {
+    if (PropertiesService.getScriptProperties().getProperty('PUSH_SUBS') === null) return;
+    const ln = r => { const v = r.view || [], d = String(r.data.due || ''); return [v[1], v[4], /^\\d{4}-\\d{2}-\\d{2}$/.test(d) ? 'التسليم ' + d.slice(8) + '/' + d.slice(5, 7) : ''].filter(Boolean).join(' · '); };
+    const b = ords.length > 3 ? ords.slice(0, 3).map(ln).join('\\n') + '\\n… و' + (ords.length - 3) + ' كمان' : ords.map(ln).join('\\n');
+    pSend_({t: ords.length > 1 ? '📋 ' + ords.length + ' طلبيات جديدة من مصطفى' : '📋 طلبية جديدة من مصطفى', b: b.slice(0, 1500), u: 'market.html#ord', g: 'ord'}, '', 'mk');
+  } catch (e) {}
 }
 function pushOps_(msgs, nNew) {
   try {
@@ -6566,7 +6579,7 @@ function ordItemsRow(d) {
   if (d.oit === s) return [];
   return [{row: {id: 'oit', kind: 'oit', upd: nowS(), del: false, view: ['', 'أصناف الطلبيات', '', 'أصناف', n.length + ' صنف'], data: {n}}, sig: s, oit: true}];
 }
-const ordView = (k, o) => k === 'ord' ? [isoOf(o.at || o.upd) + ' ' + new Date(o.at || o.upd).toTimeString().slice(0, 5), o.cname || '', '', 'طلبية' + (o.st === 'done' ? ' (اتسلمت)' : o.st === 'x' ? ' (اتلغت)' : ''), (o.items || []).map(it => it.n + (it.k ? ' ' + it.k + ' ك' : '')).join('، ')]
+const ordView = (k, o) => k === 'ord' ? [isoOf(o.at || o.upd) + ' ' + new Date(o.at || o.upd).toTimeString().slice(0, 5), o.cname || '', '', 'طلبية' + (o.st === 'done' ? ' (اتسلمت)' : o.st === 'x' ? ' (اتلغت)' : ''), (o.items || []).map(it => { const k = it.k || (it.c && it.w ? Math.round(it.c * it.w * 100) / 100 : 0); return (it.c ? it.c + (/^لف[ةه]/.test(it.n) ? ' ' : ' لفة ') : '') + it.n + (k ? ' = ' + k + ' ك' : ''); }).join('، ')]
   : [isoOf(o.upd) + ' ' + new Date(o.upd).toTimeString().slice(0, 5), o.name || '', '', 'تسعير', `${o.n1} ${o.p1 / 100} × ${o.a}% + ${o.n2} ${o.p2 / 100}`];
 let ordP = null;
 function ordLoad(fn) {
@@ -7705,7 +7718,7 @@ function mktHelp() {
     catch (e) { $('#mhShow').click(); const r = document.createRange(); r.selectNodeContents($('#mhCode')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('اضغط مطوّل على الكود واختار نسخ (Copy)', 6000); }
   };
 }
-const MK_VER = 6;
+const MK_VER = 7;
 /* تحديث كود شيت السوق (من الموبايل أو اللاب). بيتطلب بس لما VER يزيد: نص تنبيهات الشريك بييجي من التطبيق فمش محتاج تحديث */
 function mktUpdateHelp() {
   const code = marketScript(), wide = isWide(), su = db && db.cfg.mkSheetUrl;
@@ -7984,7 +7997,7 @@ function renderMktSettings() {
     if (!j) { el.innerHTML = '⚠️ معرفتش أوصل لشيت السوق دلوقتي.'; return; }
     tgInfo = j;
     if (j.url && db && db.cfg.mkSheetUrl !== j.url) { db.cfg.mkSheetUrl = j.url; flushSave(); }   // لينك جدول "حركة السوق" نفسه (من نسخة 3): زرار يفتحه على طول
-    el.innerHTML = (!j.v || j.v < MK_VER ? `<div class="sync warn" id="mkOld" style="margin-bottom:8px">⚠️ كود شيت السوق قديم: ${j.v >= 5 ? 'شغال عادي، بس إشعارات الأيفون (رقم الوارد على الأيقونة) محتاجة التحديث' : j.v >= 3 ? 'شغال عادي، بس هيبطأ مع كتر الحركات على مدار السنين' : 'بعض تنبيهات شريكك بتوصل ناقصة، والنسخة اليومية والملخص مش هيوصلوك'}. <a>حدّثه (مرة واحدة)</a></div>` : '')
+    el.innerHTML = (!j.v || j.v < MK_VER ? `<div class="sync warn" id="mkOld" style="margin-bottom:8px">⚠️ كود شيت السوق قديم: ${j.v >= 6 ? 'شغال عادي، بس إشعار الطلبيات لموبايل أحمد محتاج التحديث' : j.v >= 5 ? 'شغال عادي، بس إشعارات الأيفون (رقم الوارد على الأيقونة) محتاجة التحديث' : j.v >= 3 ? 'شغال عادي، بس هيبطأ مع كتر الحركات على مدار السنين' : 'بعض تنبيهات شريكك بتوصل ناقصة، والنسخة اليومية والملخص مش هيوصلوك'}. <a>حدّثه (مرة واحدة)</a></div>` : '')
       + (!j.token ? 'لسه مفيش بوت. اعمله من الخطوات تحت (مرة واحدة).'
       : !j.chat ? `<b style="color:var(--gold-d)">⏳ البوت @${esc(j.bot)} محفوظ. افتحه في تليجرام وابعتله "ابدأ"، وبعدين دوس "جرّب التنبيه".</b>`
       : `<b style="color:var(--green)">✔ التنبيهات شغالة على البوت @${esc(j.bot)}.</b>`);

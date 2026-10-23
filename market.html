@@ -89,6 +89,7 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:var(--ink)}
 /* الطلبيات والتسعير: صف لوحده بعيد عن زراير الفلوس (علشان ميدوسش عليهم غلط) */
 .xrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:22px 0 6px;padding-top:14px;border-top:2px solid var(--line)}
 .xb{min-height:46px;border:1.5px solid var(--line);background:var(--card);border-radius:12px;font:inherit;font-weight:700;font-size:var(--f2);color:var(--sub);display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+.pnl{width:100%;margin-top:10px;min-height:42px;border:1.5px dashed var(--tr);background:var(--tr-l);color:var(--tr);border-radius:12px;font:inherit;font-weight:700;font-size:var(--f2);cursor:pointer;padding:6px 10px}
 .xb small{background:var(--red);color:var(--card);border-radius:9px;padding:0 7px;font-size:var(--f1);font-weight:800}
 .qb.qs{border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
 .list{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
@@ -767,6 +768,7 @@ function route() {
   const h = decodeURIComponent(location.hash.slice(1)), [a, b] = h.split('/');
   scr = a === 'p' && b ? {v: 'pay', cid: b} : a === 'ok' && b && S.ops[b] ? {v: 'ok', op: b} : a === 'x' ? {v: 'spend'} : a === 'b' ? {v: 'sale'} : a === 'c' ? {v: 'c'} : a === 'v' ? (b ? {v: 'sup', sid: b} : {v: 'v'}) : a === 's' ? {v: 's'} : a === 'a' ? (isDay(b) ? {v: 'day', day: b} : /^\d{4}-\d{2}$/.test(b || '') ? {v: 'mon', mon: b} : {v: 'a'}) : {v: 'home'};
   render(); window.scrollTo(0, 0);
+  if (a === 'ord') { history.replaceState(null, '', location.pathname); ordLoad('ordOpen'); }   // دوسة على إشعار طلبية
 }
 function render() {
   drawTop(); drawTabs();
@@ -823,6 +825,68 @@ function ordLoad(fn) {
   ordP.then(() => window[fn]()).catch(() => toast('مش قادر يفتح دلوقتي، اتأكد من النت وجرّب تاني.'));
 }
 
+/* ---------- إشعار الطلبيات (بطلب مصطفى 23/10/2026) ----------
+   مصطفى يكتب طلبية في الحسابات ← شيت السوق (نسخة 7 أو أحدث) ← الوسيط (functions/push.js) ← إشعار على الموبايل ده (sw.js، بيفتح الطلبيات).
+   زي إشعارات الحسابات: مفتاح للموبايل ده لوحده (S.push، VAPID P-256) واشتراكه بيتبعت للشيت (psub بـ r: 'mk')، فمبيجيلوش غير الطلبيات.
+   مبيلمسش أي حركة، وأي فشل هنا مبيأثرش على التسجيل */
+const pnCan = () => 'serviceWorker' in navigator && 'PushManager' in window && !!window.Notification;
+const pnStand = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const pnIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const pnOn = () => !!(S.push && S.push.on);
+const pnShow = () => pnCan() && !pnOn() && !!S.u && !S.bad && (pnStand() || !pnIOS());   // الآيفون: من الأيقونة اللي على الشاشة بس
+const pnB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const pnBin = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((t.length + 3) % 4)), c => c.charCodeAt(0));
+async function pnSub() {
+  const c = S.push = S.push || {};
+  if (!c.jwk || !c.pub) {
+    const kp = await crypto.subtle.generateKey({name: 'ECDSA', namedCurve: 'P-256'}, true, ['sign', 'verify']);
+    c.jwk = await crypto.subtle.exportKey('jwk', kp.privateKey); c.pub = pnB64(await crypto.subtle.exportKey('raw', kp.publicKey)); save();
+  }
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (sub) { const k = sub.options && sub.options.applicationServerKey; if (!k || pnB64(k) !== c.pub) { await sub.unsubscribe().catch(() => {}); sub = null; } }
+  return sub || reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: pnBin(c.pub)});
+}
+async function pnReg(sub) {
+  const j = await callSheet({action: 'psub', dev: S.dev, r: 'mk', sub: sub.toJSON(), jwk: S.push.jwk});
+  if (j && j.ok) { Object.assign(S.push, {on: true, ep: sub.endpoint, at: nowS()}); save(); }
+  return j;
+}
+async function pnEnable() {
+  let perm = Notification.permission;   // الإذن أول حاجة في الدوسة نفسها (الآيفون بيرفضه لو اتأخر)
+  if (perm === 'default') { try { perm = await Notification.requestPermission(); } catch (e) {} }
+  if (perm !== 'granted') return perm === 'denied' ? 'الإشعارات مقفولة للتطبيق ده من إعدادات الموبايل. افتحها من هناك وارجع دوس تاني.' : 'لازم توافق لما الموبايل يسألك.';
+  /* الشيت القديم مبيفرّقش، فكان هيبعتلك إشعارات الوارد بتاعة مصطفى: لازم نسخة 7 الأول */
+  let v = 0; try { const j = await callSheet({action: 'ping'}); v = j && j.v; } catch (e) { return 'معرفتش أوصل. اتأكد من النت وجرّب تاني.'; }
+  if (!v || v < 7) return 'لسه مصطفى محتاج يحدّث حاجة عنده الأول. قوله، وبعدين دوس هنا تاني.';
+  let sub; try { sub = await pnSub(); } catch (e) { return 'الموبايل رفض الإشعارات. جرّب تاني.'; }
+  let j = null; try { j = await pnReg(sub); } catch (e) {}
+  return j && j.ok ? '' : 'معرفتش أوصل. اتأكد من النت وجرّب تاني.';
+}
+async function pnOff() {
+  try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } catch (e) {}
+  if (S.push) { S.push.on = false; save(); }
+  try { await callSheet({action: 'psub', dev: S.dev, sub: null}); } catch (e) {}
+}
+async function pnTap(b) {
+  b.disabled = true; const msg = await pnEnable(); b.disabled = false;
+  if (msg) return toast(msg, 6000);
+  toast('✔ تمام، لما مصطفى يكتب طلبية هيجيلك إشعار', 4000);
+  try { await callSheet({action: 'ptest', r: 'mk', dev: S.dev}); } catch (e) {}
+  if (scr.v === 's') drawSettings(); else if (scr.v === 'home') drawHome();
+}
+/* كل فتحة: لو الاشتراك اتغير أو اتلغى أو عدّى أسبوع بيتبعت تاني لوحده */
+booted.then(async () => {
+  if (!pnOn() || !pnCan() || Notification.permission !== 'granted' || !S.u) return;
+  try {
+    const reg = await navigator.serviceWorker.ready, cur = await reg.pushManager.getSubscription();
+    if (cur && cur.endpoint === S.push.ep && nowS() - (S.push.at || 0) < 7 * 86400000) return;
+    await pnReg(cur && cur.endpoint === S.push.ep ? cur : await pnSub());
+  } catch (e) {}
+});
+/* دوسة على الإشعار والتطبيق مفتوح: sw.js بيقول افتح الطلبيات */
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.t === 'go-ord' && ready) ordLoad('ordOpen'); });
+
 /* ---------- الرئيسية: اللي معايا + حركات النهارده ---------- */
 let homeDays = 3;   // أيام فاتت بتفضل ظاهرة تحت النهارده، وبيزود بزرار
 function drawHome() {
@@ -838,6 +902,7 @@ function drawHome() {
         : `<button class="kline" id="kBtn" type="button">🔒 قفّل يومك (عِد الفلوس اللي معاك)</button>`}</section>
     <div class="qa2"><button class="qb g" id="qPay" type="button"><i>💵</i>دفعة أو فاتورة</button><button class="qb qs" id="qSale" type="button"><i>🏭</i>بيع كاش من المصنع</button><button class="qb" id="qSp" type="button"><i>⛽</i>صرفت</button><button class="qb" id="qHand" type="button"><i>🤝</i>سلمت لمصطفى</button></div>
     <div class="xrow"><button class="xb" id="qOrd" type="button">📋 الطلبيات${on ? ` <small>${on}</small>` : ''}</button><button class="xb" id="qPrc" type="button">🏷️ التسعير</button></div>
+    ${pnShow() ? '<button class="pnl" id="qPn" type="button">🔔 دوس هنا علشان يجيلك إشعار لما مصطفى يكتب طلبية</button>' : ''}
     <div class="lbl"><span>حركات النهارده</span><span>دوس على أي حركة تعدّلها</span></div>
     ${ops.length ? dayList(ops) : '<div class="list"><div class="empty">لسه مسجلتش حاجة النهارده</div></div>'}
     ${earlier.map(d => `<div class="lbl dh"><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}</span><span>حصّلت <b class="money">${fmt(sums(byDay.get(d)).col)}</b></span></div>${dayList(byDay.get(d))}`).join('')}
@@ -846,6 +911,7 @@ function drawHome() {
   if ($('#bk')) $('#bk').onclick = () => editSheet(bk[0]);
   $('#qOrd').onclick = () => ordLoad('ordOpen');
   $('#qPrc').onclick = () => ordLoad('prcOpen');
+  if ($('#qPn')) $('#qPn').onclick = () => pnTap($('#qPn'));
   $('#kBtn').onclick = closeDay;
   $('#qPay').onclick = () => { nav('c', true); setTimeout(() => $('#q') && $('#q').focus(), 120); };
   $('#qSp').onclick = () => { spTab = 'exp'; spPick = ''; spBack = ''; nav('x'); };
@@ -1426,10 +1492,16 @@ function drawSettings() {
       <div class="kv"><span>حركات مستنية تتبعت</span><b class="${n ? 'wt' : ''}">${n}</b></div>
       <button class="big b-home" id="sSync" type="button">🔄 حدّث دلوقتي</button>
       <p class="hint" style="text-align:right">الحركات بتتبعت وبتتحدث لوحدها كل كام ثانية. ولو مفيش نت بتتحفظ على الموبايل وتتبعت أول ما يرجع.</p></div>
+    ${pnCan() ? `<div class="card"><h2>🔔 إشعار الطلبيات</h2>${pnOn()
+      ? (Notification.permission === 'granted' ? '<p class="hint" style="text-align:right"><b class="ok">✔ شغال.</b> لما مصطفى يكتب طلبية بيجيلك إشعار.</p>' : '<p class="hint" style="text-align:right"><b class="bk">⚠️ الإشعارات مقفولة من إعدادات الموبايل.</b> افتحها من هناك.</p>') + '<button class="big b-home" id="sPnOff" type="button">اقفل الإشعار</button>'
+      : pnShow() ? '<p class="hint" style="text-align:right">لما مصطفى يكتب طلبية يجيلك إشعار على الموبايل.</p><button class="big b-home" id="sPnOn" type="button">🔔 شغّل الإشعار</button>'
+      : '<p class="hint" style="text-align:right">افتح التطبيق من الأيقونة اللي على الشاشة، وبعدين شغّلها من هنا.</p>'}</div>` : ''}
     <div class="card"><h2>🔒 قفل التطبيق</h2><div id="sPin"></div></div>
     <div class="card"><h2>معنى الألوان</h2><p class="hint" style="text-align:right;margin:0"><b class="ok">أخضر</b> = فلوس دخلت معاك · <b class="bk">أحمر</b> = فلوس طلعت منك · <b style="color:var(--tr)">أزرق</b> = راحت لمصطفى · <b style="color:var(--gold-d)">دهبي</b> = فاتورة أو حاجة مستنية مصطفى</p></div>
     <div class="card"><h2>عن التطبيق</h2><div class="kv"><span>التطبيق</span><b>حركة السوق — فلاش أون</b></div><p class="hint" style="text-align:right;margin-top:6px">أي غلطة تقدر تعدّلها أو تمسحها من الرئيسية أو الأرشيف، طول ما مصطفى لسه منقلهاش لحساباته.</p></div>`;
   renderPin();
+  if ($('#sPnOn')) $('#sPnOn').onclick = () => pnTap($('#sPnOn'));
+  if ($('#sPnOff')) $('#sPnOff').onclick = async () => { $('#sPnOff').disabled = true; await pnOff(); toast('اتقفل'); drawSettings(); };
   $$('#uiTheme button').forEach(b => b.onclick = () => { uiSet({theme: b.dataset.v}); drawSettings(); });
   $$('#uiFs button').forEach(b => b.onclick = () => { uiSet({fs: b.dataset.v}); drawSettings(); });
   $('#sSync').onclick = async () => {

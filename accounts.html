@@ -3301,11 +3301,23 @@ async function callSheet(body, url = db.cfg.sheetUrl, key = db.cfg.sheetKey, ms 
   for (let t = 1; ; t++) {
     try { return await callSheet1(body, url, key, ms); }
     /* جوجل رد بصفحة أو الطلب وقع من غير رد (النت اتهز لحظة): نستنى ونعيد. الإرسال آمن يتعاد */
-    catch (e) { if ((e.code !== 'page' && e.name !== 'TypeError') || t >= tries) throw e; await new Promise(r => setTimeout(r, 2000 * t)); }
+    catch (e) {
+      if (e.code === 'stale' && t < tries + 3) continue;   // طلب من قبل ما البرنامج يستخبى: نبعته تاني على طول (مش محسوب من المحاولات)
+      if ((e.code !== 'page' && e.name !== 'TypeError') || t >= tries) throw e; await new Promise(r => setTimeout(r, 2000 * t)); }
   }
 }
+/* الأيفون بيوقّف البرنامج في الخلفية ويقطع الاتصال، بس الطلب اللي كان ماشي بيفضل "مستني" لحد ما وقته (45 ثانية) يخلص بعد ما ترجع.
+   فلما البرنامج يرجع قدامك بعد ما كان مستخبي أكتر من 3 ثواني، أي طلب بدأ قبل ما يرجع بيتلغي ويتبعت جديد على طول */
+const sheetLive = new Set();
+let sheetHidAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { sheetHidAt = Date.now(); return; }
+  if (!sheetHidAt || Date.now() - sheetHidAt < 3000) return;
+  sheetLive.forEach(c => { if (c.t0 < Date.now()) { c.stale = true; c.ctl.abort(); } });
+});
 async function callSheet1(body, url, key, ms) {
-  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms), me = {ctl, t0: Date.now(), stale: false};
+  sheetLive.add(me);
   try {
     const t0 = Date.now();
     const resp = await fetch(url, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify(Object.assign({key}, body)), signal: ctl.signal});
@@ -3317,7 +3329,10 @@ async function callSheet1(body, url, key, ms) {
       throw x;
     }
     srvClock(j, t0); return j;
-  } finally { clearTimeout(tm); }
+  } catch (e) {
+    if (me.stale) { const x = new Error('stale'); x.code = 'stale'; throw x; }
+    throw e;
+  } finally { clearTimeout(tm); sheetLive.delete(me); }
 }
 const pendingRecs = () => db ? Object.entries(STORE).flatMap(([k, a]) => db[a].filter(r => r.sy !== r.upd && r.big !== r.upd).map(r => [k, r])) : [];
 /* خانة شيت جوجل حدها 50 ألف حرف، ولو سجل واحد عدّاها الشيت بيرفض الدفعة كلها والمزامنة تقف.

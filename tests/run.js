@@ -78,6 +78,7 @@ async function newDevice(browser, base, sheets) {
   await ctx.route('https://script.google.com/**', r => {
     if (ctx.netDown) return r.abort('failed');
     if (ctx.netOnce > 0) { ctx.netOnce--; return r.abort('failed'); }   // النت اتهز لحظة
+    if (ctx.hangOnce > 0) { ctx.hangOnce--; return; }   // طلب مبيردش خالص (الأيفون قطع الاتصال وهو في الخلفية)
     const q = r.request(), g = q.url().includes('TEST-CASH') ? sheets.cash : q.url().includes('TEST-MKT') ? sheets.mkt : sheets.acc;
     if (ctx.pageOnce > 0 && g === sheets.acc) { ctx.pageOnce--; return r.fulfill({status: 200, contentType: 'text/html', body: '<html>Google error</html>'}); }   // جوجل بيرد بصفحة خطأ لحظية
     if (!g.ctx.doPost) return r.fulfill({status: 200, contentType: 'text/html', body: '<html>no script</html>'});
@@ -752,8 +753,17 @@ const T0 = Date.now();
         await bg(A, 'syncNow()');
         eq('المزامنة اللي بعدها: مفيش تعارض ولا حاجة مستنية', await A.evaluate(() => [pendingRecs().length, (db.cfg.clash || []).filter(c => !c.seen).length, syncErr]), [0, 0, '']);
       }
-      {   // دفعة تقيلة بتتقسم (لحد ~250 ألف حرف)، وسجل المحاولات بيبان في الإعدادات
+      {   // طلب علق وهو في الخلفية: أول ما البرنامج يرجع قدامك بيتلغي ويتبعت جديد على طول (مش بعد 45 ثانية)
         await A.waitForFunction(() => !syncing);
+        await A.evaluate(() => { const p = liveParties()[0]; p.note = 'تجربة الخلفية'; p.upd = nowS(); saveDB(); clearTimeout(syncT); });
+        D1.hangOnce = 1; await A.evaluate(() => { window.__t0 = Date.now(); syncNow(); });
+        await A.waitForFunction(() => sheetLive.size > 0);
+        await A.evaluate(() => { let h = true; Object.defineProperty(document, 'hidden', {configurable: true, get: () => h}); document.dispatchEvent(new Event('visibilitychange')); sheetHidAt = Date.now() - 5000; h = false; document.dispatchEvent(new Event('visibilitychange')); delete document.hidden; });
+        await A.waitForFunction(() => !syncing && !pendingRecs().length, null, {timeout: 20000}).catch(() => {});
+        eq('طلب علق في الخلفية: اتبعت تاني لحظة ما رجع، والمزامنة خلصت في أقل من 10 ثواني', await A.evaluate(() => [pendingRecs().length, syncErr, Date.now() - __t0 < 10000]), [0, '', true]);
+      }
+      {   // دفعة تقيلة بتتقسم (لحد ~250 ألف حرف)، وسجل المحاولات بيبان في الإعدادات
+        await A.settle(500); await A.waitForFunction(() => !syncing && !syncAgain);
         await A.evaluate(() => { SYNC_BATCH = 50000; liveParties().slice(0, 3).forEach((p, i) => { p.note = 'دفعة تقيلة ' + i + ' ' + 'س'.repeat(30000); p.upd = nowS(); }); saveDB(); clearTimeout(syncT); });
         await bg(A, `(() => { const c = callSheet; window.__pushes = []; callSheet = (b, ...r) => { if (b.action === 'push') __pushes.push(b.rows.length); return c(b, ...r); }; return syncNow().finally(() => { callSheet = c; }); })()`);
         const [pushes, left, log] = await A.evaluate(() => { SYNC_BATCH = 250000; return [__pushes, pendingRecs().length, db.cfg.syLog[0]]; });

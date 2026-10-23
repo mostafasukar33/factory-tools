@@ -1783,7 +1783,7 @@ const T0 = Date.now();
     eq('تليجرام: رسالة المصروف', tgTexts().pop(), '⛽ مصروف بنزين: 200');
     const expId = await M.evaluate(() => liveOps().find(o => o.t === 'exp').id);
     await M.evaluate(() => nav('')); await M.settle(150);
-    await M.click(`.row[data-o="${expId}"]`); await M.settle(200);
+    await M.click(`[data-o="${expId}"]`); await M.settle(200);
     eq('تعديل المصروف من الرئيسية بدوسة: الرقم القديم والنوع ظاهرين', [await M.inputValue('#eA'), await M.inputValue('#eNt')], ['200', 'بنزين']);
     await M.fill('#eA', '250'); await M.fill('#eNt', 'مواصلات'); await M.click('#eOk'); await M.settle(1200);
     eq('تليجرام: رسالة تعديل المصروف', tgTexts().pop(), '✏️ اتعدلت: مصروف بنزين: 200\nبقت: مصروف مواصلات: 250');
@@ -1794,14 +1794,18 @@ const T0 = Date.now();
     eq('سلمت لمصطفى كاش اتسجلت (إشعار وفضل في الرئيسية)، وتليجرام', [await M.textContent('#toast'), await M.evaluate(() => scr.v), tgTexts().pop()], ['✔ اتسجل: سلمت لمصطفى 1,000', 'home', '🤝 سلّمك 1,000 كاش']);
     eq('معاه دلوقتي = كاش − مصروف − مورد − اللي سلمه', await M.evaluate(() => cashNow()), cash0 - 25000 - 300000 - 100000);
     await M.evaluate(() => nav('')); await M.settle(200);
-    eq('الرئيسية: اللي معاه وإجمالي النهارده (حصّلت | صرفت | سلّمت لمصطفى)', await M.evaluate(() => [$('#cashT').textContent, [...document.querySelectorAll('.panel .pn b')].map(b => b.textContent), document.querySelectorAll('#main .row[data-o]').length]), ['1,750', ['9,000', '3,250', '4,000'], 6]);
+    eq('الرئيسية: اللي معاه وإجمالي النهارده (حصّلت | صرفت | سلّمت لمصطفى)', await M.evaluate(() => [$('#cashT').textContent, [...document.querySelectorAll('.panel .pn b')].map(b => b.textContent), document.querySelectorAll('#main [data-o]').length]), ['1,750', ['9,000', '3,250', '4,000'], 6]);
+    eq('الرئيسية: اليوم جدول البيان | وارد | منصرف زي خزنة الحسابات: الوارد فوق والمنصرف تحته، والتسليم والتحويل سطر رمادي، و"معاك لحد دلوقتي" = اللي معاه', await M.evaluate(() => {
+      const sec = $('#main .fbd'), rows = [...sec.querySelectorAll('tr[data-o]')].map(r => [S.ops[r.dataset.o].t, r.classList.contains('fbx') ? 'g' : r.querySelector('.n.in') ? 'in' : 'out']), k = rows.map(r => r[1]);
+      return [$$('#main .fbt th').slice(0, 3).map(t => t.textContent), k.join(',') === [...k.filter(x => x === 'in'), ...k.filter(x => x === 'out'), ...k.filter(x => x === 'g')].join(','), rows.filter(r => r[0] === 'hand').every(r => r[1] === 'g'), rows.filter(r => r[0] === 'exp').every(r => r[1] === 'out'), sec.querySelector('.fbf .n').textContent, $('#cashT').textContent];
+    }).then(r => r.slice(0, 4).concat([r[4] === r[5]])), [['البيان', 'وارد', 'منصرف'], true, true, true, true]);
     await M.click('#tabs button[data-t=a]'); await M.settle(200);
     eq('الأرشيف: إجمالي الأسبوع (حصّلت | صرفت | سلّمت لمصطفى | معايا)', await M.evaluate(() => [...document.querySelector('.wk tfoot tr').querySelectorAll('td')].slice(1).map(b => b.textContent.trim())), ['9,000', '3,250', '4,000', '1,750']);
     eq('الأرشيف: سطر النهارده بنفس الأرقام ومعاه اسم اليوم', await M.evaluate(() => { const r = [...document.querySelectorAll('.wk tr[data-d]')[0].querySelectorAll('td')].map(x => x.textContent.trim()); return [r.slice(1), r[0].startsWith(AR_DAYS[dowOf(today())])]; }), [['9,000', '3,250', '4,000', '1,750'], true]);
     await M.click('.wk tr[data-d]'); await M.settle(200);
-    eq('يوم النهارده: كل حركاته (6) وإجماليه', await M.evaluate(() => [document.querySelectorAll('#main .row[data-o]').length, [...document.querySelector('.panel .pn').querySelectorAll('b')].map(b => b.textContent)]), [6, ['9,000', '3,250', '4,000', '1,750']]);
+    eq('يوم النهارده: كل حركاته (6) وإجماليه', await M.evaluate(() => [document.querySelectorAll('#main [data-o]').length, [...document.querySelector('.panel .pn').querySelectorAll('b')].map(b => b.textContent)]), [6, ['9,000', '3,250', '4,000', '1,750']]);
     await M.click('#aPrev'); await M.settle(150);
-    eq('اليوم اللي قبله فاضي، وسهم التالي بيرجع النهارده', [await M.evaluate(() => document.querySelectorAll('#main .row[data-o]').length), (await M.textContent('#main')).includes('مفيش حركات في اليوم ده'), await M.isDisabled('#aNext')], [0, true, false]);
+    eq('اليوم اللي قبله فاضي، وسهم التالي بيرجع النهارده', [await M.evaluate(() => document.querySelectorAll('#main [data-o]').length), (await M.textContent('#main')).includes('مفيش حركات في اليوم ده'), await M.isDisabled('#aNext')], [0, true, false]);
     await M.click('#aNext'); await M.settle(150);
     eq('بعد النهارده السهم مقفول', await M.isDisabled('#aNext'), true);
     await M.evaluate(() => nav('a/2020-03-05')); await M.settle(150);
@@ -1809,10 +1813,10 @@ const T0 = Date.now();
     /* تعديل ومسح أي حركة بسهولة، من الأرشيف كمان */
     await M.evaluate(() => nav('')); await M.click('#qSp'); await M.fill('#amt', '10'); await M.fill('#nt', 'أكل'); await M.click('#spOk'); await M.settle(500);
     const tmpId = await M.evaluate(() => liveOps().find(o => o.t === 'exp' && o.cat === 'أكل').id);
-    await M.evaluate(() => nav('a/' + today())); await M.settle(150); await M.click(`.row[data-o="${tmpId}"]`); await M.settle(150);
+    await M.evaluate(() => nav('a/' + today())); await M.settle(150); await M.click(`[data-o="${tmpId}"]`); await M.settle(150);
     await M.fill('#eA', '20'); await M.click('#eOk'); await M.settle(500);
     eq('تعديل مصروف من الأرشيف', await M.evaluate(id => [S.ops[id].amt, cashNow()], tmpId), [2000, 175000 - 2000]);
-    await M.click(`.row[data-o="${tmpId}"]`); await M.settle(150); await M.click('#eDel'); await M.click('#aY'); await M.settle(500);
+    await M.click(`[data-o="${tmpId}"]`); await M.settle(150); await M.click('#eDel'); await M.click('#aY'); await M.settle(500);
     eq('مسح مصروف بنافذة التعديل، واللي معاه رجع زي ما كان', await M.evaluate(id => [S.ops[id].del, cashNow()], tmpId), [true, 175000]);
     await M.click('#tabs button[data-t=s]'); await M.settle(150); await M.click('#uiTheme button[data-v=dark]');
     eq('الإعدادات: داكن بيشتغل ويتحفظ على الموبايل', await M.evaluate(() => [document.documentElement.dataset.theme, JSON.parse(localStorage.getItem('fo_ui')).theme]), ['dark', 'dark']);
@@ -2118,7 +2122,7 @@ const T0 = Date.now();
     eq('اللي لسه متنقلش في الوارد بس ومش في الأرشيف، والأرشيف بيقول إن فيه حاجة لسه', await exW('غدا'), [true, false, true]);
     eq('الشريك: مفيش حالة ولا انتظار على المصروف، وينفع يتعدل', await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); document.body.dataset.t = ''; nav(''); return [opState(o), stHtml(o)]; }), ['exp', '']);
     await M.evaluate(() => nav('')); await M.settle(150);
-    eq('الشريك: سطر المصروف في الرئيسية من غير أي نص حالة', await M.evaluate(() => { const r = [...document.querySelectorAll('.row.t-exp')].find(x => x.textContent.includes('غدا')); return [!!r, r.querySelectorAll('.st').length]; }), [true, 0]);
+    eq('الشريك: سطر المصروف في الرئيسية من غير أي نص حالة', await M.evaluate(() => { const r = [...document.querySelectorAll('#main tr[data-o]')].find(x => S.ops[x.dataset.o].t === 'exp' && x.textContent.includes('غدا')); return [!!r, r.querySelectorAll('.st').length]; }), [true, 0]);
     eq('عند مصطفى: المصروف سطر وزرار "انقل" بس (مفيش "دفعة لمورد" ولا "تجاهلها" في الوارد) ومفيش رجّعها', await A.evaluate(() => { mkView = 'in'; go('mkt'); return new Promise(r => setTimeout(() => r([document.querySelectorAll('#mkBody [data-ig], #mkBody [data-sp]').length, !!document.querySelector('#mkBody .mqg[data-op] .mqgo'), document.querySelector('#mkBody').textContent.includes('ده مصروف ولا دفعة لمورد'), !document.querySelector('#mkBody [data-bk="x:exp"]')]), 400)); }), [0, true, false, true]);
     await A.click('#p-mkt [data-mv="x:exp"]'); await A.settle(250); await A.click('#mvOk'); await A.settle(300);
     eq('"سجّلها مصروف": اتسجلت في خزنة السوق تحت مصاريف السوق', await exO('غدا'), [true, 70000, 'done', false]);
@@ -2293,7 +2297,7 @@ const T0 = Date.now();
     /* الألوان من نظام الشكل الموحد (lib/ui.css): نفس الأخضر والأزرق والأحمر في التطبيقين */
     const tokC = X => X.evaluate(() => { const d = document.createElement('i'); document.body.appendChild(d); const g = v => (d.style.color = `var(${v})`, getComputedStyle(d).color); const r = [g('--green'), g('--tr'), g('--red')]; d.remove(); return r; });
     const mTok = await tokC(M);
-    eq('الألوان واحدة في التطبيقين: الكاش أخضر والتحويل أزرق والمصروف أحمر', [await M.evaluate(() => { nav('', true); const c = k => { const r = document.querySelector('.row.' + k + ' .a .money'); return r ? getComputedStyle(r).color : null; }; return [c('d-in'), c('d-to')]; }), await tokC(A)], [mTok.slice(0, 2), mTok]);
+    eq('الألوان واحدة في التطبيقين: الكاش أخضر والتحويل أزرق والمصروف أحمر', [await M.evaluate(() => { nav('', true); const c = k => { const r = document.querySelector('#main .fbt .n.' + k); return r ? getComputedStyle(r).color : null; }; return [c('in'), c('out')]; }), await tokC(A)], [[mTok[0], mTok[2]], mTok]);
 
     sec('٢٢ب) حركة السوق: الموردين عند الشريك (نسخة من حساباتهم ودفعة بتنزل من الرصيد ومربوطة بالمورد)');
     {
@@ -2571,7 +2575,7 @@ const T0 = Date.now();
     for (const [nm, root] of [['الوارد (جاهزين للنقل)', '#mqReady'], ['الوارد (محتاجين قرارك)', '#mqDec']]) if (await A.evaluate(r => $$(r + ' .mqa>.n').length >= 2, root)) await colOk('الحسابات — ' + nm, A, root, '.mqa>.n');
     await A.evaluate(() => { cashMode = 'day'; go('home'); }); await A.settle(300);
     await colOk('الحسابات — قايمة العملاء', A, '#hList', '.pt .a b');
-    if (DM) { const MX = DM.pages().find(p => p.url().includes('market.html')); if (MX) { await MX.evaluate(() => nav('')); await MX.settle(400); await colOk('حركة السوق — الرئيسية', MX, '#main', '.gh .money,.row .a .money,.lbl.dh .money'); } }
+    if (DM) { const MX = DM.pages().find(p => p.url().includes('market.html')); if (MX) { await MX.evaluate(() => nav('')); await MX.settle(400); await colOk('حركة السوق — الرئيسية (الوارد)', MX, '#main .fbd', 'tr:not(.fbx) td.c:nth-child(2) .n'); await colOk('حركة السوق — الرئيسية (المنصرف)', MX, '#main .fbd', 'td.c:last-child .n'); } }
 
     sec('١٥) المراجعة الداخلية');
     eq('مفيش أي مشكلة في المراجعة', await A.evaluate(() => selfCheck()), []);

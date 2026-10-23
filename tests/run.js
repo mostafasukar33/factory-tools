@@ -2053,6 +2053,24 @@ const T0 = Date.now();
     await A.click('#dcOk'); await closed(A); await A.settle(300);
     eq('بعد كتابة البنود: التنبيه راح والرصيد زي ما هو ومن غير "اتعدّلت"', await A.evaluate(([id, pid]) => { const e = E.get('e_mk_' + id); return [!!e.mkNL, e.lines.length, e.lines[0].name, balance(pid), nlList().length, (e.hist || []).length]; }, [qOp, qp]), [false, 1, 'صنف سريع', 400000, 0, 0]);
 
+    /* "انقل كل الفواتير" (بطلبه 23/10/2026): كلهم بالإجمالي مرة واحدة والبنود بعدين، والعميل الجديد بيفضل في الوارد */
+    const ia = await A.evaluate(() => {
+      const t = nowS(), pf = n => (liveParties().find(x => x.name === n) || {}).id || 'c_new_tia', mk = (id, cname, amt, k) => { mkDb().ops[id] = {id, t: 'inv', cid: pf(cname), cname, amt, m: '', ts: t - k * 1000, upd: t - k * 1000, del: false}; };
+      mk('m_tia1', 'عميل فاتورة سريعة', 150000, 3); mk('m_tia2', 'عميل فاتورة جديد', 60000, 2); mk('m_tia3', 'عميل تجربة ملوش حساب', 9000, 1);
+      mkView = 'in'; go('mkt'); renderMkt();
+      return [mkInvAllOps().length, ($('#mkInvAll') || {}).textContent || ''];
+    });
+    eq('زرار "انقل كل الفواتير" ظاهر في الوارد بعدد الفواتير', [ia[0], ia[1].includes('انقل كل الفواتير (3)')], [3, true]);
+    const ib0 = await A.evaluate(() => ['عميل فاتورة سريعة', 'عميل فاتورة جديد'].map(n => balance(liveParties().find(x => x.name === n).id)));
+    await A.click('#mkInvAll'); await A.waitForSelector('#miOk');
+    eq('نافذة التأكيد فيها الفاتورتين المربوطين وبتقول إن العميل الجديد هيفضل', [await A.evaluate(() => $$('#modal .mkbr').length), (await A.textContent('#modal')).includes('لعميل جديد')], [2, true]);
+    await A.click('#miOk'); await closed(A); await A.settle(300);
+    eq('اتنقلوا بالإجمالي (البنود بعدين) والرصيد زاد، والجديد لسه في الوارد', await A.evaluate(b0 => {
+      const ps = ['عميل فاتورة سريعة', 'عميل فاتورة جديد'].map(n => liveParties().find(x => x.name === n).id);
+      return [E.get('e_mk_m_tia1').mkNL, E.get('e_mk_m_tia2').mkNL, ps.map((id, i) => balance(id) - b0[i]), !E.get('e_mk_m_tia3'), mkInvAllOps().map(o => o.id), nlList().length, !$('#mkInvAll')];
+    }, ib0), [true, true, [150000, 60000], true, ['m_tia3'], 2, true]);
+    await A.evaluate(() => { ['m_tia1', 'm_tia2', 'm_tia3'].forEach(id => { mkDb().ops[id].del = true; }); ['e_mk_m_tia1', 'e_mk_m_tia2'].forEach(id => { const e = E.get(id); e.del = true; e.delAt = nowS(); }); saveDB(); renderMkt(); });
+
     sec('١٩) حركة السوق: بيع كاش من المصنع (اسم مشتري ومبلغ بس، من غير عملاء)');
     const csC0 = await M.evaluate(() => cashNow()), csP0 = await A.evaluate(() => db.parties.length);
     await M.evaluate(() => nav('')); await M.settle(200);
@@ -2101,7 +2119,7 @@ const T0 = Date.now();
     eq('الشريك: مفيش حالة ولا انتظار على المصروف، وينفع يتعدل', await M.evaluate(() => { const o = liveOps().find(x => x.cat === 'غدا'); document.body.dataset.t = ''; nav(''); return [opState(o), stHtml(o)]; }), ['exp', '']);
     await M.evaluate(() => nav('')); await M.settle(150);
     eq('الشريك: سطر المصروف في الرئيسية من غير أي نص حالة', await M.evaluate(() => { const r = [...document.querySelectorAll('.row.t-exp')].find(x => x.textContent.includes('غدا')); return [!!r, r.querySelectorAll('.st').length]; }), [true, 0]);
-    eq('عند مصطفى: زرار تجاهل جنب المصروف ومفيش رجّعها', await A.evaluate(() => { mkView = 'in'; go('mkt'); return new Promise(r => setTimeout(() => r([document.querySelectorAll('#mkBody [data-ig]').length > 0, !document.querySelector('#mkBody [data-bk="x:exp"]')]), 400)); }), [true, true]);
+    eq('عند مصطفى: المصروف سطر وزرار "انقل" بس (مفيش "دفعة لمورد" ولا "تجاهلها" في الوارد) ومفيش رجّعها', await A.evaluate(() => { mkView = 'in'; go('mkt'); return new Promise(r => setTimeout(() => r([document.querySelectorAll('#mkBody [data-ig], #mkBody [data-sp]').length, !!document.querySelector('#mkBody .mqg[data-op] .mqgo'), document.querySelector('#mkBody').textContent.includes('ده مصروف ولا دفعة لمورد'), !document.querySelector('#mkBody [data-bk="x:exp"]')]), 400)); }), [0, true, false, true]);
     await A.click('#p-mkt [data-mv="x:exp"]'); await A.settle(250); await A.click('#mvOk'); await A.settle(300);
     eq('"سجّلها مصروف": اتسجلت في خزنة السوق تحت مصاريف السوق', await exO('غدا'), [true, 70000, 'done', false]);
     eq('أول ما اتنقل: خرج من الوارد وراح الأرشيف', (await exW('غدا')).slice(0, 2), [false, true]);

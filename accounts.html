@@ -7339,11 +7339,10 @@ function mkRowDec(g) {
   const sub = !p.pendPays.length && p.docs.length === 1 ? mkOpSub(p.docs[0]) + (g.nw ? ' · <span class="mqp y">عميل جديد</span>' : '') : mkGSub(g, p);
   return `<div class="mqg dec" data-gs="${esc(g.k)}" role="button" tabindex="0">${mkHead(ic, c, esc(mkGName(g)), sub, p.tot)}${body}</div>`;
 }
-/* المصروف: كل واحد لوحده (مصروف ولا دفعة لمورد ولا تتجاهله) */
+/* المصروف: كل واحد سطر وزرار "انقل" بس. سؤال "مصروف ولا دفعة لمورد" و"تجاهلها" اتشالوا من الوارد بطلبه 23/10/2026
+   (أحمد بقى بيفرّق المورد من المصروف)، ولسه موجودين جوه نافذة العملية (mkOpMenu) لو حصلت غلطة */
 function mkRowExp(o, single) {
-  return `<div class="mqg dec" data-op="${esc(o.id)}" role="button" tabindex="0">${mkHead('⛽', 'r', esc(o.cat), mkOpSub(o), o.amt)}
-    <p class="mqq">ده مصروف ولا دفعة لمورد؟ <button class="mqlk" data-ig="${esc(o.id)}" type="button">✖ تجاهلها</button></p>
-    <div class="mqbs"><button class="mqb1" ${single ? 'data-mv="x:exp"' : `data-mo="${esc(o.id)}"`} type="button">مصروف</button><button class="mqb2" data-sp="${esc(o.id)}" type="button">دفعة لمورد</button></div></div>`;
+  return `<div class="mqg" data-op="${esc(o.id)}" role="button" tabindex="0">${mkHead('⛽', 'r', esc(o.cat), mkOpSub(o), o.amt, `<button class="mqgo" ${single ? 'data-mv="x:exp"' : `data-mo="${esc(o.id)}"`} type="button">انقل</button>`)}</div>`;
 }
 /* اللي رجّعته لشريكك ومستني تصليحه: ملاحظتك ظاهرة */
 function mkRowBack(g) {
@@ -7367,11 +7366,12 @@ function mkInbox() {
   const isReady = g => g.kind !== 'exp' && g.kind !== 'hand' && g.pend.every(o => rdIds.has(o.id));
   const ready = act.filter(isReady), dec = act.filter(g => !isReady(g) && g.kind !== 'exp');
   const exps = act.filter(g => g.kind === 'exp').flatMap(g => g.pend), gTot = L => L.reduce((s, g) => s + mkGParts(g).tot, 0);
-  const decN = dec.length + exps.length, decAmt = gTot(dec) + exps.reduce((s, o) => s + o.amt, 0), mv = mkMovedOn(todayISO());
+  const invs = mkInvAllOps(), decN = dec.length + exps.length, decAmt = gTot(dec) + exps.reduce((s, o) => s + o.amt, 0), mv = mkMovedOn(todayISO());
   const secReady = ready.length ? `<section class="mqsec ok" id="mqReady"><div class="mqsh"><b>✅ جاهزين للنقل <small>${ready.length}</small></b><b class="n">${fmtP(gTot(ready))}</b></div>
       ${rd.length > 1 ? `<button class="mqall" id="mkAll" type="button">⚡ انقل كل الجاهز (${rd.length}) — ${fmtP(rd.reduce((s, o) => s + o.amt, 0))}</button>` : ''}
       ${ready.map(mkRowReady).join('')}</section>` : '';
   const secDec = decN ? `<section class="mqsec need" id="mqDec"><div class="mqsh"><b>✋ محتاجين قرارك <small>${decN}</small></b><b class="n">${fmtP(decAmt)}</b></div>
+      ${invs.length > 1 ? `<button class="mqall y" id="mkInvAll" type="button">🧾 انقل كل الفواتير (${invs.length}) — ${fmtP(invs.reduce((s, o) => s + o.amt, 0))}، والبنود بعدين</button>` : ''}
       ${dec.map(mkRowDec).join('')}${exps.length > 1 ? `<button class="mqall y" data-mv="x:exp" type="button">⛽ سجّل المصاريف كلها مصروف (${exps.length})</button>` : ''}${exps.map(o => mkRowExp(o, exps.length === 1)).join('')}</section>` : '';
   $('#mkBody').innerHTML = `${nlAlert()}${k ? mkCntLine(k, true) : ''}
     ${act.length ? `<div class="mqcols${secReady && secDec ? ' two' : ''}">${secReady}${secDec}</div>${qh('لو حاجة غلط: دوس على السطر ← "رجّعها لشريكك" بملاحظة')}` : `<div class="card empty mkclr">✔ مفيش حاجة مستنياك</div>`}
@@ -7391,6 +7391,7 @@ function mkInbox() {
   $$('#mkBody [data-mv]').forEach(el => el.onclick = ev => { ev.stopPropagation(); const g = gs.find(x => x.k === el.dataset.mv); if (g) mkMoveFlow(g, g.pend); });
   $$('#mkBody [data-nl]').forEach(el => el.onclick = nlModal);
   if ($('#mkAll')) $('#mkAll').onclick = mkBulk;
+  if ($('#mkInvAll')) $('#mkInvAll').onclick = mkInvAll;
   if ($('#mkToArch')) $('#mkToArch').onclick = () => { mkView = 'arch'; mkAMode = 'day'; mkDay = todayISO(); renderMkt(); };
   if ($('#mkwAdd')) $('#mkwAdd').onclick = mkWantPick;
   $$('#mkBody [data-wp]').forEach(el => el.onclick = () => mkWantModal(P.get(el.dataset.wp), renderMkt));
@@ -7574,19 +7575,44 @@ function mkInvQuick(o) {
   $('#iqX').onclick = closeModal;
   $('#iqItems').onclick = () => mkInvFlow(o);
   const put = to => {
-    const p = P.get(to); let rec = mkRec(o);
+    const p = P.get(to), rec = mkRec(o);
     if (!p) return;
     if (rec && !rec.del) { closeModal(); return toast('الفاتورة دي اتسجلت قبل كده'); }
     if (isLocked(d)) return lockToast();
-    const doc = {kind: 'inv', date: d, no: '', lines: [{name: MK_NL, unit: 'وحدة', qty: 1, price: o.amt}], disc: 0, note: '', mkNL: true};
-    doc.desc = docDesc(doc);
-    if (rec) { (rec.hist = rec.hist || []).push(snapshot(rec)); rec.del = false; delete rec.delAt; Object.assign(rec, doc, {party: p.id}); applyAmounts(rec); touch(rec); }   // كانت اتسجلت واتمسحت: بترجع نفس الفاتورة
-    else { rec = addEntry(Object.assign({party: p.id, id: 'e_mk_' + o.id}, doc)); applyAmounts(rec); }
-    mkSetSt(o.id, {done: true, dv: o.upd, back: '', bv: 0, pid: p.id, mvAt: nowS()});
+    mkInvPut(o, p.id);
     saveDB(); closeModal(); route(); renderMkHome(); mkSync();
     toast(`✔ اتنقلت على حساب ${p.name}. البنود اكتبها بعدين`, 3500);
   };
   $('#iqGo').onclick = () => { if (pid) return put(pid); mkLinkModal({name: o.cname}, 'mkt', to => put(mkEnsureParty('mkt', to))); };
+}
+/* نقل فاتورة الشريك بالإجمالي (سطر MK_NL) على حساب pid، والبنود بتتكتب بعدين (nlAlert). من غير حفظ */
+function mkInvPut(o, pid) {
+  const d = isoOf(o.ts); let rec = mkRec(o);
+  const doc = {kind: 'inv', date: d, no: '', lines: [{name: MK_NL, unit: 'وحدة', qty: 1, price: o.amt}], disc: 0, note: '', mkNL: true};
+  doc.desc = docDesc(doc);
+  if (rec) { (rec.hist = rec.hist || []).push(snapshot(rec)); rec.del = false; delete rec.delAt; Object.assign(rec, doc, {party: pid}); applyAmounts(rec); touch(rec); }   // كانت اتسجلت واتمسحت: بترجع نفس الفاتورة
+  else { rec = addEntry(Object.assign({party: pid, id: 'e_mk_' + o.id}, doc)); applyAmounts(rec); }
+  mkSetSt(o.id, {done: true, dv: o.upd, back: '', bv: 0, pid, mvAt: nowS()});
+}
+/* "انقل كل الفواتير" (بطلبه 23/10/2026): كل فواتير الشريك المستنية بالإجمالي مرة واحدة، والبنود بعدين.
+   العميل الجديد (مش مربوط بحساب) والفترة المقفولة بيفضلوا في الوارد يتنقلوا لوحدهم */
+const mkInvAllOps = () => mkPending().filter(o => o.t === 'inv' && mkState(o) === 'new').sort((a, b) => a.ts - b.ts);
+function mkInvAll() {
+  const all = mkInvAllOps(), al = mkAlias(), ok = all.filter(o => mkPid(o, al) && !isLocked(isoOf(o.ts)) && !(mkRec(o) && !mkRec(o).del)), left = all.length - ok.length;
+  if (!ok.length) return toast(left ? 'الفواتير دي لعملا جداد أو في فترة مقفولة: انقلها واحدة واحدة.' : 'مفيش فواتير مستنية', 4000);
+  const tot = ok.reduce((s, o) => s + o.amt, 0);
+  modal(`<h3>🧾 انقل كل الفواتير بالإجمالي</h3>
+    <div class="mkbl">${ok.map(o => `<div class="mkbr"><span>${esc(P.get(mkPid(o, al)).name)}</span><span><b class="money">${fmtP(o.amt)}</b> <small class="tm">${dispDate(isoOf(o.ts))}</small></span></div>`).join('')}</div>
+    <p class="hint" style="margin:8px 0">البنود هتكتبها بعدين: هتلاقيها في "فواتير من غير بنود".${left ? ` و${left === 1 ? 'فاتورة' : left + ' فواتير'} لعميل جديد أو في فترة مقفولة هتفضل في الوارد تنقلها لوحدها.` : ''}</p>
+    <div class="mfoot"><div class="dtot"><span>الإجمالي</span><b>${fmtP(tot)}</b></div>
+      <div class="mrow"><button class="btn green" id="miOk" type="button">انقلهم كلهم</button><button class="btn line" id="miX" type="button">إلغاء</button></div></div>`, true);
+  $('#miX').onclick = closeModal;
+  $('#miOk').onclick = () => {
+    if (ok.some(o => mkState(o) !== 'new')) { closeModal(); renderMkt(); return toast('في فاتورة من دول اتغيرت. افتح الوارد تاني.', 4000); }
+    ok.forEach(o => mkInvPut(o, mkPid(o, al)));
+    saveDB(); closeModal(); renderMkt(); renderMkHome(); mkSync();
+    toast(`✔ اتنقلت ${ok.length === 1 ? 'فاتورة' : ok.length + ' فواتير'} (${fmtP(tot)}). البنود اكتبها بعدين`, 3500);
+  };
 }
 /* الفواتير اللي اتنقلت بالإجمالي وبنودها لسه متكتبتش */
 const nlList = pid => db.entries.filter(e => e.mkNL && !e.del && (!pid || e.party === pid) && P.get(e.party) && !P.get(e.party).del).sort(entCmp);

@@ -86,6 +86,10 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:var(--ink)}
 .qa2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 4px}
 .qa2 .qb{height:66px;font-size:var(--f3);font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.2;white-space:normal;padding:4px 6px}
 .qa2 .qb i{font-style:normal;font-size:22px;line-height:1}
+/* الطلبيات والتسعير: صف لوحده بعيد عن زراير الفلوس (علشان ميدوسش عليهم غلط) */
+.xrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:22px 0 6px;padding-top:14px;border-top:2px solid var(--line)}
+.xb{min-height:46px;border:1.5px solid var(--line);background:var(--card);border-radius:12px;font:inherit;font-weight:700;font-size:var(--f2);color:var(--sub);display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+.xb small{background:var(--red);color:var(--card);border-radius:9px;padding:0 7px;font-size:var(--f1);font-weight:800}
 .qb.qs{border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
 .list{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 12px;min-height:48px;border-bottom:1px solid var(--row);cursor:pointer}
@@ -426,7 +430,7 @@ const fmtN = p => (p < 0 ? '-' : '') + fmt(p);
 const LS = 'fo_mkt_v1', IDB_N = 'fo_mkt', IDB_S = 'kv';
 let S, ready = false, saveLater = false, useIdb = !!window.indexedDB, idbOk = false, lsOff = false;
 function fill(d) {
-  S = Object.assign({u: '', k: '', dev: '', cursor: 0, ops: {}, st: {}, cust: {}, sup: {}, newc: [], lastOk: 0}, d || {});
+  S = Object.assign({u: '', k: '', dev: '', cursor: 0, ops: {}, st: {}, cust: {}, sup: {}, ord: {}, prc: {}, oit: {}, newc: [], lastOk: 0}, d || {});
   if (!S.dev) S.dev = Array.from(crypto.getRandomValues(new Uint8Array(3)), x => x.toString(36).padStart(2, '0')).join('');
 }
 function load() { let d = null; try { d = JSON.parse(localStorage.getItem(LS)); } catch (e) {} fill(d); }
@@ -610,14 +614,16 @@ async function callSheet(body, ms = 25000) {
     const j = JSON.parse(await r.text()); srvClock(j, t0); return j;
   } finally { clearTimeout(tm); }
 }
+/* السطور اللي الجهاز ده بيبعتها كمان (sy = اتبعتت): العمليات والطلبيات والتسعير */
+const OWN = {op: 1, ord: 1, prc: 1};
 function merge(r) {
   if (!r || !r.id || !r.data) return false;
-  const box = r.kind === 'op' ? S.ops : r.kind === 'st' ? S.st : r.kind === 'cust' ? S.cust : r.kind === 'sup' ? S.sup : null;
+  const box = r.kind === 'op' ? S.ops : r.kind === 'st' ? S.st : r.kind === 'cust' ? S.cust : r.kind === 'sup' ? S.sup : r.kind === 'ord' ? S.ord : r.kind === 'prc' ? S.prc : r.kind === 'oit' ? S.oit : null;
   if (!box) return false;
   const cur = box[r.id];
   if (cur && cur.upd > r.upd) return false;
-  if (cur && cur.upd === r.upd) { if (r.kind === 'op') cur.sy = cur.upd; return false; }
-  box[r.id] = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del}, r.kind === 'op' ? {sy: r.upd} : {});
+  if (cur && cur.upd === r.upd) { if (OWN[r.kind]) cur.sy = cur.upd; return false; }
+  box[r.id] = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del}, OWN[r.kind] ? {sy: r.upd} : {});
   return true;
 }
 /* نص تنبيه تليجرام بيتبعت جاهز مع العملية، فكود الشيت مش محتاج يتحدّث لو الجمل اتغيرت */
@@ -627,6 +633,8 @@ const tgText = o => { const a = fmt(o.amt), w = {cash: 'كاش', tr: 'تحويل
     : o.t === 'exp' ? `مصروف ${o.cat || ''}: ${a}${o.note && o.note !== o.cat ? ' — ' + o.note : ''}` : o.t === 'spay' ? `دفع للمورد ${o.sname || ''} ${a}` : o.t === 'hand' ? `سلّمك ${a} كاش` : o.t === 'cs' ? `بيع كاش من المصنع ${a} — ${o.buyer || ''}${csTr(o) ? ' (تحويل)' : ''}`
     : o.t === 'cnt' ? `قفّل يومه: عدّ ${a} كاش${o.amt === o.sys ? ' — مظبوط ✓' : ` — المفروض ${fmtN(o.sys)}، ${o.amt < o.sys ? 'ناقص' : 'زيادة'} ${fmt(o.amt - o.sys)}`}` : 'حركة ' + a; };
 const view = o => o.t === 'cnt' ? [dayOf(o.ts) + ' ' + timeOf(o.ts), 'تقفيل اليوم', o.amt / 100, 'تقفيل يوم', o.amt === o.sys ? 'مظبوط' : 'المفروض ' + o.sys / 100] : [dayOf(o.ts) + ' ' + timeOf(o.ts), isCustOp(o) ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat + (o.note && o.note !== o.cat ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, o.t === 'pay' ? M_SAID[o.m] || o.m : csTr(o) ? 'بيع كاش — ' + M_SAID.tr : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة', rt: 'مرتجع/شغل'}[o.t], o.t === 'rt' ? o.note || '' : ''];
+const ordView = (k, o) => k === 'ord' ? [dayOf(o.at || o.upd) + ' ' + timeOf(o.at || o.upd), o.cname || '', '', 'طلبية' + (o.st === 'done' ? ' (اتسلمت)' : o.st === 'x' ? ' (اتلغت)' : ''), (o.items || []).map(it => it.n + (it.k ? ' ' + it.k + ' ك' : '')).join('، ')]
+  : [dayOf(o.upd) + ' ' + timeOf(o.upd), o.name || '', '', 'تسعير', `${o.n1} ${o.p1 / 100} × ${o.a}% + ${o.n2} ${o.p2 / 100}`];
 async function sync() {
   if (!ready || !S.u || S.bad) return;
   if (syncing) { again = true; return; }
@@ -644,6 +652,17 @@ async function sync() {
       if (batch.some(o => !ack.has(o.id))) throw new Error('ack');
       changed = true; save(); p = pending();
     }
+    /* الطلبيات والتسعير (lib/orders.js): مش فلوس، ومبتعدّيش على تليجرام */
+    const ox = ['ord', 'prc'].flatMap(k => Object.values(S[k]).filter(o => o.sy !== o.upd).map(o => ({k, o})));
+    for (let i = 0; i < ox.length; i += 40) {
+      const batch = ox.slice(i, i + 40), rows = batch.map(({k, o}) => { const d = Object.assign({}, o); delete d.sy; return {id: o.id, kind: k, upd: o.upd, del: !!o.del, view: ordView(k, o), data: d}; });
+      const j = await callSheet({action: 'push', who: 'm', rows});
+      if (j && j.error === 'key') { S.bad = true; throw new Error('key'); }
+      if (!j || j.ok !== true) throw new Error('push');
+      const ack = new Set(j.ack || []);
+      batch.forEach(({o}, n) => { if (ack.has(o.id) && o.upd === rows[n].upd) o.sy = o.upd; });
+      save();
+    }
     let more = true;
     while (more) {
       const j = await callSheet({action: 'pull', since: S.cursor});
@@ -656,7 +675,7 @@ async function sync() {
   } catch (e) { online = false; }
   finally {
     syncing = false; save(); drawTop();
-    if (changed) refresh();
+    if (changed) { refresh(); ordBadge(); if (window.ordRefresh) ordRefresh(); }
     if (again) { again = false; setTimeout(sync, 300); }
   }
 }
@@ -790,6 +809,20 @@ const pnHtml = (s, cols, first) => cols === 3
   ? `<div class="pn ${first ? 'first' : ''}" style="--c:3"><div class="c-in"><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div><div class="c-out"><span>صرفت</span><b class="money">${fmt(s.sp)}</b></div><div><span>سلّمت لمصطفى</span><b class="money">${fmt(s.toM)}</b></div></div>${invLn(s)}`
   : `<div class="pn ${first ? 'first' : ''}" style="--c:4"><div class="c-in"><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div><div class="c-out"><span>صرفت</span><b class="money">${fmt(s.sp)}</b></div><div><span>سلّمت لمصطفى</span><b class="money">${fmt(s.toM)}</b></div><div><span>معايا</span><b class="money ${s.left < 0 ? 'neg' : ''}">${fmtN(s.left)}</b></div></div>${invLn(s)}`;
 
+/* ---------- الطلبيات والتسعير (lib/orders.js، بيتحمّل وقت الدوس بس) ---------- */
+window.ORD_HOST = {who: 'أحمد', get dev() { return S.dev; }, box: () => S, changed: () => { save(); ordBadge(); refresh(); sync(); },
+  names: () => [...customers().values()].map(c => c.name), items: () => (S.oit.oit && S.oit.oit.n) || [],
+  modal: h => modal(h), close: () => { closeModal(); refresh(); }, toast: m => toast(m), today: () => today(), now: () => nowS()};
+const ordN = () => Object.values(S.ord).filter(o => o && !o.del && o.cname && !o.st).length;
+/* رقم اللي لسه متسلمتش على الزرار، من غير ما الرئيسية تترسم تاني (النافذة مفتوحة فوقها) */
+const ordBadge = () => { const b = $('#qOrd'); if (!b) return; const n = ordN(), s = b.querySelector('small'); if (s && !n) s.remove(); else if (n) { if (s) s.textContent = n; else b.insertAdjacentHTML('beforeend', ` <small>${n}</small>`); } };
+let ordP = null;
+function ordLoad(fn) {
+  if (window[fn]) return window[fn]();
+  ordP = ordP || new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'lib/orders.js'; sc.onload = ok; sc.onerror = () => { sc.remove(); no(); }; document.head.appendChild(sc); }).catch(e => { ordP = null; throw e; });
+  ordP.then(() => window[fn]()).catch(() => toast('مش قادر يفتح دلوقتي، اتأكد من النت وجرّب تاني.'));
+}
+
 /* ---------- الرئيسية: اللي معايا + حركات النهارده ---------- */
 let homeDays = 3;   // أيام فاتت بتفضل ظاهرة تحت النهارده، وبيزود بزرار
 function drawHome() {
@@ -797,22 +830,22 @@ function drawHome() {
   const byDay = new Map();
   all.forEach(o => { const d = dayOf(o.ts); if (d !== t) { if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(o); } });
   const days = [...byDay.keys()].sort().reverse(), earlier = days.slice(0, homeDays);
-  const wl = wantList(), k = cntOf(t);
+  const k = cntOf(t), on = ordN();   /* كارت "مطلوب تحصّل من دول" اتشال من هنا بطلب مصطفى 23/10/2026 */
   $('#main').innerHTML = `${bk.length ? `<button class="alert" id="bk" type="button">🔴 مصطفى رجّعلك ${bk.length === 1 ? 'عملية' : bk.length + ' عمليات'} تصلحها — دوس هنا</button>` : ''}
-    ${wl.length ? `<section class="want" id="want"><div class="wh2"><b>📌 مطلوب تحصّل من دول</b><span>${wl.filter(x => x.paid).length} من ${wl.length}</span></div>
-      ${wl.map(x => `<div class="wr ${x.paid ? 'ok' : ''}" data-c="${esc(x.c.id)}"><div class="m"><b>${esc(x.c.name)}</b><small>${x.paid ? `✓ حصّلت <span class="money">${fmt(x.paid)}</span>` : (x.want.note ? esc(x.want.note) + ' · ' : '') + esc(lpTxt(x.c))}</small></div><div class="a"><b class="money">${fmt(x.want.amt)}</b><small>${x.paid ? 'اتشطب' : 'مطلوب'}</small></div></div>`).join('')}</section>` : ''}
     <section class="panel cashc"><div class="ch"><div class="m"><span>معاك كاش دلوقتي</span><small>الفلوس اللي في إيدك</small></div><b class="money ${cn < 0 ? 'neg' : ''}" id="cashT">${fmtN(cn)}</b></div>
       <div class="cap">النهارده</div>${pnHtml(s, 3, true)}
       ${k ? `<button class="kline ${k.amt === k.sys ? 'ok' : 'bad'}" id="kBtn" type="button">🔒 قفلت يومك ${timeOf(k.ts)}: ${k.amt === k.sys ? 'مظبوط ✓' : `${k.amt < k.sys ? 'ناقص' : 'زيادة'} <span class="money">${fmt(k.amt - k.sys)}</span>`}${k.sys !== cn ? ' <em>· فيه حركات بعد القفل، قفّل تاني</em>' : ''}</button>`
         : `<button class="kline" id="kBtn" type="button">🔒 قفّل يومك (عِد الفلوس اللي معاك)</button>`}</section>
     <div class="qa2"><button class="qb g" id="qPay" type="button"><i>💵</i>دفعة أو فاتورة</button><button class="qb qs" id="qSale" type="button"><i>🏭</i>بيع كاش من المصنع</button><button class="qb" id="qSp" type="button"><i>⛽</i>صرفت</button><button class="qb" id="qHand" type="button"><i>🤝</i>سلمت لمصطفى</button></div>
+    <div class="xrow"><button class="xb" id="qOrd" type="button">📋 الطلبيات${on ? ` <small>${on}</small>` : ''}</button><button class="xb" id="qPrc" type="button">🏷️ التسعير</button></div>
     <div class="lbl"><span>حركات النهارده</span><span>دوس على أي حركة تعدّلها</span></div>
     ${ops.length ? dayList(ops) : '<div class="list"><div class="empty">لسه مسجلتش حاجة النهارده</div></div>'}
     ${earlier.map(d => `<div class="lbl dh"><span>${AR_DAYS[dowOf(d)]} ${dispDate(d)}</span><span>حصّلت <b class="money">${fmt(sums(byDay.get(d)).col)}</b></span></div>${dayList(byDay.get(d))}`).join('')}
     ${days.length > earlier.length ? '<button class="more" id="hMore" type="button" style="margin-top:12px">اعرض أيام أقدم</button>' : ''}
     <button class="lnk" id="goArch" type="button">الأرشيف (أسابيع وشهور) ›</button>`;
   if ($('#bk')) $('#bk').onclick = () => editSheet(bk[0]);
-  $$('#want .wr[data-c]').forEach(r => r.onclick = () => { pyTab = 'pay'; nav('p/' + r.dataset.c); });
+  $('#qOrd').onclick = () => ordLoad('ordOpen');
+  $('#qPrc').onclick = () => ordLoad('prcOpen');
   $('#kBtn').onclick = closeDay;
   $('#qPay').onclick = () => { nav('c', true); setTimeout(() => $('#q') && $('#q').focus(), 120); };
   $('#qSp').onclick = () => { spTab = 'exp'; spPick = ''; spBack = ''; nav('x'); };

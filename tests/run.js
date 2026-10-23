@@ -2177,12 +2177,12 @@ const T0 = Date.now();
     await openParty(A, C1); await A.click('#ppWant'); await A.fill('#wqA', '1,000'); await A.fill('#wqN', 'قبل الخميس'); await A.click('#wqOk'); await A.settle(200);
     eq('الحسابات: العميل اتعلّم "مطلوب" وظهر سطر في صفحته', [await A.evaluate(id => mkWants()[id] && mkWants()[id].amt, pid1), (await A.textContent('#ppWantL')).includes('لسه')], [100000, true]);
     await sync2(); await M.evaluate(() => nav('', true)); await M.settle(150);
-    eq('الشريك: "مطلوب تحصّل من دول" فوق في الرئيسية بالمبلغ والملاحظة', await M.evaluate(id => { const r = $(`#want .wr[data-c="${id}"]`); return r && [r.querySelector('.a .money').textContent, r.textContent.includes('قبل الخميس'), r.classList.contains('ok'), $('#want .wh2 span').textContent]; }, pid1), ['1,000', true, false, '0 من 1']);
-    await M.click(`#want .wr[data-c="${pid1}"]`); await M.settle(150);
-    eq('دوسة على العميل بتفتح الدفعة وفيها سطر "مصطفى عاوز منه"', [await M.evaluate(() => scr.v), (await M.textContent('#cBox .cwant')).includes('1,000')], ['pay', true]);
+    eq('الشريك: كارت "مطلوب تحصّل من دول" اتشال من الرئيسية (بطلب مصطفى 23/10/2026)، و"معاك كاش" أول حاجة', await M.evaluate(() => [!$('#want'), $('#main > section, #main > .alert') && $('#main > section').classList.contains('cashc')]), [true, true]);
+    await M.evaluate(id => { pyTab = 'pay'; nav('p/' + id); }, pid1); await M.settle(150);
+    eq('صفحة الدفعة لسه فيها سطر "مصطفى عاوز منه"', [await M.evaluate(() => scr.v), (await M.textContent('#cBox .cwant')).includes('1,000')], ['pay', true]);
     await M.fill('#amt', '700'); await M.click('.big[data-m=cash]'); await M.settle(400);
     await M.evaluate(() => nav('', true)); await M.settle(150);
-    eq('سجّل دفعة: اتشطبت عنده "✓ حصّلت"', await M.evaluate(id => { const r = $(`#want .wr[data-c="${id}"]`); return [r.classList.contains('ok'), r.textContent.includes('حصّلت 700')]; }, pid1), [true, true]);
+    eq('سجّل دفعة: اتحسبت "حصّل" للمطلوب', await M.evaluate(id => { const x = wantList().find(w => w.c.id === id); return !!x && x.paid; }, pid1), 70000);
     await sync2(); await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('الوارد: مفيش كارت "حصّل من دول" ولا "اتنقل النهارده" (التعليم من جوه صفحة العميل)', await A.evaluate(() => { go('mkt'); return new Promise(r => setTimeout(() => r([!$('#mkBody .mkw'), !$('#mkToArch')]), 300)); }), [true, true]);
     eq('بكرة اللي اتحصّل بيتشال من القايمة لوحده', await A.evaluate(() => { const n0 = Date.now, r0 = mkWantPrune(); Date.now = () => n0() + 86400000 * 1.1; let r; try { r = [r0, mkWantPrune(), Object.keys(mkWants()).length]; } finally { Date.now = n0; } return r; }), [false, true, 0]);
@@ -2312,6 +2312,59 @@ const T0 = Date.now();
       /* مورد اتدفعله زيادة: زي قايمة موردين الحسابات (الرقم وتحته "عليه")، وفي صفحته وفي اختيار "دفعت لمورد" */
       const r = await M.evaluate(() => { const v = Object.values(S.sup).find(x => !x.del); const b0 = v.bal; v.bal = -150000; nav('v'); const row = $(`#vL .pt[data-v="${v.id}"] .a`).textContent; nav('v/' + v.id); const box = $('#main .cust').textContent; v.bal = b0; nav(''); return [row, box.includes('عليه') && box.includes('1,500') && !box.includes('-')]; });
       eq('مورد اتدفعله زيادة: الرقم وتحته "عليه" زي الحسابات بالظبط، مش شرطة', r, ['1,500عليه', true]);
+    }
+
+    {
+      sec('٢٢ج) الطلبيات والتسعير (lib/orders.js): قايمة واحدة عند مصطفى وأحمد، ومبتلمسش أي فلوس');
+      const sync2 = async () => { await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(300); await bg(M, 'sync()'); await M.settle(200); };
+      const money = async () => [await A.evaluate(() => JSON.stringify([liveParties().map(p => balance(p.id)), db.vaults.filter(v => !v.del).map(v => vaultBal(v.id)), liveEntries().length, db.txs.length, Object.keys(mkDb().ops).length])), await M.evaluate(() => JSON.stringify([cashNow(), Object.keys(S.ops).length]))];
+      const m0 = await money(), tg0 = tgTexts().length;
+      await M.evaluate(() => { closeModal(); nav('', true); }); await M.settle(200);
+      eq('الشريك: زرارين الطلبيات والتسعير في صف لوحده تحت زراير الفلوس', await M.evaluate(() => { const r = $('.xrow'), q = $('.qa2'); return [!!r && !!$('#qOrd') && !!$('#qPrc'), !!r && r.previousElementSibling === q, !q.contains($('#qOrd'))]; }), [true, true, true]);
+      await M.click('#qOrd'); await M.waitForSelector('#ordL');
+      eq('الطلبيات: تبويبين بس وفاضية', await M.evaluate(() => [$$('#oTabs button').map(b => b.textContent), !!$('#ordL .oempty')]), [['لسه متسلمتش (0)', 'اتسلمت'], true]);
+      await M.click('#oNew'); await M.waitForSelector('#ordF');
+      await M.fill('#oC', 'عميل تجربة واحد');
+      await M.fill('#oLs .ln[data-i="0"] .n', 'لفة 16 مم أحمر ختم فلاش');
+      await M.fill('#oLs .ln[data-i="0"] .c', '100'); await M.fill('#oLs .ln[data-i="0"] .w', '5');
+      eq('كام لفة × وزن اللفة = الكيلو لوحده، وسطر فاضي طلع تحت', await M.evaluate(() => [$('#oLs .ln[data-i="0"] .k').value, $$('#oLs .ln').length]), ['500', 2]);
+      await M.fill('#oLs .ln[data-i="1"] .n', 'مواسير ¾'); await M.fill('#oLs .ln[data-i="1"] .k', '30');
+      await M.click('#oSv'); await M.waitForSelector('#ordL');
+      const o1 = await M.evaluate(() => Object.assign({later: Object.values(S.ord)[0].due > today()}, Object.values(S.ord)[0]));
+      eq('اتحفظت عند أحمد: العميل والأصناف والميعاد بكرة، وكاتبها أحمد', [o1.cname, o1.items, o1.later, o1.by, o1.st], ['عميل تجربة واحد', [{n: 'لفة 16 مم أحمر ختم فلاش', c: 100, w: 5, k: 500}, {n: 'مواسير ¾', k: 30}], true, 'أحمد', '']);
+      await M.evaluate(() => closeModal()); await M.settle(150);
+      eq('رقم اللي لسه متسلمتش على الزرار', await M.textContent('#qOrd small'), '1');
+      await sync2();
+      eq('شيت السوق: سطر طلبية (ord) ومفيش تليجرام عنها', [sheets.mkt.sheets['الحركات'].rows.some(r => r[1] === 'ord' && r[0] === o1.id), tgTexts().length - tg0], [true, 0]);
+      await A.evaluate(() => { closeModal(); mkView = 'in'; go('mkt'); renderMkt(); }); await A.settle(300);
+      eq('الحسابات: الطلبية وصلت، وزرارين صغيرين جنب مستنياك | الأرشيف وعليه 1', await A.evaluate(id => [!!mkDb().ord[id], $('#mkOrd').closest('.mkx') === $('#mkTabs').parentNode, $('#mkOrd small').textContent, !!$('#mkPrc')], o1.id), [true, true, '1', true]);
+      await A.click('#mkOrd'); await A.waitForSelector('#ordL');
+      eq('الحسابات: نفس الطلبية ومكتوب أحمد', await A.evaluate(() => [$$('#ordL .oc').length, $('#ordL .oc .who').textContent, $('#ordL .oc .oi').textContent.includes('100 لفة 16 مم أحمر ختم فلاش · 5 ك = 500 ك')]), [1, 'أحمد', true]);
+      await A.click('#ordL [data-done]'); await A.settle(200);
+      eq('مصطفى داس "اتسلمت": راحت تبويب اتسلمت', await A.evaluate(id => [mkDb().ord[id].st, mkDb().ord[id].doneBy, $$('#ordL .oc').length], o1.id), ['done', 'مصطفى', 0]);
+      await A.click('#oNew'); await A.waitForSelector('#ordF');
+      await A.fill('#oC', 'معرض تجربة الأمل'); await A.fill('#oLs .ln[data-i="0"] .n', 'لفة 16 مم أحمر ختم فلاش');
+      await A.evaluate(() => $('#oLs .ln[data-i="0"] .n').dispatchEvent(new Event('blur'))); await A.waitForFunction(() => $('#oLs .ln[data-i="0"] .w').value === '5');
+      await A.fill('#oLs .ln[data-i="0"] .c', '20');
+      await A.click('#oD button[data-d="x"]'); await A.settle(50);
+      await A.click('#oSv'); await A.waitForSelector('#ordL');
+      eq('مصطفى كتب طلبية: وزن اللفة جه من آخر مرة (5) و"يوم تاني" = بعد 3 أيام', await A.evaluate(() => { const o = Object.values(mkDb().ord).find(x => x.by === 'مصطفى'); return o && [o.items[0].w, o.items[0].k, o.due === addDays(todayISO(), 3)]; }), [5, 100, true]);
+      await A.evaluate(() => closeModal());
+      await sync2();
+      eq('أحمد: الأولى اتسلمت (مصطفى) والتانية وصلت مكتوب عليها مصطفى', await M.evaluate(id => { const L = Object.values(S.ord); return [S.ord[id].st, S.ord[id].doneBy, L.filter(o => !o.st).map(o => o.by)]; }, o1.id), ['done', 'مصطفى', ['مصطفى']]);
+      /* التسعير */
+      await M.evaluate(() => { closeModal(); nav('', true); }); await M.settle(150);
+      await M.click('#qPrc'); await M.waitForSelector('#prcV');
+      for (const [s, v] of [['#pP1', '65'], ['#pP2', '55'], ['#pA1', '70'], ['#pOp', '6'], ['#pPr', '10']]) await M.fill(s, v);
+      eq('التسعير: (65×70% + 55×30%) = 62 + 6 = 68 + 10% = 74.8، والنسبة التانية اتظبطت لوحدها', await M.evaluate(() => [$('#pRm').textContent, $('#pRc').textContent, $('#pRs').textContent, $('#pA2').value]), ['62', '68', '74.8', '30']);
+      await M.evaluate(() => { $('#pRv').open = true; }); await M.fill('#pT', '72');
+      eq('عاوز تبيع بـ 72 بنفس الربح: اخلط 44.5% أساسي و55.5% أرخص، وتنبيه إن الأرخص أكتر من النص', await M.evaluate(() => [$('#pTr').textContent.includes('44.5%'), $('#pTr').textContent.includes('55.5%'), $('#pTr .wn').textContent.includes('أكتر من النص')]), [true, true, true]);
+      eq('العكس من الدالة: سعر مستحيل بيقول ارفع السعر', await M.evaluate(() => ORD_T.reverse({n1: 'أ', n2: 'ب', p1: 6500, p2: 5500, a: 70, op: 600, pr: 10}, 5000).bad.includes('ارفع')), true);
+      await M.click('#pX'); await M.settle(100);
+      await sync2();
+      eq('التسعير وصل الحسابات زي ما هو ومكتوب أحمد', await A.evaluate(() => { const m = Object.values(mkDb().prc)[0]; return m && [m.p1, m.p2, m.a, m.op, m.pr, m.by]; }), [6500, 5500, 70, 600, 10, 'أحمد']);
+      eq('مفيش أي رصيد ولا حركة ولا خزنة اتغيرت (عند الاتنين)', await money(), m0);
+      await A.evaluate(() => { closeModal(); go('home'); });
     }
     }   // نهاية أقسام السوق
     }   // نهاية RUN.sync

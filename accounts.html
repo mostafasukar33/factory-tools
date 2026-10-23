@@ -941,6 +941,10 @@ html[data-theme=dark] .mtag.insta{background:#2a2240;color:#B9A6F0}html[data-the
 .il.cl .ilw .tm{white-space:nowrap}
 .il.cl .ilw .vbtn{white-space:nowrap;margin-inline-start:auto}
 /* الوارد والأرشيف متفصولين: عداد على التاب، وعنوان لكل قسم، و"رجعتها لشريكك" تحت لوحدها */
+/* الطلبيات والتسعير: زرارين صغيرين جنب مستنياك | الأرشيف */
+.mkx{display:flex;gap:6px;align-items:stretch;margin-bottom:10px}.mkx .seg{flex:1;margin:0}
+.mksq{flex:none;width:62px;border:1.5px solid var(--line);background:var(--card);border-radius:11px;font:inherit;font-size:var(--f1);font-weight:700;color:var(--sub);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.2;position:relative;cursor:pointer;padding:4px 0}
+.mksq small{position:absolute;top:-7px;left:-5px;min-width:20px;border-radius:10px;padding:0 6px;background:var(--red);color:var(--card);font-size:var(--f1);font-weight:800}
 #mkTabs .mkn{display:inline-block;min-width:24px;border-radius:12px;padding:0 7px;background:var(--red);color:var(--card);font-size:var(--f1);font-weight:800;margin-inline-start:4px}
 .mkh .mkha{font-size:var(--f1);font-weight:700;color:var(--sub);margin-inline-start:6px}
 .mkh.mkha2{background:var(--green-l);border-color:var(--green)}.mkh.mkha2 .n{color:var(--green)}
@@ -6542,7 +6546,34 @@ const mkCsTr = o => o.t === 'cs' && o.m === 'tr';
 const mkCsVault = () => { const v = mkVaultFor('tr'); return v && !isMkv(v) ? v : mkHandTo(); };   // الإيراد لازم يبقى في خزنة
 const mkCsNote = o =>'بيع كاش من المصنع — ' + (o.buyer || '') + (mkCsTr(o) ? ' — تحويل' : '');
 const mkCreds = () => { const s = db && getSet('mktSheet', null); return s && s.u && s.k ? s : null; };
-function mkDb() { return db.mkt = db.mkt || {u: '', cursor: 0, ops: {}, st: {}, cs: {}}; }
+function mkDb() { const d = db.mkt = db.mkt || {u: '', cursor: 0, ops: {}, st: {}, cs: {}}; if (!d.ord) d.ord = {}; if (!d.prc) d.prc = {}; return d; }
+/* الطلبيات والتسعير (lib/orders.js، بطلبه 23/10/2026): قايمة واحدة مع أحمد على شيت السوق (سطور ord / prc). مش فلوس:
+   مبيلمسوش أي حساب ولا رصيد ولا خزنة، ومتخزنين جوه db.mkt بس (زي الوارد). بيتحمّل وقت الدوس بس */
+window.ORD_HOST = {who: 'مصطفى', get dev() { return db.cfg.dev; }, box: () => mkDb(), changed: () => { saveDB(); ordBadge(); mkRefresh(); mkSync(); },
+  names: () => liveParties().filter(p => p.sec !== 'sup').map(p => p.name), items: () => ordItems(),
+  modal: h => modal(h), close: () => { closeModal(); mkRefresh(); }, toast: m => toast(m), today: () => todayISO(), now: () => nowS()};
+const ordBadge = () => { const b = $('#mkOrd'); if (!b) return; const n = ordN(), s = b.querySelector('small'); if (s && !n) s.remove(); else if (n) { if (s) s.textContent = n; else b.insertAdjacentHTML('beforeend', `<small>${n}</small>`); } };
+const ordN = () => db && db.mkt && db.mkt.ord ? Object.values(db.mkt.ord).filter(o => o && !o.del && o.cname && !o.st).length : 0;
+/* أسامي الأصناف من فواتير البيع (الأحدث الأول) علشان الاقتراحات، وبتتبعت لأحمد سطر واحد (oit) لما تتغير */
+function ordItems() {
+  const seen = new Set(), out = [];
+  liveEntries().filter(e => e.kind === 'inv' && e.lines).sort((a, b) => (b.date || '').localeCompare(a.date || '')).forEach(e => e.lines.forEach(l => { const n = String(l.name || '').trim(); if (n && !seen.has(n) && out.length < 500) { seen.add(n); out.push(n); } }));
+  return out;
+}
+function ordItemsRow(d) {
+  let n = ordItems(), s = JSON.stringify(n);
+  while (s.length > 40000) { n = n.slice(0, Math.floor(n.length * 0.8)); s = JSON.stringify(n); }
+  if (d.oit === s) return [];
+  return [{row: {id: 'oit', kind: 'oit', upd: nowS(), del: false, view: ['', 'أصناف الطلبيات', '', 'أصناف', n.length + ' صنف'], data: {n}}, sig: s, oit: true}];
+}
+const ordView = (k, o) => k === 'ord' ? [isoOf(o.at || o.upd) + ' ' + new Date(o.at || o.upd).toTimeString().slice(0, 5), o.cname || '', '', 'طلبية' + (o.st === 'done' ? ' (اتسلمت)' : o.st === 'x' ? ' (اتلغت)' : ''), (o.items || []).map(it => it.n + (it.k ? ' ' + it.k + ' ك' : '')).join('، ')]
+  : [isoOf(o.upd) + ' ' + new Date(o.upd).toTimeString().slice(0, 5), o.name || '', '', 'تسعير', `${o.n1} ${o.p1 / 100} × ${o.a}% + ${o.n2} ${o.p2 / 100}`];
+let ordP = null;
+function ordLoad(fn) {
+  if (window[fn]) return window[fn]();
+  ordP = ordP || new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'lib/orders.js'; sc.onload = ok; sc.onerror = () => { sc.remove(); no(); }; document.head.appendChild(sc); }).catch(e => { ordP = null; throw e; });
+  ordP.then(() => window[fn]()).catch(() => toast('مش قادر يفتح دلوقتي، اتأكد من النت وجرّب تاني.'));
+}
 const mkSt = id => mkDb().st['st_' + id];
 /* أنواع العمليات: pay دفعة عميل، inv فاتورة عميل (إجمالي بس من الشريك، ومصطفى بيكتب بنودها)، spay دفعة مورد (كاش)، exp مصروف، hand كاش سلّمه الشريك لمصطفى.
    لما تتنقل: pay/spay بتبقى دفعة على الحساب (e_mk_<id>)، وinv فاتورة بيع على الحساب (e_mk_<id>)، وexp/hand بيبقوا حركة خزنة (t_mk_<id>) */
@@ -6865,16 +6896,17 @@ function mkNext() { mkQ = null; return mkSync(); }
 async function mkSyncOnce() {
   const cr = mkCreds(); if (!db || !cr || mkBusy) return false;
   mkBusy = true; mkAt = Date.now(); const d0 = db;
-  let fresh = [], ch = false, edits = [];
+  let fresh = [], ch = false, edits = [], ordCh = false;
   try {
     const d = mkDb();
-    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}, ss: {}}); ch = true; }
+    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}, ss: {}, ord: {}, prc: {}, oit: ''}); ch = true; }
     ensureMktVault();
     if (mkReconcile()) ch = true;
     if (mkWantPrune()) ch = true;
     const call = body => callSheet(body, cr.u, cr.k, 30000, 3);   // يعيد 3 مرات زي الحسابات قبل ما يقول "مش واصل"
     const sts = Object.values(d.st).filter(s => s.sy !== s.upd), cus = mkCustRows().concat(mkSupRows());
-    const all = sts.map(s => ({row: {id: s.id, kind: 'st', upd: s.upd, del: false, view: mkStView(s), data: stripLocal(s)}, s})).concat(cus);
+    const own = ['ord', 'prc'].flatMap(k => Object.values(d[k]).filter(s => s.sy !== s.upd).map(s => ({row: {id: s.id, kind: k, upd: s.upd, del: !!s.del, view: ordView(k, s), data: stripLocal(s)}, s})));
+    const all = sts.map(s => ({row: {id: s.id, kind: 'st', upd: s.upd, del: false, view: mkStView(s), data: stripLocal(s)}, s})).concat(own, cus, ordItemsRow(d));
     /* دفعات لحد 100 سطر أو ~400 ألف حرف (سطور الموردين فيها كشف حسابهم) */
     const parts = []; let cur = [], sz = 0;
     all.forEach(x => { const n = JSON.stringify(x.row.data).length; if (cur.length && (cur.length >= 100 || sz + n > 400000)) { parts.push(cur); cur = []; sz = 0; } cur.push(x); sz += n; });
@@ -6884,7 +6916,7 @@ async function mkSyncOnce() {
       if (db !== d0) return false;
       if (!j || j.ok !== true) throw new Error(j && j.error === 'key' ? 'key' : j && j.error ? String(j.error) : 'push');
       const ack = new Set(j.ack || []);
-      part.forEach(x => { if (!ack.has(x.row.id)) return; if (x.s) { if (x.s.upd === x.row.upd) x.s.sy = x.s.upd; } else (x.box ? d[x.box] : d.cs)[x.row.id] = x.sig; });
+      part.forEach(x => { if (!ack.has(x.row.id)) return; if (x.s) { if (x.s.upd === x.row.upd) x.s.sy = x.s.upd; } else if (x.oit) d.oit = x.sig; else (x.box ? d[x.box] : d.cs)[x.row.id] = x.sig; });
       ch = true;
     }
     const first = !d.cursor;
@@ -6895,10 +6927,11 @@ async function mkSyncOnce() {
       if (!j || j.ok !== true || !Array.isArray(j.rows)) throw new Error(j && j.error === 'key' ? 'key' : 'pull');
       j.rows.forEach(r => {
         if (!r || !r.id || !r.data) return;
-        const box = r.kind === 'op' ? d.ops : r.kind === 'st' ? d.st : null; if (!box) return;
-        const cur = box[r.id];
-        if (cur && cur.upd >= r.upd) { if (cur.upd === r.upd && r.kind === 'st') cur.sy = cur.upd; return; }
-        box[r.id] = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del}, r.kind === 'st' ? {sy: r.upd} : {});
+        const box = r.kind === 'op' ? d.ops : r.kind === 'st' ? d.st : r.kind === 'ord' ? d.ord : r.kind === 'prc' ? d.prc : null; if (!box) return;
+        const cur = box[r.id], own = r.kind !== 'op';   // الطلبيات والتسعير بيتكتبوا من الجهتين، فاللي جاي من الشيت اتبعت خلاص (sy)
+        if (cur && cur.upd >= r.upd) { if (cur.upd === r.upd && own) cur.sy = cur.upd; return; }
+        box[r.id] = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del}, own ? {sy: r.upd} : {});
+        if (own && r.kind !== 'st') ordCh = true;
         if (r.kind === 'op' && !cur && !r.del && !first) fresh.push(box[r.id]);
         ch = true; mkNew = Date.now();
       });
@@ -6915,6 +6948,7 @@ async function mkSyncOnce() {
       if (fresh.length) mkAlert(fresh);
       else if (edits.length) mkEditAlert(edits);
       if (ch || fresh.length) mkRefresh();
+      if (ordCh) { ordBadge(); if (window.ordRefresh) ordRefresh(); }
     }
   }
   return !mkErr;
@@ -7186,11 +7220,12 @@ function renderMkt() {
   const n = mkPending().length;
   box.innerHTML = `<div class="sech ppbar tb" style="margin-top:0"><a id="mkBack">→<em> الحسابات</em></a><b class="tt">📥 وارد السوق</b><span class="mkdot ${mkErr ? 'w' : ''}" id="mkDot"><i></i>${mkErr === 'key' ? 'الشيت رفض المفتاح' : mkErr ? 'مش قادر يوصل للشيت' : mkLastOk ? 'متصل' : '…'}</span></div>
     ${mkStat()}
-    <div class="seg s2" id="mkTabs"><button type="button" data-v="in" class="${mkView === 'in' ? 'on' : ''}">مستنياك${n ? ` <b class="mkn">${n}</b>` : ''}</button><button type="button" data-v="arch" class="${mkView === 'arch' ? 'on' : ''}">الأرشيف</button></div>
+    <div class="mkx"><div class="seg s2" id="mkTabs"><button type="button" data-v="in" class="${mkView === 'in' ? 'on' : ''}">مستنياك${n ? ` <b class="mkn">${n}</b>` : ''}</button><button type="button" data-v="arch" class="${mkView === 'arch' ? 'on' : ''}">الأرشيف</button></div><button class="mksq" id="mkOrd" type="button">📋<span>طلبيات</span>${ordN() ? `<small>${ordN()}</small>` : ''}</button><button class="mksq" id="mkPrc" type="button">🏷️<span>تسعير</span></button></div>
     <div id="mkBody"></div>`;
   $('#mkBack').onclick = () => go('home');
   $('#mkDot').onclick = () => { if (mkErr) toast(mkErr === 'key' ? 'شيت السوق رفض المفتاح' : 'شيت السوق: ' + (mkWhy || 'مش واصل') + '. بيحاول تاني لوحده', 7000); else mkSync(); };
   $$('#mkTabs button').forEach(b => b.onclick = () => { mkView = b.dataset.v; renderMkt(); });
+  $('#mkOrd').onclick = () => ordLoad('ordOpen'); $('#mkPrc').onclick = () => ordLoad('prcOpen');
   mkStatBind();
   if (mkView === 'arch') mkArch(); else mkInbox();
 }

@@ -816,6 +816,9 @@ const T0 = Date.now();
         const first = await A.evaluate(() => db.cfg.audit.ok);
         await A.waitForFunction(() => db.cfg.audit.ok && !syncing, null, {timeout: 20000}).catch(() => {});
         eq('المراجعة: مشكلة حقيقية اتمسكت، واتصلحت، والتحذير اختفى لوحده', [first, await A.evaluate(() => [db.cfg.audit.ok, pendingRecs().length])], [false, [true, 0]]);
+        await A.evaluate(() => { go('home'); route(); docNow(); });
+        await A.waitForFunction(() => !/مش متطابقين/.test(((db.cfg.doc || {}).last || {}).top || ''), null, {timeout: 15000}).catch(() => {});
+        eq('بعد ما اتصلحت: التحذير اختفى من الرئيسية ومن فحص البيانات', await A.evaluate(() => [/المراجعة لقت|مش متطابقين/.test($('#chk').textContent), /مش متطابقين/.test(String(db.cfg.doc.last.top))]), [false, false]);
       }
       {   // جوجل رد "locked" (الطلب وصل الشيت فاضي) مرتين: بيعيد لوحده ويكمّل
         await A.settle(500); await A.waitForFunction(() => !syncing && !syncAgain);

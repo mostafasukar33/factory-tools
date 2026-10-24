@@ -5759,8 +5759,11 @@ async function docNow() {
   const d0 = db; let r;
   try { await drLoad(); r = await window.docRun(false); } catch (e) { return; }
   if (db !== d0) return;
+  const old = JSON.stringify(((db.cfg.doc || {}).last || {}).top || []);
   const fresh = docKeep(r);
   if (document.body.dataset.pg === 'set') renderDocBox();
+  /* المشكلة اتحلت (أو اتغيرت): سطر الرئيسية يتحدث على طول، مش لما حاجة جديدة تظهر بس */
+  if (!fresh.length && old !== JSON.stringify(db.cfg.doc.last.top) && document.body.dataset.pg === 'home') renderHome();
   if (!fresh.length) return;
   toast(`⚠️ الفحص لقى حاجة جديدة: ${fresh[0].t}${fresh.length > 1 ? ` (و${fresh.length - 1} كمان)` : ''}`, 7000);
   if (document.body.dataset.pg === 'home') renderHome();
@@ -6361,20 +6364,23 @@ async function sheetAudit(manual, again) {
   }));
   const onlySheet = srv.size, ok = !missing && !behind && !ahead && !onlySheet;
   const msg = ok ? `✔ الجهاز والشيت متطابقين (${same} سجل)` : `الجهاز والشيت مش متطابقين: ${missing + ahead} سجل لسه موصلش الشيت، و${behind + onlySheet} سجل في الشيت لسه منزلش الجهاز`;
+  const was = (db.cfg.audit || {}).ok;
   db.cfg.audit = {at: nowS(), ok, msg}; flushSave();
+  /* النتيجة اتغيرت: الرئيسية تترسم تاني وفحص البيانات يتعاد، علشان التحذير يختفي أول ما المشكلة تتحل (كان بيفضل لحد أي حفظ جديد) */
+  if (was !== ok) { dataVer++; docSoon(); }
   /* اللي ناقص الشيت يتعلّم إنه لسه متبعتش، واللي ناقص الجهاز ينزل من الأول */
   if (!ok) { toPush.forEach(r => delete r.sy); db.cfg.cursor = 0; }
   if (manual) {
     modal(`<h3>مراجعة الجهاز مع الشيت</h3><div class="sync ${ok ? 'ok' : 'warn'}">${esc(msg)}</div>
       ${ok ? '' : '<p style="font-size:var(--f3)">اضغط "صلّح" والبرنامج هيبعت اللي ناقص الشيت وينزّل اللي ناقص الجهاز.</p>'}
       <div class="stack">${ok ? '' : '<button class="btn gold" id="saFix" type="button">صلّح دلوقتي</button>'}<button class="btn line" id="saX" type="button">تمام</button></div>`);
-    $('#saX').onclick = closeModal;
+    $('#saX').onclick = () => { closeModal(); route(); };
     if ($('#saFix')) $('#saFix').onclick = async () => { closeModal(); await syncNow(true); sheetAudit(true); };
   } else if (!ok) Promise.resolve(syncNow()).then(() => { if (!again && db === d0) setTimeout(() => sheetAudit(false, true), 3000); });   // اتصلّح؟ نراجع تاني مرة واحدة علشان التحذير ميفضلش يوم كامل
   if (!$('#mask').classList.contains('on')) route();
 }
-/* مرة في اليوم، ولو آخر مراجعة كان فيها فرق بتتعاد كل 10 دقايق لحد ما تبقى متطابقة (التحذير القديم ميفضلش يوم كامل) */
-setInterval(() => { const au = db && db.cfg.audit || {}; if (db && db.cfg.sheetOk && !syncing && nowS() - (au.at || 0) > (au.ok === false ? 600000 : 86400000)) sheetAudit(false); }, 60000);
+/* مرة في اليوم، ولو آخر مراجعة كان فيها فرق بتتعاد كل 10 دقايق لحد ما تبقى متطابقة (التحذير القديم ميفضلش يوم كامل). والمزامنة بتفشل = مفيش مراجعة (المزامنة نفسها بتقول) */
+setInterval(() => { const au = db && db.cfg.audit || {}; if (db && db.cfg.sheetOk && !syncing && !syncErr && nowS() - (au.at || 0) > (au.ok === false ? 600000 : 86400000)) sheetAudit(false); }, 60000);
 
 /* ====================== سجل التعديلات ====================== */
 function auditModal() {

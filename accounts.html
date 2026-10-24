@@ -3349,6 +3349,8 @@ async function callSheet1(body, url, key, ms) {
       x.gtxt = String(txt).replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
       throw x;
     }
+    /* 'locked' بييجي من doGet بس: جوجل حوّل الطلب في السكة وضيّع البيانات اللي فيه فالكود وصله فاضي. مش رفض، نبعته تاني */
+    if (j && j.ok === false && j.error === 'locked') { const x = new Error('page'); x.code = 'page'; x.gtxt = 'الطلب وصل فاضي (locked)'; throw x; }
     srvClock(j, t0); return j;
   } catch (e) {
     if (me.stale) { const x = new Error('stale'); x.code = 'stale'; throw x; }

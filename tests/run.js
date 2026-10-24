@@ -80,6 +80,7 @@ async function newDevice(browser, base, sheets) {
     if (ctx.netOnce > 0) { ctx.netOnce--; return r.abort('failed'); }   // النت اتهز لحظة
     if (ctx.hangOnce > 0) { ctx.hangOnce--; return; }   // طلب مبيردش خالص (الأيفون قطع الاتصال وهو في الخلفية)
     const q = r.request(), g = q.url().includes('TEST-CASH') ? sheets.cash : q.url().includes('TEST-MKT') ? sheets.mkt : sheets.acc;
+    if (ctx.lockedOnce > 0 && g === sheets.acc) { ctx.lockedOnce--; return r.fulfill({status: 200, contentType: 'application/json', body: '{"ok":false,"error":"locked"}'}); }   // جوجل وصّل الطلب للشيت فاضي (doGet)
     if (ctx.pageOnce > 0 && g === sheets.acc) { ctx.pageOnce--; return r.fulfill({status: 200, contentType: 'text/html', body: '<html>Google error</html>'}); }   // جوجل بيرد بصفحة خطأ لحظية
     if (!g.ctx.doPost) return r.fulfill({status: 200, contentType: 'text/html', body: '<html>no script</html>'});
     r.fulfill({status: 200, contentType: 'application/json', body: q.method() === 'POST' ? g.post(q.postData()) : g.get()});
@@ -803,6 +804,12 @@ const T0 = Date.now();
         await A.evaluate(() => { let h = true; Object.defineProperty(document, 'hidden', {configurable: true, get: () => h}); document.dispatchEvent(new Event('visibilitychange')); sheetHidAt = Date.now() - 5000; h = false; document.dispatchEvent(new Event('visibilitychange')); delete document.hidden; });
         await A.waitForFunction(() => !syncing && !pendingRecs().length, null, {timeout: 20000}).catch(() => {});
         eq('طلب علق في الخلفية: اتبعت تاني لحظة ما رجع، والمزامنة خلصت في أقل من 10 ثواني', await A.evaluate(() => [pendingRecs().length, syncErr, Date.now() - __t0 < 10000]), [0, '', true]);
+      }
+      {   // جوجل رد "locked" (الطلب وصل الشيت فاضي) مرتين: بيعيد لوحده ويكمّل
+        await A.settle(500); await A.waitForFunction(() => !syncing && !syncAgain);
+        await A.evaluate(() => { const p = liveParties()[0]; p.note = 'تجربة locked'; p.upd = nowS(); saveDB(); clearTimeout(syncT); });
+        D1.lockedOnce = 2; await bg(A, 'syncNow()');
+        eq('جوجل رد locked مرتين: اتعادت لوحدها ونجحت', [D1.lockedOnce, await A.evaluate(() => [syncErr, pendingRecs().length, db.cfg.syLog[0].ok])], [0, ['', 0, true]]);
       }
       {   // دفعة تقيلة بتتقسم (لحد ~250 ألف حرف)، وسجل المحاولات بيبان في الإعدادات
         await A.settle(500); await A.waitForFunction(() => !syncing && !syncAgain);

@@ -162,6 +162,7 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-inv-sug-' + sfx, go: async A => { await accEval(`docModal(${party}, 'inv')`)(A); await A.focus('#dcLines [data-f=name]'); }},
   {name: 'acc-pay-' + sfx, go: accEval(`payModal(${party}, 'pay')`)},
   {name: 'acc-exp-' + sfx, go: accEval(`txModal('exp'); $('#txA').value = '350'; $('#txN').value = 'شحن كهرباء'; $('#txN').dispatchEvent(new Event('input'))`)},
+  {name: 'acc-catfix-' + sfx, go: accEval(`(() => { const id = n => (catsL('exp').find(c => c.name === n) || {}).id, now = nowS(); [['كهربا الشهر', 'خامات', 'v_main'], ['سيور المكنة', 'خامات', 'v_main'], ['بنزين — العربية', '', 'v_mkt'], ['مخالفة', 'نثريات', 'v_main']].forEach(([note, c, vault], i) => { const r = {id: 't_cfs' + i, type: 'exp', amt: 25000 + i * 5000, date: addDays(todayISO(), -i), note, cat: c ? id(c) : 'c_mkexp', vault, to: '', at: now, upd: now, del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); }); catFixOpen(); })()`)},
   {name: 'acc-quick-' + sfx, go: accEval('quickModal()')},
   {name: 'acc-cash-' + sfx, go: accEval(`cashView = 'type'; cashMode = 'week'; cashDay = ''; cashOpenV = false; go('cash'); renderCash()`), full: true},
   {name: 'acc-part-' + sfx, go: accGo('part'), full: true},

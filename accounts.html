@@ -238,6 +238,10 @@ nav .nb{position:absolute;top:6px;inset-inline-start:calc(50% + 6px);background:
 .rcd b{display:block;font-size:var(--f4);color:var(--ink);margin:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rcd b.neg{color:var(--red)}
 .rcd small{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}
+.cfl{max-height:55vh;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.cfr{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer}
+.cfr span{flex:1;min-width:0}.cfr span b{display:block;font-size:var(--f2)}.cfr small{display:block;font-size:var(--f1);color:var(--sub)}.cfr em{font-style:normal;color:var(--green);font-weight:800}
+.cfr .n{font-size:var(--f2)}
 .rcd small.up{color:var(--green)}.rcd small.dn{color:var(--red)}
 @media (min-width:1000px){.rcg{grid-template-columns:repeat(4,1fr)}}
 /* تقرير الخزنة على الموبايل (بطلبه 24/10/2026): التفاصيل تحت اسم الحركة بدل عمود لوحده، علشان داخل/خارج/الرصيد يبانوا من غير سحب */
@@ -4132,7 +4136,7 @@ function catLev(a, b) {
   return p[b.length];
 }
 const catSame = (a, b) => a === b || (a.length >= 4 && b.length >= 4 && catLev(a, b) <= (Math.min(a.length, b.length) >= 7 ? 2 : 1));
-function catGuess(type, note) {
+function catGuess(type, note, words) {
   const cats = catsL(type), W = catWords(note), nn = ' ' + W.join(' ') + ' ';
   if (!W.length) return null;
   const has = w => w.includes(' ') ? nn.includes(' ' + catWords(w).join(' ') + ' ') : W.some(x => catSame(x, w));
@@ -4147,13 +4151,15 @@ function catGuess(type, note) {
   });
   const top = [...sc].sort((a, b) => b[1] - a[1] || (a[0].startsWith('new:') - b[0].startsWith('new:')))[0];
   if (top) return {id: top[0], why: 'word', make: top[0].startsWith('new:') ? top[0].slice(4) : ''};
+  if (words) return null;   // مراجعة القديم: بالكلمات بس، مش من اللي اتكتب قبل كده (ممكن يكون هو الغلط)
   /* مفيش كلمة معروفة: نفس الملاحظة اتكتبت قبل كده، أو الكلمة اتكتبت قبل كده في بند (الأكتر بفرق واضح) */
   const ok = id => cats.some(c => c.id === id);
   const past = db.txs.filter(x => !x.del && x.type === type && x.note && x.cat && ok(x.cat)).sort((a, b) => (b.at || 0) - (a.at || 0));
   const same = past.find(x => catWords(x.note).join(' ') === W.join(' '));
+  const STOP = new Set(['حاجه', 'حاجات', 'تانيه', 'تاني', 'مصروف', 'مصاريف', 'فلوس', 'حساب', 'دفع', 'دفعه', 'شراء', 'شرا', 'عشان', 'علشان']);
   if (same) return {id: same.cat, why: 'past'};
   const ps = new Map();
-  past.slice(0, 3000).forEach(x => { const xw = catWords(x.note); if (W.some(w => w.length >= 3 && xw.some(y => catSame(w, y)))) ps.set(x.cat, (ps.get(x.cat) || 0) + 1); });
+  past.slice(0, 3000).forEach(x => { const xw = catWords(x.note); if (W.some(w => w.length >= 3 && !STOP.has(w) && xw.some(y => catSame(w, y)))) ps.set(x.cat, (ps.get(x.cat) || 0) + 1); });
   const best = [...ps].sort((a, b) => b[1] - a[1]);
   if (best.length && (best.length === 1 || best[0][1] >= best[1][1] * 2)) return {id: best[0][0], why: 'past'};
   return null;
@@ -4819,6 +4825,38 @@ function txModal(type, t, opts = {}) {
     t.del = true; t.delAt = nowS(); touch(t); saveDB(); closeModal(); route(); toast('اتلغت');
   };
 }
+/* مراجعة بنود المصروفات القديمة (بطلبه 24/10/2026): المصروف اللي كلامه بيقول بند غير اللي هو فيه (زي "كهربا" على الخامات).
+   بيعرضهم وهو بيختار، ومفيش حاجة بتتغير غير بموافقته، والبند القديم بيتحفظ في سجل التعديلات. الفترة المقفولة والتسويات والشركاء مبيتلمسوش */
+function catFixList() {
+  const L = [];
+  for (const x of db.txs) {
+    if (x.del || x.type !== 'exp' || !x.note || x.cfix || x.pt || x.iv || NOT_PL.has(x.cat) || SPECIAL_CATS.has(x.cat) || isLocked(x.date)) continue;
+    const g = catGuess('exp', x.note, true); if (!g || g.id === x.cat) continue;
+    if (g.make && norm(cName(x.cat)) === norm(g.make)) continue;
+    L.push({x, g, to: g.make || cName(g.id)});
+  }
+  return L.sort((a, b) => b.x.date.localeCompare(a.x.date));
+}
+function catFixOpen() {
+  const L = catFixList(), lk = db.txs.some(x => !x.del && x.type === 'exp' && isLocked(x.date));
+  if (!L.length) return modal(`<h3>بنود المصروفات</h3><p>كل المصروفات القديمة في بنودها الصح ✔</p>${lk ? '<p class="hint">الفترة المقفولة مبتتراجعش.</p>' : ''}<button class="btn line" id="cfX" type="button">رجوع</button>`), $('#cfX').onclick = () => vaultSettings();
+  modal(`<h3>بنود المصروفات القديمة</h3>
+    <p class="hint">دول ${L.length} مصروف كلامهم بيقول بند غير اللي هم فيه. شيل العلامة من اللي عاوزه يفضل زي ما هو.${lk ? ' الفترة المقفولة مبتتراجعش.' : ''}</p>
+    <div class="cfl">${L.map((r, i) => `<label class="cfr"><input type="checkbox" data-i="${i}" checked><span><b>${esc(r.x.note)}</b><small>${dispDate(r.x.date)} · ${isMkv(r.x.vault) ? esc(MK_PN) : 'منك'} · ${esc(cName(r.x.cat))} ← <em>${esc(r.to)}</em></small></span><b class="n">${fmtP(r.x.amt)}</b></label>`).join('')}</div>
+    <div class="stack" style="margin-top:8px"><button class="btn gold" id="cfOk" type="button">انقل المتعلّم عليهم (${L.length})</button><button class="btn line" id="cfX" type="button">رجوع</button></div>`, true);
+  const cnt = () => { const n = $$('#modal .cfr input:checked').length; $('#cfOk').textContent = `انقل المتعلّم عليهم (${n})`; $('#cfOk').disabled = !n; };
+  $$('#modal .cfr input').forEach(c => c.onchange = cnt);
+  $('#cfX').onclick = () => vaultSettings();
+  $('#cfOk').onclick = () => {
+    let n = 0;
+    $$('#modal .cfr input:checked').forEach(c => {
+      const {x, g} = L[+c.dataset.i], cat = g.make ? catMake('exp', g.make) : g.id; if (cat === x.cat) return;
+      (x.hist = x.hist || []).push({t: nowS(), date: x.date, desc: `${TXT[x.type]} ${cName(x.cat)} — ${vName(x.vault)}`, dr: x.amt, cr: 0});
+      x.cat = cat; touch(x); n++;
+    });
+    saveDB(); closeModal(); route(); toast(`اتنقل ${n} مصروف لبنده الصح ✔`);
+  };
+}
 /* إدارة الخزن والبنود */
 function vaultSettings() {
   const vs = vaultsAll().filter(v => !v.gone || vaultBal(v.id));   // gone = اتمسحت من القايمة خالص (بطلبه)
@@ -4829,11 +4867,13 @@ function vaultSettings() {
     <button class="btn line sm" id="vsAddV" type="button">+ خزنة جديدة (بنك، محفظة…)</button>
     <div class="sech"><span class="exp">بنود المصروفات</span></div>${catsL('exp').map(c => row('cat', c)).join('')}
     <button class="btn line sm" data-addc="exp" type="button">+ بند مصروف</button>
+    <button class="btn line sm" id="vsFix" type="button">🔎 راجع بنود المصروفات القديمة</button>
     <div class="sech"><span class="inc">بنود الإيرادات</span></div>${catsL('inc').map(c => row('cat', c)).join('')}
     <button class="btn line sm" data-addc="inc" type="button">+ بند إيراد</button>
     <button class="btn gold" id="vsX" type="button" style="margin-top:14px">تمام</button>`, true);
   $('#vsX').onclick = () => { closeModal(); route(); };
   $('#vsAddV').onclick = () => editVault();
+  $('#vsFix').onclick = () => catFixOpen();
   $$('[data-addc]').forEach(b => b.onclick = () => editCat(b.dataset.addc));
   $$('[data-ed]').forEach(b => b.onclick = () => { const [k, id] = b.dataset.ed.split(':'); k === 'vault' ? editVault(IDX.vault.get(id)) : editCat(null, IDX.cat.get(id)); });
 }
@@ -6892,6 +6932,13 @@ function mkAsExp(o) {
     flushSave(); closeModal(); route(); mkSync(); toast('رجعت مصروف ✔');
   };
 }
+/* مصروف أحمد بيتحط في البند من كلامه زي مصروفك (بطلبه 24/10/2026، catGuess)، واللي مش مفهوم "مصاريف السوق" زي الأول.
+   مين صرف بيبان من الخزنة (خزنة السوق = أحمد): شاشة الخزنة بتكتب "منك/أحمد/الاتنين" جنب كل بند. لو الشريك عدّل المصروف بعد النقل والكلام زي ما هو، البند بيفضل (لو مصطفى غيّره بإيده) */
+function mkExpCat(o, make) {
+  const g = catGuess('exp', (o.cat || '') + ' ' + (o.note || ''));
+  return !g ? 'c_mkexp' : g.make ? (make ? catMake('exp', g.make) : g.id) : g.id;
+}
+const mkExpCatName = o => { const id = mkExpCat(o); return id.startsWith('new:') ? id.slice(4) : cName(id); };
 /* "خزنة السوق" = الفلوس اللي مع الشريك، وبند "مصاريف السوق". id ثابت علشان متتعملش مرتين من جهازين */
 function ensureMktVault() {
   ensureVaults();
@@ -6928,7 +6975,8 @@ function mkMove(o, f) {
     if (rec) { (rec.hist = rec.hist || []).push(snapshot(rec)); Object.assign(rec, x, {del: false}); delete rec.delAt; applyAmounts(rec); rec.desc = docDesc(rec); touch(rec); }
     else { const e = addEntry(Object.assign({id: 'e_mk_' + o.id}, x)); applyAmounts(e); e.desc = docDesc(e); }
   } else {
-    const x = o.t === 'exp' ? {type: 'exp', amt: f.amt, vault: f.vault, to: '', cat: 'c_mkexp', note: o.cat + (o.note ? ' — ' + o.note : '')}
+    const xn = o.cat + (o.note ? ' — ' + o.note : '');
+    const x = o.t === 'exp' ? {type: 'exp', amt: f.amt, vault: f.vault, to: '', cat: rec && rec.note === xn && rec.cat ? rec.cat : mkExpCat(o, true), note: xn}
       : o.t === 'cs' ? {type: 'inc', amt: f.amt, vault: f.vault, to: '', cat: 'c_inc1', note: mkCsNote(o)}
       : {type: 'tr', amt: f.amt, vault: f.vault, to: f.to, cat: '', note: 'كاش من شريكك'};
     if (rec) { Object.assign(rec, x, {date: f.date, at: now, del: false}); delete rec.delAt; touch(rec); }
@@ -7840,7 +7888,7 @@ function mkConfirm(ops, to) {
   ensureMktVault();
   const kind = ops[0].t, name = to.pid ? P.get(to.pid).name : to.newName;
   const title = kind === 'rt' ? 'تأكيد المرتجع / الشغل (خصم على الحساب)' : kind === 'cs' ? 'تأكيد البيع الكاش' : kind === 'exp' ? 'تأكيد المصروف' : kind === 'hand' ? 'تأكيد الاستلام' : 'تأكيد النقل للحسابات';
-  const who = kind === 'cs' ? '<b>بيع كاش من المصنع</b>' + (ops.every(mkCsTr) ? ' (اتحوّل لك)' : ops.some(mkCsTr) ? '' : ' (الفلوس مع شريكك)') : kind === 'exp' ? `<b>مصاريف السوق</b>` : kind === 'hand' ? '<b>كاش من شريكك</b> ← بيدخل خزنتك' : `${kind === 'spay' ? 'من' : 'من'} <b>${esc(name)}</b>${to.newName ? ` <span class="nwt">${kind === 'spay' ? 'حساب مورد جديد' : 'حساب جديد في عملاء السوق'}</span>` : ''}`;
+  const who = kind === 'cs' ? '<b>بيع كاش من المصنع</b>' + (ops.every(mkCsTr) ? ' (اتحوّل لك)' : ops.some(mkCsTr) ? '' : ' (الفلوس مع شريكك)') : kind === 'exp' ? `من ${esc(MK_PN)} ← بند <b>${esc([...new Set(ops.map(mkExpCatName))].join('، '))}</b>` : kind === 'hand' ? '<b>كاش من شريكك</b> ← بيدخل خزنتك' : `${kind === 'spay' ? 'من' : 'من'} <b>${esc(name)}</b>${to.newName ? ` <span class="nwt">${kind === 'spay' ? 'حساب مورد جديد' : 'حساب جديد في عملاء السوق'}</span>` : ''}`;
   const key = o => o.t === 'pay' ? o.m : mkCsTr(o) ? 'tr' : o.t;
   modal(`<h3>${title}</h3>
     <p style="margin-bottom:8px">${ops.length > 1 ? `${ops.length} عمليات` : 'عملية'} ${kind === 'spay' ? 'دفعة لمورد' : kind === 'pay' ? 'دفعة' : kind === 'rt' ? 'مرتجع/شغل' : ''} ${who}</p>

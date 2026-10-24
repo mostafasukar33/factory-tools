@@ -422,7 +422,7 @@ const T0 = Date.now();
     eq('زرار احفظ نسخة مخفي على الموبايل', await A.evaluate(() => getComputedStyle($('#bBk')).display), 'none');
 
     sec('٥) الخزنة');
-    await A.evaluate(() => go('cash')); await A.click('#cExp'); await A.fill('#txA', '30'); await A.click('#txOk'); await closed(A);
+    await A.evaluate(() => go('cash')); await A.click('#cExp'); await A.fill('#txA', '30'); await A.fill('#txN', 'كهربا'); await A.click('#txOk'); await closed(A);
     await A.click('#cPayS'); await A.click('#pkList .pt'); await A.fill('#pyAmt', '500'); await A.click('#pyOk'); await closed(A);
     eq('مصروف 30 ودفعة مورد 500', await vbal(A, 'v_main'), 150000 - 3000 - 50000);
     eq('رصيد المورد نزل', await bal(A, 'مورد تجربة'), -2950000 + 50000);
@@ -579,6 +579,20 @@ const T0 = Date.now();
         { const cf = db.txs.find(x => x.cfix && !x.del), pf = profitOf(addDays(todayISO(), -30), todayISO()).after; cf.del = true; r.push(profitOf(addDays(todayISO(), -30), todayISO()).after === pf); cf.del = false; }
         db.txs.slice(n0).forEach(x => { x.del = true; touch(x); }); saveDB(); closeModal(); r.push(vaultBal(v) === b0); return r; });
       eq('جرد الخزنة: ملاحظة العجز بتتسجل، والحركة بتاريخ قبل الجرد بتسأل "كانت معاك؟": أيوه = الرصيد بعد الجرد مبيتغيرش، لأ = بيزيد، وحركة النهارده مبتسألش، والأرباح مش متأثرة بالتصحيح', r, [true, true, true, true, true, true, true, true, true]);
+    eq('البند بيتفهم لوحده من الكلام: كهربا/كهرباء/مهربا/شحن كهربا، وكلمات معروفة، واللي اتكتب قبل كده، واللي مش مفهوم بيتسأل', await A.evaluate(() => {
+      const id = n => (catsL('exp').find(c => c.name === n) || {}).id, g = s => (catGuess('exp', s) || {}).id || '';
+      const r = ['كهربا', 'كهرباء', 'الكهرباء', 'مهربا', 'شحن كهربا'].map(g).every(x => x && x === id('كهربا'));
+      const w = [g('يومية حسن') === id('أجور'), g('بنزين العربية') === id('نقل'), g('شاي وسكر') === id('نثريات'), g('تصليح المكنة') === id('صيانة'), g('حاجة غريبة خالص'), g('')];
+      const v = vaultsL()[0].id, n0 = db.txs.length;
+      db.txs.push({id: 't_cgx', type: 'exp', amt: 100, date: todayISO(), note: 'عم سيد الفني', cat: id('صيانة'), vault: v, at: nowS(), upd: nowS(), del: false, hist: []});
+      const lp = g('عم سيد الفني') === id('صيانة'); db.txs.pop();
+      txModal('exp'); const ui0 = $('#txC').value; $('#txA').value = fmtP(500); $('#txN').value = 'كهرباء المصنع'; $('#txN').dispatchEvent(new Event('input'));
+      const ui1 = [$('#txC').value === id('كهربا'), $('#txG').textContent.includes('كهربا')];
+      $('#txN').value = 'حاجة غريبة'; $('#txN').dispatchEvent(new Event('input')); $('#txOk').click(); const asked = db.txs.length === n0 && !!$('#txC');
+      $('#txC').value = id('صبغة'); $('#txC').dispatchEvent(new Event('change')); $('#txN').value = 'كهربا'; $('#txN').dispatchEvent(new Event('input'));
+      const keep = $('#txC').value === id('صبغة'); closeModal();
+      return [r, ...w, lp, ui0, ...ui1, asked, keep];
+    }), [true, true, true, true, true, '', '', true, '', true, true, true, true]);
     }
     sec('٦) دفعة عميل بتدخل الخزنة');
     await openParty(A, 'عميل تجربة اتنين'); await A.click('#fbPay'); await A.fill('#pyAmt', '70'); await A.click('#pyOk'); await closed(A);
@@ -1329,7 +1343,7 @@ const T0 = Date.now();
     eq('الرسم البياني بيعرض الشهور اللي فيها شغل بس', await A.evaluate(() => { const rw = (m, s, e) => ({empty: e, raw: {m, s, p: s / 2}}), d = document.createElement('div');
       d.innerHTML = profitChart([rw('يناير', 100), rw('فبراير', 0, true), rw('مارس', 300), rw('أبريل', 0, true)]); return [...d.querySelectorAll('.rchb .c small')].map(x => x.textContent); }), ['يناير', 'مارس']);
     eq('"حفظ وسجّل تاني" في المصروف: بيحفظ ويفتح النافذة فاضية بنفس التاريخ والخزنة', await A.evaluate(() => {
-      const n0 = db.txs.length, d = todayISO(); txModal('exp'); $('#txA').value = '40*5'; $('#txA').dispatchEvent(new Event('change', {bubbles: true}));
+      const n0 = db.txs.length, d = todayISO(); txModal('exp'); $('#txC').value = catsL('exp')[0].id; $('#txA').value = '40*5'; $('#txA').dispatchEvent(new Event('change', {bubbles: true}));
       const calc = $('#txA').value.replace(/\D/g, ''); $('#txD').value = d; const v = $('#txV').value; $('#txAgain').click();
       const r = [calc, db.txs.length - n0, db.txs[db.txs.length - 1].amt, !!$('#txAgain'), $('#txD').value === d, $('#txV').value === v, $('#txA').value];
       db.txs[db.txs.length - 1].del = true; closeModal(); route(); return r; }), ['200', 1, 20000, true, true, true, '']);

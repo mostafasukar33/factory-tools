@@ -4101,6 +4101,46 @@ const vaultsL = () => vaultsAll().filter(v => !v.shut);
 const openV = id => { const v = id && IDX.vault.get(id); return !!v && !v.del && !v.shut; };   // خزنة لسه شغالة (متخترش خزنة مقفولة لوحدك)
 const vaultsFor = sel => vaultsAll().filter(v => !v.shut || v.id === sel || vaultBal(v.id));   // مقفولة وفيها فلوس (دخلتها حركة بعد القفل): بتظهر علشان تحوّل رصيدها   // تعديل حركة قديمة على خزنة مقفولة: خزنتها بتفضل في الاختيار
 const catsL = t => db.cats.filter(c => !c.del && c.type === t && !SPECIAL_CATS.has(c.id)).sort((a, b) => (a.ord || 0) - (b.ord || 0));
+/* البند بيتفهم لوحده من الملاحظة (بطلبه 24/10/2026): "كهربا/كهرباء/مهربا/شحن كهربا" = بند كهربا.
+   بالترتيب: نفس الملاحظة اتكتبت قبل كده ← اسم بند في الكلام (حتى لو فيه غلطة حرف) ← الكلمة اتكتبت قبل كده في بند ← كلمات معروفة لكل بند.
+   مبيعملش بند جديد، وبيختار من البنود الموجودة بس. لو مفهمش = البند فاضي وبيتسأل عليه */
+const CAT_WORDS = [['كهربا', 'نور', 'عداد'], ['مياه', 'ميه', 'مايه'], ['خامات', 'خامه', 'بودره', 'حبيبات'], ['صبغه', 'لون', 'الوان'],
+  ['اجور', 'اجر', 'اجره', 'يوميه', 'يوميات', 'عمال', 'عماله', 'مرتب', 'مرتبات'], ['نقل', 'نولون', 'عربيه', 'توك توك', 'تروسيكل', 'بنزين', 'سولار', 'جاز', 'مواصلات', 'تاكسي', 'اوبر'],
+  ['صيانه', 'تصليح', 'ميكانيكي', 'قطع غيار', 'لحام'], ['ايجار'], ['نثريات', 'شاي', 'سكر', 'قهوه', 'اكل', 'فطار', 'غدا', 'عشا', 'مخلل'], ['تليفون', 'نت', 'انترنت', 'رصيد', 'كارت شحن', 'باقه']];
+const catWord = w => { w = norm(w).replace(/ء$/, '').replace(/[ؤئ]/g, 'ا'); if (w.length > 4 && w.startsWith('ال')) w = w.slice(2); return w; };
+const catWords = s => norm(s).split(/[^\p{L}\p{N}]+/u).filter(Boolean).map(catWord).filter(w => w.length > 1);
+function catLev(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  let p = Array.from({length: b.length + 1}, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) { const c = [i]; for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; }
+  return p[b.length];
+}
+const catSame = (a, b) => a === b || (a.length >= 4 && b.length >= 4 && catLev(a, b) <= (Math.min(a.length, b.length) >= 7 ? 2 : 1));
+function catGuess(type, note) {
+  const cats = catsL(type), W = catWords(note), nn = ' ' + W.join(' ') + ' ';
+  if (!W.length || !cats.length) return null;
+  const ok = id => cats.some(c => c.id === id);
+  const has = w => w.includes(' ') ? nn.includes(' ' + w + ' ') : W.some(x => catSame(x, w));
+  /* 1) نفس الملاحظة بالظبط اتكتبت قبل كده: آخر بند اتحطت فيه */
+  const past = db.txs.filter(x => !x.del && x.type === type && x.note && x.cat && ok(x.cat)).sort((a, b) => (b.at || 0) - (a.at || 0));
+  const same = past.find(x => catWords(x.note).join(' ') === W.join(' '));
+  if (same) return {id: same.cat, why: 'past'};
+  /* 2) اسم البند نفسه في الكلام */
+  const byName = cats.find(c => catWords(c.name).some(has));
+  if (byName) return {id: byName.id, why: 'name'};
+  /* 3) الكلمة دي اتكتبت قبل كده في بند (الأكتر بفرق واضح) */
+  const sc = new Map();
+  past.slice(0, 3000).forEach(x => { const xw = catWords(x.note); if (W.some(w => w.length >= 3 && xw.some(y => catSame(w, y)))) sc.set(x.cat, (sc.get(x.cat) || 0) + 1); });
+  const best = [...sc].sort((a, b) => b[1] - a[1]);
+  if (best.length && (best.length === 1 || best[0][1] >= best[1][1] * 2)) return {id: best[0][0], why: 'past'};
+  /* 4) كلمات معروفة، والمجموعة لازم يبقى ليها بند موجود */
+  for (const g of CAT_WORDS) {
+    if (!g.some(has)) continue;
+    const c = cats.find(c => catWords(c.name).some(n => g.some(w => !w.includes(' ') && catSame(n, w))));
+    if (c) return {id: c.id, why: 'word'};
+  }
+  return null;
+}
 const vName = id => (IDX.vault.get(id) || {name: '؟'}).name;
 const cName = id => (IDX.cat.get(id) || {name: 'بدون بند'}).name;
 const isPay = e => e.kind === 'pay' || e.kind === 'ppay';
@@ -4698,11 +4738,12 @@ function txModal(type, t, opts = {}) {
   const cats = catsL(type);
   modal(`<h3 class="${type}">${isNew ? (type === 'tr' ? 'تحويل بين الخزن ⇄' : TXT[type] + (type === 'exp' ? ' −' : ' +')) : 'تعديل ' + TXT[type]}</h3>
     <div class="fld"><label>المبلغ</label><input class="inp num amt" id="txA" placeholder="0" value="${t ? fmtP(t.amt) : ''}"></div>
+    ${isNew && type !== 'tr' ? `<div class="fld"><label>${type === 'exp' ? 'المصروف ده إيه؟' : 'الإيراد ده إيه؟'}</label><input class="inp" id="txN" value="" autocomplete="off" placeholder="${type === 'exp' ? 'مثلاً: كهربا، شاي، يومية' : 'مثلاً: بيع خردة'}"></div>` : ''}
     ${type === 'tr' ? `<div class="g2 fld"><div><label>من خزنة</label><select class="inp" id="txV">${vaultOpts(v0)}</select></div><div><label>إلى خزنة</label><select class="inp" id="txTo">${vaultOpts(t ? t.to : (vs.find(v => v.id !== v0) || {}).id)}</select></div></div>`
-      : `<div class="fld"><label>البند</label><select class="inp" id="txC">${cats.map(c => `<option value="${esc(c.id)}" ${t && t.cat === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}${t && t.cat && !cats.some(c => c.id === t.cat) ? `<option value="${esc(t.cat)}" selected>${esc(cName(t.cat))}</option>` : ''}</select></div>
+      : `<div class="fld"><label>البند</label><select class="inp" id="txC">${isNew ? '<option value="" selected>— اختار البند —</option>' : ''}${cats.map(c => `<option value="${esc(c.id)}" ${t && t.cat === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}${t && t.cat && !cats.some(c => c.id === t.cat) ? `<option value="${esc(t.cat)}" selected>${esc(cName(t.cat))}</option>` : ''}</select></div>
          <div class="fld"><label>الخزنة</label><select class="inp" id="txV">${vaultOpts(v0)}</select></div>`}
     <div class="fld"><label>التاريخ</label><input class="inp" id="txD" type="date" value="${t ? t.date : opts.date || todayISO()}"></div>
-    <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="txN" value="${esc(t ? t.note || '' : '')}" autocomplete="off"></div>
+    ${isNew && type !== 'tr' ? '' : `<div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="txN" value="${esc(t ? t.note || '' : '')}" autocomplete="off"></div>`}
     ${t ? histHtml(t) : ''}
     <div class="stack" style="margin-top:8px"><button class="btn ${type === 'exp' ? 'redf' : type === 'inc' ? 'green' : 'gold'}" id="txOk" type="button">${isNew ? 'حفظ' : 'حفظ التعديل'}</button>
     ${isNew && type !== 'tr' ? '<button class="btn line sm again" id="txAgain" type="button">حفظ وسجّل تاني ↻</button>' : ''}
@@ -4713,6 +4754,17 @@ function txModal(type, t, opts = {}) {
   if (isNew) setTimeout(() => $('#txA') && $('#txA').focus(), 50);
   const cnSt = {a: null};
   let again = false;   // "حفظ وسجّل تاني" (بطلبه 17/10/2026): النافذة بتتفتح تاني فاضية بنفس التاريخ والخزنة
+  /* البند بيتفهم من الكلام لحد ما يختاره بإيده */
+  if (isNew && type !== 'tr') {
+    let manual = false; const sel = $('#txC'), note = $('#txN');
+    sel.insertAdjacentHTML('afterend', '<small class="hint" id="txG"></small>');
+    sel.addEventListener('change', () => { manual = true; $('#txG').textContent = ''; });
+    note.addEventListener('input', () => {
+      if (manual) return;
+      const g = catGuess(type, note.value);
+      sel.value = g ? g.id : ''; $('#txG').textContent = g ? `✔ فهمتها: ${cName(g.id)}` : '';
+    });
+  }
   if ($('#txAgain')) $('#txAgain').onclick = () => { again = true; $('#txOk').onclick(); };
   $('#txOk').onclick = () => {
     const amt = toP($('#txA').value), date = $('#txD').value, note = $('#txN').value.trim(), vault = $('#txV').value;
@@ -4720,7 +4772,7 @@ function txModal(type, t, opts = {}) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');
     const o = {type, amt, date, note, vault, to: type === 'tr' ? $('#txTo').value : '', cat: type === 'tr' ? '' : $('#txC').value};
     if (type === 'tr' && o.to === vault) return toast('اختار خزنتين مختلفتين');
-    if (type !== 'tr' && !o.cat) return toast('اختار البند');
+    if (type !== 'tr' && !o.cat) { if ($('#txC')) $('#txC').focus(); return toast('مفهمتش البند: اختاره من القايمة'); }
     if (isLocked(date)) return lockToast();
     const effOf = x => x.type === 'tr' ? [{v: x.vault, d: -x.amt}, {v: x.to, d: x.amt}] : [{v: x.vault, d: x.type === 'inc' ? x.amt : -x.amt}];
     const hits = isNew || !cntHits(effOf(t), t.date, t.at || 0).length ? cntHits(effOf(o), date, isNew ? nowS() : t.at || 0) : [];

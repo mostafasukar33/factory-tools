@@ -1878,6 +1878,22 @@ const T0 = Date.now();
     eq('تعديل مصروف من الأرشيف', await M.evaluate(id => [S.ops[id].amt, cashNow()], tmpId), [2000, 175000 - 2000]);
     await M.click(`[data-o="${tmpId}"]`); await M.settle(150); await M.click('#eDel'); await M.click('#aY'); await M.settle(500);
     eq('مسح مصروف بنافذة التعديل، واللي معاه رجع زي ما كان', await M.evaluate(id => [S.ops[id].del, cashNow()], tmpId), [true, 175000]);
+    /* المصروف ودفعة المورد بتاريخ يختاره، ويتعدل تاريخهم بعدين (بطلبه 24/10/2026) */
+    {
+      const [d1, d2] = await M.evaluate(() => { const f = n => { const d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }; return [f(1), f(3)]; });
+      await M.evaluate(() => nav('')); await M.click('#qSp'); await M.fill('#amt', '10'); await M.fill('#nt', 'أكل تاريخ'); await M.fill('#sD', d1); await M.click('#spOk'); await M.settle(500);
+      const id = await M.evaluate(() => liveOps().find(o => o.t === 'exp' && o.cat === 'أكل تاريخ').id);
+      eq('مصروف بتاريخ امبارح: اتسجل بيومه، وظاهر في "اتسجل النهارده"، والتاريخ فضل للي بعده', await M.evaluate(id => [dayOf(S.ops[id].ts), !!$(`#spList [data-o="${id}"]`), $('#sD').value], id), [d1, true, d1]);
+      await M.click('#spT button[data-v=spay]'); await M.waitForFunction(() => Date.now() - lastSave > 750); await M.fill('#sn', 'مورد بتاريخ تجربة'); await M.fill('#amt', '5'); await M.click('#spOk'); await M.settle(500);
+      const sid = await M.evaluate(() => liveOps().find(o => o.t === 'spay' && o.sname === 'مورد بتاريخ تجربة').id);
+      eq('دفعة مورد بنفس التاريخ المختار', await M.evaluate(id => dayOf(S.ops[id].ts), sid), d1);
+      await M.evaluate(d => nav('a/' + d), d1); await M.settle(150); await M.click(`[data-o="${id}"]`); await M.settle(150);
+      eq('نافذة تعديل المصروف فيها التاريخ', await M.evaluate(() => $('#eD').value), d1);
+      await M.fill('#eD', d2); await M.click('#eOk'); await M.settle(300);
+      eq('تعديل تاريخ المصروف', await M.evaluate(id => dayOf(S.ops[id].ts), id), d2);
+      await M.evaluate(([a, b]) => { [a, b].forEach(i => { S.ops[i].del = true; bump(S.ops[i]); }); save(); sync(); }, [id, sid]);
+      eq('واللي معاه رجع زي ما كان', await M.evaluate(() => cashNow()), 175000);
+    }
     await M.click('#tabs button[data-t=s]'); await M.settle(150); await M.click('#uiTheme button[data-v=dark]');
     eq('الإعدادات: داكن بيشتغل ويتحفظ على الموبايل', await M.evaluate(() => [document.documentElement.dataset.theme, JSON.parse(localStorage.getItem('fo_ui')).theme]), ['dark', 'dark']);
     await M.click('#uiTheme button[data-v=light]'); await M.click('#uiFs button[data-v="1.12"]');

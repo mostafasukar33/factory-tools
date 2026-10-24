@@ -1199,7 +1199,7 @@ function editSheet(o) {
     ${o.t === 'spay' ? `<label style="font-size:var(--f1);font-weight:700;color:var(--sub)">اسم المورد</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.sname)}">` : ''}
     ${o.t === 'cs' ? `<label style="font-size:var(--f1);font-weight:700;color:var(--sub)">اسم المشتري</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.buyer)}">` : ''}
     <label class="amt sm" for="eA" style="margin-top:6px"><input id="eA" type="text" inputmode="decimal" autocomplete="off" value="${fmt(o.amt)}"><em>جنيه</em></label>
-    ${isCustOp(o) || o.t === 'cs' ? datePick('eD', dayOf(o.ts)) : ''}
+    ${isCustOp(o) || o.t === 'cs' || o.t === 'exp' || o.t === 'spay' ? datePick('eD', dayOf(o.ts)) : ''}
     ${o.t === 'rt' ? `<input class="inp2 rt" id="eRt" autocomplete="off" placeholder="ملاحظة: مرتجع إيه أو شغل إيه" value="${esc(o.note || '')}">` : ''}
     ${o.t === 'pay' || o.t === 'cs' ? `<div class="seg" id="eM" style="--n:2;margin-top:10px">${['cash', 'tr'].map(k => `<button type="button" data-m="${k}" class="${k === m || (k === 'tr' && m !== 'cash') ? 'on' : ''}">${{cash: 'فلوس معايا', tr: 'تحويل لمصطفى'}[k]}</button>`).join('')}</div>` : ''}
     ${o.t === 'exp' ? `<label class="wh" for="eNt">المصروف ده إيه؟</label><input class="inp2 exp" id="eNt" autocomplete="off" placeholder="اكتب المصروف" value="${esc(o.cat + (o.note ? ' — ' + o.note : ''))}" style="margin-top:6px">` : ''}
@@ -1269,17 +1269,20 @@ function spNames() {
 }
 function drawSpend() {
   lastSave = 0;
+  let sDay = $('#sD') ? dateOf('sD') : today();   // التاريخ اللي اختاره بيفضل للي بعده في نفس الشاشة
   $('#main').innerHTML = `<div class="seg sp" id="spT"><button type="button" data-v="exp" class="exp ${spTab === 'exp' ? 'on' : ''}">⛽ مصروف</button><button type="button" data-v="spay" class="spay ${spTab === 'spay' ? 'on' : ''}">🏭 دفعت لمورد</button></div>
     <div id="spBody"></div>
     <div id="spList"></div>
     <p class="hint">بتتخصم من اللي معاك كاش (${fmtN(cashNow())})</p>`;
   $$('#spT button').forEach(b => b.onclick = () => { spTab = b.dataset.v; spPick = ''; $$('#spT button').forEach(x => x.classList.toggle('on', x === b)); body(); drawSpendList(); });
   const body = () => {
+    if ($('#sD')) sDay = dateOf('sD');
     const amtBox = `<label class="amt ${spTab}" for="amt"><input id="amt" type="text" inputmode="decimal" autocomplete="off" placeholder="0"><em>جنيه</em></label>`;
     if (spTab === 'exp') {
       $('#spBody').innerHTML = `${amtBox}<label class="wh" for="nt">المصروف ده إيه؟</label><input class="inp2 exp" id="nt" autocomplete="off" placeholder="اكتب المصروف (مثلاً: بنزين)" style="margin-top:6px">
+        ${datePick('sD', sDay)}
         <button class="big b-exp" id="spOk" type="button">حفظ المصروف</button>`;
-      bindAmt($('#amt'));
+      bindAmt($('#amt')); bindDate('sD');
       $('#spOk').onclick = () => saveSpend('exp', {cat: $('#nt').value.trim().replace(/\s+/g, ' '), note: ''});
       $('#amt').focus(); setTimeout(() => { const i = $('#amt'); if (i && document.activeElement !== i) i.focus(); }, 120);
     } else {
@@ -1290,8 +1293,9 @@ function drawSpend() {
         <div class="vpk" id="vpk"></div>
         ${names.length ? `<div class="chips">${names.map(n => `<button class="chip" type="button" data-n="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}
         ${amtBox}
+        ${datePick('sD', sDay)}
         <button class="big b-sup" id="spOk" type="button">حفظ دفعة المورد</button>`;
-      bindAmt($('#amt'));
+      bindAmt($('#amt')); bindDate('sD');
       const pk = () => {
         const q = norm($('#sn').value), cur = spPick && suppliers().get(spPick);
         if (cur) { $('#vpk').innerHTML = `<div class="vsel"><span>${cur.bal < 0 ? 'عليه' : 'ليه'} دلوقتي</span><b class="money">${fmt(cur.bal)}</b><button type="button" id="vX">تغيير</button></div>`; $('#vX').onclick = () => { spPick = ''; $('#sn').value = ''; pk(); $('#sn').focus(); }; return; }
@@ -1311,7 +1315,7 @@ function drawSpend() {
 /* اللي اتسجل النهارده تحت خانة الكتابة (مؤقت للشاشة دي بس، وبيفضل برّه في الرئيسية والأرشيف). دوسة تعدّل */
 function drawSpendList() {
   const el = $('#spList'); if (!el) return;
-  const ops = liveOps().filter(o => o.t === spTab && dayOf(o.ts) === today()).sort((a, b) => b.ts - a.ts);
+  const ops = liveOps().filter(o => o.t === spTab && dayOf(o.cr || o.ts) === today()).sort((a, b) => b.ts - a.ts);
   el.innerHTML = ops.length ? `<div class="gh g-${spTab}" style="margin-top:18px"><span>${spTab === 'exp' ? 'مصروفات النهارده' : 'دفعات الموردين النهارده'} (${ops.length})</span><b class="money">${fmt(ops.reduce((a, o) => a + o.amt, 0))}</b></div><div class="list">${ops.map(o => opRow(o)).join('')}</div><p class="hint">دوس على أي سطر تعدّله أو تمسحه</p>` : '';
   bindOps('#spList');
 }
@@ -1323,15 +1327,15 @@ async function saveSpend(t, x) {
   if (t === 'spay' && !x.sname) { toast('اكتب اسم المورد'); $('#sn').focus(); return; }
   lastSave = Date.now();
   /* حماية من التكرار: نفس المبلغ لنفس النوع في خلال دقيقتين */
-  const dup = liveOps().find(o => o.t === t && o.amt === amt && (t === 'exp' ? o.cat === x.cat : norm(o.sname) === norm(x.sname)) && nowS() - o.ts < 120000);
+  const dup = liveOps().find(o => o.t === t && o.amt === amt && (t === 'exp' ? o.cat === x.cat : norm(o.sname) === norm(x.sname)) && nowS() - (o.cr || o.ts) < 120000);
   if (dup && !(await ask(`سجلت ${fmt(amt)} (${t === 'exp' ? x.cat : x.sname}) من شوية. دي مرة تانية؟`, 'أيوه، مرة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
   const now = nowS();
-  const o = Object.assign({id: newId(), t, amt, ts: now, upd: now, del: false}, x);
+  const o = Object.assign({id: newId(), t, amt, ts: tsOnDay(dateOf('sD')), cr: now, upd: now, del: false}, x);
   if (o.t === 'spay' && !o.sid) delete o.sid;
   S.ops[o.id] = o; save(); sync(); spPick = '';
   try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
   drawSpend(); lastSave = Date.now();   // نفس الشاشة جاهزة للي بعده، واللي اتسجل بيظهر تحتها
-  toast(`✔ اتسجل: ${t === 'exp' ? x.cat : x.sname} — ${fmt(amt)} جنيه`, 3000);
+  toast(`✔ اتسجل: ${t === 'exp' ? x.cat : x.sname} — ${fmt(amt)} جنيه${dayOf(o.ts) !== today() ? ' بتاريخ ' + dispDate(dayOf(o.ts)) : ''}`, 3000);
 }
 
 /* ---------- بيع كاش من المصنع: المبلغ واسم المشتري بس، من غير ما يتسجل في العملاء ---------- */

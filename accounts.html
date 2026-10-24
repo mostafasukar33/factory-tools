@@ -6336,7 +6336,7 @@ function ivTxModal(t) { const v = ivGet(t.iv); if (!v) return txModal(t.type, t)
 /* ====================== مراجعة الجهاز مع الشيت ====================== */
 /* بننزّل كل السجلات من الشيت (من غير ما نغيّر حاجة) ونقارن كل سجل بالنسخة اللي على الجهاز.
    بتشتغل لوحدها مرة كل يوم، ولو لقت فرق بيظهر تنبيه في الرئيسية. */
-async function sheetAudit(manual) {
+async function sheetAudit(manual, again) {
   if (!db || !db.cfg.sheetOk || syncing) { if (manual) toast(db && db.cfg.sheetOk ? 'جاري مزامنة تانية…' : 'اربط الشيت الأول'); return; }
   if (manual) toast('بقارن الجهاز بالشيت…', 8000);
   const d0 = db, srv = new Map();
@@ -6354,7 +6354,9 @@ async function sheetAudit(manual) {
   Object.entries(STORE).forEach(([k, a]) => db[a].forEach(r => {
     const u = srv.get(k + ':' + r.id);
     if (r.big === r.upd) { srv.delete(k + ':' + r.id); return; }   // أكبر من خانة الشيت: مبيتبعتش أصلاً (sheetData)
-    if (u === undefined) { missing++; toPush.push(r); } else if (u < r.upd) { ahead++; toPush.push(r); } else if (u > r.upd) behind++; else same++;
+    /* حركة لسه مستنية دورها في الإرسال (اتسجلت ولسه متبعتتش) مش مشكلة: المزامنة هتبعتها. كانت بتطلع تحذير أحمر يفضل يوم كامل */
+    const queued = r.sy !== r.upd;
+    if (u === undefined) { if (queued) same++; else { missing++; toPush.push(r); } } else if (u < r.upd) { if (queued) same++; else { ahead++; toPush.push(r); } } else if (u > r.upd) behind++; else same++;
     srv.delete(k + ':' + r.id);
   }));
   const onlySheet = srv.size, ok = !missing && !behind && !ahead && !onlySheet;
@@ -6368,7 +6370,7 @@ async function sheetAudit(manual) {
       <div class="stack">${ok ? '' : '<button class="btn gold" id="saFix" type="button">صلّح دلوقتي</button>'}<button class="btn line" id="saX" type="button">تمام</button></div>`);
     $('#saX').onclick = closeModal;
     if ($('#saFix')) $('#saFix').onclick = async () => { closeModal(); await syncNow(true); sheetAudit(true); };
-  } else if (!ok) syncNow();
+  } else if (!ok) Promise.resolve(syncNow()).then(() => { if (!again && db === d0) setTimeout(() => sheetAudit(false, true), 3000); });   // اتصلّح؟ نراجع تاني مرة واحدة علشان التحذير ميفضلش يوم كامل
   if (!$('#mask').classList.contains('on')) route();
 }
 setInterval(() => { if (db && db.cfg.sheetOk && nowS() - ((db.cfg.audit || {}).at || 0) > 86400000) sheetAudit(false); }, 60000);

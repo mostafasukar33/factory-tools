@@ -805,6 +805,18 @@ const T0 = Date.now();
         await A.waitForFunction(() => !syncing && !pendingRecs().length, null, {timeout: 20000}).catch(() => {});
         eq('طلب علق في الخلفية: اتبعت تاني لحظة ما رجع، والمزامنة خلصت في أقل من 10 ثواني', await A.evaluate(() => [pendingRecs().length, syncErr, Date.now() - __t0 < 10000]), [0, '', true]);
       }
+      {   // المراجعة اليومية: حركة لسه مستنية دورها مش "مشكلة"، والمشكلة الحقيقية بتتصلّح والتحذير بيختفي لوحده
+        await A.settle(500); await A.waitForFunction(() => !syncing && !syncAgain);
+        await A.evaluate(() => { const p = liveParties()[0]; p.note = 'تجربة مراجعة'; p.upd = nowS(); saveDB(); clearTimeout(syncT); });
+        await bg(A, 'sheetAudit(false)');
+        eq('المراجعة: حركة لسه مستنية دورها = متطابقين (مفيش تحذير أحمر)', await A.evaluate(() => db.cfg.audit.ok), true);
+        await bg(A, 'syncNow()');
+        await A.evaluate(() => { const p = liveParties()[0]; p.note = 'تجربة مراجعة ٢'; p.upd = nowS(); p.sy = p.upd; saveDB(); clearTimeout(syncT); });   // الجهاز فاكرها اتبعتت والشيت عنده القديمة
+        await bg(A, 'sheetAudit(false)');
+        const first = await A.evaluate(() => db.cfg.audit.ok);
+        await A.waitForFunction(() => db.cfg.audit.ok && !syncing, null, {timeout: 20000}).catch(() => {});
+        eq('المراجعة: مشكلة حقيقية اتمسكت، واتصلحت، والتحذير اختفى لوحده', [first, await A.evaluate(() => [db.cfg.audit.ok, pendingRecs().length])], [false, [true, 0]]);
+      }
       {   // جوجل رد "locked" (الطلب وصل الشيت فاضي) مرتين: بيعيد لوحده ويكمّل
         await A.settle(500); await A.waitForFunction(() => !syncing && !syncAgain);
         await A.evaluate(() => { const p = liveParties()[0]; p.note = 'تجربة locked'; p.upd = nowS(); saveDB(); clearTimeout(syncT); });

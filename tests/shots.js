@@ -228,6 +228,8 @@ const SCREENS = [
   {name: 'mkt-edit-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); editSheet(S.ops.m_shot1); }); }},
   {name: 'mkt-hand-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); handModal(); document.activeElement && document.activeElement.blur(); }); }},
   {name: 'mkt-home-m-dark', app: 'mkt', vp: MOB, dark: true, full: true, go: mktGo('')},
+  {name: 'mkt-homeinv-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { ldTab = 'inv'; nav(''); drawHome(); }); }},
+  {name: 'mkt-homeinv-m-dark', app: 'mkt', vp: MOB, dark: true, full: true, go: async M => { await M.evaluate(() => { ldTab = 'inv'; nav(''); drawHome(); }); }},
   {name: 'mkt-cust-m-dark', app: 'mkt', vp: MOB, dark: true, go: mktGo('c')},
   {name: 'mkt-arch-m-dark', app: 'mkt', vp: MOB, dark: true, go: mktGo('a')},
   /* ورق الـ PDF (لازم ميتغيرش): بيتصور آخر حاجة في كل جهاز لأن الورقة بتتحط قدام الصفحة */

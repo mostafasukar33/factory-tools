@@ -2424,6 +2424,25 @@ const T0 = Date.now();
       const r = await M.evaluate(() => { const v = Object.values(S.sup).find(x => !x.del); const b0 = v.bal; v.bal = -150000; nav('v'); const row = $(`#vL .pt[data-v="${v.id}"] .a`).textContent; nav('v/' + v.id); const box = $('#main .cust').textContent; v.bal = b0; nav(''); return [row, box.includes('عليه') && box.includes('1,500') && !box.includes('-')]; });
       eq('مورد اتدفعله زيادة: الرقم وتحته "عليه" زي الحسابات بالظبط، مش شرطة', r, ['1,500عليه', true]);
     }
+    {
+      /* الحركات تبويبين (بطلبه 24/10/2026): الفواتير لوحدها، والمتحصلات من غير فواتير: التحويل لمصطفى أزرق في الوارد ومش داخل في إجمالي أحمد */
+      const r = await M.evaluate(() => {
+        const t = today(), now = nowS(), mk = (x) => { const o = Object.assign({id: newId(), ts: now, cr: now, upd: now, del: false}, x); S.ops[o.id] = o; return o; };
+        const a = mk({t: 'inv', cid: 'zz', cname: 'عميل تبويب تجربة', amt: 70000}), b = mk({t: 'pay', cid: 'zz', cname: 'عميل تبويب تجربة', amt: 30000, m: 'tr'}), c = mk({t: 'pay', cid: 'zz', cname: 'عميل تبويب تجربة', amt: 20000, m: 'cash'});
+        ldTab = 'col'; nav(''); drawHome();
+        const sec = $('#main .fbd'), tot = sec.querySelector('.fbtot').textContent;
+        const col = [!sec.querySelector(`[data-o="${a.id}"]`), !!sec.querySelector(`[data-o="${b.id}"] .n.tr`), !!sec.querySelector(`[data-o="${c.id}"] .n.in`), getComputedStyle(sec.querySelector(`[data-o="${b.id}"] .n.tr`)).color !== getComputedStyle(sec.querySelector(`[data-o="${c.id}"] .n.in`)).color];
+        const din = liveOps().filter(o => dayOf(o.ts) === t && cashSign(o) > 0).reduce((n, o) => n + o.amt, 0);
+        col.push(tot.includes(fmt(din)) && !tot.includes(fmt(din + 30000)));
+        $('#ldT button[data-v=inv]').click();
+        const s2 = $('#main .fbd'), rows = [...s2.querySelectorAll('[data-o]')].map(e => S.ops[e.dataset.o].t);
+        const inv = [ldTab, !!s2.querySelector(`[data-o="${a.id}"]`), rows.every(x => x === 'inv'), $('#ldT button[data-v=inv]').classList.contains('on')];
+        $('#ldT button[data-v=col]').click();
+        [a, b, c].forEach(o => { delete S.ops[o.id]; }); save(); ldTab = 'col';   /* متبعتتش للشيت، فبتتشال خالص */ nav(''); return [col, inv];
+      });
+      eq('المتحصلات: الفاتورة مش فيها، التحويل أزرق والكاش أخضر بلون مختلف، وإجمالي اليوم على فلوس أحمد بس', r[0], [true, true, true, true, true]);
+      eq('الفواتير: الفواتير بس', r[1], ['inv', true, true, true]);
+    }
 
     {
       sec('٢٢ج) الطلبيات والتسعير (lib/orders.js): قايمة واحدة عند مصطفى وأحمد، ومبتلمسش أي فلوس');

@@ -91,6 +91,8 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:var(--ink)}
 .xb{min-height:46px;border:1.5px solid var(--line);background:var(--card);border-radius:12px;font:inherit;font-weight:700;font-size:var(--f2);color:var(--sub);display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
 .pnl{width:100%;margin-top:10px;min-height:42px;border:1.5px dashed var(--tr);background:var(--tr-l);color:var(--tr);border-radius:12px;font:inherit;font-weight:700;font-size:var(--f2);cursor:pointer;padding:6px 10px}
 .fbt td small .st{display:inline;margin-inline-start:6px}
+.fbt .n.tr{color:var(--tr)}
+.seg.ldt{margin:0 0 10px}
 .fbt tr.fbx td>small{display:block;font-size:var(--f1);font-weight:600;line-height:1.5}
 .xb small{background:var(--red);color:var(--card);border-radius:9px;padding:0 7px;font-size:var(--f1);font-weight:800}
 .qb.qs{border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
@@ -814,14 +816,29 @@ const cashBefore = d => liveOps().reduce((n, o) => dayOf(o.ts) < d ? n + cashSig
 const ldName = o => o.t === 'cs' ? 'بيع كاش' + (o.buyer ? ' — ' + o.buyer : '') : o.t === 'pay' ? o.cname : o.t === 'exp' ? o.cat : o.t === 'spay' ? 'دفعت لـ ' + o.sname : o.t === 'hand' ? '⇄ سلّمت لمصطفى' : o.t === 'inv' ? '🧾 فاتورة ' + o.cname : o.t === 'rt' ? '↩️ مرتجع/شغل ' + o.cname : '⇄ ' + o.cname;
 const ldSub = o => [timeOf(o.ts), o.t === 'exp' ? (o.note && o.note !== o.cat ? o.note : '') : o.t === 'pay' ? M_TXT[o.m] : o.t === 'cs' && csTr(o) ? M_TXT.tr : o.t === 'rt' ? o.note || '' : o.t === 'inv' ? 'إجمالي بس' : '']
   .filter(Boolean).map(esc).join(' · ') + stHtml(o);
+/* تبويبين تحت الحركات (بطلب مصطفى 24/10/2026): الفواتير لوحدها، والمتحصلات = الفلوس بس
+   (اللي مع أحمد أخضر، المحوّل لمصطفى أزرق، المصروف أحمر، وتجميع اليوم على خزنة أحمد بس) */
+let ldTab = 'col';
+const isTrIn = o => (o.t === 'pay' && o.m !== 'cash') || csTr(o);
+const ldHas = ops => ops.some(o => ldTab === 'inv' ? o.t === 'inv' : o.t !== 'inv');
+const ldTabs = () => `<div class="seg ldt" id="ldT" style="--n:2"><button type="button" data-v="inv" class="${ldTab === 'inv' ? 'on' : ''}">الفواتير</button><button type="button" data-v="col" class="${ldTab === 'col' ? 'on' : ''}">المتحصلات</button></div>`;
+const bindLdTabs = redraw => $$('#ldT button').forEach(b => b.onclick = () => { if (ldTab !== b.dataset.v) { ldTab = b.dataset.v; redraw(); } });
+function invDay(d, ops) {
+  const L = ops.filter(o => o.t === 'inv').sort((a, b) => a.ts - b.ts), tot = L.reduce((n, o) => n + o.amt, 0);
+  return `<section class="fbd" data-d="${d}"><div class="fbh"><b>${d === today() ? 'النهارده' : AR_DAYS[dowOf(d)]} ${dispDate(d)}</b><span>${L.length === 1 ? 'فاتورة واحدة' : L.length === 2 ? 'فاتورتين' : L.length + (L.length <= 10 ? ' فواتير' : ' فاتورة')}</span></div>
+    <table class="fbt"><thead><tr><th>العميل</th><th class="c">المبلغ</th></tr></thead><tbody>
+    ${L.map(o => `<tr class="fbr" data-o="${esc(o.id)}" role="button" tabindex="0"><td><b>${esc(o.cname)}</b><small>${ldSub(o)}</small></td><td class="c"><span class="n">${fmt(o.amt)}</span></td></tr>`).join('')}
+    <tr class="fbtot"><td>إجمالي فواتير اليوم</td><td class="c"><span class="n">${fmt(tot)}</span></td></tr></tbody></table></section>`;
+}
 function ledgerDay(d, ops) {
-  const t = today(), L = ops.slice().sort((a, b) => a.ts - b.ts), ins = L.filter(o => cashSign(o) > 0), outs = L.filter(o => cashSign(o) < 0 && o.t !== 'hand'), grey = L.filter(o => !cashSign(o) || o.t === 'hand');
+  if (ldTab === 'inv') return invDay(d, ops);
+  const t = today(), L = ops.filter(o => o.t !== 'inv').sort((a, b) => a.ts - b.ts), ins = L.filter(o => cashSign(o) > 0), blue = L.filter(isTrIn), outs = L.filter(o => cashSign(o) < 0 && o.t !== 'hand'), grey = L.filter(o => (!cashSign(o) || o.t === 'hand') && !isTrIn(o));
   const b0 = cashBefore(d), din = ins.reduce((n, o) => n + o.amt, 0), dout = outs.reduce((n, o) => n + o.amt, 0), hand = grey.filter(o => o.t === 'hand').reduce((n, o) => n + o.amt, 0), b1 = b0 + din - dout - hand;
-  const row = (o, cls) => `<tr class="${cls}" data-o="${esc(o.id)}" role="button" tabindex="0"><td><b>${esc(ldName(o))}</b><small>${ldSub(o)}</small></td><td class="c">${cashSign(o) > 0 ? `<span class="n in">${fmt(o.amt)}</span>` : ''}</td><td class="c">${cashSign(o) < 0 && o.t !== 'hand' ? `<span class="n out">${fmt(o.amt)}</span>` : ''}</td></tr>`;
+  const row = (o, cls) => `<tr class="${cls}" data-o="${esc(o.id)}" role="button" tabindex="0"><td><b>${esc(ldName(o))}</b><small>${ldSub(o)}</small></td><td class="c">${cashSign(o) > 0 ? `<span class="n in">${fmt(o.amt)}</span>` : isTrIn(o) ? `<span class="n tr">${fmt(o.amt)}</span>` : ''}</td><td class="c">${cashSign(o) < 0 && o.t !== 'hand' ? `<span class="n out">${fmt(o.amt)}</span>` : ''}</td></tr>`;
   const gRow = o => `<tr class="fbx" data-o="${esc(o.id)}" role="button" tabindex="0"><td>${esc(ldName(o))}<small>${ldSub(o)}</small></td><td class="c" colspan="2"><span class="n">${fmt(o.amt)}</span></td></tr>`;
   return `<section class="fbd" data-d="${d}"><div class="fbh"><b>${d === t ? 'النهارده' : AR_DAYS[dowOf(d)]} ${dispDate(d)}</b><span>بدأ بـ <b class="n">${fmtN(b0)}</b></span></div>
     <table class="fbt"><thead><tr><th>البيان</th><th class="c">وارد</th><th class="c">منصرف</th></tr></thead><tbody>
-    ${ins.map(o => row(o, 'fbr')).join('')}${outs.map((o, j) => row(o, 'fbr' + (!j && ins.length ? ' fbs' : ''))).join('')}${grey.map(gRow).join('')}
+    ${ins.map(o => row(o, 'fbr')).join('')}${blue.map(o => row(o, 'fbr')).join('')}${outs.map((o, j) => row(o, 'fbr' + (!j && (ins.length || blue.length) ? ' fbs' : ''))).join('')}${grey.map(gRow).join('')}
     <tr class="fbtot"><td>إجمالي اليوم</td><td class="c"><span class="n in">${fmt(din)}</span></td><td class="c"><span class="n out">${fmt(dout)}</span></td></tr></tbody></table>
     <div class="fbf"><b>${d === t ? 'معاك لحد دلوقتي' : 'قفل اليوم بـ'} <span class="n${b1 < 0 ? ' out' : ''}">${fmtN(b1)}</span></b>${hand ? `<span class="fbc"><i class="mk">سلّمت لمصطفى <b class="n">${fmt(hand)}</b></i></span>` : ''}</div></section>`;
 }
@@ -913,7 +930,7 @@ function drawHome() {
   const t = today(), all = liveOps().sort((a, b) => b.ts - a.ts), ops = all.filter(o => dayOf(o.ts) === t), s = sums(ops), cn = cashNow(), bk = backs();
   const byDay = new Map();
   all.forEach(o => { const d = dayOf(o.ts); if (d !== t) { if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(o); } });
-  const days = [...byDay.keys()].sort().reverse(), earlier = days.slice(0, homeDays);
+  const days = [...byDay.keys()].filter(d => ldHas(byDay.get(d))).sort().reverse(), earlier = days.slice(0, homeDays);
   const k = cntOf(t), on = ordN();   /* كارت "مطلوب تحصّل من دول" اتشال من هنا بطلب مصطفى 23/10/2026 */
   $('#main').innerHTML = `${bk.length ? `<button class="alert" id="bk" type="button">🔴 مصطفى رجّعلك ${bk.length === 1 ? 'عملية' : bk.length + ' عمليات'} تصلحها — دوس هنا</button>` : ''}
     <section class="panel cashc"><div class="ch"><div class="m"><span>معاك كاش دلوقتي</span><small>الفلوس اللي في إيدك</small></div><b class="money ${cn < 0 ? 'neg' : ''}" id="cashT">${fmtN(cn)}</b></div>
@@ -924,7 +941,8 @@ function drawHome() {
     <div class="xrow"><button class="xb" id="qOrd" type="button">📋 الطلبيات${on ? ` <small>${on}</small>` : ''}</button><button class="xb" id="qPrc" type="button">🏷️ التسعير</button></div>
     ${pnShow() ? '<button class="pnl" id="qPn" type="button">🔔 دوس هنا علشان يجيلك إشعار لما مصطفى يكتب طلبية</button>' : ''}
     <div class="lbl"><span>حركات النهارده</span><span>دوس على أي حركة تعدّلها</span></div>
-    ${ops.length ? ledgerDay(t, ops) : '<div class="list"><div class="empty">لسه مسجلتش حاجة النهارده</div></div>'}
+    ${ldTabs()}
+    ${ldHas(ops) ? ledgerDay(t, ops) : `<div class="list"><div class="empty">${ldTab === 'inv' ? 'مفيش فواتير النهارده' : 'لسه مسجلتش حاجة النهارده'}</div></div>`}
     ${earlier.map(d => ledgerDay(d, byDay.get(d))).join('')}
     ${days.length > earlier.length ? '<button class="more" id="hMore" type="button" style="margin-top:12px">اعرض أيام أقدم</button>' : ''}
     <button class="lnk" id="goArch" type="button">الأرشيف (أسابيع وشهور) ›</button>`;
@@ -939,6 +957,7 @@ function drawHome() {
   $('#qSale').onclick = () => nav('b');
   $('#goArch').onclick = () => nav('a', true);
   if ($('#hMore')) $('#hMore').onclick = () => { homeDays += 5; drawHome(); };
+  bindLdTabs(drawHome);
   bindOps('#main');
 }
 
@@ -1494,12 +1513,14 @@ function drawDay() {
     <label class="pick">📅 اختار يوم<input type="date" id="aDay" value="${d}" max="${t}"></label>
     <section class="panel">${sub4(true, s)}${(k => k ? `<div class="kline ${k.amt === k.sys ? 'ok' : 'bad'}">🔒 قفلت اليوم ده ${timeOf(k.ts)}: عدّيت <span class="money">${fmt(k.amt)}</span>${k.amt === k.sys ? ' — مظبوط ✓' : ` — المفروض ${fmtN(k.sys)} (${k.amt < k.sys ? 'ناقص' : 'زيادة'} ${fmt(k.amt - k.sys)})`}</div>` : '')(cntOf(d))}</section>
     <div class="lbl"><span>حركات اليوم (${ops.length})</span><span>دوس على أي حركة تعدّلها</span></div>
-    ${ops.length ? ledgerDay(d, ops) : '<div class="list"><div class="empty">مفيش حركات في اليوم ده</div></div>'}
+    ${ldTabs()}
+    ${ldHas(ops) ? ledgerDay(d, ops) : `<div class="list"><div class="empty">${ldTab === 'inv' ? 'مفيش فواتير في اليوم ده' : 'مفيش حركات في اليوم ده'}</div></div>`}
     <button class="lnk" id="aBack" type="button">‹ رجوع للأرشيف</button>`;
   $('#aPrev').onclick = () => nav('a/' + addDays(d, -1), true);
   $('#aNext').onclick = () => { if (d < t) nav('a/' + addDays(d, 1), true); };
   $('#aDay').onchange = e => { if (isDay(e.target.value)) nav('a/' + e.target.value, true); };
   $('#aBack').onclick = () => nav('a', true);
+  bindLdTabs(drawDay);
   bindOps('#main');
 }
 

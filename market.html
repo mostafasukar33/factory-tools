@@ -93,6 +93,15 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:var(--ink)}
 .fbt td small .st{display:inline;margin-inline-start:6px}
 .fbt .n.tr{color:var(--tr)}
 .seg.ldt{margin:0 0 10px}
+.fbd .mb{border-top:1px solid var(--line)}
+.fbd .mbh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 14px;font-size:var(--f2);font-weight:800}
+.fbd .mb.in .mbh{background:var(--green-l);color:var(--green)}.fbd .mb.tr .mbh{background:var(--tr-l);color:var(--tr)}.fbd .mb.out .mbh{background:var(--red-l);color:var(--red)}
+.fbd .mbh .n{font-size:var(--f3);color:inherit}
+.fbd .mr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--line);cursor:pointer}
+.fbd .mr>div{min-width:0}.fbd .mr b{display:block;font-size:var(--f2);font-weight:800}.fbd .mr small{display:block;font-size:var(--f1);font-weight:600;color:var(--sub);line-height:1.5}
+.fbd .mr>.n{font-size:var(--f2)}.fbd .mb.in .mr>.n{color:var(--green)}.fbd .mb.tr .mr>.n{color:var(--tr)}.fbd .mb.out .mr>.n{color:var(--red)}
+.fbd .meq{padding:10px 14px;border-top:1px solid var(--line);background:var(--gold-l);font-size:var(--f2);font-weight:700;line-height:1.9}
+.fbd .meq span{display:block;white-space:nowrap;font-weight:800;font-size:var(--f3)}.fbd .meq span .n{font-size:var(--f3)}.fbd .meq .n{font-size:var(--f2)}
 .fbt tr.fbx td>small{display:block;font-size:var(--f1);font-weight:600;line-height:1.5}
 .xb small{background:var(--red);color:var(--card);border-radius:9px;padding:0 7px;font-size:var(--f1);font-weight:800}
 .qb.qs{border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
@@ -808,7 +817,7 @@ const opRow = (o, withDay, noName) => `<div class="row t-${o.t} ${dirOf(o)}" dat
 /* حركات اليوم متجمعة بالنوع، كل نوع تحت بعضه وبإجماليه (المصروفات لوحدها والموردين لوحدهم) */
 const GROUPS = [['in', 'تحصيل وفواتير العملاء', o => o.t === 'pay' || o.t === 'inv'], ['rt', 'مرتجع / شغل (اتخصم من العملاء)', o => o.t === 'rt'], ['cs', 'بيع كاش من المصنع', o => o.t === 'cs'], ['exp', 'المصروفات', o => o.t === 'exp'], ['spay', 'دفعات الموردين', o => o.t === 'spay'], ['hand', 'سلّمت لمصطفى', o => o.t === 'hand']];
 const dayList = ops => GROUPS.map(([k, t, f]) => { const g = ops.filter(f); return g.length ? `<div class="gh g-${k}"><span>${t} (${g.length})</span><b class="money">${fmt(g.reduce((a, o) => a + o.amt, 0))}</b></div><div class="list">${g.map(o => opRow(o)).join('')}</div>` : ''; }).join('');
-const bindOps = root => $$(root + ' .row[data-o], ' + root + ' tr[data-o]').forEach(r => r.onclick = () => editSheet(S.ops[r.dataset.o]));
+const bindOps = root => $$(root + ' .row[data-o], ' + root + ' tr[data-o], ' + root + ' .mr[data-o]').forEach(r => r.onclick = () => editSheet(S.ops[r.dataset.o]));
 /* اليوم زي "بالتاريخ" في خزنة الحسابات (بطلب مصطفى 23/10/2026، المصاريف كانت سايحة على بعضها):
    جدول البيان | وارد | منصرف للكاش اللي في إيدك بس. الوارد فوق والمنصرف تحته (الأقدم الأول)، وكل حركة سطر لوحده (الدوس بيعدّلها).
    اللي مش كاش معاك (تحويل لمصطفى، تسليم، فاتورة، مرتجع) سطر رمادي تحت. "بدأ بـ" و"قفل اليوم بـ" = الكاش اللي معاك */
@@ -816,31 +825,34 @@ const cashBefore = d => liveOps().reduce((n, o) => dayOf(o.ts) < d ? n + cashSig
 const ldName = o => o.t === 'cs' ? 'بيع كاش' + (o.buyer ? ' — ' + o.buyer : '') : o.t === 'pay' ? o.cname : o.t === 'exp' ? o.cat : o.t === 'spay' ? 'دفعت لـ ' + o.sname : o.t === 'hand' ? '⇄ سلّمت لمصطفى' : o.t === 'inv' ? '🧾 فاتورة ' + o.cname : o.t === 'rt' ? '↩️ مرتجع/شغل ' + o.cname : '⇄ ' + o.cname;
 const ldSub = o => [timeOf(o.ts), o.t === 'exp' ? (o.note && o.note !== o.cat ? o.note : '') : o.t === 'pay' ? M_TXT[o.m] : o.t === 'cs' && csTr(o) ? M_TXT.tr : o.t === 'rt' ? o.note || '' : o.t === 'inv' ? 'إجمالي بس' : '']
   .filter(Boolean).map(esc).join(' · ') + stHtml(o);
-/* تبويبين تحت الحركات (بطلب مصطفى 24/10/2026): الفواتير لوحدها، والمتحصلات = الفلوس بس
-   (اللي مع أحمد أخضر، المحوّل لمصطفى أزرق، المصروف أحمر، وتجميع اليوم على خزنة أحمد بس) */
+/* تبويبين تحت الحركات (بطلب مصطفى 24/10/2026): الفواتير (والمرتجعات) لوحدها، والمتحصلات = الفلوس بس.
+   المتحصلات 3 مربعات بكلام واضح بدل ألوان الجدول: دخل جيبك (أخضر)، اتحوّل لمصطفى على طول (أزرق، مش داخل في حسبته)،
+   طلع من جيبك (أحمر: مصروف ومورد واللي سلّمه لمصطفى)، وتحتهم سطر الحسبة: بدأت بـ + دخل − طلع = معاك */
 let ldTab = 'col';
 const isTrIn = o => (o.t === 'pay' && o.m !== 'cash') || csTr(o);
-const ldHas = ops => ops.some(o => ldTab === 'inv' ? o.t === 'inv' : o.t !== 'inv');
+const isInvTab = o => o.t === 'inv' || o.t === 'rt';
+const ldHas = ops => ops.some(o => ldTab === 'inv' ? isInvTab(o) : !isInvTab(o));
 const ldTabs = () => `<div class="seg ldt" id="ldT" style="--n:2"><button type="button" data-v="inv" class="${ldTab === 'inv' ? 'on' : ''}">الفواتير</button><button type="button" data-v="col" class="${ldTab === 'col' ? 'on' : ''}">المتحصلات</button></div>`;
 const bindLdTabs = redraw => $$('#ldT button').forEach(b => b.onclick = () => { if (ldTab !== b.dataset.v) { ldTab = b.dataset.v; redraw(); } });
+const ldHead = (d, side) => `<div class="fbh"><b>${d === today() ? 'النهارده' : AR_DAYS[dowOf(d)]} ${dispDate(d)}</b><span>${side}</span></div>`;
 function invDay(d, ops) {
-  const L = ops.filter(o => o.t === 'inv').sort((a, b) => a.ts - b.ts), tot = L.reduce((n, o) => n + o.amt, 0);
-  return `<section class="fbd" data-d="${d}"><div class="fbh"><b>${d === today() ? 'النهارده' : AR_DAYS[dowOf(d)]} ${dispDate(d)}</b><span>${L.length === 1 ? 'فاتورة واحدة' : L.length === 2 ? 'فاتورتين' : L.length + (L.length <= 10 ? ' فواتير' : ' فاتورة')}</span></div>
+  const L = ops.filter(o => o.t === 'inv').sort((a, b) => a.ts - b.ts), R = ops.filter(o => o.t === 'rt').sort((a, b) => a.ts - b.ts), tot = L.reduce((n, o) => n + o.amt, 0);
+  const row = (o, nm) => `<tr class="fbr" data-o="${esc(o.id)}" role="button" tabindex="0"><td><b>${esc(nm)}</b><small>${ldSub(o)}</small></td><td class="c"><span class="n">${fmt(o.amt)}</span></td></tr>`;
+  return `<section class="fbd" data-d="${d}">${ldHead(d, L.length === 1 ? 'فاتورة واحدة' : L.length === 2 ? 'فاتورتين' : L.length ? L.length + (L.length <= 10 ? ' فواتير' : ' فاتورة') : '')}
     <table class="fbt"><thead><tr><th>العميل</th><th class="c">المبلغ</th></tr></thead><tbody>
-    ${L.map(o => `<tr class="fbr" data-o="${esc(o.id)}" role="button" tabindex="0"><td><b>${esc(o.cname)}</b><small>${ldSub(o)}</small></td><td class="c"><span class="n">${fmt(o.amt)}</span></td></tr>`).join('')}
-    <tr class="fbtot"><td>إجمالي فواتير اليوم</td><td class="c"><span class="n">${fmt(tot)}</span></td></tr></tbody></table></section>`;
+    ${L.map(o => row(o, o.cname)).join('')}
+    ${L.length ? `<tr class="fbtot"><td>إجمالي فواتير اليوم</td><td class="c"><span class="n">${fmt(tot)}</span></td></tr>` : ''}
+    ${R.map(o => row(o, '↩️ مرتجع/شغل ' + o.cname)).join('')}</tbody></table></section>`;
 }
 function ledgerDay(d, ops) {
   if (ldTab === 'inv') return invDay(d, ops);
-  const t = today(), L = ops.filter(o => o.t !== 'inv').sort((a, b) => a.ts - b.ts), ins = L.filter(o => cashSign(o) > 0), blue = L.filter(isTrIn), outs = L.filter(o => cashSign(o) < 0 && o.t !== 'hand'), grey = L.filter(o => (!cashSign(o) || o.t === 'hand') && !isTrIn(o));
-  const b0 = cashBefore(d), din = ins.reduce((n, o) => n + o.amt, 0), dout = outs.reduce((n, o) => n + o.amt, 0), hand = grey.filter(o => o.t === 'hand').reduce((n, o) => n + o.amt, 0), b1 = b0 + din - dout - hand;
-  const row = (o, cls) => `<tr class="${cls}" data-o="${esc(o.id)}" role="button" tabindex="0"><td><b>${esc(ldName(o))}</b><small>${ldSub(o)}</small></td><td class="c">${cashSign(o) > 0 ? `<span class="n in">${fmt(o.amt)}</span>` : isTrIn(o) ? `<span class="n tr">${fmt(o.amt)}</span>` : ''}</td><td class="c">${cashSign(o) < 0 && o.t !== 'hand' ? `<span class="n out">${fmt(o.amt)}</span>` : ''}</td></tr>`;
-  const gRow = o => `<tr class="fbx" data-o="${esc(o.id)}" role="button" tabindex="0"><td>${esc(ldName(o))}<small>${ldSub(o)}</small></td><td class="c" colspan="2"><span class="n">${fmt(o.amt)}</span></td></tr>`;
-  return `<section class="fbd" data-d="${d}"><div class="fbh"><b>${d === t ? 'النهارده' : AR_DAYS[dowOf(d)]} ${dispDate(d)}</b><span>بدأ بـ <b class="n">${fmtN(b0)}</b></span></div>
-    <table class="fbt"><thead><tr><th>البيان</th><th class="c">وارد</th><th class="c">منصرف</th></tr></thead><tbody>
-    ${ins.map(o => row(o, 'fbr')).join('')}${blue.map(o => row(o, 'fbr')).join('')}${outs.map((o, j) => row(o, 'fbr' + (!j && (ins.length || blue.length) ? ' fbs' : ''))).join('')}${grey.map(gRow).join('')}
-    <tr class="fbtot"><td>إجمالي اليوم</td><td class="c"><span class="n in">${fmt(din)}</span></td><td class="c"><span class="n out">${fmt(dout)}</span></td></tr></tbody></table>
-    <div class="fbf"><b>${d === t ? 'معاك لحد دلوقتي' : 'قفل اليوم بـ'} <span class="n${b1 < 0 ? ' out' : ''}">${fmtN(b1)}</span></b>${hand ? `<span class="fbc"><i class="mk">سلّمت لمصطفى <b class="n">${fmt(hand)}</b></i></span>` : ''}</div></section>`;
+  const L = ops.filter(o => !isInvTab(o)).sort((a, b) => a.ts - b.ts), ins = L.filter(o => cashSign(o) > 0), blue = L.filter(isTrIn), outs = L.filter(o => cashSign(o) < 0);
+  const sum = l => l.reduce((n, o) => n + o.amt, 0), b0 = cashBefore(d), din = sum(ins), dout = sum(outs), b1 = b0 + din - dout;
+  const box = (cls, title, l) => l.length ? `<div class="mb ${cls}"><div class="mbh"><span>${title}</span><b class="n">${fmt(sum(l))}</b></div>${l.map(o => `<div class="mr" data-o="${esc(o.id)}" role="button" tabindex="0"><div><b>${esc(ldName(o))}</b><small>${ldSub(o)}</small></div><span class="n">${fmt(o.amt)}</span></div>`).join('')}</div>` : '';
+  const n = (v, c) => `<b class="n${c ? ' ' + c : ''}">${fmtN(v)}</b>`;
+  return `<section class="fbd" data-d="${d}">${ldHead(d, '')}
+    ${box('in', 'دخل جيبك', ins)}${box('tr', 'اتحوّل لمصطفى على طول', blue)}${box('out', 'طلع من جيبك', outs)}
+    <div class="meq">بدأت بـ ${n(b0)} + دخل ${n(din, 'in')} − طلع ${n(dout, 'out')} <span>= ${d === today() ? 'معاك' : 'قفلت بـ'} ${n(b1, b1 < 0 ? 'out' : '')}</span></div></section>`;
 }
 /* الفواتير (إجمالي بس) مبتدخلش في اللي معاه، فبتتعرض في سطر لوحدها */
 const invLn = s => s.inv ? `<div class="invln"><span>🧾 فواتير (إجمالي بس)</span><b class="money">${fmt(s.inv)}</b></div>` : '';

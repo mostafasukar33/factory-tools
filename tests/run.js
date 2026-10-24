@@ -974,8 +974,19 @@ const T0 = Date.now();
     sec('١٣) الأرباح ولوحة النهارده والبحث');
     const PR = await A.evaluate(() => { const y = todayISO().slice(0, 4) + '-01-01', x = profitOf(y, todayISO()), ex = db.txs.filter(t => !t.del && t.type === 'exp' && !t.pt && !NOT_PL.has(t.cat) && t.date >= y).reduce((s, t) => s + t.amt, 0); return [x.sales, x.purch, x.part, x.exp === ex, x.before === x.sales - x.purch - x.exp + x.inc, x.after === x.before - x.part]; });
     eq('الأرباح: المبيعات والمشتريات والشركاء لوحدهم والربح قبل وبعد', PR, [968500, 5050000, 13000, true, true, true]);
-    await A.evaluate(() => go('rep')); await A.click('#rpK button[data-v=profit]'); await A.settle(200);
-    eq('تقرير الأرباح هو أول تقرير', [await A.getAttribute('#rpK .on', 'data-v'), (await A.textContent('#p-rep .ldgf')).includes('بعد الشركاء')], ['profit', true]);
+    await A.evaluate(() => { repKind = 'home'; repSum = 'month'; go('rep'); renderReports(); }); await A.settle(200);
+    eq('التقارير: أول صفحة كروت، والأرقام من نفس حسبة التقارير بالقرش', await A.evaluate(() => {
+      const card = g => $(`#p-rep .rcd[data-go=${g}] b`).textContent, R = sumRange('month'), x = profitOf(R.f, R.to), bal = allBalances();
+      let ly = 0, al = 0; liveParties().forEach(p => { if (p.noTot) return; const v = bal.get(p.id) || 0; if (v > 0) ly += v; else al -= v; });
+      return [!$('#rpK'), $$('#rpS button').length, card('profit') === fmtP(x.before), $$('#p-rep .rcd[data-go=item] b')[0].textContent === fmtP(x.sales), card('cash') === fmtP(x.exp), card('tot') === fmtP(ly), card('debtp') === fmtP(al),
+        card('cashp') === fmtP(vaultBal('') + (hasMkv() ? vaultBal(MKV) : 0)), sumRange('month', '2026-03-31').pt, sumRange('week', '2026-10-24').f, sumRange('year', '2026-10-24').pt];
+    }), [true, 4, true, true, true, true, true, true, '2026-02-28', '2026-10-24', '2025-10-24']);
+    await A.click('#p-rep .rcd[data-go=profit]'); await A.settle(200);
+    eq('تقرير الأرباح من الكارت: نفس الفترة (الشهر)، وزرار الملخص بيرجّع للكروت', [await A.getAttribute('#rpK .on', 'data-v'), await A.evaluate(() => repMode), (await A.textContent('#p-rep .ldgf')).includes('بعد الشركاء'), !!(await A.$('#rpHome'))], ['profit', 'month', true, true]);
+    await A.click('#rpHome'); await A.settle(150);
+    eq('زرار الملخص بيرجّع للكروت', !!(await A.$('#p-rep .rcd')), true);
+    await A.click('#p-rep .rcd[data-go=profit]'); await A.settle(150);
+    await A.evaluate(() => { repMode = 'year'; renderReports(); }); await A.settle(150);   // باقي الاختبارات بتبدأ من الأرباح بالسنة زي الأول
     /* تقرير التحصيل: دفعات عملاء السوق والمواقع (من غير الموردين والحساب الفرعي)، أسبوعي وشهري */
     await A.evaluate(() => { const p = liveParties().find(x => x.sec === 'site'), now = Date.now();
       if (p) { const e = addEntry({id: 'e_colsite', party: p.id, kind: 'pay', amt: 33300, date: todayISO(), method: 'نقدي', vault: 'v_main', note: ''}); applyAmounts(e); saveDB(); } });
@@ -2564,7 +2575,7 @@ const T0 = Date.now();
       go('mkt'); return r; }), [true, true, true, true, true, true]);
     sec('قاعدة التبويبات: سطر واحد ونفس الارتفاع ومفيش كلام مقطوع');
     /* أي مجموعة تبويبات (.seg) ظاهرة: كل زرار نفس الارتفاع، الكلام مش ملفوف على سطرين ولا متقطع */
-    for (const k of ['profit', 'col', 'debt', 'tot', 'cash', 'item']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
+    for (const k of ['home', 'profit', 'col', 'debt', 'tot', 'cash', 'item']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
     await A.evaluate(() => { cashView = 'type'; go('cash'); renderCash(); $('#cPer').classList.add('pk'); }); await A.settle(200); await segOk(A, 'الحسابات — الخزنة (النهارده/الأسبوع/الشهر/من لـ)');
     await A.evaluate(() => { mkView = 'arch'; mkAMode = 'day'; go('mkt'); renderMkt(); }); await A.settle(200); if (await A.$('#maMode')) await segOk(A, 'الحسابات — أرشيف الوارد'); await A.evaluate(() => { mkView = 'in'; });
         await A.evaluate(() => go('set')); await A.settle(200); await segOk(A, 'الحسابات — الإعدادات');

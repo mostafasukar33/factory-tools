@@ -7819,6 +7819,47 @@ function monthDone(now) {
   const a = new Date(now.getFullYear(), now.getMonth() - (cur ? 0 : 1), 1, 12), b = new Date(a.getFullYear(), a.getMonth() + 1, 0, 12);
   return {f: isoOf(a.getTime()), to: isoOf(b.getTime()), m: isoOf(a.getTime()).slice(0, 7)};
 }
+/* ورقة آخر الشهر (بطلبه 24/10/2026): الأرقام المهمة ومقارنة بالشهر اللي قبله والربح وأكبر العملا وأكتر مصروف زاد.
+   نص بس بيعدّي على tgmsg، فمفيش تغيير في كود الشيت. M = {f, to, m} زي monthDone */
+function monthSheet(M) {
+  const [y, mo] = M.m.split('-').map(Number), pa = new Date(y, mo - 2, 1, 12), pm = isoOf(pa.getTime()).slice(0, 7);
+  const pf = pm + '-01', pt = isoOf(new Date(y, mo - 1, 0, 12).getTime()), pName = MONTHS[pa.getMonth()];
+  const pays = (f, to) => { let col = 0, paid = 0; for (const e of db.entries) { if (e.del || !isPay(e) || e.date < f || e.date > to) continue; const p = P.get(e.party); if (!p || p.noTot) continue; if (e.kind === 'pay') col += e.amt; else paid += e.amt; } return {col, paid}; };
+  const a = profitOf(M.f, M.to), b = profitOf(pf, pt), ca = pays(M.f, M.to), cb = pays(pf, pt);
+  /* السهم بيقول طالع ولا نازل عن الشهر اللي فات، ومن غير نسبة لو الشهر اللي فات صفر */
+  const cmp = (x, y0) => !y0 || x === y0 ? '' : ` (${x > y0 ? '▲' : '▼'} ${Math.round(Math.abs(x - y0) * 100 / Math.abs(y0))}% عن ${pName})`;
+  const stk = stockDiff(M.f, M.to), before = a.before + (stk ? stk.d : 0), after = a.after + (stk ? stk.d : 0);
+  const L = [`📅 ملخص شهر ${MONTHS[mo - 1]} ${y}`,
+    `🧾 مبيعات: ${fmtP(a.sales)}${cmp(a.sales, b.sales)}`,
+    `💵 تحصيل من العملاء: ${fmtP(ca.col)}${cmp(ca.col, cb.col)}`,
+    `🏭 دفعت للموردين: ${fmtP(ca.paid)}`];
+  if (a.purch) L.push(`📦 مشتريات: ${fmtP(a.purch)}${cmp(a.purch, b.purch)}`);
+  L.push(`📤 مصروفات: ${fmtP(a.exp)}${cmp(a.exp, b.exp)}`);
+  [...a.byCat].filter(([k]) => k.startsWith('− ')).sort((p, q) => q[1] - p[1]).slice(0, 6).forEach(([k, v]) => L.push(`   • ${k.slice(2)}: ${fmtP(v)}`));
+  if (a.inc) L.push(`📥 إيرادات تانية: ${fmtP(a.inc)}`);
+  if (stk) L.push(`${stk.d >= 0 ? '➕ زاد المخزون' : '➖ نقص المخزون'} (من الجرد): ${fmtP(Math.abs(stk.d))}`);
+  L.push('', `💰 الربح قبل الشركاء: ${fmtP(before)}${cmp(before, b.before)}`);
+  if (a.part || a.iv) L.push(`👥 الشركاء${a.iv ? ' والمساهمين' : ''}: ${fmtP(a.part + a.iv)}`);
+  L.push(`${after >= 0 ? '✅ الباقي بعد الشركاء' : '🔻 خسارة بعد الشركاء'}: ${fmtP(after)}`);
+  if (!stk) L.push('   (من غير حساب المخزون: الشهر اللي فيه شرا خامات كتير بيبان أقل من الحقيقة)');
+  /* أكبر 5 عملا في المبيعات */
+  const by = new Map();
+  for (const e of db.entries) {
+    if (e.del || e.date < M.f || e.date > M.to || !SALE_K.has(e.kind)) continue;
+    const p = P.get(e.party); if (!p || p.noTot || p.sec === 'sup') continue;
+    by.set(p.id, (by.get(p.id) || 0) + (e.dr || 0) - (e.cr || 0));
+  }
+  const top = [...by].filter(x => x[1] > 0).sort((p, q) => q[1] - p[1]).slice(0, 5);
+  if (top.length) { L.push('', '🏆 أكبر العملا في المبيعات:'); top.forEach(([id, v], i) => L.push(`   ${i + 1}. ${P.get(id).name}: ${fmtP(v)}`)); }
+  /* أكتر بند مصروف زاد عن الشهر اللي فات */
+  let up = null;
+  a.byCat.forEach((v, k) => { if (!k.startsWith('− ')) return; const d = v - (b.byCat.get(k) || 0); if (d > 0 && (!up || d > up.d)) up = {k: k.slice(2), v, o: b.byCat.get(k) || 0, d}; });
+  if (up) L.push('', `📈 أكتر مصروف زاد: ${up.k} من ${fmtP(up.o)} لـ ${fmtP(up.v)}`);
+  const nx = new Date(M.to + 'T12:00:00'); nx.setDate(nx.getDate() + 1);
+  L.push('', `💰 رصيد الخزن آخر الشهر: ${fmtP(vaultBal('', isoOf(nx.getTime())))}`);
+  const n = mkCreds() ? mkPending().length : 0; if (n) L.push(`📥 وارد السوق مستني تنقله: ${n}`);
+  return {text: L.join('\n'), empty: !a.sales && !a.purch && !ca.col && !ca.paid && !a.exp && !a.part && !a.inc};
+}
 /* الصبح: الفواتير اللي اتنقلت من السوق وبنودها لسه متكتبتش، والوارد اللي لسه متنقلش */
 function nlSum() {
   const l = nlList(), n = mkCreds() ? mkPending().length : 0, L = [];
@@ -7919,7 +7960,7 @@ async function tgAfterSync(now = new Date(nowS())) {
     };
     if (needWk) await one('wk', W.to, rangeSum(W.f, W.to, `🗓 ملخص الأسبوع من ${dispDate(W.f)} لـ ${dispDate(W.to)}`, 'آخر الأسبوع', true));
     if (needMo && db === d0) {
-      const S = rangeSum(M.f, M.to, `📅 ملخص شهر ${AR_MONTHS[+M.m.slice(5) - 1]} ${M.m.slice(0, 4)}`, 'آخر الشهر', true);
+      const S = monthSheet(M);
       if (c.rt && c.rt.ok) S.text += `\n✔ النسخة الاحتياطية اتجربت ${dispDate(isoOf(c.rt.at))} واترجعت سليمة (${c.rt.p} حساب، ${c.rt.e} حركة)`;
       await one('mo', M.m, S);
     }
@@ -7990,7 +8031,7 @@ function renderMktSettings() {
       <button class="btn line sm" id="tgTest" type="button" style="margin-top:8px">جرّب التنبيه</button>
       <div class="fld" id="tgMine" style="margin-top:12px"><label>يوصلك كمان من الحسابات (على نفس البوت، وشريكك مبيشوفش منه حاجة)</label>
         ${[['bk', '💾 نسخة احتياطية كل يوم (متقفلة بكلمة السر)'], ['sum', '📊 ملخص اليوم بعد 8 بالليل (أو الصبح لو متبعتش)'], ['wk', '📅 ملخص الأسبوع الخميس 8 بالليل (من الجمعة للخميس)'], ['mo', '📅 ملخص الشهر آخر يوم فيه 8 بالليل'], ['nl', '📝 كل يوم الصبح: الفواتير اللي بنودها لسه متكتبتش والوارد المستني'], ['al', '⚠️ تنبيه لو المزامنة وقفت أو حصل تعارض'], ['dr', '🩺 فحص البيانات: تقرير كل أسبوع، وعلى طول لو ظهرت مشكلة جديدة']].map(([k, n]) => `<div class="chkrow"><input type="checkbox" id="tgo_${k}" data-tgo="${k}" ${tgOpts()[k] ? 'checked' : ''}><label for="tgo_${k}">${n}</label></div>`).join('')}
-        <div class="g2" style="margin-top:6px"><button class="btn line sm" id="tgSumNow" type="button">ابعت ملخص النهارده</button><button class="btn line sm" id="tgBkNow" type="button">ابعت نسخة دلوقتي</button></div></div>
+        <div class="g2" style="margin-top:6px"><button class="btn line sm" id="tgSumNow" type="button">ابعت ملخص النهارده</button><button class="btn line sm" id="tgBkNow" type="button">ابعت نسخة دلوقتي</button></div><button class="btn line sm" id="tgMoNow" type="button" style="margin-top:6px;width:100%">ابعت ملخص الشهر اللي فات</button></div>
       <p class="hint">التوكن بيتحفظ جوه شيت السوق بس (مش في البرنامج ولا على الجهاز). شريكك ملوش دعوة بتليجرام.</p>
       <div class="sech"><span>📲 إشعارات الموبايل ورقم الوارد على الأيقونة</span></div>
       <div id="pnBox"></div>
@@ -8053,6 +8094,12 @@ function renderMktSettings() {
     $('#tgSumNow').disabled = true; const j = await tgCall('tgmsg', {text: daySum(todayISO()).text});
     if ($('#tgSumNow')) $('#tgSumNow').disabled = false;
     toast(tgRes(j, 'اتبعت ملخص النهارده على تليجرام ✔'), 6000);
+  };
+  $('#tgMoNow').onclick = async () => {
+    const d = new Date(nowS()), a = new Date(d.getFullYear(), d.getMonth() - 1, 1, 12), z = new Date(d.getFullYear(), d.getMonth(), 0, 12);
+    $('#tgMoNow').disabled = true; const j = await tgCall('tgmsg', {text: monthSheet({f: isoOf(a.getTime()), to: isoOf(z.getTime()), m: isoOf(a.getTime()).slice(0, 7)}).text});
+    if ($('#tgMoNow')) $('#tgMoNow').disabled = false;
+    toast(tgRes(j, 'اتبعت ملخص الشهر اللي فات على تليجرام ✔'), 6000);
   };
   $('#tgBkNow').onclick = async () => {
     $('#tgBkNow').disabled = true; const j = await tgBackup(false);

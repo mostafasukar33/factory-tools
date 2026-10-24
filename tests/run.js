@@ -1533,6 +1533,13 @@ const T0 = Date.now();
     eq('تليجرام: لو النسخة اليومية مقفولة من الإعدادات مبتتبعتش', tgDocs().length - d1, 0);
     eq('تليجرام: الأسبوع بيخلص الخميس 8 بالليل (الجمعة→الخميس) والشهر آخر يوم 8 بالليل', await A.evaluate(() => [weekDone(new Date('2026-10-15T21:00:00')), weekDone(new Date('2026-10-15T19:00:00')).to, weekDone(new Date('2026-10-12T10:00:00')).to, monthDone(new Date('2026-10-31T21:00:00')).m, monthDone(new Date('2026-10-31T19:00:00')).m, monthDone(new Date('2026-01-05T10:00:00'))]),
       [{f: '2026-10-09', to: '2026-10-15'}, '2026-10-08', '2026-10-08', '2026-10', '2026-09', {f: '2025-12-01', to: '2025-12-31', m: '2025-12'}]);
+    eq('ورقة آخر الشهر: المبيعات والربح من نفس الحسبة، ومقارنة بالشهر اللي فات، وأكبر العملا بالترتيب', await A.evaluate(d => {
+      const m = d.slice(0, 7), [y, mo] = m.split('-').map(Number), M = {f: m + '-01', to: isoOf(new Date(y, mo, 0, 12).getTime()), m};
+      const S = monthSheet(M), x = profitOf(M.f, M.to), L = S.text.split('\n'), st = stockDiff(M.f, M.to);
+      const top = L.slice(L.indexOf('🏆 أكبر العملا في المبيعات:') + 1).filter(l => /^\s+\d\. /.test(l)).map(l => toP(l.split(': ').pop()));
+      return [L[0] === `📅 ملخص شهر ${MONTHS[mo - 1]} ${y}`, L[1].startsWith('🧾 مبيعات: ' + fmtP(x.sales)), S.text.includes('💰 الربح قبل الشركاء: ' + fmtP(x.before + (st ? st.d : 0))),
+        top.length > 0 && top.every((v, i) => !i || v <= top[i - 1]), /\(▲|\(▼|^🧾 مبيعات: [^(]*$/m.test(S.text), S.empty];
+    }, TD), [true, true, true, true, true, false]);
     {
       const thu = await A.evaluate(d => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + (4 - x.getDay() + 7) % 7); return isoOf(x.getTime()); }, TD);
       const nlId = await A.evaluate(() => { const e = db.entries.find(e => !e.del && e.kind === 'inv' && P.get(e.party) && !P.get(e.party).del); e.mkNL = 1; return e.id; });

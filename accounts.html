@@ -6373,7 +6373,8 @@ async function sheetAudit(manual, again) {
   } else if (!ok) Promise.resolve(syncNow()).then(() => { if (!again && db === d0) setTimeout(() => sheetAudit(false, true), 3000); });   // اتصلّح؟ نراجع تاني مرة واحدة علشان التحذير ميفضلش يوم كامل
   if (!$('#mask').classList.contains('on')) route();
 }
-setInterval(() => { if (db && db.cfg.sheetOk && nowS() - ((db.cfg.audit || {}).at || 0) > 86400000) sheetAudit(false); }, 60000);
+/* مرة في اليوم، ولو آخر مراجعة كان فيها فرق بتتعاد كل 10 دقايق لحد ما تبقى متطابقة (التحذير القديم ميفضلش يوم كامل) */
+setInterval(() => { const au = db && db.cfg.audit || {}; if (db && db.cfg.sheetOk && !syncing && nowS() - (au.at || 0) > (au.ok === false ? 600000 : 86400000)) sheetAudit(false); }, 60000);
 
 /* ====================== سجل التعديلات ====================== */
 function auditModal() {

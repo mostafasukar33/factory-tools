@@ -4101,13 +4101,29 @@ const vaultsL = () => vaultsAll().filter(v => !v.shut);
 const openV = id => { const v = id && IDX.vault.get(id); return !!v && !v.del && !v.shut; };   // خزنة لسه شغالة (متخترش خزنة مقفولة لوحدك)
 const vaultsFor = sel => vaultsAll().filter(v => !v.shut || v.id === sel || vaultBal(v.id));   // مقفولة وفيها فلوس (دخلتها حركة بعد القفل): بتظهر علشان تحوّل رصيدها   // تعديل حركة قديمة على خزنة مقفولة: خزنتها بتفضل في الاختيار
 const catsL = t => db.cats.filter(c => !c.del && c.type === t && !SPECIAL_CATS.has(c.id)).sort((a, b) => (a.ord || 0) - (b.ord || 0));
-/* البند بيتفهم لوحده من الملاحظة (بطلبه 24/10/2026): "كهربا/كهرباء/مهربا/شحن كهربا" = بند كهربا.
-   بالترتيب: نفس الملاحظة اتكتبت قبل كده ← اسم بند في الكلام (حتى لو فيه غلطة حرف) ← الكلمة اتكتبت قبل كده في بند ← كلمات معروفة لكل بند.
-   مبيعملش بند جديد، وبيختار من البنود الموجودة بس. لو مفهمش = البند فاضي وبيتسأل عليه */
-const CAT_WORDS = [['كهربا', 'نور', 'عداد'], ['مياه', 'ميه', 'مايه'], ['خامات', 'خامه', 'بودره', 'حبيبات'], ['صبغه', 'لون', 'الوان'],
-  ['اجور', 'اجر', 'اجره', 'يوميه', 'يوميات', 'عمال', 'عماله', 'مرتب', 'مرتبات'], ['نقل', 'نولون', 'عربيه', 'توك توك', 'تروسيكل', 'بنزين', 'سولار', 'جاز', 'مواصلات', 'تاكسي', 'اوبر'],
-  ['صيانه', 'تصليح', 'ميكانيكي', 'قطع غيار', 'لحام'], ['ايجار'], ['نثريات', 'شاي', 'سكر', 'قهوه', 'اكل', 'فطار', 'غدا', 'عشا', 'مخلل'], ['تليفون', 'نت', 'انترنت', 'رصيد', 'كارت شحن', 'باقه']];
-const catWord = w => { w = norm(w).replace(/ء$/, '').replace(/[ؤئ]/g, 'ا'); if (w.length > 4 && w.startsWith('ال')) w = w.slice(2); return w; };
+/* البند بيتفهم لوحده من الملاحظة (بطلبه 24/10/2026): "كهربا/كهرباء/مهربا/شحن كهربا" = بند كهربا، وأي حاجة مكنة = صيانة، وأي حاجة عربية = صيانة العربية.
+   الكلام بيكسب: لو البند كان مختار غلط (خامات) والملاحظة "كهربا"، بيتحول كهربا.
+   النقط: اسم بند كل كلماته في الكلام (3 لكل كلمة) + كلمات معروفة للبند (2 لكل كلمة)، والأعلى بيكسب. لو مفيش، اللي اتكتب قبل كده.
+   لو البند المعروف (كهربا، صيانة، صيانة العربية) مش موجود بيتعمل وقت الحفظ بس (make). لو مفهمش = البند فاضي وبيتسأل عليه */
+const CAT_WORDS = [
+  {k: ['عربيه', 'عربيات', 'مخالفه', 'مخالفات', 'جاز', 'بنزين', 'سولار', 'كاوتش', 'كاوتشات', 'فتيس', 'رخصه', 'ترخيص', 'عفشه', 'ميكانيكي', 'سمكري', 'بطاريه', 'تيل', 'فرامل', 'كارته', 'غسيل'],
+    res: n => n.some(w => w === 'عربيه' || w === 'عربيات'), make: 'صيانة العربية'},
+  {k: ['مكنه', 'مكنات', 'ماكينه', 'ماكينات', 'مكينه', 'مكن', 'سير', 'سيور', 'ماتور', 'موتور', 'مواتير', 'خراط', 'خراطه', 'رولمان', 'بلي', 'ترس', 'تروس', 'جلبه', 'عمود', 'لحام', 'تصليح', 'صيانه', 'قطع غيار', 'زيت', 'شحم', 'سخان', 'سخانات', 'كسارة', 'كساره', 'اسطمبه', 'فوني', 'فني', 'بلف', 'كونتاكتور', 'ريلاي'],
+    res: n => n.includes('صيانه') && !n.some(w => w === 'عربيه' || w === 'عربيات'), make: 'صيانة'},
+  {k: ['كهربا', 'نور', 'عداد', 'فاتوره كهربا'], res: n => n.includes('كهربا'), make: 'كهربا'},
+  {k: ['مياه', 'ميه', 'مايه'], res: n => n.includes('مياه') || n.includes('ميه')},
+  {k: ['خامات', 'خامه', 'بودره', 'حبيبات', 'كسر'], res: n => n.includes('خامات') || n.includes('خامه')},
+  {k: ['صبغه', 'لون', 'الوان'], res: n => n.includes('صبغه')},
+  {k: ['اجور', 'اجر', 'اجره', 'يوميه', 'يوميات', 'عمال', 'عماله', 'مرتب', 'مرتبات'], res: n => n.some(w => ['اجور', 'يوميه', 'يوميات', 'عماله', 'مرتبات'].includes(w))},
+  {k: ['نقل', 'نولون', 'توك توك', 'تروسيكل', 'مواصلات', 'تاكسي', 'اوبر', 'شحن بضاعه'], res: n => n.includes('نقل') || n.includes('مواصلات')},
+  {k: ['ايجار'], res: n => n.includes('ايجار')},
+  {k: ['نثريات', 'شاي', 'سكر', 'قهوه', 'اكل', 'فطار', 'غدا', 'عشا', 'مخلل', 'بوفيه'], res: n => n.includes('نثريات') || n.includes('بوفيه')},
+  {k: ['تليفون', 'نت', 'انترنت', 'رصيد', 'كارت شحن', 'باقه'], res: n => n.includes('تليفون') || n.includes('نت') || n.includes('انترنت')}];
+const catWord = w => {
+  w = norm(w).replace(/ء$/, '').replace(/[ؤئ]/g, 'ا');
+  const m = /^(بال|وال|فال|كال|لل)(.{3,})$/.exec(w); if (m) w = m[2]; else if (w.length > 4 && w.startsWith('ال')) w = w.slice(2);
+  return w;
+};
 const catWords = s => norm(s).split(/[^\p{L}\p{N}]+/u).filter(Boolean).map(catWord).filter(w => w.length > 1);
 function catLev(a, b) {
   if (Math.abs(a.length - b.length) > 2) return 9;
@@ -4118,28 +4134,35 @@ function catLev(a, b) {
 const catSame = (a, b) => a === b || (a.length >= 4 && b.length >= 4 && catLev(a, b) <= (Math.min(a.length, b.length) >= 7 ? 2 : 1));
 function catGuess(type, note) {
   const cats = catsL(type), W = catWords(note), nn = ' ' + W.join(' ') + ' ';
-  if (!W.length || !cats.length) return null;
+  if (!W.length) return null;
+  const has = w => w.includes(' ') ? nn.includes(' ' + catWords(w).join(' ') + ' ') : W.some(x => catSame(x, w));
+  const sc = new Map(), add = (id, v) => sc.set(id, (sc.get(id) || 0) + v);
+  /* اسم البند: كل كلماته لازم تبقى في الكلام */
+  cats.forEach(c => { const n = catWords(c.name); if (n.length && n.every(has)) add(c.id, 3 * n.length); });
+  /* الكلمات المعروفة: للبند الموجود، ولو مش موجود ومعروف (make) بيتعمل وقت الحفظ */
+  if (type === 'exp') CAT_WORDS.forEach(g => {
+    const hit = g.k.filter(has).length; if (!hit) return;
+    const c = cats.find(c => g.res(catWords(c.name)));
+    if (c) add(c.id, 2 * hit); else if (g.make) add('new:' + g.make, 2 * hit + 3 * catWords(g.make).filter(has).length);
+  });
+  const top = [...sc].sort((a, b) => b[1] - a[1] || (a[0].startsWith('new:') - b[0].startsWith('new:')))[0];
+  if (top) return {id: top[0], why: 'word', make: top[0].startsWith('new:') ? top[0].slice(4) : ''};
+  /* مفيش كلمة معروفة: نفس الملاحظة اتكتبت قبل كده، أو الكلمة اتكتبت قبل كده في بند (الأكتر بفرق واضح) */
   const ok = id => cats.some(c => c.id === id);
-  const has = w => w.includes(' ') ? nn.includes(' ' + w + ' ') : W.some(x => catSame(x, w));
-  /* 1) نفس الملاحظة بالظبط اتكتبت قبل كده: آخر بند اتحطت فيه */
   const past = db.txs.filter(x => !x.del && x.type === type && x.note && x.cat && ok(x.cat)).sort((a, b) => (b.at || 0) - (a.at || 0));
   const same = past.find(x => catWords(x.note).join(' ') === W.join(' '));
   if (same) return {id: same.cat, why: 'past'};
-  /* 2) اسم البند نفسه في الكلام */
-  const byName = cats.find(c => catWords(c.name).some(has));
-  if (byName) return {id: byName.id, why: 'name'};
-  /* 3) الكلمة دي اتكتبت قبل كده في بند (الأكتر بفرق واضح) */
-  const sc = new Map();
-  past.slice(0, 3000).forEach(x => { const xw = catWords(x.note); if (W.some(w => w.length >= 3 && xw.some(y => catSame(w, y)))) sc.set(x.cat, (sc.get(x.cat) || 0) + 1); });
-  const best = [...sc].sort((a, b) => b[1] - a[1]);
+  const ps = new Map();
+  past.slice(0, 3000).forEach(x => { const xw = catWords(x.note); if (W.some(w => w.length >= 3 && xw.some(y => catSame(w, y)))) ps.set(x.cat, (ps.get(x.cat) || 0) + 1); });
+  const best = [...ps].sort((a, b) => b[1] - a[1]);
   if (best.length && (best.length === 1 || best[0][1] >= best[1][1] * 2)) return {id: best[0][0], why: 'past'};
-  /* 4) كلمات معروفة، والمجموعة لازم يبقى ليها بند موجود */
-  for (const g of CAT_WORDS) {
-    if (!g.some(has)) continue;
-    const c = cats.find(c => catWords(c.name).some(n => g.some(w => !w.includes(' ') && catSame(n, w))));
-    if (c) return {id: c.id, why: 'word'};
-  }
   return null;
+}
+/* البند اللي هيتعمل (new:الاسم) بيتعمل هنا وقت الحفظ بس، ولو اتعمل من جهاز تاني بنفس الاسم بناخده */
+function catMake(type, name) {
+  const ex = catsL(type).find(c => norm(c.name) === norm(name)); if (ex) return ex.id;
+  const now = nowS(), r = {id: newId('c_'), type, name, ord: Math.max(-1, ...db.cats.filter(x => x.type === type).map(x => x.ord || 0)) + 1, upd: now, del: false};
+  db.cats.push(r); IDX.cat.set(r.id, r); return r.id;
 }
 const vName = id => (IDX.vault.get(id) || {name: '؟'}).name;
 const cName = id => (IDX.cat.get(id) || {name: 'بدون بند'}).name;
@@ -4754,15 +4777,18 @@ function txModal(type, t, opts = {}) {
   if (isNew) setTimeout(() => $('#txA') && $('#txA').focus(), 50);
   const cnSt = {a: null};
   let again = false;   // "حفظ وسجّل تاني" (بطلبه 17/10/2026): النافذة بتتفتح تاني فاضية بنفس التاريخ والخزنة
-  /* البند بيتفهم من الكلام لحد ما يختاره بإيده */
+  /* البند بيتفهم من الكلام (بطلبه): الكلام بيكسب حتى لو البند كان مختار قبل ما يكتب. لو غيّر البند بإيده بعد الكلام، اختياره بيفضل لحد ما يغيّر الكلام */
   if (isNew && type !== 'tr') {
-    let manual = false; const sel = $('#txC'), note = $('#txN');
+    const sel = $('#txC'), note = $('#txN');
     sel.insertAdjacentHTML('afterend', '<small class="hint" id="txG"></small>');
-    sel.addEventListener('change', () => { manual = true; $('#txG').textContent = ''; });
+    let picked = false;   // اختاره بإيده: لو الكلام مش مفهوم اختياره بيفضل
+    sel.addEventListener('change', () => { picked = true; $('#txG').textContent = ''; });
     note.addEventListener('input', () => {
-      if (manual) return;
       const g = catGuess(type, note.value);
-      sel.value = g ? g.id : ''; $('#txG').textContent = g ? `✔ فهمتها: ${cName(g.id)}` : '';
+      [...sel.options].filter(o => o.value.startsWith('new:')).forEach(o => o.remove());
+      if (g && g.make) sel.add(new Option(g.make + ' (بند جديد)', g.id));
+      if (g) { sel.value = g.id; picked = false; } else if (!picked) sel.value = '';
+      $('#txG').textContent = g ? `✔ فهمتها: ${g.make ? g.make + ' (هيتعمل بند جديد)' : cName(g.id)}` : '';
     });
   }
   if ($('#txAgain')) $('#txAgain').onclick = () => { again = true; $('#txOk').onclick(); };
@@ -4771,6 +4797,7 @@ function txModal(type, t, opts = {}) {
     if (amt <= 0) return toast('اكتب المبلغ');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');
     const o = {type, amt, date, note, vault, to: type === 'tr' ? $('#txTo').value : '', cat: type === 'tr' ? '' : $('#txC').value};
+    if (o.cat.startsWith('new:')) o.cat = catMake(type, o.cat.slice(4));
     if (type === 'tr' && o.to === vault) return toast('اختار خزنتين مختلفتين');
     if (type !== 'tr' && !o.cat) { if ($('#txC')) $('#txC').focus(); return toast('مفهمتش البند: اختاره من القايمة'); }
     if (isLocked(date)) return lockToast();

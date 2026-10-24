@@ -582,17 +582,33 @@ const T0 = Date.now();
     eq('البند بيتفهم لوحده من الكلام: كهربا/كهرباء/مهربا/شحن كهربا، وكلمات معروفة، واللي اتكتب قبل كده، واللي مش مفهوم بيتسأل', await A.evaluate(() => {
       const id = n => (catsL('exp').find(c => c.name === n) || {}).id, g = s => (catGuess('exp', s) || {}).id || '';
       const r = ['كهربا', 'كهرباء', 'الكهرباء', 'مهربا', 'شحن كهربا'].map(g).every(x => x && x === id('كهربا'));
-      const w = [g('يومية حسن') === id('أجور'), g('بنزين العربية') === id('نقل'), g('شاي وسكر') === id('نثريات'), g('تصليح المكنة') === id('صيانة'), g('حاجة غريبة خالص'), g('')];
+      const w = [g('يومية حسن') === id('أجور'), g('نولون البضاعة') === id('نقل'), g('شاي وسكر') === id('نثريات'), g('تصليح المكنة') === id('صيانة'), g('حاجة غريبة خالص'), g('')];
       const v = vaultsL()[0].id, n0 = db.txs.length;
-      db.txs.push({id: 't_cgx', type: 'exp', amt: 100, date: todayISO(), note: 'عم سيد الفني', cat: id('صيانة'), vault: v, at: nowS(), upd: nowS(), del: false, hist: []});
-      const lp = g('عم سيد الفني') === id('صيانة'); db.txs.pop();
+      db.txs.push({id: 't_cgx', type: 'exp', amt: 100, date: todayISO(), note: 'عم سيد', cat: id('صيانة'), vault: v, at: nowS(), upd: nowS(), del: false, hist: []});
+      const lp = g('عم سيد') === id('صيانة'); db.txs.pop();
       txModal('exp'); const ui0 = $('#txC').value; $('#txA').value = fmtP(500); $('#txN').value = 'كهرباء المصنع'; $('#txN').dispatchEvent(new Event('input'));
       const ui1 = [$('#txC').value === id('كهربا'), $('#txG').textContent.includes('كهربا')];
       $('#txN').value = 'حاجة غريبة'; $('#txN').dispatchEvent(new Event('input')); $('#txOk').click(); const asked = db.txs.length === n0 && !!$('#txC');
       $('#txC').value = id('صبغة'); $('#txC').dispatchEvent(new Event('change')); $('#txN').value = 'كهربا'; $('#txN').dispatchEvent(new Event('input'));
       const keep = $('#txC').value === id('صبغة'); closeModal();
       return [r, ...w, lp, ui0, ...ui1, asked, keep];
-    }), [true, true, true, true, true, '', '', true, '', true, true, true, true]);
+    }), [true, true, true, true, true, '', '', true, '', true, true, true, false]);
+    eq('البند بالكلام (بطلبه): الكلام بيكسب البند المختار، أي حاجة مكنة = صيانة، وأي حاجة عربية = صيانة العربية (بيتعمل لوحده مرة واحدة)', await A.evaluate(() => {
+      const id = n => (catsL('exp').find(c => c.name === n) || {}).id, g = s => (catGuess('exp', s) || {}).id || '';
+      const m = ['سيور الماتور', 'خراط', 'تصليح المكنة', 'رولمان بلي للموتور', 'ماكينة'].map(g).every(x => x === id('صيانة'));
+      const car0 = ['مخالفة', 'جاز', 'بنزين العربية', 'كاوتش', 'زيت العربية', 'تصليح العربية'].map(g).every(x => x === 'new:صيانة العربية');
+      const v = vaultsL()[0].id, n0 = db.txs.length, c0 = db.cats.length;
+      txModal('exp'); $('#txC').value = id('خامات'); $('#txC').dispatchEvent(new Event('change')); $('#txA').value = fmtP(300); $('#txN').value = 'كهربا'; $('#txN').dispatchEvent(new Event('input'));
+      const el = $('#txC').value === id('كهربا'); $('#txV').value = v; $('#txOk').click();
+      const t1 = db.txs[db.txs.length - 1], s1 = db.txs.length === n0 + 1 && t1.cat === id('كهربا');
+      txModal('exp'); $('#txA').value = fmtP(200); $('#txN').value = 'مخالفة'; $('#txN').dispatchEvent(new Event('input')); const hint = $('#txG').textContent.includes('صيانة العربية'); $('#txV').value = v; $('#txOk').click();
+      const t2 = db.txs[db.txs.length - 1], car = id('صيانة العربية'), s2 = !!car && t2.cat === car && db.cats.length === c0 + 1;
+      const again = ['جاز', 'كاوتش', 'زيت العربية'].map(g).every(x => x === car) && g('سيور') === id('صيانة');
+      txModal('exp'); $('#txA').value = fmtP(100); $('#txN').value = 'بنزين'; $('#txN').dispatchEvent(new Event('input')); $('#txV').value = v; $('#txOk').click();
+      const s3 = db.txs[db.txs.length - 1].cat === car && db.cats.length === c0 + 1;
+      db.txs.slice(n0).forEach(x => { x.del = true; touch(x); }); const c = IDX.cat.get(car); c.del = true; touch(c); saveDB(); closeModal();
+      return [m, car0, el, s1, hint, s2, again, s3];
+    }), [true, true, true, true, true, true, true, true]);
     }
     sec('٦) دفعة عميل بتدخل الخزنة');
     await openParty(A, 'عميل تجربة اتنين'); await A.click('#fbPay'); await A.fill('#pyAmt', '70'); await A.click('#pyOk'); await closed(A);

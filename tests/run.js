@@ -1117,10 +1117,14 @@ const T0 = Date.now();
     {   // كشف الحساب الذكي: صفحات أقل أو زي الأول، والخط أكبر أو زي الأول، والفاتورة لوحدها متلمستش
       const r = await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), s = stmtData(p.id, '', ''), box = $('#render');
         const fs = pg => parseFloat(getComputedStyle(pg[0].querySelector('tbody td.n') || pg[0].querySelector('tbody td')).fontSize);
-        ['--tz', '--tp', '--tl'].forEach(k => box.style.removeProperty(k)); const b = buildStmtPages1(p, s), bn = b.length, bf = fs(b);
-        const a = buildStmtPages(p, s), an = a.length, af = fs(a); box.innerHTML = '';
-        return [an <= bn, af >= bf]; });
-      eq('كشف الحساب الذكي: الصفحات مزادتش والخط مصغرش', r, [true, true]);
+        const lines = () => [...box.querySelectorAll('table.st td.l')].reduce((m, td) => { const g = document.createRange(); g.selectNodeContents(td); return m + new Set([...g.getClientRects()].map(x => Math.round(x.top))).size; }, 0);
+        const lh = () => getComputedStyle(box.querySelector('table.st tbody td')).lineHeight;
+        ['--tz', '--tp', '--tl'].forEach(k => box.style.removeProperty(k)); stmtCols = null; const b = buildStmtPages1(p, s), bn = b.length, bf = fs(b), bl = lines(), bh = lh();
+        const a = buildStmtPages(p, s), an = a.length, af = fs(a), al = lines(), ah = lh();
+        const broken = [...box.querySelectorAll('table.st td.n, table.st td.b')].some(td => { const g = document.createRange(); g.selectNodeContents(td); return new Set([...g.getClientRects()].map(x => Math.round(x.top))).size > (td.querySelector('small') ? 2 : 1); });
+        box.innerHTML = '';
+        return [an <= bn, af >= bf, al <= bl, ah === bh, !broken]; });
+      eq('كشف الحساب الذكي: الصفحات مزادتش والخط مصغرش والبيان مزنقش', r, [true, true, true, true, true]);
     }
     const PGN = await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); const pg = buildStmtPages(p, stmtData(p.id, '', '')); const c = pg[0].querySelectorAll('thead th').length; const fs = parseFloat(getComputedStyle(pg[0].querySelector('tbody td.l')).fontSize); $('#render').innerHTML = ''; return [c, fs >= 16]; });
     eq('كشف الـ PDF: 7 أعمدة وخط كبير', PGN, [7, true]);

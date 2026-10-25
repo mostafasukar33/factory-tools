@@ -432,7 +432,7 @@ nav svg{width:26px;height:26px}
 .pg table.st td.n{font-size:calc(16.5px * var(--tz, 1))}.pg table.st td.b{font-size:calc(17px * var(--tz, 1))}
 .pg table.st td.dt{font-size:15.5px}.pg table.st td.q{font-size:calc(15.5px * var(--tz, 1))}.pg table.st td small.rf{font-size:calc(13.5px * var(--tz, 1))}
 .pg table.st td.b small{font-size:calc(13px * var(--tz, 1))}
-#render.ms table.st td.n,#render.ms table.st td.b{white-space:nowrap}
+#render.ms table.st td.n,#render.ms table.st td.b,#render.ms table.st td.q,#render.ms table.st th{white-space:nowrap}
 .pg tr.it td{background:#fff !important;font-weight:600;font-size:15.5px}.pg tr.it td.l{padding-right:18px}
 .pg table.st tr.it td{font-size:calc(15.5px * var(--tz, 1))}.pg table.st tr.it td.dt{font-size:15.5px}
 .pg tr.it.f td{border-top:2px solid #9C7420}
@@ -3101,21 +3101,46 @@ const coWeb = () => db.cfg.coWeb === undefined ? 'www.flashoneg.com' : db.cfg.co
 const webUrl = w => /^https?:\/\//i.test(w) ? w : 'https://' + w;
 /* الفترة على الورقة بلغة رسمية (الشاشة لسه بـ periodText) */
 const pdfPeriod = (s, issued) => s.lastInv ? `من آخر فاتورة ${dispDate(s.lastInv.date)}` : s.from ? `من ${dispDate(s.from)} إلى ${dispDate(s.to)}` : `كامل الحساب حتى ${dispDate(s.to || isoOf(issued))}`;
-/* كشف الحساب "الذكي" (بطلبه 25/10/2026): نفس الشكل والألوان بالظبط، بس:
-   1) لو فيه صفحة زيادة (زي الإجمالي لوحده في آخر صفحة) بنقرّب السطور من بعض شوية (المسافة جوه الخانة بس) لو ده هيوفّرها.
-   2) خط الجدول بيكبر لأكبر حجم ممكن (لحد 1.3 مرة، والتاريخ بيفضل زي ما هو علشان عموده ضيق) من غير ما الصفحات تزيد عن أقل عدد، ومن غير ما رقم يتكسر على سطرين.
+/* كشف الحساب "الذكي" (بطلبه 25/10/2026): نفس الشكل والألوان بالظبط، والخط أكبر وصفحات أقل، من غير ما أي حاجة تتزنق:
+   - ارتفاع السطر زي ما هو دايماً (تقريبه كان بيخلي البيان اللي على سطرين يركب على بعض، اتشال بطلبه).
+   - عرض العواميد بيتحسب من الكلام نفسه: كل عمود رقم ياخد قد أطول رقم فيه، والباقي كله للبيان (السعر والكمية كان فيهم فاضي كتير).
+   - الخط بيكبر (لحد 1.3 مرة، والتاريخ ثابت) بس لو: الصفحات مزادتش، ومفيش رقم اتكسر، والبيان ملفّش على سطور أكتر من الكشف العادي.
    الفاتورة لوحدها (invOnly) زي ما هي */
-const STMT_Z = [1.3, 1.25, 1.2, 1.15, 1.1, 1.05], STMT_C = [[3, 1.3], [2, 1.22], [1, 1.15]];   // [المسافة جوه الخانة px، ارتفاع السطر]
+const STMT_Z = [1.3, 1.25, 1.2, 1.15, 1.1, 1.05, 1], STMT_PAD = [3, 2], STMT_COLS = [12.5, 23.5, 14, 10.5, 13, 11.5, 15];
+let stmtCols = null;   // عرض العواميد بالنسبة (null = الثابت)
 function buildStmtPages(p, s) {
   const box = $('#render');
-  const set = (z, c) => { box.style.setProperty('--tz', z); box.style.setProperty('--tp', c[0] + 'px'); box.style.setProperty('--tl', c[1]); };
-  const clear = () => { ['--tz', '--tp', '--tl'].forEach(k => box.style.removeProperty(k)); box.classList.remove('ms'); };
+  const clear = () => { ['--tz', '--tp', '--tl'].forEach(k => box.style.removeProperty(k)); box.classList.remove('ms'); stmtCols = null; };
   clear();
   if (s.invOnly) return buildStmtPages1(p, s);
-  const try1 = (z, c) => { set(z, c); box.classList.add('ms'); const n = buildStmtPages1(p, s).length; const bad = [...box.querySelectorAll('table.st td.n, table.st td.b')].filter(td => td.scrollWidth > td.clientWidth + 1); box.classList.remove('ms'); return bad.length ? 1e9 : n; };
-  const n = Math.min(...STMT_C.map(c => try1(1, c)));   // أقل عدد صفحات ممكن بالخط العادي
-  for (const z of STMT_Z) for (const c of STMT_C) if (try1(z, c) <= n) { set(z, c); return buildStmtPages1(p, s); }
-  for (const c of STMT_C) if (try1(1, c) <= n) { set(1, c); return buildStmtPages1(p, s); }
+  const tbls = () => [...box.querySelectorAll('table.st')];
+  /* سطور البيان كلها (كل خانة بيان لفّت على كام سطر) */
+  const lines = () => tbls().reduce((n, t) => n + [...t.querySelectorAll('td.l')].reduce((m, td) => { const r = document.createRange(); r.selectNodeContents(td); return m + new Set([...r.getClientRects()].map(x => Math.round(x.top))).size; }, 0), 0);
+  const base = buildStmtPages1(p, s), n0 = base.length, L0 = lines();
+  /* أقل عرض محتاجه كل عمود (غير البيان) علشان كلامه يفضل سطر واحد، من السطور اللي مفيهاش خانات مدموجة */
+  const fitCols = () => {
+    const t0 = tbls()[0]; if (!t0) return null;
+    const W = t0.getBoundingClientRect().width, need = [0, 0, 0, 0, 0, 0, 0];
+    const w = el => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width + 14; };
+    tbls().forEach(t => [...t.rows].forEach(tr => { if (tr.cells.length !== 7) return; [...tr.cells].forEach((c, i) => { if (i !== 1 && c.textContent.trim()) need[i] = Math.max(need[i], w(c)); }); }));
+    const others = need.reduce((a, x, i) => i === 1 ? a : a + x, 0), desc = W - others;
+    if (desc < W * STMT_COLS[1] / 100) return null;   // البيان ميصغرش عن الأول أبداً
+    return need.map((x, i) => (i === 1 ? desc : x) / W * 100);
+  };
+  const tryIt = (z, pad) => {
+    box.style.setProperty('--tz', z); box.style.setProperty('--tp', pad + 'px');
+    stmtCols = null; box.classList.add('ms'); buildStmtPages1(p, s);
+    const cols = fitCols(); if (!cols) { box.classList.remove('ms'); return null; }
+    stmtCols = cols; const n = buildStmtPages1(p, s).length;
+    const broken = [...box.querySelectorAll('table.st td.n, table.st td.b, table.st td.q, table.st th')].some(td => td.scrollWidth > td.clientWidth + 1);
+    box.classList.remove('ms');
+    return broken ? null : {n, L: lines()};
+  };
+  const nMin = Math.min(n0, ...STMT_PAD.map(pd => (tryIt(1, pd) || {n: 1e9}).n));   // أقل صفحات ممكنة بالخط العادي
+  for (const z of STMT_Z) for (const pd of STMT_PAD) {
+    const r = tryIt(z, pd);
+    if (r && r.n <= nMin && r.L <= L0) { box.classList.remove('ms'); return buildStmtPages1(p, s); }
+  }
   clear(); return buildStmtPages1(p, s);
 }
 function buildStmtPages1(p, s) {
@@ -3145,7 +3170,7 @@ function buildStmtPages1(p, s) {
     const t = document.createElement('table');
     if (s.invOnly) { t.innerHTML = `<colgroup><col style="width:15%"><col style="width:37%"><col style="width:16%"><col style="width:14%"><col style="width:18%"></colgroup>
       <thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody></tbody>`; return t; }
-    t.className = 'st'; t.innerHTML = `<colgroup><col style="width:12.5%"><col style="width:23.5%"><col style="width:14%"><col style="width:10.5%"><col style="width:13%"><col style="width:11.5%"><col style="width:15%"></colgroup>
+    t.className = 'st'; t.innerHTML = `<colgroup>${(stmtCols || STMT_COLS).map(w => `<col style="width:${w}%">`).join('')}</colgroup>
       <thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>المدفوع</th><th>الرصيد</th></tr></thead><tbody></tbody>`;
     return t;
   };

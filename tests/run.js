@@ -824,7 +824,7 @@ const T0 = Date.now();
         await A.settle(500); await A.waitForFunction(() => !syncing && !syncAgain);
         await A.evaluate(() => { const p = liveParties()[0]; p.note = 'تجربة locked'; p.upd = nowS(); saveDB(); clearTimeout(syncT); });
         D1.lockedOnce = 2; await bg(A, 'syncNow()');
-        eq('جوجل رد locked مرتين: اتعادت لوحدها ونجحت', [D1.lockedOnce, await A.evaluate(() => [syncErr, pendingRecs().length, db.cfg.syLog[0].ok])], [0, ['', 0, true]]);
+        eq('جوجل رد locked مرتين: اتعادت لوحدها ونجحت', [D1.lockedOnce, await A.evaluate(() => [syncErr, pendingRecs().length, db.cfg.syLog[0].ok, (db.cfg.syLog[0].d.match(/✖/g) || []).length])], [0, ['', 0, true, 2]]);
       }
       {   // دفعة تقيلة بتتقسم (لحد ~250 ألف حرف)، وسجل المحاولات بيبان في الإعدادات
         await A.settle(500); await A.waitForFunction(() => !syncing && !syncAgain);
@@ -832,7 +832,7 @@ const T0 = Date.now();
         await bg(A, `(() => { const c = callSheet; window.__pushes = []; callSheet = (b, ...r) => { if (b.action === 'push') __pushes.push(b.rows.length); return c(b, ...r); }; return syncNow().finally(() => { callSheet = c; }); })()`);
         const [pushes, left, log] = await A.evaluate(() => { SYNC_BATCH = 250000; return [__pushes, pendingRecs().length, db.cfg.syLog[0]]; });
         eq('دفعة تقيلة اتقسمت على أكتر من طلب ووصلت كلها', [pushes.length > 1, pushes.reduce((a, b) => a + b, 0) >= 3, left], [true, true, 0]);
-        eq('سجل المزامنة: آخر محاولة نجحت واتبعت فيها الحركات', [log.ok, log.n >= 3, typeof log.s], [true, true, 'number']);
+        eq('سجل المزامنة: آخر محاولة نجحت واتبعت فيها الحركات، ووقت كل طلب (سحب ثم إرسال ثم تأكيد)', [log.ok, log.n >= 3, typeof log.s, /^سحب [\d.]+ · إرسال [\d.]+ · (إرسال [\d.]+ · )+تأكيد [\d.]+$/.test(log.d)], [true, true, 'number', true]);
         await A.evaluate(() => { liveParties().slice(0, 3).forEach(p => { p.note = ''; p.upd = nowS(); }); saveDB(); clearTimeout(syncT); }); await bg(A, 'syncNow()');
       }
       eq('رسالة صفحة جوجل لشيت كان شغال: مشغول لحظة مش تسجيل دخول', await A.evaluate(() => { const e = new Error('page'); e.code = 'page'; return netWhy(e); }), 'جوجل كان مشغول لحظة، وهحاول تاني لوحدي');

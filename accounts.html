@@ -819,7 +819,7 @@ html[data-theme=dark] .pst th{background:var(--row);color:var(--sub)}
 .sstat b{display:block;font-size:var(--f3)}.sstat small{display:block;font-size:var(--f2);color:var(--sub);font-weight:600}
 .sstat.ok b{color:var(--green)}.sstat.no b{color:var(--red)}
 .sstat .btn{width:auto;flex:none;padding:0 14px;min-height:38px;font-size:var(--f2)}
-.sstat .sylog{margin-top:6px;font-size:var(--f1);color:var(--sub)}.sstat .sylog summary{cursor:pointer;font-weight:700}.sstat .sylog div{padding:2px 0}
+.sstat .sylog{margin-top:6px;font-size:var(--f1);color:var(--sub)}.sstat .sylog summary{cursor:pointer;font-weight:700}.sstat .sylog div{padding:2px 0}.sstat .sylog div small{display:block;font-size:inherit;opacity:.8}
 details.adv{margin:4px 0 8px}details.adv>summary{font-weight:700;color:var(--sub);cursor:pointer;padding:6px 0;font-size:var(--f2)}
 /* شاشة القفل: كارت نضيف وخفيف */
 #lock img{width:84px;border-radius:16px;box-shadow:0 2px 12px #0002}
@@ -3399,9 +3399,11 @@ const accOld = () => !!(db && db.cfg.sheetOk && db.cfg.accV && db.cfg.accV < ACC
 async function callSheet(body, url = db.cfg.sheetUrl, key = db.cfg.sheetKey, ms = 45000, tries) {
   tries = tries || (db && db.cfg.sheetOk && url === db.cfg.sheetUrl ? 3 : 1);
   for (let t = 1; ; t++) {
-    try { return await callSheet1(body, url, key, ms); }
+    const t0 = Date.now(), mine = db && url === db.cfg.sheetUrl;
+    try { const r = await callSheet1(body, url, key, ms); if (mine) syMark(body.action, t0); return r; }
     /* جوجل رد بصفحة أو الطلب وقع من غير رد (النت اتهز لحظة): نستنى ونعيد. الإرسال آمن يتعاد */
     catch (e) {
+      if (mine) syMark(body.action, t0, true);
       if (e.code === 'stale' && t < tries + 3) continue;   // طلب من قبل ما البرنامج يستخبى: نبعته تاني على طول (مش محسوب من المحاولات)
       if ((e.code !== 'page' && e.name !== 'TypeError') || t >= tries) throw e; await new Promise(r => setTimeout(r, 2000 * t)); }
   }
@@ -3498,7 +3500,10 @@ const sameData = (a, b) => { const c = o => { const x = Object.assign({}, o); ['
 let SYNC_BATCH = 250000;   // أقصى حجم دفعة واحدة للشيت (حروف)
 let syncing = false, syncT = null, syncErr = '', syncWhy = '', lastPullAt = 0, syncAgain = false, syncAt = 0;
 /* سجل آخر 8 محاولات مزامنة (الوقت، أخدت كام ثانية، نجحت ولا لأ والسبب، اتبعت كام) بيبان في الإعدادات علشان نعرف البطء من فين. على الجهاز بس */
-function syLog(ok, why, n) { const L = (db.cfg.syLog || []).slice(0, 7); L.unshift({at: nowS(), s: Math.round((Date.now() - syncAt) / 100) / 10, ok, why: why || '', n: n || 0}); db.cfg.syLog = L; }
+function syLog(ok, why, n) { const L = (db.cfg.syLog || []).slice(0, 7); L.unshift({at: nowS(), s: Math.round((Date.now() - syncAt) / 100) / 10, ok, why: why || '', n: n || 0, d: (syT || []).join(' · ')}); db.cfg.syLog = L; }
+/* كل طلب للشيت وقت المزامنة بياخد قد إيه (سحب/إرسال/تأكيد، و✖ = المحاولة دي وقعت واتعادت)، علشان نعرف الوقت بيروح فين */
+let syT = null;
+const syMark = (a, t0, bad) => { if (syT) syT.push(({pull: 'سحب', push: 'إرسال', ping: 'تأكيد'}[a] || a) + ' ' + ((Date.now() - t0) / 1000).toFixed(1) + (bad ? '✖' : '')); };
 function schedSync() { clearTimeout(syncT); syncT = setTimeout(() => syncNow(), 1500); }
 /* اللاب بيتقفل أو البرنامج بيستخبى وفيه حركات لسه متبعتتش: بنبعتها على طول بطلب بيكمّل حتى لو الصفحة نامت (keepalive، لحد 60 ألف حرف).
    مبنعلّمهاش "اتبعتت" هنا: المزامنة الجاية بتسحب الأول وبتتأكد زي العادي (الحركة اللي وصلت مبتتبعتش تاني ومش تعارض) */
@@ -3517,7 +3522,7 @@ async function syncNow(manual) {
   if (!db) return;
   if (!db.cfg.sheetUrl || !db.cfg.sheetOk) { if (manual) toast('اربط الشيت الأول من الإعدادات'); return; }
   if (syncing) { syncAgain = true; return; }   // حركة اتسجلت والمزامنة شغالة: تتبعت أول ما اللي شغالة تخلص، مش بعد 30 ثانية
-  syncing = true; syncAgain = false; syncErr = ''; syncAt = Date.now(); renderSyncBox();
+  syncing = true; syncAgain = false; syncErr = ''; syncAt = Date.now(); syT = []; renderSyncBox();
   const d0 = db;
   let got = 0, pushed = 0;
   try {
@@ -3587,7 +3592,7 @@ async function syncNow(manual) {
     if (manual) toast(syncErr === 'key' ? 'الشيت رفض المفتاح السري. راجع المفتاح في الإعدادات.' : 'المزامنة فشلت: ' + syncWhy, 7000);
     if (db === d0) flushSave();
   } finally {
-    syncing = false;
+    syncing = false; syT = null;
     if (syncAgain && db === d0 && !syncErr) { syncAgain = false; setTimeout(() => syncNow(), 300); }
     if (db === d0) { renderSyncBox(); if (got) { if (Object.entries(STORE).some(([k, a]) => IDX[k].size !== db[a].length)) reindex(); if (!$('#mask').classList.contains('on')) route(); } }
   }
@@ -3656,7 +3661,7 @@ function bindUI() {
 /* آخر تحديث للبرنامج = وقت نشر الصفحة (Last-Modified اللي GitHub Pages بيبعته). لو المتصفح معرفوش بيدّي وقت الفتح نفسه، فساعتها مبنعرضش حاجة */
 const PAGE_LM = Date.parse(document.lastModified), PAGE_AT = Date.now();
 const verText = (lm = PAGE_LM, at = PAGE_AT) => lm && at - lm > 3000 ? `آخر تحديث للبرنامج على الجهاز ده: ${dispDate(isoOf(lm))} ${dispTime(lm)}` : '';
-const syLogHtml = L => L && L.length ? `<details class="sylog"><summary>آخر محاولات المزامنة</summary>${L.map(x => `<div>${dispTime(x.at)} ${x.ok ? '✔' : '✖'} ${x.s} ثانية${x.n ? ' · اتبعت ' + x.n : ''}${x.why ? ' · ' + esc(x.why) : ''}</div>`).join('')}</details>` : '';
+const syLogHtml = L => L && L.length ? `<details class="sylog"><summary>آخر محاولات المزامنة</summary>${L.map(x => `<div>${dispTime(x.at)} ${x.ok ? '✔' : '✖'} ${x.s} ثانية${x.n ? ' · اتبعت ' + x.n : ''}${x.why ? ' · ' + esc(x.why) : ''}${x.d ? `<small>${esc(x.d)}</small>` : ''}</div>`).join('')}</details>` : '';
 function renderSetStat() {
   const c = db.cfg;
   const n = pendingRecs().length, st = $('#sStat'), openSheet = () => { const k = $('#sSheet').parentNode; $('#p-set').classList.add('advon'); k.classList.remove('shut'); k.scrollIntoView({block: 'start', behavior: 'smooth'}); };

@@ -2466,6 +2466,16 @@ const T0 = Date.now();
       eq('المتحصلات: الفاتورة مش فيها، التحويل أزرق والكاش أخضر بلون مختلف، وإجمالي اليوم على فلوس أحمد بس', r[0], [true, true, true, true, true]);
       eq('الفواتير: الفواتير بس', r[1], ['inv', true, true, true]);
     }
+    {
+      /* زي الحسابات (بطلبه 25/10/2026): السحب لتحت مبيعملش ريفرش، ودوسة التبويب اللي انت فيه بتطلّع لفوق، والرجوع من "دفعة أو فاتورة" بيرجع للرئيسية */
+      eq('السحب لتحت: الصفحة مبتعملش ريفرش (overscroll) وفيه شريط المزامنة', await M.evaluate(() => [getComputedStyle(document.documentElement).overscrollBehaviorY, !!$('#ptr')]), ['contain', true]);
+      await M.evaluate(() => nav('')); await M.settle(150); await M.click('#qPay'); await M.settle(150);
+      const v1 = await M.evaluate(() => scr.v); await M.goBack(); await M.waitForFunction(() => scr.v === 'home');
+      eq('زرار الرجوع من العملاء (بعد "دفعة أو فاتورة") بيرجع للرئيسية مش بيخرج', [v1, await M.evaluate(() => scr.v)], ['c', 'home']);
+      await M.evaluate(() => { $('#main').style.minHeight = '4000px'; window.scrollTo(0, 1500); });
+      await M.click('#tabs button[data-t=home]'); await M.waitForFunction(() => window.scrollY === 0);
+      eq('دوسة على التبويب اللي هو فيه بتطلّعه لأول الصفحة', await M.evaluate(() => { $('#main').style.minHeight = ''; return [scr.v, window.scrollY]; }), ['home', 0]);
+    }
 
     {
       sec('٢٢ج) الطلبيات والتسعير (lib/orders.js): قايمة واحدة عند مصطفى وأحمد، ومبتلمسش أي فلوس');

@@ -832,7 +832,7 @@ const T0 = Date.now();
         await bg(A, `(() => { const c = callSheet; window.__pushes = []; callSheet = (b, ...r) => { if (b.action === 'push' || (b.action === 'sync' && b.rows.length)) __pushes.push(b.rows.length); return c(b, ...r); }; return syncNow().finally(() => { callSheet = c; }); })()`);
         const [pushes, left, log] = await A.evaluate(() => { SYNC_BATCH = 250000; return [__pushes, pendingRecs().length, db.cfg.syLog[0]]; });
         eq('دفعة تقيلة اتقسمت على أكتر من طلب ووصلت كلها', [pushes.length > 1, pushes.reduce((a, b) => a + b, 0) >= 3, left], [true, true, 0]);
-        eq('سجل المزامنة: آخر محاولة نجحت واتبعت فيها الحركات، ووقت كل طلب (طلب واحد لكل دفعة)', [log.ok, log.n >= 3, typeof log.s, /^طلب واحد [\d.]+( · طلب واحد [\d.]+)+$/.test(log.d)], [true, true, 'number', true]);
+        eq('سجل المزامنة: آخر محاولة نجحت واتبعت فيها الحركات، ووقت كل طلب (طلب واحد لكل دفعة)', [log.ok, log.n >= 3, typeof log.s, /^طلب واحد [\d.]+ \(جوه جوجل [\d.]+[^)]*سطر\)( · طلب واحد [\d.]+ \(جوه جوجل [\d.]+[^)]*\))+$/.test(log.d)], [true, true, 'number', true]);
         await A.evaluate(() => { liveParties().slice(0, 3).forEach(p => { p.note = ''; p.upd = nowS(); }); saveDB(); clearTimeout(syncT); }); await bg(A, 'syncNow()');
       }
       eq('رسالة صفحة جوجل لشيت كان شغال: مشغول لحظة مش تسجيل دخول', await A.evaluate(() => { const e = new Error('page'); e.code = 'page'; return netWhy(e); }), 'جوجل كان مشغول لحظة، وهحاول تاني لوحدي');
@@ -860,7 +860,8 @@ const T0 = Date.now();
       const a = JSON.parse(GO.post(b)), n = JSON.parse(GN.post(b));
       if (typeof n.t !== 'number' || n.t < 1e12) diff.push(tag + ': مفيش وقت الشيت t'); delete n.t; delete a.t;   // وقت الشيت (t) جديد في النسخة 3
       cost.old[tag] = (cost.old[tag] || 0) + GO.reads.cells - c0; cost.neu[tag] = (cost.neu[tag] || 0) + GN.reads.cells - c1;
-      const nv = Object.assign({}, n); if (o.action === 'pull') { if (nv.v !== 4) diff.push(tag + ': مفيش v'); delete nv.v; }
+      const nv = Object.assign({}, n); if (o.action === 'pull') { if (nv.v !== 5) diff.push(tag + ': مفيش v'); delete nv.v; }
+      if (o.action === 'push') delete nv.tm;   // وقت كل حاجة جوه جوجل (tm) جديد في النسخة 5
       if (o.action === 'ping') { delete a.v; ['v', 'seq', 'url'].forEach(k => delete nv[k]); }   // ping الجديد بيزود النسخة ولينك الجدول بس
       if (JSON.stringify(a) !== JSON.stringify(nv)) diff.push(tag);
       return n;
@@ -885,7 +886,7 @@ const T0 = Date.now();
     eq('كود الشيت الجديد: بآلاف السطور نفس الردود بالظبط زي القديم، ونفس الشيت خانة بخانة، ونفس الرقم', [diff, shOf(GN) === shOf(GO), GN.props.SEQ === GO.props.SEQ, full.out.length, full.pages, inc.out.length, new Set(inc.out.map(r => r.id)).size],
       [[], true, true, N, 4, 25 - 5 + 30, 25 - 5 + 30]);
     const pp = JSON.parse(GN.post(JSON.stringify({key: 'Bench-Key-1234', action: 'ping'})));
-    eq('ping الجديد بيقول النسخة 4 ولينك الجدول نفسه، والقديم نسخة 1', [pp.v, pp.url, pp.n, JSON.parse(GO.post(JSON.stringify({key: 'Bench-Key-1234', action: 'ping'}))).v], [4, 'https://docs.google.com/spreadsheets/d/ss1/edit', N + 30, 1]);
+    eq('ping الجديد بيقول النسخة 5 ولينك الجدول نفسه، والقديم نسخة 1', [pp.v, pp.url, pp.n, JSON.parse(GO.post(JSON.stringify({key: 'Bench-Key-1234', action: 'ping'}))).v], [5, 'https://docs.google.com/spreadsheets/d/ss1/edit', N + 30, 1]);
     console.log('     خانات اتقرت من الشيت (القديم ← الجديد):', Object.keys(cost.old).map(k => `${k}: ${cost.old[k]} ← ${cost.neu[k]}`).join(' | '));
     eq('السحب لو مفيش جديد مبيقراش ولا خانة، والسحب العادي والكامل والإرسال أخف بكتير', [cost.neu.idle, cost.neu.pull1 * 8 < cost.old.pull1, cost.neu.pull0 * 2 < cost.old.pull0, cost.neu.push * 2 < cost.old.push, cost.neu.push2 * 2 < cost.old.push2], [0, true, true, true, true]);
 
@@ -895,11 +896,11 @@ const T0 = Date.now();
       const v3 = fs.readFileSync(path.join(__dirname, 'fixtures/acc-sheet-v3.gs'), 'utf8');
       const G4 = makeGas({noDrive: true}), G3 = makeGas({noDrive: true}), GS = makeGas({noDrive: true}); G4.load(mainCode); G3.load(v3); GS.load(mainCode);
       const P = (G, o) => { const j = JSON.parse(G.post(JSON.stringify(Object.assign({key: 'V4-Key-12345'}, o)))); delete j.t; return j; };
-      const strip = j => { const x = Object.assign({}, j); delete x.v; return JSON.stringify(x); };
+      const strip = j => { const x = Object.assign({}, j); delete x.v; delete x.tm; return JSON.stringify(x); };
       const d = [];
       for (let i = 0; i < 2000; i += 400) { const o = {action: 'push', rows: Array.from({length: 400}, (_, k) => benchRow(i + k, 5000 + i + k))}; if (strip(P(G4, o)) !== strip(P(G3, o))) d.push('push' + i); P(GS, o); }
       [0, 700, 1999].forEach(sn => { const o = {action: 'pull', since: sn}; if (strip(P(G4, o)) !== strip(P(G3, o))) d.push('pull' + sn); });
-      const pa = P(G4, {action: 'ping'}), pb = P(G3, {action: 'ping'}); if (pa.n !== pb.n || pa.seq !== pb.seq || pa.v !== 4 || pb.v !== 3) d.push('ping');
+      const pa = P(G4, {action: 'ping'}), pb = P(G3, {action: 'ping'}); if (pa.n !== pb.n || pa.seq !== pb.seq || pa.v !== 5 || pb.v !== 3) d.push('ping');
       /* sync على GS = pull + push على G3 */
       const ed = [benchRow(10, 990001), benchRow(2000, 990002), benchRow(2001, 990003)], since = 1990;
       const pr = P(G3, {action: 'pull', since}), pu = P(G3, {action: 'push', rows: ed}), sy = P(GS, {action: 'sync', since, rows: ed});
@@ -907,6 +908,19 @@ const T0 = Date.now();
       const big = P(GS, {action: 'sync', since: 0, rows: [benchRow(5000, 999999)]}), idle = P(GS, {action: 'sync', since: Number(GS.props.SEQ), rows: []});
       eq('كود الشيت نسخة 4: الطلبات القديمة زي نسخة 3 بالظبط، وsync = سحب ثم إرسال ثم العدد في طلب واحد', [d, same, [big.more, big.pushed, big.ack.length, big.rows.length], [idle.rows.length, idle.pushed, idle.n]],
         [[], [true, true, false, true, true, true, true, true], [true, false, 0, 1500], [0, false, 2002]]);
+    }
+    /* كود الشيت نسخة 5 قدام نسخة 4: كل الطلبات (وsync كمان) نفس الردود ونفس الشيت بالظبط، والزيادة tm بس (وقت كل حاجة جوه جوجل) */
+    {
+      const v4 = fs.readFileSync(path.join(__dirname, 'fixtures/acc-sheet-v4.gs'), 'utf8');
+      const G5 = makeGas({noDrive: true}), G4 = makeGas({noDrive: true}); G5.load(mainCode); G4.load(v4);
+      const P = (G, o) => { const j = JSON.parse(G.post(JSON.stringify(Object.assign({key: 'V5-Key-12345'}, o)))); delete j.t; return j; };
+      const d = [], tms = [];
+      const cmp = (o, tag) => { const a = P(G5, o), b = P(G4, o); if (a.tm) tms.push(a.tm); delete a.tm; delete a.v; delete b.v; if (JSON.stringify(a) !== JSON.stringify(b)) d.push(tag); };
+      for (let i = 0; i < 1200; i += 400) cmp({action: 'push', rows: Array.from({length: 400}, (_, k) => benchRow(i + k, 5000 + i + k))}, 'push' + i);
+      cmp({action: 'pull', since: 300}, 'pull'); cmp({action: 'sync', since: 1100, rows: [benchRow(5, 990001), benchRow(1200, 990002)]}, 'sync'); cmp({action: 'sync', since: 0, rows: [benchRow(7, 990003)]}, 'syncMore'); cmp({action: 'sync', since: 1201, rows: []}, 'idle');
+      const sy = tms[tms.length - 3];
+      eq('كود الشيت نسخة 5: نفس ردود نسخة 4 ونفس الشيت بالظبط، وsync بيقول وقت السحب والقفل والقراية والكتابة والكل', [d, JSON.stringify(G5.sheets['السجلات'].rows) === JSON.stringify(G4.sheets['السجلات'].rows), tms.length, ['pull', 'lock', 'rd', 'wr', 'all'].every(k => typeof sy[k] === 'number' && sy[k] >= 0)],
+        [[], true, 6, true]);
     }
     /* جهاز بالبرنامج الجديد على شيت لسه عليه الكود القديم: بيتزامن عادي، وبيظهر تحذير أصفر وزرار التحديث بخطوات من جوه الجدول */
     const GOLD = makeGas(), accNew = sheets.acc; GOLD.load(oldAcc);
@@ -924,7 +938,7 @@ const T0 = Date.now();
     eq('زرار "انسخ الكود" بينسخ الكود الجديد نفسه (من غير أي إذن زيادة)', [updCode === mainCode, /DriveApp|ScriptApp|UrlFetchApp/.test(updCode)], [true, false]);
     accNew.sheets['السجلات'] = GOLD.sheets['السجلات']; Object.assign(accNew.props, GOLD.props); sheets.acc = accNew;   // "حدّث" الكود
     await bg(A, 'syncNow()'); await A.evaluate(() => renderSettings()); await A.settle(800);
-    eq('بعد التحديث: التحذير بيختفي من الرئيسية والإعدادات', await A.evaluate(() => [db.cfg.accV, $('#syncBox').classList.contains('warn'), !!$('#accOld')]), [4, false, false]);
+    eq('بعد التحديث: التحذير بيختفي من الرئيسية والإعدادات', await A.evaluate(() => [db.cfg.accV, $('#syncBox').classList.contains('warn'), !!$('#accOld')]), [5, false, false]);
 
     {   // شيت نسخة 4: حركة واحدة = طلب واحد للشيت (كان 3: سحب وإرسال وتأكيد)، والطلب اللي علّق بيتعاد مرة على طول
       const acts = [], op = sheets.acc.post.bind(sheets.acc);
@@ -933,7 +947,7 @@ const T0 = Date.now();
       await bg(A, 'syncNow()');
       const r1 = await A.evaluate(() => [syncErr, pendingRecs().length, db.cfg.syLog[0].d]);
       sheets.acc.post = op;
-      eq('شيت نسخة 4: حركة واحدة اتبعتت في طلب واحد بس', [acts, r1[0], r1[1], /^طلب واحد [\d.]+$/.test(r1[2])], [['sync'], '', 0, true]);
+      eq('شيت نسخة 4: حركة واحدة اتبعتت في طلب واحد بس', [acts, r1[0], r1[1], /^طلب واحد [\d.]+ \(جوه جوجل [\d.]+، كتابة [\d.]+، \d+ سطر\)$/.test(r1[2])], [['sync'], '', 0, true]);
       D1.hangOnce = 1;
       const slow = await A.evaluate(async () => { const t = Date.now(); syT = []; try { const j = await callSheet(syb({action: 'ping'}), undefined, undefined, 1200); return [j.ok, Date.now() - t < 6000, syT.join(' · ')]; } finally { syT = null; } });
       D1.hangOnce = 1;

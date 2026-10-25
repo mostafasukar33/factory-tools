@@ -1114,6 +1114,14 @@ const T0 = Date.now();
       const r = [mine.length > 0, shown, showsPrice, n.value === mine[0].name, $('#dcLines [data-f=price]').value === fmtP(mine[0].price), !box.classList.contains('on')];
       n.value = 'zzzz'; n.dispatchEvent(new Event('input')); r.push(!box.classList.contains('on'));
       closeModal(); return r; }), [true, true, true, true, true, true, true]);
+    {   // كشف الحساب الذكي: صفحات أقل أو زي الأول، والخط أكبر أو زي الأول، والفاتورة لوحدها متلمستش
+      const r = await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), s = stmtData(p.id, '', ''), box = $('#render');
+        const fs = pg => parseFloat(getComputedStyle(pg[0].querySelector('tbody td.n') || pg[0].querySelector('tbody td')).fontSize);
+        ['--tz', '--tp', '--tl'].forEach(k => box.style.removeProperty(k)); const b = buildStmtPages1(p, s), bn = b.length, bf = fs(b);
+        const a = buildStmtPages(p, s), an = a.length, af = fs(a); box.innerHTML = '';
+        return [an <= bn, af >= bf]; });
+      eq('كشف الحساب الذكي: الصفحات مزادتش والخط مصغرش', r, [true, true]);
+    }
     const PGN = await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); const pg = buildStmtPages(p, stmtData(p.id, '', '')); const c = pg[0].querySelectorAll('thead th').length; const fs = parseFloat(getComputedStyle(pg[0].querySelector('tbody td.l')).fontSize); $('#render').innerHTML = ''; return [c, fs >= 16]; });
     eq('كشف الـ PDF: 7 أعمدة وخط كبير', PGN, [7, true]);
     eq('كشف العميل مفيهوش "عميل سوق/مواقع"، والمورد فيه "مورد"', await A.evaluate(() => { const ps = liveParties(), c = ps.find(x => x.sec === 'mkt'), m = ps.find(x => x.sec === 'sup');

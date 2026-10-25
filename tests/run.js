@@ -1126,6 +1126,9 @@ const T0 = Date.now();
         return [an <= bn, af >= bf, al <= bl, ah === bh, !broken]; });
       eq('كشف الحساب الذكي: الصفحات مزادتش والخط مصغرش والبيان مزنقش', r, [true, true, true, true, true]);
     }
+    eq('المؤشر مبيرجعش للمبلغ لو المستخدم دخل خانة تانية بسرعة', await A.evaluate(async () => {
+      modal('<input id="fsA"><input id="fsB">'); $('#fsB').focus(); focusSoon('#fsA', 10); await new Promise(r => setTimeout(r, 60)); const a = document.activeElement.id;
+      document.activeElement.blur(); focusSoon('#fsA', 10); await new Promise(r => setTimeout(r, 60)); const b = document.activeElement.id; closeModal(); return [a, b]; }), ['fsB', 'fsA']);
     eq('معاينة الـ PDF: زوم بالصباعين ودوستين ترجّع', await A.evaluate(() => {
       modal('<div class="pvz"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" style="height:400px"></div>', true); const box = $('#modal .pvz'); pvZoom(box);
       const T = (x, y, i) => new Touch({identifier: i, target: box, clientX: x, clientY: y}), ev = (k, ts) => box.dispatchEvent(new TouchEvent(k, {touches: ts, cancelable: true, bubbles: true}));
@@ -2775,7 +2778,7 @@ const T0 = Date.now();
       }), true);
     }
     eq('مفيش أخطاء في الصفحات', D1.errs.concat(D2 ? D2.errs : [], DM ? DM.errs : []), []);
-  } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); console.log('    ' + (e.stack || '').split('\n').filter(l => /run\.js/.test(l)).slice(0, 3).join(' | ')); if (NAVS.length) console.log('    تحميل صفحات كامل:', NAVS.slice(-25).join(' || ')); try { if (global.__A) console.log('    حالة الحسابات بعدها:', JSON.stringify(await global.__A.evaluate(() => ({db: !!db, lock: $('#lock').classList.contains('on'), swUp: sessionStorage.getItem('sw_up'), now: Date.now(), st: window.__st, dz: db && db.entries.some(e => /^dz/.test(e.id)), dr: typeof docRun})))); } catch (x) {} if (process.env.DBG) console.log(e.stack); }
+  } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); console.log('    ' + (e.stack || '').split('\n').filter(l => /run\.js/.test(l)).slice(0, 3).join(' | ')); if (NAVS.length) console.log('    تحميل صفحات كامل:', NAVS.slice(-25).join(' || ')); try { if (global.__A) console.log('    حالة الحسابات بعدها:', JSON.stringify(await global.__A.evaluate(() => ({db: !!db, lock: $('#lock').classList.contains('on'), swUp: sessionStorage.getItem('sw_up'), now: Date.now(), st: window.__st, dz: db && db.entries.some(e => /^dz/.test(e.id)), dr: typeof docRun, modal: ($('#mask').classList.contains('on') ? $('#modal').textContent.replace(/\s+/g, ' ').slice(0, 200) : '')})))); } catch (x) {} if (process.env.DBG) console.log(e.stack); }
   await browser.close(); srv.close();
   if (SWP) {   // نتيجة قسم ٢٣ اللي اشتغل في نفس الوقت
     const {code, out} = await SWP, m = out.match(/(\d+) نجح، (\d+) فشل/);

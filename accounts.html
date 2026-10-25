@@ -1816,6 +1816,8 @@ function toastUndo(msg, fn, ms = 4000) {
   $('#tUndo').onclick = () => { clearTimeout(toastT); t.style.display = 'none'; t.classList.remove('act'); fn(); };
 }
 function modal(html, wide) { $('#modal').className = 'modal' + (wide ? ' wide' : ''); $('#modal').innerHTML = html; $('#mask').classList.add('on'); }
+/* المؤشر يروح لأول خانة بعد ما النافذة تفتح، إلا لو المستخدم لحق ودخل خانة تانية (على موبايل بطيء كان بيرجّع المؤشر للمبلغ والكلام يتكتب فيه) */
+function focusSoon(sel, ms) { setTimeout(() => { const el = $(sel), a = document.activeElement; if (!el || (a && a !== el && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return; el.focus(); }, ms); }
 function closeModal() { $('#mask').classList.remove('on'); $('#modal').innerHTML = ''; }
 function confirmBox(msg, okLabel = 'تأكيد', danger = false) {
   return new Promise(res => {
@@ -2865,7 +2867,7 @@ function payModal(p, kind, e, opts = {}) {
   showChk();
   $('#pyX').onclick = closeModal;
   let warned = false;
-  if (isNew) setTimeout(() => $('#pyAmt') && $('#pyAmt').focus(), 50);
+  if (isNew) focusSoon('#pyAmt', 50);
   const cnSt = {a: null};
   let again = false;   // "حفظ وسجّل تاني" (بطلبه 17/10/2026): بعد الحفظ بيرجع لاختيار العميل بنفس التاريخ والخزنة
   if ($('#pyAgain')) $('#pyAgain').onclick = () => { again = true; $('#pyOk').onclick(); };
@@ -2931,7 +2933,7 @@ function entryModal(p, e) {
   $$('#emDir button').forEach(b => b.onclick = () => { dir = b.dataset.v; $$('#emDir button').forEach(x => x.classList.toggle('on', x === b)); });
   $('#emOpen').onchange = () => { if ($('#emOpen').checked && !$('#emDesc').value.trim()) $('#emDesc').value = 'رصيد أول المدة'; };
   $('#emX').onclick = closeModal;
-  if (isNew) setTimeout(() => $('#emAmt') && $('#emAmt').focus(), 50);
+  if (isNew) focusSoon('#emAmt', 50);
   $('#emOk').onclick = () => {
     const amt = toP($('#emAmt').value), date = $('#emDate').value, desc = $('#emDesc').value.trim().replace(/\s+/g, ' '), kind = $('#emOpen').checked ? 'open' : 'man';
     if (amt <= 0) return toast('اكتب المبلغ');
@@ -4131,7 +4133,7 @@ function quickPick(what) {
   draw(); $('#qpQ').oninput = draw;
   $('#qpQ').onkeydown = e => { if (e.key === 'Enter') { const f = $('#qpL .pt'); if (f) f.click(); } };
   $('#qpX').onclick = quickModal;
-  setTimeout(() => $('#qpQ') && $('#qpQ').focus(), 60);
+  focusSoon('#qpQ', 60);
 }
 $('#fabNew').onclick = quickModal;
 (() => { const f = $('#fabNew'); let y = scrollY;
@@ -4859,7 +4861,7 @@ function txModal(type, t, opts = {}) {
     <button class="btn line" id="txX" type="button">رجوع</button></div>`);
   bindMoney($('#txA'));
   $('#txX').onclick = closeModal;
-  if (isNew) setTimeout(() => $('#txA') && $('#txA').focus(), 50);
+  if (isNew) focusSoon('#txA', 50);
   const cnSt = {a: null};
   let again = false;   // "حفظ وسجّل تاني" (بطلبه 17/10/2026): النافذة بتتفتح تاني فاضية بنفس التاريخ والخزنة
   /* البند بيتفهم من الكلام (بطلبه): الكلام بيكسب حتى لو البند كان مختار قبل ما يكتب. لو غيّر البند بإيده بعد الكلام، اختياره بيفضل لحد ما يغيّر الكلام */
@@ -5125,7 +5127,7 @@ function partnerTxModal(t, kind = 'draw', ptId = '') {
   $$('#ptK button').forEach(b => b.onclick = () => { kind = b.dataset.v; $$('#ptK button').forEach(x => x.classList.toggle('on', x === b)); });
   $('#ptX').onclick = closeModal;
   if (isNew) $('#ptP').onchange = () => { const v = pDef($('#ptP').value); if ([...$('#ptV').options].some(o => o.value === v)) $('#ptV').value = v; };
-  if (isNew) setTimeout(() => $('#ptA') && $('#ptA').focus(), 50);
+  if (isNew) focusSoon('#ptA', 50);
   $('#ptOk').onclick = () => {
     const amt = toP($('#ptA').value), date = $('#ptD').value, pnote = $('#ptN').value.trim(), pt = $('#ptP').value, vault = $('#ptV').value;
     if (!pt) return toast('اختار الشريك');
@@ -5479,7 +5481,7 @@ function searchModal(q0) {
   $('#saQ').oninput = () => { clearTimeout(tm); tm = setTimeout(draw, 200); };
   $('#saX2').onclick = closeModal;
   if (q0) { $('#saQ').value = q0; draw(); }
-  setTimeout(() => $('#saQ') && $('#saQ').focus(), 50);
+  focusSoon('#saQ', 50);
 }
 let repColMode = 'week';   // تقرير التحصيل: أسبوعي (أسابيع الشهر، السبت للجمعة) أو شهري (شهور السنة)
 let repKind = 'home', repSum = 'month', repSide = 'mkt', repMode = 'year', repDay = '', repMonth = '', repYear = '', repFrom = '', repTo = '', repVault = '', repItemKind = 'inv';
@@ -6249,7 +6251,7 @@ function ivMoveModal(v, kind, m, month) {
   bindMoney($('#imA'));
   if ($('#imUse')) $('#imUse').onclick = () => { $('#imA').value = fmtP(sg.amt); $('#imA').dispatchEvent(new Event('input')); };
   $('#imX').onclick = closeModal;
-  if (isNew) setTimeout(() => $('#imA') && $('#imA').focus(), 50);
+  if (isNew) focusSoon('#imA', 50);
   $('#imOk').onclick = () => {
     const amt = toP($('#imA').value), date = $('#imD').value, note = $('#imN').value.trim(), vault = canV ? $('#imV').value : '', mo = kind === 'prof' ? $('#imM').value : '';
     if (amt < 0 || (amt === 0 && kind !== 'prof')) return toast('أدخل المبلغ');
@@ -7145,7 +7147,7 @@ function mkWantPick() {
     $$('#wpL .pt').forEach(el => el.onclick = () => mkWantModal(P.get(el.dataset.p), renderMkt));
   };
   draw(); $('#wpQ').oninput = draw; $('#wpX').onclick = closeModal;
-  setTimeout(() => $('#wpQ') && $('#wpQ').focus(), 60);
+  focusSoon('#wpQ', 60);
 }
 function mkWantCard() {
   const R = mkWantRows(), n = R.filter(x => x.paid).length;
@@ -7809,7 +7811,7 @@ function mkReturn(ops, name) {
     <div class="fld"><label>اكتبله إيه الغلط (هيظهرله عنده)</label><input class="inp" id="rtN" autocomplete="off" placeholder="مثلاً: المبلغ 4,500 مش 5,000"></div>
     <div class="g2"><button class="btn red" id="rtOk" type="button">رجّعها</button><button class="btn line" id="rtX" type="button">إلغاء</button></div>`);
   $('#rtX').onclick = closeModal;
-  setTimeout(() => $('#rtN') && $('#rtN').focus(), 60);
+  focusSoon('#rtN', 60);
   $('#rtOk').onclick = () => {
     const note = $('#rtN').value.trim() || 'راجعها';
     ops.forEach(o => { if (mkState(o) === 'new') mkSetSt(o.id, {back: note, bv: o.upd}); });

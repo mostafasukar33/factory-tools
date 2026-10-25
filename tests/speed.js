@@ -15,6 +15,7 @@ const SLOW = 4;                         // المعالج أبطأ كام مرة
 const LIMIT = +process.env.SPEED_LIMIT || 4000;   // أقصى وقت لأي حاجة (ملّي ثانية على المعالج البطيء)، حوالي 3 أضعاف وقتها دلوقتي علشان جهاز GitHub ممكن يبقى أبطأ
 const OPEN_LIMIT = 8000;   // الفتح: فك تشفير الحسابات كلها مرة واحدة (~3.6 ثانية هنا للحجم ده، يعني حوالي ثانية على الموبايل)
 const SIZE = {parties: 300, entries: 30000, txs: 8000};
+const T00 = Date.now();
 
 const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml'};
 const srv = http.createServer((q, r) => {
@@ -31,6 +32,8 @@ const srv = http.createServer((q, r) => {
   await ctx.route(/^https:/, r => r.abort());   // مفيش نت: الشيت وتليجرام وGitHub برّه الاختبار ده
   const A = await ctx.newPage(), errs = [];
   A.on('pageerror', e => errs.push(e.message));
+  const navs = []; A.on('framenavigated', f => { if (f === A.mainFrame()) navs.push(((Date.now() - T00) / 1000).toFixed(1) + ' ' + f.url().replace(base, '')); });   // لو وقف: مين عمل تحميل للصفحة
+  global.__navs = navs;
   await A.goto(base + '/accounts.html');
   await A.fill('#suP', PASS); await A.fill('#suP2', PASS); await A.click('#suGo');
   await A.waitForSelector('#lock', {state: 'hidden'});
@@ -69,6 +72,7 @@ const srv = http.createServer((q, r) => {
   /* كل حاجة بتتقاس مرتين وبناخد الأقل (علشان لحظة زحمة في الجهاز متفشّلش الاختبار) */
   const R = [];
   const measure = async (name, code, arg) => {
+    global.__step = name;
     let best = Infinity;
     for (let k = 0; k < 2; k++) best = Math.min(best, await A.evaluate(async ([c, a]) => { const f = (0, eval)(c); const t = performance.now(); await f(a); return performance.now() - t; }, [code, arg]));
     R.push([name, Math.round(best)]);
@@ -85,7 +89,7 @@ const srv = http.createServer((q, r) => {
   await measure('الإعدادات', pg('set'));
 
   /* فتح البرنامج: من بعد كلمة السر لحد ما القايمة تظهر (فيها فك التشفير، وده ثابت ومقصود علشان الأمان) */
-  let open = Infinity;
+  let open = Infinity; global.__step = 'الفتح';
   for (let k = 0; k < 2; k++) {
     await A.reload(); await A.waitForSelector('#lkP');
     await A.fill('#lkP', PASS);
@@ -104,4 +108,4 @@ const srv = http.createServer((q, r) => {
   await browser.close(); srv.close();
   console.log(fails ? `\n✖ ${fails} حاجة أبطأ من الحد` : '\n✔ كله أسرع من الحد');
   process.exit(fails ? 1 : 0);
-})().catch(e => { console.log('✖ اختبار السرعة وقف:', e.message); process.exit(1); });
+})().catch(e => { console.log('✖ اختبار السرعة وقف:', e.message, '|', (e.stack || '').split('\n').filter(l => /speed\.js/.test(l)).slice(0, 2).join(' | '), '| تحميل الصفحة:', (global.__navs || []).join(' , '), '| مرحلة:', global.__step || ''); process.exit(1); });

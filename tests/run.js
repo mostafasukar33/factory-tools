@@ -897,7 +897,7 @@ const T0 = Date.now();
     await bg(A, 'syncNow()'); await A.settle(500);
     eq('شيت بالكود القديم: المزامنة شغالة عادي والتحذير الأصفر ظاهر', await A.evaluate(() => [syncErr, pendingRecs().length, db.cfg.accV, $('#syncBox').classList.contains('warn'), !!$('#syUpd')]), ['', 0, 1, true, true]);
     eq('الحركة وصلت الشيت القديم', GOLD.sheets['السجلات'].rows.some(r => r[0] === 't_oldsheet'), true);
-    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.settle(800);
+    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.waitForFunction(() => document.body.dataset.pg === 'set' && $('#shUpd')); await A.evaluate(() => setOpenAll()); await A.settle(800);   // نستنى صفحة الإعدادات تترسم الأول (الرسم بعدها بيقفل "متقدم" تاني)
     eq('الإعدادات: تحذير "الكود قديم" وزرار ثابت "تحديث كود شيت الحسابات"', [!!(await A.$('#accOld')), (await A.textContent('#shUpd')).includes('تحديث كود شيت الحسابات')], [true, true]);
     await A.click('#shUpd'); await A.settle(150);
     eq('خطوات التحديث من جوه الجدول: إزاي تعرفه (بدون عنوان، ورقة السجلات جنب الورقة1، العناوين) ولينك الجدول نفسه', await A.evaluate(() => { const t = $('#modal').textContent; return [t.includes('الإضافات (Extensions)'), t.includes('جدول بيانات بدون عنوان'), t.includes('السجلات') && t.includes('الورقة1') && t.includes('رقم المزامنة'), t.includes('New version'), !!$('#modal a[href*="docs.google.com/spreadsheets/d/ss1"]')]; }), [true, true, true, true, true]);

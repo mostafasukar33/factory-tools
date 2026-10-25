@@ -3298,7 +3298,7 @@ const scriptFor = () => `// حسابات فلاش أون (مقفول بمفتا�
 const SHEET = 'السجلات';
 const HEAD = ['id','النوع','آخر تعديل','رقم المزامنة','ملغي','التاريخ','الحساب','القسم','البيان','مدين','دائن','البيانات (لا تعدّلها)'];
 const W = HEAD.length;
-const VER = 3;   /* 3 = كل رد فيه وقت الشيت t. 2 = السحب بيرد على طول لو مفيش جديد، وبيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس */
+const VER = 4;   /* 4 = sync: سحب وإرسال وعدد السطور في طلب واحد (بدل 3 طلبات). 3 = كل رد فيه وقت الشيت t. 2 = السحب بيرد على طول لو مفيش جديد، وبيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس */
 const PAGE = 1500;
 function sh_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -3326,6 +3326,7 @@ function doPost(e) {
   if (req.action === 'ping') return out_({ok: true, app: 'fo-acc', v: VER, n: Math.max(sh_().getLastRow() - 1, 0), seq: seq_(), url: SpreadsheetApp.getActiveSpreadsheet().getUrl()});
   if (req.action === 'push') return out_(push_(req.rows || []));
   if (req.action === 'pull') return out_(pull_(Number(req.since) || 0));
+  if (req.action === 'sync') return out_(sync_(Number(req.since) || 0, req.rows || []));
   return out_({ok: false, error: 'action'});
 }
 function push_(rows) {
@@ -3382,10 +3383,21 @@ function pull_(since) {
   const rows = page.map(x => { const r = got[x[1]]; try { return {id: String(r[0]), kind: String(r[1]), upd: Number(r[2]), del: r[4] === 'نعم', data: JSON.parse(r[W - 1])}; } catch (e) { return null; } }).filter(Boolean);
   return {ok: true, rows: rows, next: page.length ? page[page.length - 1][0] : since, more: v.length > page.length, v: VER};
 }
+/* طلب واحد بدل 3: بيسحب الجديد الأول (زي pull بالظبط، قبل الإرسال علشان التطبيق يكشف التعارض)،
+   وبعدين بيكتب الحركات (زي push بالظبط) لو مفيش جديد فاضل يتسحب، وبيرد بعدد السطور (زي ping) */
+function sync_(since, rows) {
+  try {
+    const p = pull_(since);
+    p.ack = []; p.pushed = false;
+    if (!p.more && rows.length) { const u = push_(rows); if (!u.ok) return u; p.ack = u.ack; p.seq = u.seq; p.pushed = true; }
+    p.n = Math.max(sh_().getLastRow() - 1, 0);
+    return p;
+  } catch (err) { return {ok: false, error: String(err)}; }
+}
 function out_(o) { o.t = Date.now(); return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }   // t = وقت الشيت، التطبيق بيستخدمه بدل ساعة الجهاز`;
 /* نسخة كود شيت الحسابات اللي البرنامج مستنيها. القديم (1) بيفضل شغال عادي بس أبطأ مع كتر الحركات، فبيظهر تحذير أصفر بس.
    النسخة بتيجي من رد السحب (v) ومن ping (ومعاه لينك الجدول نفسه url علشان زرار التحديث يفتحه على طول) */
-const ACC_VER = 3;
+const ACC_VER = 4;
 function accNote(j) {
   if (!db || !j || j.ok !== true) return;
   const v = Number(j.v) || 1, c = db.cfg;
@@ -3398,13 +3410,15 @@ const accOld = () => !!(db && db.cfg.sheetOk && db.cfg.accV && db.cfg.accV < ACC
    الإرسال آمن يتعاد: الشيت بيكتب كل سجل بالـ id بتاعه فوق نفسه */
 async function callSheet(body, url = db.cfg.sheetUrl, key = db.cfg.sheetKey, ms = 45000, tries) {
   tries = tries || (db && db.cfg.sheetOk && url === db.cfg.sheetUrl ? 3 : 1);
+  let slowAgain = 0;
   for (let t = 1; ; t++) {
-    const t0 = Date.now(), mine = db && url === db.cfg.sheetUrl;
+    const t0 = Date.now(), mine = SYB.has(body);
     try { const r = await callSheet1(body, url, key, ms); if (mine) syMark(body.action, t0); return r; }
     /* جوجل رد بصفحة أو الطلب وقع من غير رد (النت اتهز لحظة): نستنى ونعيد. الإرسال آمن يتعاد */
     catch (e) {
       if (mine) syMark(body.action, t0, true);
       if (e.code === 'stale' && t < tries + 3) continue;   // طلب من قبل ما البرنامج يستخبى: نبعته تاني على طول (مش محسوب من المحاولات)
+      if (e.code === 'slow' && SYB.has(body) && !slowAgain++) continue;   // طلب مزامنة علّق: جوجل لما بيرد بيرد في ثواني، فبنبعته تاني مرة واحدة على طول بدل ما نستنى المزامنة الجاية (آمن: الشيت مبيكررش)
       if ((e.code !== 'page' && e.name !== 'TypeError') || t >= tries) throw e; await new Promise(r => setTimeout(r, 2000 * t)); }
   }
 }
@@ -3418,7 +3432,7 @@ document.addEventListener('visibilitychange', () => {
   sheetLive.forEach(c => { if (c.t0 < Date.now()) { c.stale = true; c.ctl.abort(); } });
 });
 async function callSheet1(body, url, key, ms) {
-  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms), me = {ctl, t0: Date.now(), stale: false};
+  const ctl = new AbortController(), me = {ctl, t0: Date.now(), stale: false, slow: false}, tm = setTimeout(() => { me.slow = true; ctl.abort(); }, ms);
   sheetLive.add(me);
   try {
     const t0 = Date.now();
@@ -3435,6 +3449,7 @@ async function callSheet1(body, url, key, ms) {
     srvClock(j, t0); return j;
   } catch (e) {
     if (me.stale) { const x = new Error('stale'); x.code = 'stale'; throw x; }
+    if (me.slow) { const x = new Error('الشيت مردش في الوقت المحدد'); x.code = 'slow'; x.name = 'AbortError'; throw x; }
     throw e;
   } finally { clearTimeout(tm); sheetLive.delete(me); }
 }
@@ -3503,7 +3518,8 @@ let syncing = false, syncT = null, syncErr = '', syncWhy = '', lastPullAt = 0, s
 function syLog(ok, why, n) { const L = (db.cfg.syLog || []).slice(0, 7); L.unshift({at: nowS(), s: Math.round((Date.now() - syncAt) / 100) / 10, ok, why: why || '', n: n || 0, d: (syT || []).join(' · ')}); db.cfg.syLog = L; }
 /* كل طلب للشيت وقت المزامنة بياخد قد إيه (سحب/إرسال/تأكيد، و✖ = المحاولة دي وقعت واتعادت)، علشان نعرف الوقت بيروح فين */
 let syT = null;
-const syMark = (a, t0, bad) => { if (syT) syT.push(({pull: 'سحب', push: 'إرسال', ping: 'تأكيد'}[a] || a) + ' ' + ((Date.now() - t0) / 1000).toFixed(1) + (bad ? '✖' : '')); };
+const SYB = new WeakSet(), syb = b => (SYB.add(b), b);   // طلبات المزامنة نفسها بس (مش الأسئلة التانية اللي بتحصل في نفس الوقت)
+const syMark = (a, t0, bad) => { if (syT) syT.push(({pull: 'سحب', push: 'إرسال', ping: 'تأكيد', sync: 'طلب واحد'}[a] || a) + ' ' + ((Date.now() - t0) / 1000).toFixed(1) + (bad ? '✖' : '')); };
 function schedSync() { clearTimeout(syncT); syncT = setTimeout(() => syncNow(), 1500); }
 /* اللاب بيتقفل أو البرنامج بيستخبى وفيه حركات لسه متبعتتش: بنبعتها على طول بطلب بيكمّل حتى لو الصفحة نامت (keepalive، لحد 60 ألف حرف).
    مبنعلّمهاش "اتبعتت" هنا: المزامنة الجاية بتسحب الأول وبتتأكد زي العادي (الحركة اللي وصلت مبتتبعتش تاني ومش تعارض) */
@@ -3518,45 +3534,97 @@ function pushOnHide() {
   try { fetch(db.cfg.sheetUrl, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body, keepalive: true}).catch(() => {}); } catch (e) { return false; }
   return true;
 }
+/* السطور اللي نزلت من الشيت: تتدمج، ولو حركة لسه متبعتتش هنا اتعدّلت على جهاز تاني = تعارض (الأحدث بيكسب زي ما هو) */
+function pullRows(rows, clash) {
+  let got = 0;
+  rows.forEach(r => {
+    const cur = IDX[r.kind] && r.id && r.data ? IDX[r.kind].get(r.id) : null;
+    const c = cur && cur.sy !== undefined && cur.sy !== cur.upd && r.upd !== cur.sy && r.upd !== cur.upd
+      && !sameData(cur, Object.assign({}, r.data, {del: !!r.del})) ? {mine: recSum(r.kind, cur), mu: cur.upd} : null;
+    if (mergeRow(r)) got++;
+    if (c) clash.push({at: nowS(), id: r.id, kind: r.kind, here: c.mu > r.upd, mine: c.mine, theirs: recSum(r.kind, Object.assign({}, r.data, {del: !!r.del}))});
+  });
+  return got;
+}
+/* دفعة الإرسال الجاية: 50 حركة بالكتير. السجل الأكبر من خانة الشيت حتى بعد قص سجل التعديلات بيتعلّم ومبيتبعتش،
+   ولحد ~250 ألف حرف في الدفعة (الحركات اللي سجل تعديلاتها كبير كانت بتخلي الدفعة تقيلة على جوجل وتعدّي وقتها فالمزامنة تفضل تعيد) */
+function sheetBatch() {
+  for (;;) {
+    const p = pendingRecs(); if (!p.length) return [];
+    let sz = 0;
+    const batch = p.slice(0, 50).map(([kind, r]) => [kind, r, sheetData(r)]).filter(([kind, r, d]) => JSON.stringify(d).length <= CELL_MAX || (r.big = r.upd, false))
+      .filter((x, i) => { sz += JSON.stringify(x[2]).length; return !i || sz <= SYNC_BATCH; });
+    if (batch.length) return batch;
+  }
+}
+/* وقت الاستنا لطلب المزامنة: 20 ثانية + ثانية لكل 10 آلاف حرف (الدفعة التقيلة لحد 45). جوجل لما بيرد بيرد في ثواني (السجل عنده 1.5–3 ثواني للطلب)،
+   فاللي عدّى ده علّق، وبيتبعت تاني مرة واحدة على طول (callSheet) بدل ما يستنى 45 ثانية */
+const syncMs = rows => Math.min(45000, 20000 + Math.round(JSON.stringify(rows).length / 10));
+const batchRows = batch => batch.map(([kind, r, d]) => ({id: r.id, kind, upd: r.upd, del: !!r.del, view: viewOf(kind, r).map(clipCell), data: d}));
+/* الطريقة الجديدة (شيت نسخة 4): كل طلب sync بيسحب الجديد وبعدين يكتب الدفعة، فحركة واحدة = طلب واحد بدل 3.
+   لو فيه جديد كتير (more) الشيت بيسحب بس ومبيكتبش، فبنكمّل لحد ما السحب يخلص والحركات كلها تتبعت */
+async function sync1(d0, clash) {
+  let got = 0, pushed = 0, last = null;
+  for (let guard = 0; guard < 1000; guard++) {
+    const batch = sheetBatch(), rows = batchRows(batch);
+    let j = null;
+    for (let t = 0; t < 3; t++) {   // لو الشيت مشغول (القفل) بنستنى ونعيد
+      j = await callSheet(syb({action: 'sync', since: db.cfg.cursor, rows}), undefined, undefined, syncMs(rows));
+      if (db !== d0) return null;
+      if (j && j.ok === false && /lock/i.test(String(j.error)) && t < 2) { await new Promise(r => setTimeout(r, 2500)); continue; }
+      break;
+    }
+    if (j && j.ok === false && j.error === 'action') { db.cfg.accV = 3; return {got, pushed, last: null}; }   // الشيت رجع للكود القديم: نكمّل بالطريقة القديمة
+    if (!j || j.ok !== true || !Array.isArray(j.rows)) { const x = new Error(j && j.error ? String(j.error) : 'الشيت مردش ok'); x.srv = true; throw x; }
+    accNote({ok: true, v: j.v});
+    got += pullRows(j.rows, clash);
+    db.cfg.cursor = j.next;
+    if (j.pushed) {
+      const ack = new Set(j.ack || []), miss = batch.filter(([k, r]) => !ack.has(r.id)).length;
+      if (miss) { const x = new Error(`الشيت أكد استلام ${batch.length - miss} من ${batch.length} حركة بس`); x.srv = true; throw x; }
+      batch.forEach(([k, r], i) => { if (r.upd === rows[i].upd) r.sy = r.upd; });
+      pushed += batch.length; renderSyncBox();
+    }
+    last = j;
+    if (!j.more && !pendingRecs().length) break;
+  }
+  return {got, pushed, last};
+}
 async function syncNow(manual) {
   if (!db) return;
   if (!db.cfg.sheetUrl || !db.cfg.sheetOk) { if (manual) toast('اربط الشيت الأول من الإعدادات'); return; }
   if (syncing) { syncAgain = true; return; }   // حركة اتسجلت والمزامنة شغالة: تتبعت أول ما اللي شغالة تخلص، مش بعد 30 ثانية
   syncing = true; syncAgain = false; syncErr = ''; syncAt = Date.now(); syT = []; renderSyncBox();
   const d0 = db;
-  let got = 0, pushed = 0;
+  let got = 0, pushed = 0, syncN = null;
   try {
     /* السحب الأول: علشان لو جهاز تاني عدّل نفس الحركة اللي اتعدّلت هنا ولسه متبعتتش نعرف ونطلّع تنبيه "تعارض"،
        بدل ما واحد يكتب فوق التاني من غير ما حد يحس. الأحدث تعديلاً هو اللي بيكسب زي ما هو */
-    let more = true;
     const clash = [];
+    /* الشيت نسخة 4 أو أحدث: طلب واحد (sync) بيسحب ويبعت ويقول عدد السطور، بدل سحب ثم إرسال ثم تأكيد.
+       لو الشيت رجع قديم (رد بـ action) بنرجع للطريقة القديمة على طول في نفس المزامنة */
+    if ((db.cfg.accV || 0) >= 4) {
+      const r1 = await sync1(d0, clash);
+      if (db !== d0) return;
+      if (r1) { got += r1.got; pushed += r1.pushed; syncN = r1.last; }
+    }
+    let more = (db.cfg.accV || 0) < 4;
     while (more) {
-      const j = await callSheet({action: 'pull', since: db.cfg.cursor});
+      const j = await callSheet(syb({action: 'pull', since: db.cfg.cursor}), undefined, undefined, syncMs([]));
       if (db !== d0) return;
       if (!j || j.ok !== true || !Array.isArray(j.rows)) { const x = new Error(j && j.error ? String(j.error) : 'الشيت مردش ok'); x.srv = true; throw x; }
       accNote({ok: true, v: j.v});
-      j.rows.forEach(r => {
-        const cur = IDX[r.kind] && r.id && r.data ? IDX[r.kind].get(r.id) : null;
-        const c = cur && cur.sy !== undefined && cur.sy !== cur.upd && r.upd !== cur.sy && r.upd !== cur.upd
-          && !sameData(cur, Object.assign({}, r.data, {del: !!r.del})) ? {mine: recSum(r.kind, cur), mu: cur.upd} : null;
-        if (mergeRow(r)) got++;
-        if (c) clash.push({at: nowS(), id: r.id, kind: r.kind, here: c.mu > r.upd, mine: c.mine, theirs: recSum(r.kind, Object.assign({}, r.data, {del: !!r.del}))});
-      });
+      got += pullRows(j.rows, clash);
       db.cfg.cursor = j.next; more = !!j.more;
     }
     if (clash.length) noteClash(clash);
-    let p = pendingRecs();
+    let p = (db.cfg.accV || 0) < 4 ? pendingRecs() : [];
     while (p.length) {
-      /* دفعات صغيرة: 50 حركة كل مرة. السجل الأكبر من خانة الشيت حتى بعد قص سجل التعديلات بيتعلّم ومبيتبعتش */
-      /* ولحد ~250 ألف حرف في الدفعة: الحركات اللي سجل تعديلاتها كبير كانت بتخلي الدفعة تقيلة على جوجل وتعدّي وقتها فالمزامنة تفضل تعيد */
-      let sz = 0;
-      const batch = p.slice(0, 50).map(([kind, r]) => [kind, r, sheetData(r)]).filter(([kind, r, d]) => JSON.stringify(d).length <= CELL_MAX || (r.big = r.upd, false))
-        .filter((x, i) => { sz += JSON.stringify(x[2]).length; return !i || sz <= SYNC_BATCH; });
-      if (!batch.length) { p = pendingRecs(); continue; }
-      const rows = batch.map(([kind, r, d]) => ({id: r.id, kind, upd: r.upd, del: !!r.del, view: viewOf(kind, r).map(clipCell), data: d}));
+      const batch = sheetBatch(), rows = batchRows(batch);
+      if (!batch.length) break;
       let j = null;
       for (let t = 0; t < 3; t++) {   // لو الشيت مشغول (القفل) بنستنى ونعيد، مش بنرفض على طول
-        j = await callSheet({action: 'push', rows});
+        j = await callSheet(syb({action: 'push', rows}), undefined, undefined, syncMs(rows));
         if (db !== d0) return;
         if (j && j.ok === false && /lock/i.test(String(j.error)) && t < 2) { await new Promise(r => setTimeout(r, 2500)); continue; }
         break;
@@ -3572,8 +3640,8 @@ async function syncNow(manual) {
     }
     /* اتأكد إن الشيت فعلاً اتملى: عدد السجلات اللي فيه لازم يساوي (أو يزيد عن) اللي على الجهاز */
     if (pushed) {
-      const v = await callSheet({action: 'ping'});
-      if (v && v.app === 'fo-acc') accNote(v);
+      let v = syncN;   // الطريقة الجديدة: عدد السطور جه مع آخر رد، من غير طلب تأكيد لوحده
+      if (!v) { v = await callSheet(syb({action: 'ping'}), undefined, undefined, syncMs([])); if (v && v.app === 'fo-acc') accNote(v); }
       const total = Object.values(STORE).reduce((n, a) => n + db[a].length, 0) - bigRecs().filter(r => r.sy === undefined).length;
       if (!v || v.ok !== true || !(v.n >= total)) {
         const retry = nowS() - (db.cfg.vfAt || 0) > 180000;

@@ -829,10 +829,10 @@ const T0 = Date.now();
       {   // دفعة تقيلة بتتقسم (لحد ~250 ألف حرف)، وسجل المحاولات بيبان في الإعدادات
         await A.settle(500); await A.waitForFunction(() => !syncing && !syncAgain);
         await A.evaluate(() => { SYNC_BATCH = 50000; liveParties().slice(0, 3).forEach((p, i) => { p.note = 'دفعة تقيلة ' + i + ' ' + 'س'.repeat(30000); p.upd = nowS(); }); saveDB(); clearTimeout(syncT); });
-        await bg(A, `(() => { const c = callSheet; window.__pushes = []; callSheet = (b, ...r) => { if (b.action === 'push') __pushes.push(b.rows.length); return c(b, ...r); }; return syncNow().finally(() => { callSheet = c; }); })()`);
+        await bg(A, `(() => { const c = callSheet; window.__pushes = []; callSheet = (b, ...r) => { if (b.action === 'push' || (b.action === 'sync' && b.rows.length)) __pushes.push(b.rows.length); return c(b, ...r); }; return syncNow().finally(() => { callSheet = c; }); })()`);
         const [pushes, left, log] = await A.evaluate(() => { SYNC_BATCH = 250000; return [__pushes, pendingRecs().length, db.cfg.syLog[0]]; });
         eq('دفعة تقيلة اتقسمت على أكتر من طلب ووصلت كلها', [pushes.length > 1, pushes.reduce((a, b) => a + b, 0) >= 3, left], [true, true, 0]);
-        eq('سجل المزامنة: آخر محاولة نجحت واتبعت فيها الحركات، ووقت كل طلب (سحب ثم إرسال ثم تأكيد)', [log.ok, log.n >= 3, typeof log.s, /^سحب [\d.]+ · إرسال [\d.]+ · (إرسال [\d.]+ · )+تأكيد [\d.]+$/.test(log.d)], [true, true, 'number', true]);
+        eq('سجل المزامنة: آخر محاولة نجحت واتبعت فيها الحركات، ووقت كل طلب (طلب واحد لكل دفعة)', [log.ok, log.n >= 3, typeof log.s, /^طلب واحد [\d.]+( · طلب واحد [\d.]+)+$/.test(log.d)], [true, true, 'number', true]);
         await A.evaluate(() => { liveParties().slice(0, 3).forEach(p => { p.note = ''; p.upd = nowS(); }); saveDB(); clearTimeout(syncT); }); await bg(A, 'syncNow()');
       }
       eq('رسالة صفحة جوجل لشيت كان شغال: مشغول لحظة مش تسجيل دخول', await A.evaluate(() => { const e = new Error('page'); e.code = 'page'; return netWhy(e); }), 'جوجل كان مشغول لحظة، وهحاول تاني لوحدي');
@@ -860,7 +860,7 @@ const T0 = Date.now();
       const a = JSON.parse(GO.post(b)), n = JSON.parse(GN.post(b));
       if (typeof n.t !== 'number' || n.t < 1e12) diff.push(tag + ': مفيش وقت الشيت t'); delete n.t; delete a.t;   // وقت الشيت (t) جديد في النسخة 3
       cost.old[tag] = (cost.old[tag] || 0) + GO.reads.cells - c0; cost.neu[tag] = (cost.neu[tag] || 0) + GN.reads.cells - c1;
-      const nv = Object.assign({}, n); if (o.action === 'pull') { if (nv.v !== 3) diff.push(tag + ': مفيش v'); delete nv.v; }
+      const nv = Object.assign({}, n); if (o.action === 'pull') { if (nv.v !== 4) diff.push(tag + ': مفيش v'); delete nv.v; }
       if (o.action === 'ping') { delete a.v; ['v', 'seq', 'url'].forEach(k => delete nv[k]); }   // ping الجديد بيزود النسخة ولينك الجدول بس
       if (JSON.stringify(a) !== JSON.stringify(nv)) diff.push(tag);
       return n;
@@ -885,10 +885,29 @@ const T0 = Date.now();
     eq('كود الشيت الجديد: بآلاف السطور نفس الردود بالظبط زي القديم، ونفس الشيت خانة بخانة، ونفس الرقم', [diff, shOf(GN) === shOf(GO), GN.props.SEQ === GO.props.SEQ, full.out.length, full.pages, inc.out.length, new Set(inc.out.map(r => r.id)).size],
       [[], true, true, N, 4, 25 - 5 + 30, 25 - 5 + 30]);
     const pp = JSON.parse(GN.post(JSON.stringify({key: 'Bench-Key-1234', action: 'ping'})));
-    eq('ping الجديد بيقول النسخة 3 ولينك الجدول نفسه، والقديم نسخة 1', [pp.v, pp.url, pp.n, JSON.parse(GO.post(JSON.stringify({key: 'Bench-Key-1234', action: 'ping'}))).v], [3, 'https://docs.google.com/spreadsheets/d/ss1/edit', N + 30, 1]);
+    eq('ping الجديد بيقول النسخة 4 ولينك الجدول نفسه، والقديم نسخة 1', [pp.v, pp.url, pp.n, JSON.parse(GO.post(JSON.stringify({key: 'Bench-Key-1234', action: 'ping'}))).v], [4, 'https://docs.google.com/spreadsheets/d/ss1/edit', N + 30, 1]);
     console.log('     خانات اتقرت من الشيت (القديم ← الجديد):', Object.keys(cost.old).map(k => `${k}: ${cost.old[k]} ← ${cost.neu[k]}`).join(' | '));
     eq('السحب لو مفيش جديد مبيقراش ولا خانة، والسحب العادي والكامل والإرسال أخف بكتير', [cost.neu.idle, cost.neu.pull1 * 8 < cost.old.pull1, cost.neu.pull0 * 2 < cost.old.pull0, cost.neu.push * 2 < cost.old.push, cost.neu.push2 * 2 < cost.old.push2], [0, true, true, true, true]);
 
+    /* كود الشيت نسخة 4 (طلب sync واحد) قدام نسخة 3 (tests/fixtures): الطلبات القديمة نفس الردود ونفس الشيت بالظبط،
+       وsync = نفس سحب pull قبل الإرسال + نفس كتابة push + عدد السطور زي ping، ولو فيه جديد كتير (more) بيسحب بس ومبيكتبش */
+    {
+      const v3 = fs.readFileSync(path.join(__dirname, 'fixtures/acc-sheet-v3.gs'), 'utf8');
+      const G4 = makeGas({noDrive: true}), G3 = makeGas({noDrive: true}), GS = makeGas({noDrive: true}); G4.load(mainCode); G3.load(v3); GS.load(mainCode);
+      const P = (G, o) => { const j = JSON.parse(G.post(JSON.stringify(Object.assign({key: 'V4-Key-12345'}, o)))); delete j.t; return j; };
+      const strip = j => { const x = Object.assign({}, j); delete x.v; return JSON.stringify(x); };
+      const d = [];
+      for (let i = 0; i < 2000; i += 400) { const o = {action: 'push', rows: Array.from({length: 400}, (_, k) => benchRow(i + k, 5000 + i + k))}; if (strip(P(G4, o)) !== strip(P(G3, o))) d.push('push' + i); P(GS, o); }
+      [0, 700, 1999].forEach(sn => { const o = {action: 'pull', since: sn}; if (strip(P(G4, o)) !== strip(P(G3, o))) d.push('pull' + sn); });
+      const pa = P(G4, {action: 'ping'}), pb = P(G3, {action: 'ping'}); if (pa.n !== pb.n || pa.seq !== pb.seq || pa.v !== 4 || pb.v !== 3) d.push('ping');
+      /* sync على GS = pull + push على G3 */
+      const ed = [benchRow(10, 990001), benchRow(2000, 990002), benchRow(2001, 990003)], since = 1990;
+      const pr = P(G3, {action: 'pull', since}), pu = P(G3, {action: 'push', rows: ed}), sy = P(GS, {action: 'sync', since, rows: ed});
+      const same = [JSON.stringify(sy.rows) === JSON.stringify(pr.rows), sy.next === pr.next, sy.more, JSON.stringify(sy.ack) === JSON.stringify(pu.ack), sy.seq === pu.seq, sy.pushed, sy.n === P(G3, {action: 'ping'}).n, JSON.stringify(GS.sheets['السجلات'].rows) === JSON.stringify(G3.sheets['السجلات'].rows)];
+      const big = P(GS, {action: 'sync', since: 0, rows: [benchRow(5000, 999999)]}), idle = P(GS, {action: 'sync', since: Number(GS.props.SEQ), rows: []});
+      eq('كود الشيت نسخة 4: الطلبات القديمة زي نسخة 3 بالظبط، وsync = سحب ثم إرسال ثم العدد في طلب واحد', [d, same, [big.more, big.pushed, big.ack.length, big.rows.length], [idle.rows.length, idle.pushed, idle.n]],
+        [[], [true, true, false, true, true, true, true, true], [true, false, 0, 1500], [0, false, 2002]]);
+    }
     /* جهاز بالبرنامج الجديد على شيت لسه عليه الكود القديم: بيتزامن عادي، وبيظهر تحذير أصفر وزرار التحديث بخطوات من جوه الجدول */
     const GOLD = makeGas(), accNew = sheets.acc; GOLD.load(oldAcc);
     GOLD.sheets['السجلات'] = accNew.sheets['السجلات']; Object.assign(GOLD.props, accNew.props);
@@ -905,21 +924,35 @@ const T0 = Date.now();
     eq('زرار "انسخ الكود" بينسخ الكود الجديد نفسه (من غير أي إذن زيادة)', [updCode === mainCode, /DriveApp|ScriptApp|UrlFetchApp/.test(updCode)], [true, false]);
     accNew.sheets['السجلات'] = GOLD.sheets['السجلات']; Object.assign(accNew.props, GOLD.props); sheets.acc = accNew;   // "حدّث" الكود
     await bg(A, 'syncNow()'); await A.evaluate(() => renderSettings()); await A.settle(800);
-    eq('بعد التحديث: التحذير بيختفي من الرئيسية والإعدادات', await A.evaluate(() => [db.cfg.accV, $('#syncBox').classList.contains('warn'), !!$('#accOld')]), [3, false, false]);
+    eq('بعد التحديث: التحذير بيختفي من الرئيسية والإعدادات', await A.evaluate(() => [db.cfg.accV, $('#syncBox').classList.contains('warn'), !!$('#accOld')]), [4, false, false]);
 
+    {   // شيت نسخة 4: حركة واحدة = طلب واحد للشيت (كان 3: سحب وإرسال وتأكيد)، والطلب اللي علّق بيتعاد مرة على طول
+      const acts = [], op = sheets.acc.post.bind(sheets.acc);
+      sheets.acc.post = body => { acts.push(JSON.parse(body).action); return op(body); };
+      await A.evaluate(() => { const now = Date.now(), r = {id: 't_onecall', type: 'exp', amt: 300, vault: 'v_main', to: '', cat: 'c_exp0', note: 'طلب واحد', date: todayISO(), at: now, upd: now, del: true, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); saveDB(); clearTimeout(syncT); });
+      await bg(A, 'syncNow()');
+      const r1 = await A.evaluate(() => [syncErr, pendingRecs().length, db.cfg.syLog[0].d]);
+      sheets.acc.post = op;
+      eq('شيت نسخة 4: حركة واحدة اتبعتت في طلب واحد بس', [acts, r1[0], r1[1], /^طلب واحد [\d.]+$/.test(r1[2])], [['sync'], '', 0, true]);
+      D1.hangOnce = 1;
+      const slow = await A.evaluate(async () => { const t = Date.now(); syT = []; try { const j = await callSheet(syb({action: 'ping'}), undefined, undefined, 1200); return [j.ok, Date.now() - t < 6000, syT.join(' · ')]; } finally { syT = null; } });
+      D1.hangOnce = 1;
+      const other = await A.evaluate(async () => { try { await callSheet({action: 'ping'}, undefined, undefined, 1200); return 'ok'; } catch (e) { return e.code; } });
+      eq('طلب مزامنة علّق: اتعاد مرة على طول ونجح، والطلبات التانية زي ما هي', [slow[0], slow[1], /^تأكيد [\d.]+✖ · تأكيد [\d.]+$/.test(slow[2]), other], [true, true, true, 'slow']);
+    }
     const posts = [], origPost = sheets.acc.post.bind(sheets.acc);
-    sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push') posts.push(q.rows.length); return origPost(body); };
+    sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push' || (q.action === 'sync' && q.rows.length)) posts.push(q.rows.length); return origPost(body); };
     const addBulk = (X, n, tag) => X.evaluate(([n, tag]) => { for (let i = 0; i < n; i++) { const now = Date.now() + i; const r = {id: 't_' + tag + i, type: 'exp', amt: 100, vault: 'v_main', to: '', cat: 'c_exp0', note: tag, date: todayISO(), at: now, upd: now, del: true, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); } saveDB(); }, [n, tag]);
     await addBulk(A, 130, 'bulk'); await bg(A, 'syncNow()'); await A.settle(500);
     eq('المزامنة بتبعت دفعات 50 كحد أقصى (130 حركة)', [Math.max(...posts) <= 50, posts.reduce((a, b) => a + b, 0) >= 130, await A.evaluate(() => pendingRecs().length)], [true, true, 0]);
-    sheets.acc.post = body => { const q = JSON.parse(body); return q.action === 'push' ? JSON.stringify({ok: false, error: 'boom'}) : origPost(body); };
+    sheets.acc.post = body => { const q = JSON.parse(body); return (q.action === 'push' || (q.action === 'sync' && q.rows.length)) ? JSON.stringify({ok: false, error: 'boom'}) : origPost(body); };
     await addBulk(A, 3, 'fail'); await bg(A, 'syncNow()'); await A.settle(300);
     eq('ok:false: بيعرض الخطأ اللي راجع والحركات تفضل مستنية ومفيش "تمام"', await A.evaluate(() => [syncErr, pendingRecs().length >= 3, $('#syncBox').textContent.includes('✔ كل حاجة')]), ['boom', true, false]);
     let lockTry = 0;
-    sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push' && lockTry++ < 1) return JSON.stringify({ok: false, error: 'Exception: Lock timeout: another process was holding the lock for too long.'}); return origPost(body); };
+    sheets.acc.post = body => { const q = JSON.parse(body); if ((q.action === 'push' || (q.action === 'sync' && q.rows.length)) && lockTry++ < 1) return JSON.stringify({ok: false, error: 'Exception: Lock timeout: another process was holding the lock for too long.'}); return origPost(body); };
     await bg(A, 'syncNow()'); await A.settle(3500);
     eq('القفل بيستنى ويعيد بدل ما يرفض: اتبعت بعد المحاولة التانية', [lockTry >= 2, await A.evaluate(() => pendingRecs().length)], [true, 0]);
-    sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push') return JSON.stringify({ok: true, ack: q.rows.map(r => r.id), seq: 1}); return origPost(body); };   // بيقول تمام وهو مكتبش حاجة
+    sheets.acc.post = body => { const q = JSON.parse(body); if (q.action === 'push') return JSON.stringify({ok: true, ack: q.rows.map(r => r.id), seq: 1}); if (q.action === 'sync' && q.rows.length) return JSON.stringify({ok: true, v: 4, rows: [], next: q.since, more: false, ack: q.rows.map(r => r.id), pushed: true, seq: 1, n: 1}); return origPost(body); };   // بيقول تمام وهو مكتبش حاجة
     await addBulk(A, 2, 'ghost'); await bg(A, 'syncNow()'); await A.settle(500);
     eq('شيت بيرد ok وهو فاضي: التطبيق يكتشف الفرق ومبيقولش تمام', await A.evaluate(() => [/الشيت فيه/.test(syncErr), pendingRecs().length > 0, $('#syncBox').textContent.includes('✔ كل حاجة')]), [true, true, false]);
     sheets.acc.post = origPost;

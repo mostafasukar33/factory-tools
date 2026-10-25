@@ -1119,13 +1119,22 @@ const T0 = Date.now();
         const fs = pg => parseFloat(getComputedStyle(pg[0].querySelector('tbody td.n') || pg[0].querySelector('tbody td')).fontSize);
         const lines = () => [...box.querySelectorAll('table.st td.l')].reduce((m, td) => { const g = document.createRange(); g.selectNodeContents(td); return m + new Set([...g.getClientRects()].map(x => Math.round(x.top))).size; }, 0);
         const lh = () => getComputedStyle(box.querySelector('table.st tbody td')).lineHeight;
-        ['--tz', '--tp', '--tl'].forEach(k => box.style.removeProperty(k)); stmtCols = null; const b = buildStmtPages1(p, s), bn = b.length, bf = fs(b), bl = lines(), bh = lh();
+        ['--tz', '--tp', '--tl', '--tx'].forEach(k => box.style.removeProperty(k)); stmtCols = null; const b = buildStmtPages1(p, s), bn = b.length, bf = fs(b), bl = lines(), bh = lh();
         const a = buildStmtPages(p, s), an = a.length, af = fs(a), al = lines(), ah = lh();
         const broken = [...box.querySelectorAll('table.st td.n, table.st td.b')].some(td => { const g = document.createRange(); g.selectNodeContents(td); return new Set([...g.getClientRects()].map(x => Math.round(x.top))).size > (td.querySelector('small') ? 2 : 1); });
         box.innerHTML = '';
         return [an <= bn, af >= bf, al <= bl, ah === bh, !broken]; });
       eq('كشف الحساب الذكي: الصفحات مزادتش والخط مصغرش والبيان مزنقش', r, [true, true, true, true, true]);
     }
+    eq('معاينة الـ PDF: زوم بالصباعين ودوستين ترجّع', await A.evaluate(() => {
+      modal('<div class="pvz"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" style="height:400px"></div>', true); const box = $('#modal .pvz'); pvZoom(box);
+      const T = (x, y, i) => new Touch({identifier: i, target: box, clientX: x, clientY: y}), ev = (k, ts) => box.dispatchEvent(new TouchEvent(k, {touches: ts, cancelable: true, bubbles: true}));
+      const w0 = box.querySelector('img').getBoundingClientRect().width;
+      ev('touchstart', [T(100, 100, 1), T(140, 100, 2)]); ev('touchmove', [T(80, 100, 1), T(160, 100, 2)]); ev('touchend', []);
+      const big = box.querySelector('img').getBoundingClientRect().width / w0, on = box.classList.contains('on');
+      ev('touchstart', [T(100, 100, 1)]); ev('touchend', []); ev('touchstart', [T(100, 100, 1)]); ev('touchend', []);
+      const back = Math.round(box.querySelector('img').getBoundingClientRect().width) === Math.round(w0) && !box.classList.contains('on');
+      closeModal(); return [Math.round(big), on, back]; }), [2, true, true]);
     const PGN = await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); const pg = buildStmtPages(p, stmtData(p.id, '', '')); const c = pg[0].querySelectorAll('thead th').length; const fs = parseFloat(getComputedStyle(pg[0].querySelector('tbody td.l')).fontSize); $('#render').innerHTML = ''; return [c, fs >= 16]; });
     eq('كشف الـ PDF: 7 أعمدة وخط كبير', PGN, [7, true]);
     eq('كشف العميل مفيهوش "عميل سوق/مواقع"، والمورد فيه "مورد"', await A.evaluate(() => { const ps = liveParties(), c = ps.find(x => x.sec === 'mkt'), m = ps.find(x => x.sec === 'sup');

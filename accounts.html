@@ -355,6 +355,7 @@ nav svg{width:26px;height:26px}
 .modal h3 small.mnm{display:block;margin-top:2px;font-size:var(--f2);font-weight:600;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .modal p{margin:0 0 14px;font-size:var(--f3);font-weight:700;line-height:1.7}
 .modal img{width:100%;border:1px solid var(--line);margin-bottom:8px;display:block}
+.modal .pvz.on{overflow:auto;max-height:70vh;border:1px solid var(--line)}.modal .pvz img{width:calc(100% * var(--pz, 1));max-width:none}
 .amt{font-size:var(--f5);min-height:62px}
 #toast{position:fixed;bottom:calc(90px + env(safe-area-inset-bottom));inset-inline:16px;margin:auto;max-width:420px;background:#111;color:#fff;border:2px solid var(--gold);padding:12px 14px;border-radius:12px;text-align:center;font-weight:700;z-index:140;display:none;pointer-events:none}
 /* شاشة القفل */
@@ -428,7 +429,7 @@ nav svg{width:26px;height:26px}
 .pg .coi b{color:#111;font-weight:800}.pg .coi b.ltr{direction:ltr;unicode-bidi:isolate}
 .pg table.st td{padding:3px 4px}
 /* كشف الحساب الذكي: خط الجدول بيتضرب في --tz (1 = زي الأول بالظبط). ms = وقت القياس بس (الأرقام متتكسرش) */
-.pg table.st th{font-size:calc(16px * var(--tz, 1))}.pg table.st td{font-size:calc(17px * var(--tz, 1));padding:var(--tp, 3px) 4px;line-height:var(--tl, 1.3)}
+.pg table.st th{font-size:calc(16px * var(--tz, 1))}.pg table.st td{font-size:calc(17px * var(--tz, 1));padding:var(--tp, 3px) var(--tx, 4px);line-height:var(--tl, 1.3)}
 .pg table.st td.n{font-size:calc(16.5px * var(--tz, 1))}.pg table.st td.b{font-size:calc(17px * var(--tz, 1))}
 .pg table.st td.dt{font-size:15.5px}.pg table.st td.q{font-size:calc(15.5px * var(--tz, 1))}.pg table.st td small.rf{font-size:calc(13.5px * var(--tz, 1))}
 .pg table.st td.b small{font-size:calc(13px * var(--tz, 1))}
@@ -3104,42 +3105,47 @@ const pdfPeriod = (s, issued) => s.lastInv ? `من آخر فاتورة ${dispDat
 /* كشف الحساب "الذكي" (بطلبه 25/10/2026): نفس الشكل والألوان بالظبط، والخط أكبر وصفحات أقل، من غير ما أي حاجة تتزنق:
    - ارتفاع السطر زي ما هو دايماً (تقريبه كان بيخلي البيان اللي على سطرين يركب على بعض، اتشال بطلبه).
    - عرض العواميد بيتحسب من الكلام نفسه: كل عمود رقم ياخد قد أطول رقم فيه، والباقي كله للبيان (السعر والكمية كان فيهم فاضي كتير).
-   - الخط بيكبر (لحد 1.3 مرة، والتاريخ ثابت) بس لو: الصفحات مزادتش، ومفيش رقم اتكسر، والبيان ملفّش على سطور أكتر من الكشف العادي.
+   - الخط بيكبر (لحد 1.3 مرة، والتاريخ ثابت) بس لو: الصفحات مزادتش، ومفيش رقم اتكسر، والبيان ملفّش على سطور أكتر من الكشف العادي، ومفيش بيان على أكتر من سطرين.
    الفاتورة لوحدها (invOnly) زي ما هي */
-const STMT_Z = [1.3, 1.25, 1.2, 1.15, 1.1, 1.05, 1], STMT_PAD = [3, 2], STMT_COLS = [12.5, 23.5, 14, 10.5, 13, 11.5, 15];
+const STMT_Z = [1.3, 1.25, 1.2, 1.15, 1.1, 1.05, 1], STMT_PAD = [6, 5, 4, 3, 2], STMT_COLS = [12.5, 23.5, 14, 10.5, 13, 11.5, 15];
 let stmtCols = null;   // عرض العواميد بالنسبة (null = الثابت)
 function buildStmtPages(p, s) {
   const box = $('#render');
-  const clear = () => { ['--tz', '--tp', '--tl'].forEach(k => box.style.removeProperty(k)); box.classList.remove('ms'); stmtCols = null; };
+  const clear = () => { ['--tz', '--tp', '--tl', '--tx'].forEach(k => box.style.removeProperty(k)); box.classList.remove('ms'); stmtCols = null; };
   clear();
   if (s.invOnly) return buildStmtPages1(p, s);
   const tbls = () => [...box.querySelectorAll('table.st')];
   /* سطور البيان كلها (كل خانة بيان لفّت على كام سطر) */
-  const lines = () => tbls().reduce((n, t) => n + [...t.querySelectorAll('td.l')].reduce((m, td) => { const r = document.createRange(); r.selectNodeContents(td); return m + new Set([...r.getClientRects()].map(x => Math.round(x.top))).size; }, 0), 0);
+  let lmax = 0;   // أطول بيان اتلف على كام سطر
+  const lines = () => { lmax = 0; return tbls().reduce((n, t) => n + [...t.querySelectorAll('td.l')].reduce((m, td) => { const r = document.createRange(); r.selectNodeContents(td); const k = new Set([...r.getClientRects()].map(x => Math.round(x.top))).size; lmax = Math.max(lmax, k); return m + k; }, 0), 0); };
   const base = buildStmtPages1(p, s), n0 = base.length, L0 = lines();
   /* أقل عرض محتاجه كل عمود (غير البيان) علشان كلامه يفضل سطر واحد، من السطور اللي مفيهاش خانات مدموجة */
-  const fitCols = () => {
+  const fitCols = tx => {
     const t0 = tbls()[0]; if (!t0) return null;
     const W = t0.getBoundingClientRect().width, need = [0, 0, 0, 0, 0, 0, 0];
-    const w = el => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width + 14; };
-    tbls().forEach(t => [...t.rows].forEach(tr => { if (tr.cells.length !== 7) return; [...tr.cells].forEach((c, i) => { if (i !== 1 && c.textContent.trim()) need[i] = Math.max(need[i], w(c)); }); }));
+    const w = (el, i) => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width + tx * 2 + 8; };
+    tbls().forEach(t => [...t.rows].forEach(tr => { if (tr.cells.length !== 7) return; [...tr.cells].forEach((c, i) => { if (i !== 1 && c.textContent.trim()) need[i] = Math.max(need[i], w(c, i)); }); }));
     const others = need.reduce((a, x, i) => i === 1 ? a : a + x, 0), desc = W - others;
     if (desc < W * STMT_COLS[1] / 100) return null;   // البيان ميصغرش عن الأول أبداً
     return need.map((x, i) => (i === 1 ? desc : x) / W * 100);
   };
-  const tryIt = (z, pad) => {
-    box.style.setProperty('--tz', z); box.style.setProperty('--tp', pad + 'px');
+  const tryIt = (z, pad, tx) => {
+    box.style.setProperty('--tz', z); box.style.setProperty('--tp', pad + 'px'); box.style.setProperty('--tx', tx + 'px');
     stmtCols = null; box.classList.add('ms'); buildStmtPages1(p, s);
-    const cols = fitCols(); if (!cols) { box.classList.remove('ms'); return null; }
+    const cols = fitCols(tx); if (!cols) { box.classList.remove('ms'); return null; }
     stmtCols = cols; const n = buildStmtPages1(p, s).length;
     const broken = [...box.querySelectorAll('table.st td.n, table.st td.b, table.st td.q, table.st th')].some(td => td.scrollWidth > td.clientWidth + 1);
     box.classList.remove('ms');
-    return broken ? null : {n, L: lines()};
+    return broken ? null : {n, L: lines(), M: lmax};
   };
-  const nMin = Math.min(n0, ...STMT_PAD.map(pd => (tryIt(1, pd) || {n: 1e9}).n));   // أقل صفحات ممكنة بالخط العادي
-  for (const z of STMT_Z) for (const pd of STMT_PAD) {
-    const r = tryIt(z, pd);
-    if (r && r.n <= nMin && r.L <= L0) { box.classList.remove('ms'); return buildStmtPages1(p, s); }
+  const r1 = tryIt(1, STMT_PAD[STMT_PAD.length - 1], 4) || {n: 1e9, M: 9};
+  const nMin = Math.min(n0, r1.n), M1 = Math.max(2, r1.M);   // أقل صفحات ممكنة بالخط العادي، والبيان ميلفّش أكتر من سطرين (إلا لو كان كده من الأول)
+  const ok = r => r && r.n <= nMin && r.L <= L0 && r.M <= M1;
+  /* أكبر خط الأول (بأقل مسافة)، ونَفَس للأرقام من الجنبين (8px) لو مش هيصغّر الخط وإلا 4 زي الأول،
+     وبعدين المساحة الفاضية تتوزع على السطور: أكبر مسافة جوه الخانة (لحد 6px) تحافظ على نفس الصفحات */
+  for (const z of STMT_Z) for (const tx of [8, 4]) if (ok(tryIt(z, STMT_PAD[STMT_PAD.length - 1], tx))) {
+    for (const pd of STMT_PAD) if (ok(tryIt(z, pd, tx))) break;
+    return buildStmtPages1(p, s);
   }
   clear(); return buildStmtPages1(p, s);
 }
@@ -3249,11 +3255,33 @@ async function exportStmt(p, s, how) {
   closeModal();
   const title = `${s.invOnly ? 'فاتورة' : 'كشف حساب'} ${p.name}`;
   if (how === 'share') return shareFile(res, title);
-  modal(`${res.imgs.map(u => `<img src="${u}" alt="">`).join('')}${res.pages > res.imgs.length ? `<p class="hint">(المعاينة بتعرض أول ${res.imgs.length} صفحات من ${res.pages})</p>` : ''}
+  modal(`<div class="pvz">${res.imgs.map(u => `<img src="${u}" alt="">`).join('')}</div>${res.pages > res.imgs.length ? `<p class="hint">(المعاينة بتعرض أول ${res.imgs.length} صفحات من ${res.pages})</p>` : ''}
     <div class="stack"><button class="btn green" id="pvShare">ابعت واتساب</button><button class="btn gold" id="pvDl">تنزيل PDF</button><button class="btn line" id="pvX">إغلاق</button></div>`, true);
   $('#pvX').onclick = closeModal;
   $('#pvDl').onclick = () => downloadBlob(res.blob, res.name);
   $('#pvShare').onclick = () => { closeModal(); shareFile(res, title); };
+  pvZoom($('#modal .pvz'));
+}
+/* زوم بالصباعين في معاينة الـ PDF بس (الصفحة نفسها مقفول فيها الزوم): الصور بتكبر جوه البرواز وتتحرك بالسحب، ودوستين = تكبير/رجوع */
+function pvZoom(box) {
+  if (!box) return;
+  let z = 1, d0 = 0, z0 = 1, tap = 0;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const set = (nz, cx, cy) => {
+    nz = Math.min(4, Math.max(1, nz)); const r = box.getBoundingClientRect(), k = nz / z;
+    const fx = box.scrollLeft + (cx - r.left), fy = box.scrollTop + (cy - r.top);
+    z = nz; box.style.setProperty('--pz', z); box.classList.toggle('on', z > 1.01);
+    box.scrollLeft = fx * k - (cx - r.left); box.scrollTop = fy * k - (cy - r.top);
+  };
+  box.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) { d0 = dist(e.touches); z0 = z; }
+    else if (e.touches.length === 1) { const t = Date.now(); if (t - tap < 300) { e.preventDefault(); set(z > 1.01 ? 1 : 2.5, e.touches[0].clientX, e.touches[0].clientY); tap = 0; } else tap = t; }
+  }, {passive: false});
+  box.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || !d0) return; e.preventDefault();
+    set(z0 * dist(e.touches) / d0, (e.touches[0].clientX + e.touches[1].clientX) / 2, (e.touches[0].clientY + e.touches[1].clientY) / 2);
+  }, {passive: false});
+  box.addEventListener('touchend', e => { if (e.touches.length < 2) d0 = 0; });
 }
 
 /* ====================== المزامنة مع Google Sheet ====================== */
@@ -5749,9 +5777,10 @@ async function exportReport(R, how, fileName) {
   catch (e) { closeModal(); console.error(e); toast('حصلت مشكلة في تجهيز الـ PDF، جرّب تاني.'); return; }
   closeModal();
   if (how === 'share') return shareFile(res, R.title);
-  modal(`${res.imgs.map(u => `<img src="${u}" alt="">`).join('')}${res.pages > res.imgs.length ? `<p class="hint">(المعاينة بتعرض أول ${res.imgs.length} صفحات من ${res.pages})</p>` : ''}
+  modal(`<div class="pvz">${res.imgs.map(u => `<img src="${u}" alt="">`).join('')}</div>${res.pages > res.imgs.length ? `<p class="hint">(المعاينة بتعرض أول ${res.imgs.length} صفحات من ${res.pages})</p>` : ''}
     <div class="stack"><button class="btn green" id="pvShare">ابعت واتساب</button><button class="btn gold" id="pvDl">تنزيل PDF</button><button class="btn line" id="pvX">إغلاق</button></div>`, true);
   $('#pvX').onclick = closeModal; $('#pvDl').onclick = () => downloadBlob(res.blob, res.name); $('#pvShare').onclick = () => { closeModal(); shareFile(res, R.title); };
+  pvZoom($('#modal .pvz'));
 }
 /* اسم الملف: نضيف، من غير علامات الاتجاه الخفية (اللي كانت بتلخبط الاسم) */
 const cleanName = t => String(t || '').replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();

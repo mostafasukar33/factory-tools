@@ -265,6 +265,8 @@ table.ldg.rp.wide{min-width:520px}.ldg.rp td{white-space:nowrap}.ldg.rp td.l{whi
 .stm .k{grid-column:1/-1;background:var(--bar)}.stm .k span{color:var(--gold)}.stm .k b{color:#fff;font-size:var(--f5)}
 /* المزامنة */
 .drr .drok{margin-inline-start:auto;flex:none}
+.ivsk{display:inline-block;margin-inline-start:8px;font:inherit;font-size:var(--f1);font-weight:700;color:var(--sub);background:none;border:1px solid var(--line);border-radius:999px;padding:0 8px;cursor:pointer;vertical-align:middle}
+.ivskn{margin:-6px 0 12px}
 .sync{display:flex;align-items:center;gap:8px;font-weight:700;font-size:var(--f2);padding:8px 12px;border-radius:10px;background:var(--gold-l);border:1.5px dashed var(--gold);margin-bottom:12px;flex-wrap:wrap}
 .sync.ok{background:var(--green-l);border-color:#A9DDB8;color:var(--green)}
 .sync.warn{background:var(--red-l);border-color:#F0B9B3;color:var(--red)}
@@ -6041,8 +6043,8 @@ function ivDue(v) {
 /* المساهم المربوط بعميل: فواتيره (والمرتجعات) من تاريخ البداية اللي لسه ربحها متكتبش */
 function ivPending(v) {
   if (v.mode !== 'c' || !v.party) return [];
-  const used = new Set(db.ivrs.filter(r => !r.del && r.src).map(r => r.src));
-  return db.entries.filter(e => !e.del && e.party === v.party && (e.kind === 'inv' || e.kind === 'rinv') && (!v.from || e.date >= v.from) && !used.has(e.id)).sort(entCmp);
+  const used = new Set(db.ivrs.filter(r => !r.del && r.src).map(r => r.src)), skip = new Set(v.skip || []);   // skip = فواتير مصطفى شالها (مالهاش ربح للمساهم)
+  return db.entries.filter(e => !e.del && e.party === v.party && (e.kind === 'inv' || e.kind === 'rinv') && (!v.from || e.date >= v.from) && !used.has(e.id) && !skip.has(e.id)).sort(entCmp);
 }
 const ivWaiting = () => db.ivps.length ? ivList().reduce((n, v) => n + ivDue(v).length + ivPending(v).length, 0) : 0;
 /* اقتراح ربح الشهر: نفس النسبة اللي كان بياخدها من رأس ماله في آخر 3 شهور، وتزيد أو تقل بحركة الشغل الشهر ده عن متوسطهم */
@@ -6285,8 +6287,9 @@ function renderIv(id) {
     ${v.mode === 'c' ? `<p class="hint">${cp ? `مرتبط بحساب «${esc(cp.name)}»: تُرحَّل كل فاتورة${v.from ? ` اعتباراً من ${dispDate(v.from)}` : ''} إلى هنا بأصنافها وكمياتها، ويُدخَل ربح الوحدة لكل صنف.` : '⚠ لم يُربط بحساب عميل بعد. اربطه من «⚙ بياناته».'}</p>` : ''}
     ${due.map(m => { const sg = ivSuggest(v, m); return `<div class="sync warn" data-due="${m}">💰 ربح شهر ${monthName(m)} لم يُسجَّل بعد${sg ? ` — المقترح ${fmtP(sg.amt)}` : ''}. <a class="lnk">تسجيله</a></div>`; }).join('')}
     ${pend.length ? `<section class="ctab exp" style="margin-bottom:12px"><div class="cth"><span>فواتير بانتظار تسجيل الربح (${pend.length})</span><b>${fmtP(pend.reduce((n, e) => n + (e.dr || e.cr || 0), 0))}</b></div><table class="cmt"><tbody>
-      ${pend.map(e => `<tr data-pe="${esc(e.id)}"><td class="d">${shortDate(e.date)}</td><td class="w"><b>${e.kind === 'rinv' ? 'مرتجع' : 'فاتورة'} — ${(e.lines || []).length} صنف</b><small>${esc((e.lines || []).slice(0, 2).map(l => `${l.name} × ${fmtQ(l.qty)}`).join('، '))}${(e.lines || []).length > 2 ? '…' : ''}</small></td><td class="am">${fmtP(e.dr || e.cr || 0)}</td></tr>`).join('')}
+      ${pend.map(e => `<tr data-pe="${esc(e.id)}"><td class="d">${shortDate(e.date)}</td><td class="w"><b>${e.kind === 'rinv' ? 'مرتجع' : 'فاتورة'} — ${(e.lines || []).length} صنف</b><small>${esc((e.lines || []).slice(0, 2).map(l => `${l.name} × ${fmtQ(l.qty)}`).join('، '))}${(e.lines || []).length > 2 ? '…' : ''}</small><button class="ivsk" data-sk="${esc(e.id)}" type="button" title="شيلها: مالهاش ربح للمساهم">✕ شيلها</button></td><td class="am">${fmtP(e.dr || e.cr || 0)}</td></tr>`).join('')}
     </tbody></table></section>` : ''}
+    ${(v.skip || []).length ? `<p class="hint ivskn">${v.skip.length === 1 ? 'فاتورة واحدة اتشالت' : v.skip.length === 2 ? 'فاتورتين اتشالوا' : v.skip.length + ' فواتير اتشالت'} من غير ربح · <a class="lnk" id="ivSkBack">رجّعهم</a></p>` : ''}
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
     ${v.mode === 'c' ? (ms.length ? ivCards(v, ms) : '<div class="empty">لا توجد حركات بعد</div>')
       : R.rows.length ? `<div class="ldgw"><table class="ldg rp wide"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
@@ -6301,6 +6304,10 @@ function renderIv(id) {
   $('#ivDraw').onclick = () => ivMoveModal(v, 'draw'); $('#ivCap').onclick = () => ivMoveModal(v, 'cap');
   $$('#p-jrd [data-due]').forEach(el => el.onclick = () => ivMoveModal(v, 'prof', null, el.dataset.due));
   $$('#p-jrd tr[data-pe]').forEach(el => el.onclick = () => ivShipModal(v, null, E.get(el.dataset.pe)));
+  /* "✕ شيلها": الفاتورة دي مالهاش ربح للمساهم (بطلبه 26/10/2026). بتتحفظ في المساهم نفسه (skip) والفاتورة في حساب العميل زي ما هي */
+  const setSkip = L => { v.skip = L; touch(v); saveDB(); route(); };
+  $$('#p-jrd .ivsk').forEach(b => b.onclick = ev => { ev.stopPropagation(); const id = b.dataset.sk, old = (v.skip || []).slice(); setSkip(old.concat(id)); toastUndo('اتشالت من غير ربح', () => setSkip(old)); });
+  if ($('#ivSkBack')) $('#ivSkBack').onclick = () => { const old = v.skip.slice(); setSkip([]); toastUndo('رجعوا لـ "بانتظار الربح"', () => setSkip(old)); };
   $$('#p-jrd tr[data-k]').forEach(el => el.onclick = () => { const m = ms[+el.dataset.k]; if (m) m.k === 'ship' ? ivShipModal(v, m.r) : ivMoveModal(v, m.k, m); });
   $('#ivShare').onclick = () => exportReport(R, 'share', v.name); $('#ivPdf').onclick = () => exportReport(R, 'preview', v.name);
 }

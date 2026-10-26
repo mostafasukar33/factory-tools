@@ -1299,6 +1299,14 @@ const T0 = Date.now();
       const v = ivList().find(x => x.name === 'مساهم تجربة عميل'), R = ivReport(v); go('jrd/iv/' + v.id); renderJrd();
       const pg = buildReportPages(R), th = [...pg[0].querySelectorAll('thead th')].map(x => x.textContent); $('#render').innerHTML = '';
       return [th.join('|'), !!$('#p-jrd tr[data-pe]'), R.fin[0]]; }), ['الصنف|العدد|الوزن|ربح الوحدة|الإجمالي', true, 'إجمالي المستحق للمساهم']);
+    /* "✕ شيلها": فاتورة مالهاش ربح للمساهم بتختفي من "بانتظار الربح" (skip في المساهم)، والفاتورة نفسها وأرباح المساهم زي ما هم، والتراجع و"رجّعهم" بيرجعوها */
+    eq('المساهم: "✕ شيلها" بتشيل الفاتورة من غير ربح، والتراجع و"رجّعهم" بيرجعوها، والفاتورة نفسها متتلمسش', await A.evaluate(() => {
+      const v = ivList().find(x => x.name === 'مساهم تجربة عميل'); go('jrd/iv/' + v.id); renderJrd();
+      const n0 = ivPending(v).length, b = $('#p-jrd .ivsk'), id = b.dataset.sk, e0 = JSON.stringify(E.get(id)), p0 = ivSums(v.id).prof, u0 = v.upd;
+      b.click(); const a = [ivPending(v).length === n0 - 1, !$(`#p-jrd tr[data-pe="${id}"]`), !!$('#ivSkBack'), v.upd > u0, !$('#modal .shOk, #shOk')];
+      $('#tUndo').click(); const c = [ivPending(v).length === n0, !!$(`#p-jrd tr[data-pe="${id}"]`)];
+      $(`#p-jrd .ivsk[data-sk="${id}"]`).click(); $('#ivSkBack').click(); const d = [ivPending(v).length === n0, !$('#ivSkBack')];
+      return [...a, ...c, ...d, JSON.stringify(E.get(id)) === e0, ivSums(v.id).prof === p0]; }), Array(11).fill(true));
 
     /* نقل كشف قديم من ملف (نفس شكل الملف اللي بيتعمل من الإكسيل)، ونقله مرتين مبيكررش */
     const IMP = {app: 'flash-on-investors', v: 1, list: [{id: 'ip_imp_t', name: 'مساهم تجربة قديم', mode: 'c', hint: 'تجربة واحد', from: '2026-09-11', at: 1, upd: 1760000000000, rows: [

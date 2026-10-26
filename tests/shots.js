@@ -265,7 +265,7 @@ function accExtra(iso0, now) {
   putSet('mktSheet', {u: 'https://script.google.com/macros/s/SHOT-MKT/exec', k: 'Shot-Key'});
   mkDb().u = 'https://script.google.com/macros/s/SHOT-MKT/exec';
   const P = n => liveParties().find(p => p.name === n), ops = mkDb().ops, ts = (n, h) => now - n * 86400000 + (h - 9) * 3600000;
-  [['pay', 'معرض تجربة الأمل', 250000, 'cash', 0, 9], ['pay', 'عميل تجربة خمسة', 150000, 'tr', 0, 10], ['inv', 'عميل تجربة واحد', 66000, '', 0, 10.5], ['exp', '', 30000, '', 0, 11], ['spay', '', 120000, '', 0, 12], ['hand', '', 900000, '', 1, 17]]
+  [['pay', 'معرض تجربة الأمل', 250000, 'cash', 0, 9], ['pay', 'عميل تجربة خمسة', 150000, 'tr', 0, 10], ['inv', 'عميل تجربة واحد', 66000, '', 0, 10.5], ['exp', '', 30000, '', 0, 11], ['spay', '', 120000, '', 0, 12], ['hand', '', 900000, '', 1, 17], ['pay', 'معرض تجربة الأمل', 100000, 'cash', 0, 9.5]]
     .forEach(([t, n, amt, m, dd, h], i) => { const p = n && P(n), id = 'mshot' + i; ops[id] = {id, t, amt, ts: ts(dd, h), cr: ts(dd, h), upd: ts(dd, h), cid: p ? p.id : '', cname: n, m, cat: t === 'exp' ? 'بنزين' : '', sname: t === 'spay' ? 'مورد تجربة الخامات' : '', del: false}; });
   /* حركات سوق اتنقلت فعلاً (علشان نص "حركة شريكي" في الخزنة): تحصيل كاش، تحويل دخل خزنتي، مصروف، دفعة مورد، وكاش سلّمه */
   ensureMktVault();

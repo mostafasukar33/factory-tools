@@ -7697,7 +7697,8 @@ function mkGParts(g) {
 function mkGSub(g, p) {
   const L = p.pendPays.length ? p.pendPays : g.pend.length ? g.pend : g.ops;
   if (L.length === 1) return mkOpSub(L[0]);
-  if (g.kind === 'pay') return ['cash', 'tr', 'insta', 'voda'].map(m => { const t = L.filter(o => o.m === m).reduce((a, o) => a + o.amt, 0); return t ? `${fmtP(t)} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ') + ` = <b class="n">${fmtP(p.tot)}</b>` + L.map(mkFixed).join('');
+  /* عدد الدفعات ومبلغ كل واحدة (لحد 3 من نفس النوع)، علشان "2 عمليات" فوق تبان في السطر: "دفعتين · 5,000 + 5,000 كاش" */
+  if (g.kind === 'pay') return `${L.length === 2 ? 'دفعتين' : L.length + ' دفعات'} · ` + ['cash', 'tr', 'insta', 'voda'].map(m => { const a = L.filter(o => o.m === m).map(o => o.amt); return a.length ? `${a.length <= 3 ? a.map(fmtP).join(' + ') : fmtP(a.reduce((x, y) => x + y, 0))} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ') + L.map(mkFixed).join('');   // الإجمالي هو الرقم الكبير جنبه
   return `${mkPill(L[0])}${L.length} عمليات · آخرها ${mkWhen(L[L.length - 1])}${L.map(mkFixed).join('')}`;
 }
 const mkHead = (ic, c, name, sub, amt, side) => `<div class="mqrow"><span class="mqi ${c}">${ic}</span><div class="mqw"><b>${name}</b><small>${sub}</small></div><div class="mqa"><b class="n">${fmtP(amt)}</b>${side || ''}</div></div>`;

@@ -1297,7 +1297,7 @@ html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
 .mqcs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .mqc{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 12px;font-size:var(--f2);font-weight:800;background:var(--row);color:var(--ink);cursor:pointer;white-space:nowrap}
 .mqc b{direction:ltr;unicode-bidi:isolate}
-.mqc.g{background:var(--green-l);color:var(--green)}.mqc.r{background:var(--red-l);color:var(--red)}
+.mqc.g{background:var(--green-l);color:var(--green)}.mqc.ah{background:var(--ah-l);color:var(--ah)}.mqc.r{background:var(--red-l);color:var(--red)}
 .mqc b.neg{color:var(--red)}
 .mqcols{display:grid;gap:14px;margin-bottom:6px}
 .mqsec{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow2);overflow:hidden;margin-bottom:14px;border-top:6px solid var(--line)}
@@ -1312,13 +1312,13 @@ html[data-theme=dark] .mtag.inv{background:var(--gold-l);color:var(--gold-d)}
 .mqg.dec{padding-bottom:14px}
 .mqrow{display:flex;align-items:center;gap:12px}
 .mqi{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:none;font-size:var(--f4);font-style:normal}
-.mqi.g{background:var(--green-l);color:var(--green)}.mqi.b{background:var(--tr-l);color:var(--tr)}.mqi.r{background:var(--red-l);color:var(--red)}.mqi.y{background:var(--gold-l);color:var(--gold-d)}
+.mqi.g{background:var(--green-l);color:var(--green)}.mqi.ah{background:var(--ah-l);color:var(--ah)}.mqi.b{background:var(--tr-l);color:var(--tr)}.mqi.r{background:var(--red-l);color:var(--red)}.mqi.y{background:var(--gold-l);color:var(--gold-d)}
 .mqw{flex:1;min-width:0}
 .mqw>b{display:block;font-size:var(--f3);font-weight:800}
 .mqw>small{display:block;font-size:var(--f2);color:var(--sub);font-weight:600;line-height:1.6}
 .mqw>small .n{color:var(--ink)}
 .mqp{display:inline-block;border-radius:6px;padding:0 8px;font-size:var(--f2);font-weight:800;margin-inline-end:6px;line-height:1.5}
-.mqp.g{background:var(--green-l);color:var(--green)}.mqp.b{background:var(--tr-l);color:var(--tr)}.mqp.r{background:var(--red-l);color:var(--red)}.mqp.y{background:var(--gold-l);color:var(--gold-d)}
+.mqp.g{background:var(--green-l);color:var(--green)}.mqp.ah{background:var(--ah-l);color:var(--ah)}.mqwho{font-style:normal;font-weight:800}.mqwho.ah{color:var(--ah)}.mqwho.me{color:var(--tr)}.mqp.b{background:var(--tr-l);color:var(--tr)}.mqp.r{background:var(--red-l);color:var(--red)}.mqp.y{background:var(--gold-l);color:var(--gold-d)}
 .mqfx{display:inline-block;font-size:var(--f2);font-weight:800;color:var(--gold-d);background:var(--gold-l);border-radius:6px;padding:0 6px}
 .mqa{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
 .mqa>.n{font-size:var(--f4);color:var(--ink)}
@@ -4598,7 +4598,7 @@ function fbMoves(from, to) {
 }
 const fbSum = (L, f) => L.reduce((n, x) => n + (!f || f(x) ? x.amt : 0), 0);
 const fbSd = d => `${d.slice(8)}/${d.slice(5, 7)}` + (d.slice(0, 4) === todayISO().slice(0, 4) ? '' : `/${d.slice(0, 4)}`);
-const fbWho = side => side === 'mk' ? `<em class="fbw">${MK_PN}</em>` : 'منك';
+const fbWho = side => side === 'mk' ? `<em class="fbw">${MK_PN}</em>` : '<em class="fbw me">منك</em>';
 /* سطور الحركات: دفعات نفس الحساب سطر واحد (by = مفتاح التجميع)، والباقي كل حركة سطر */
 function fbGroup(L, key) {
   const by = new Map();
@@ -4684,7 +4684,7 @@ function fbTypeGroups(from, to) {
 const fbTypeName = o => { const x = o.L[0]; return x.party ? fbName(o) : x.g === 'part' ? 'الشركاء' : x.g === 'ivcap' || x.g === 'ivdraw' ? 'المساهمين' : cName(x.m.r.cat); };
 function fbTypeRow(o, i, dir) {
   const hm = hasMkv(), cust = o.L[0].m.src === 'pay' && o.L[0].m.r.kind === 'pay', ah = o.tr + o.ca + o.mk, me = o.me;
-  const badge = !hm ? '' : `<em class="fbg">${me && ah ? 'الاتنين' : ah ? MK_PN : 'منك'}</em>`;
+  const badge = !hm ? '' : `<em class="fbg${me && ah ? '' : ah ? ' mk' : ' me'}">${me && ah ? 'الاتنين' : ah ? MK_PN : 'منك'}</em>`;
   const chips = !hm ? '' : cust ? [me && ah ? `<i class="fbp me">${fmtP(me)} منك</i>` : '', o.tr ? `<i class="fbp me">${fmtP(o.tr)} وصلتك</i>` : '', o.ca ? `<i class="fbp mk">${fmtP(o.ca)} فضلت معاه</i>` : ''].join('')
     : me && ah ? `${fmtP(me)} منك · ${fmtP(ah)} من ${MK_PN}` : '';
   return `<div class="fbr" data-g="${dir}:${i}" role="button" tabindex="0"><div class="fbm"><b>${esc(fbTypeName(o))}${badge}</b>${chips ? `<small>${chips}</small>` : ''}</div><b class="n ${dir}">${fmtP(o.amt)}</b></div>`;
@@ -7636,7 +7636,7 @@ function mkStatParts() {
 /* الملخص فوق: عدد اللي مستنياك ومبلغه كبير، وتحته علامات صغيرة للي محتاج تاخد بالك منه (مع الشريك، تعارض، اتأخروا). اللي صفر مبيظهرش */
 function mkStat() {
   const s = mkStatParts(), bal = mkLive().reduce((x, o) => x + mkSign(o) * o.amt, 0), amt = mkPending().reduce((x, o) => x + o.amt, 0);
-  const ch = [`<a class="mqc g" data-st="cash">💵 مع الشريك <b class="${bal < 0 ? 'neg' : ''}">${fmtP(bal)}</b></a>`];
+  const ch = [`<a class="mqc ah" data-st="cash">💵 مع ${MK_PN} <b class="${bal < 0 ? 'neg' : ''}">${fmtP(bal)}</b></a>`];
   if (s.clash) ch.push(`<a class="mqc r" data-st="clash">⚠️ <b>${s.clash}</b> تعارض</a>`);
   if (s.late) ch.push(`<a class="mqc" data-st="late">🕒 <b>${s.late}</b> اتأخروا عن الدفع</a>`);
   return `<div class="mqs" id="mkStat"><div class="mqsb">${s.wait ? `<b class="c">${s.wait} <span>${s.wait === 1 ? 'عملية مستنياك' : 'عمليات مستنياك'}</span></b><b class="n">${fmtP(amt)}</b>` : '<b class="c ok">✔ <span>مفيش حاجة مستنياك</span></b>'}</div>
@@ -7664,20 +7664,22 @@ const MK_FOOT = {
 };
 const MK_ICON = {pay: '', spay: '🏭 ', exp: '⛽ ', hand: '🤝 ', cs: '💰 '};
 /* ---------- سطور الوارد ---------- */
-/* أيقونة المجموعة ولونها: أخضر كاش دخل مع الشريك، أزرق راح لمصطفى (تحويل/تسليم)، أحمر طلع (مصروف/مورد)، دهبي فاتورة/مرتجع */
+/* أيقونة المجموعة ولونها: تركواز (لون أحمد) كاش دخل مع الشريك، أزرق راح لمصطفى (تحويل/تسليم)، أحمر طلع (مصروف/مورد)، دهبي فاتورة/مرتجع */
 function mkGIcon(g) {
   if (g.kind === 'exp') return ['⛽', 'r'];
   if (g.kind === 'hand') return ['🤝', 'b'];
   if (g.kind === 'spay') return ['🏭', 'r'];
   const ops = g.pend.length ? g.pend : g.ops;
-  if (g.kind === 'cs') return ['💰', ops.every(o => mkCsTr(o)) ? 'b' : 'g'];
+  if (g.kind === 'cs') return ['💰', ops.every(o => mkCsTr(o)) ? 'b' : 'ah'];
   const pays = ops.filter(o => o.t === 'pay');
-  if (pays.length) return pays.every(o => o.m === 'cash') ? ['💵', 'g'] : ['⇄', 'b'];
+  if (pays.length) return pays.every(o => o.m === 'cash') ? ['💵', 'ah'] : ['⇄', 'b'];
   return ops.some(o => o.t === 'inv') ? ['🧾', 'y'] : ['↩', 'y'];
 }
 const mkGName = g => g.kind === 'hand' ? 'كاش سلّمهولك' : g.name;
-const mkPill = o => o.t === 'pay' ? `<span class="mqp ${o.m === 'cash' ? 'g' : 'b'}">${MK_M[o.m] || o.m}</span>`
-  : o.t === 'cs' ? `<span class="mqp ${mkCsTr(o) ? 'b' : 'g'}">بيع كاش${mkCsTr(o) ? ' · تحويل' : ''}</span>`
+/* الوارد بيقول الفلوس مع مين بالاسم (بطلبه 26/10/2026): كاش = مع أحمد، تحويل = وصل مصطفى. MK_M نفسه زي ما هو لباقي الأماكن */
+const mkWho = m => m === 'cash' ? MK_PN : m === 'tr' ? MK_ME : (MK_M[m] || m);
+const mkPill = o => o.t === 'pay' ? `<span class="mqp ${o.m === 'cash' ? 'ah' : 'b'}">${mkWho(o.m)}</span>`
+  : o.t === 'cs' ? `<span class="mqp ${mkCsTr(o) ? 'b' : 'ah'}">بيع كاش${mkCsTr(o) ? ' · تحويل' : ''}</span>`
   : o.t === 'spay' ? '<span class="mqp r">دفعة لمورد</span>' : o.t === 'exp' ? '<span class="mqp r">مصروف</span>'
   : o.t === 'hand' ? '<span class="mqp b">تسليم</span>' : o.t === 'inv' ? '<span class="mqp y">فاتورة</span>' : '<span class="mqp y">مرتجع/شغل</span>';
 const mkWhen = o => (isoOf(o.ts) !== todayISO() ? dispDate(isoOf(o.ts)) + ' · ' : '') + dispTime(o.ts);
@@ -7698,7 +7700,7 @@ function mkGSub(g, p) {
   const L = p.pendPays.length ? p.pendPays : g.pend.length ? g.pend : g.ops;
   if (L.length === 1) return mkOpSub(L[0]);
   /* عدد الدفعات ومبلغ كل واحدة (لحد 3 من نفس النوع)، علشان "2 عمليات" فوق تبان في السطر: "دفعتين · 5,000 + 5,000 كاش" */
-  if (g.kind === 'pay') return `${L.length === 2 ? 'دفعتين' : L.length + ' دفعات'} · ` + ['cash', 'tr', 'insta', 'voda'].map(m => { const a = L.filter(o => o.m === m).map(o => o.amt); return a.length ? `${a.length <= 3 ? a.map(fmtP).join(' + ') : fmtP(a.reduce((x, y) => x + y, 0))} ${MK_M[m]}` : ''; }).filter(Boolean).join(' + ') + L.map(mkFixed).join('');   // الإجمالي هو الرقم الكبير جنبه
+  if (g.kind === 'pay') return `${L.length === 2 ? 'دفعتين' : L.length + ' دفعات'} · ` + ['cash', 'tr', 'insta', 'voda'].map(m => { const a = L.filter(o => o.m === m).map(o => o.amt); return a.length ? `${a.length <= 3 ? a.map(fmtP).join(' + ') : fmtP(a.reduce((x, y) => x + y, 0))} <em class="mqwho ${m === 'cash' ? 'ah' : m === 'tr' ? 'me' : ''}">${mkWho(m)}</em>` : ''; }).filter(Boolean).join(' + ') + L.map(mkFixed).join('');   // الإجمالي هو الرقم الكبير جنبه
   return `${mkPill(L[0])}${L.length} عمليات · آخرها ${mkWhen(L[L.length - 1])}${L.map(mkFixed).join('')}`;
 }
 const mkHead = (ic, c, name, sub, amt, side) => `<div class="mqrow"><span class="mqi ${c}">${ic}</span><div class="mqw"><b>${name}</b><small>${sub}</small></div><div class="mqa"><b class="n">${fmtP(amt)}</b>${side || ''}</div></div>`;
@@ -7740,10 +7742,10 @@ function mkRowBack(g) {
 /* نافذة المجموعة: كل عملياتها (الدوس على عملية بيفتح نافذتها)، و"رجّعها لشريكك" */
 function mkGroupSheet(g) {
   const [ic, c] = mkGIcon(g), p = mkGParts(g), n = g.ops.length;
-  modal(`<div class="mqsheet">${mkHead(ic, c, esc(mkGName(g)), `${n} ${n === 1 ? 'عملية' : n === 2 ? 'عمليتين' : 'عمليات'} من شريكك`, p.tot)}
+  modal(`<div class="mqsheet">${mkHead(ic, c, esc(mkGName(g)), `${n} ${n === 1 ? 'عملية' : n === 2 ? 'عمليتين' : 'عمليات'} من ${MK_PN}`, p.tot)}
     <div class="mqops">${g.ops.map(o => { const st = mkState(o), s = mkSt(o.id);
       return `<div class="mqop" data-op="${esc(o.id)}" role="button" tabindex="0"><div class="mqw"><b>${esc(mkWhat(o))}</b><small>${mkOpSub(o)}${st === 'back' ? ' · <span class="mqbk">راجعة للشريك</span>' : ''}</small>${st === 'back' && s && s.back ? `<div class="mqnote">ملاحظتك: ${esc(s.back)}</div>` : ''}</div><b class="n">${fmtP(o.amt)}</b></div>`; }).join('')}</div>
-    <div class="stack">${g.pend.length && g.kind !== 'exp' ? `<button class="btn red" data-bk="${esc(g.k)}" type="button">رجّعها لشريكك بملاحظة</button>` : ''}<button class="btn line" id="mgX" type="button">رجوع</button></div></div>`);
+    <div class="stack">${g.pend.length && g.kind !== 'exp' ? `<button class="btn red" data-bk="${esc(g.k)}" type="button">رجّعها لـ${MK_PN} بملاحظة</button>` : ''}<button class="btn line" id="mgX" type="button">رجوع</button></div></div>`);
   $('#mgX').onclick = closeModal;
   $$('#modal .mqop').forEach(el => el.onclick = () => mkOpMenu(mkDb().ops[el.dataset.op]));
   if ($('#modal [data-bk]')) $('#modal [data-bk]').onclick = () => mkReturn(g.pend.length ? g.pend : g.ops.filter(o => mkState(o) === 'back'), g.name);
@@ -7762,8 +7764,8 @@ function mkInbox() {
       ${invs.length > 1 ? `<button class="mqall y" id="mkInvAll" type="button">🧾 انقل كل الفواتير (${invs.length}) — ${fmtP(invs.reduce((s, o) => s + o.amt, 0))}، والبنود بعدين</button>` : ''}
       ${dec.map(mkRowDec).join('')}${exps.length > 1 ? `<button class="mqall y" data-mv="x:exp" type="button">⛽ سجّل المصاريف كلها مصروف (${exps.length})</button>` : ''}${exps.map(o => mkRowExp(o, exps.length === 1)).join('')}</section>` : '';
   $('#mkBody').innerHTML = `${nlAlert()}${k ? mkCntLine(k, true) : ''}
-    ${act.length ? `<div class="mqcols${secReady && secDec ? ' two' : ''}">${secReady}${secDec}</div>${qh('لو حاجة غلط: دوس على السطر ← "رجّعها لشريكك" بملاحظة')}` : `<div class="card empty mkclr">✔ مفيش حاجة مستنياك</div>`}
-    ${wait.length ? `<section class="mqsec back"><div class="mqsh"><b>🔴 رجّعتها لشريكك <small>${wait.reduce((s, g) => s + g.ops.length, 0)}</small></b><b class="n">${fmtP(gTot(wait))}</b></div>${wait.map(mkRowBack).join('')}</section>` : ''}
+    ${act.length ? `<div class="mqcols${secReady && secDec ? ' two' : ''}">${secReady}${secDec}</div>${qh(`لو حاجة غلط: دوس على السطر ← "رجّعها لـ${MK_PN}" بملاحظة`)}` : `<div class="card empty mkclr">✔ مفيش حاجة مستنياك</div>`}
+    ${wait.length ? `<section class="mqsec back"><div class="mqsh"><b>🔴 رجّعتها لـ${MK_PN} <small>${wait.reduce((s, g) => s + g.ops.length, 0)}</small></b><b class="n">${fmtP(gTot(wait))}</b></div>${wait.map(mkRowBack).join('')}</section>` : ''}
     ${''/* اتشال: "اتنقل النهارده" (الأرشيف تبويب فوق) و"حصّل من دول" (موجودة جوه كل عميل سوق) */}${false && mv.length ? `<a class="mqlink" id="mkToArch"><span>✓ اتنقل النهارده ${mv.length} ${mv.length === 1 ? 'عملية' : 'عمليات'} (${fmtP(mv.reduce((s, o) => s + o.amt, 0))})</span><span>الأرشيف ←</span></a>` : ''}`;
   const tap = (el, f) => { el.onclick = f; el.onkeydown = ev => { if (ev.target === el && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); f(ev); } }; };
   const opOf = id => mkDb().ops[id], grpOf = o => gs.find(x => x.ops.includes(o));
@@ -7823,7 +7825,7 @@ function mkArch() {
   const per = {day: 'اليوم', week: 'الأسبوع', month: 'الشهر', range: 'الفترة'}[mkAMode], perThis = mkAMode === 'range' ? 'الفترة دي' : per + ' ده';
   const prev = mkLive().filter(o => mkDone(o) && isoOf(o.ts) < f).reduce((m, o) => Math.max(m, o.ts), 0);
   const nm = o => o.t === 'pay' || o.t === 'inv' || o.t === 'rt' ? o.cname : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat : o.t === 'cs' ? (o.buyer || 'مشتري') : 'تسليم كاش';
-  const ic = o => o.t === 'exp' ? ['⛽', 'r'] : o.t === 'spay' ? ['🏭', 'r'] : o.t === 'hand' ? ['🤝', 'b'] : o.t === 'inv' ? ['🧾', 'y'] : o.t === 'rt' ? ['↩', 'y'] : o.t === 'cs' ? ['💰', mkCsTr(o) ? 'b' : 'g'] : o.m === 'cash' ? ['💵', 'g'] : ['⇄', 'b'];
+  const ic = o => o.t === 'exp' ? ['⛽', 'r'] : o.t === 'spay' ? ['🏭', 'r'] : o.t === 'hand' ? ['🤝', 'b'] : o.t === 'inv' ? ['🧾', 'y'] : o.t === 'rt' ? ['↩', 'y'] : o.t === 'cs' ? ['💰', mkCsTr(o) ? 'b' : 'ah'] : o.m === 'cash' ? ['💵', 'ah'] : ['⇄', 'b'];
   const pick = mkAMode === 'range' ? `<div class="g2" style="margin-top:8px"><div class="fld"><label>من</label><input class="inp" type="date" id="maFrom" value="${f}"></div><div class="fld"><label>إلى</label><input class="inp" type="date" id="maTo" value="${l}"></div></div>`
     : mkAMode === 'month' ? `<label style="margin-top:8px">📅 اختار شهر</label><input class="inp" type="month" id="maMonth" value="${f.slice(0, 7)}">`
     : `<label style="margin-top:8px">📅 اختار يوم</label><input class="inp" type="date" id="maDay" value="${mkDay || t}">`;

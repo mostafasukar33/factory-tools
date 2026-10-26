@@ -10,8 +10,9 @@
   --gold-d:#8C6A1D;   /* دهبي للكلام */
   --green:#17803D;    /* دخل */
   --red:#C2352A;      /* طلع */
-  --tr:#2463A6;       /* تحويل */
-  --gold-l:#FAF3E1;--green-l:#E7F4EB;--red-l:#FCEBE9;--tr-l:#E8EFF8;
+  --tr:#2463A6;       /* تحويل، وكمان لون مصطفى */
+  --ah:#2C8580;       /* لون أحمد (بطلبه 26/10/2026: مصطفى أزرق وأحمد تركواز في كل شاشة فيها "مع مين") */
+  --gold-l:#FAF3E1;--green-l:#E7F4EB;--red-l:#FCEBE9;--tr-l:#E8EFF8;--ah-l:#E6F3F2;
   --bg:#F4F3EF;--card:#FFFFFF;--line:#E5E1D6;--row:#F2EFE7;--field:#D6CFBD;
   --bar:#15130F;      /* الشريط الغامق فوق وتحت */
   --shadow:0 1px 2px #1b150a0d;
@@ -19,8 +20,8 @@
   --f1:13px;--f2:15px;--f3:17px;--f4:22px;--f5:32px;
 }
 html[data-theme=dark]{
-  --ink:#EEEADF;--sub:#A8A290;--gold:#DDB765;--gold-d:#E2C27A;--green:#4FC777;--red:#FF7F75;--tr:#7FB5E3;
-  --gold-l:#2A2313;--green-l:#15291B;--red-l:#3A1D1A;--tr-l:#1A2836;
+  --ink:#EEEADF;--sub:#A8A290;--gold:#DDB765;--gold-d:#E2C27A;--green:#4FC777;--red:#FF7F75;--tr:#7FB5E3;--ah:#6CC4BC;
+  --gold-l:#2A2313;--green-l:#15291B;--red-l:#3A1D1A;--tr-l:#1A2836;--ah-l:#16302E;
   --bg:#12110E;--card:#1D1C17;--line:#36332B;--row:#25231D;--field:#4A463A;
   --bar:#0D0C0A;--shadow:0 1px 2px #0009;--shadow2:0 1px 2px #0009;
 }
@@ -214,7 +215,7 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
 .kf .kfn{display:block;color:var(--gold);font-size:var(--f5);line-height:1.3;text-align:left}
 .kfc{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .kfc>span{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 12px;font-weight:800;font-size:var(--f2)}
-.kfme{background:var(--green-l);color:var(--green)}.kfmk{background:var(--tr-l);color:var(--tr)}
+.kfme{background:var(--tr-l);color:var(--tr)}.kfmk{background:var(--ah-l);color:var(--ah)}
 .kfc>span .n{color:inherit}
 .kfme.tap{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}.kfme .kch{color:inherit;font-size:var(--f1)}
 .kf .kvs{padding:10px 0 0}
@@ -236,7 +237,8 @@ table.fbt{width:100%;border-collapse:collapse}
 .fbt td>b{display:block;font-size:var(--f2);font-weight:800}
 .fbt td>small{display:block;font-size:var(--f1);font-weight:600;color:var(--sub);line-height:1.5}
 .fbt .n{font-size:var(--f2)}
-.fbw{font-style:normal;font-weight:800;color:var(--tr)}
+.fbw{font-style:normal;font-weight:800;color:var(--ah)}.fbw.me{color:var(--tr)}
+.fbg.me{color:var(--tr);background:var(--tr-l)}.fbg.mk{color:var(--ah);background:var(--ah-l)}
 .fbt tr.fbr{cursor:pointer}
 .fbt tr.fbs td{border-top:3px solid var(--line)}
 .fbt tr.fbx td{background:var(--row);color:var(--sub);font-size:var(--f1);font-weight:700;cursor:pointer}
@@ -248,7 +250,7 @@ table.fbt{width:100%;border-collapse:collapse}
 .fbf.bad>b,.fbf.bad>b .n{color:var(--red)}
 .fbc{display:flex;gap:6px}
 .fbc i{font-style:normal;font-size:var(--f1);font-weight:800;border-radius:999px;padding:1px 10px;white-space:nowrap}
-.fbc .me{background:var(--green-l);color:var(--green)}.fbc .mk{background:var(--tr-l);color:var(--tr)}
+.fbc .me{background:var(--tr-l);color:var(--tr)}.fbc .mk{background:var(--ah-l);color:var(--ah)}
 .fbc i .n{color:inherit}
 .fbe{display:flex;justify-content:space-between;gap:8px;padding:8px 14px;margin-bottom:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;color:var(--sub);font-size:var(--f1);font-weight:700}
 .fbe .n{color:var(--ink)}
@@ -263,7 +265,7 @@ table.fbt{width:100%;border-collapse:collapse}
 .fbk .fbr>.n{font-size:var(--f3)}
 .fbg{font-style:normal;font-size:var(--f1);font-weight:700;color:var(--sub);background:var(--row);border-radius:999px;padding:0 9px}
 .fbp{font-style:normal;font-weight:800;border-radius:999px;padding:0 8px}
-.fbp.me{background:var(--green-l);color:var(--green)}.fbp.mk{background:var(--tr-l);color:var(--tr)}
+.fbp.me{background:var(--tr-l);color:var(--tr)}.fbp.mk{background:var(--ah-l);color:var(--ah)}
 @media (min-width:1000px){#fbL{max-width:860px}.fbpdf{max-width:860px}}
 
 /* قايمة أدوات الخزنة (⋯ على الموبايل) */

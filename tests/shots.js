@@ -142,7 +142,8 @@ const IVSHOT = `if (!IDX.ivp.get('ip_shot')) { const t = todayISO(), u = Date.no
   add('cap', {id: 'ir_shot1', amt: 29000000, date: addDays(t, -60)});
   add('ship', {id: 'ir_shot2', date: addDays(t, -30), lines: [{n: 'لفة تجربة 16 مم', q: 300, w: 4.5, u: 2250}, {n: 'لفة تجربة 23 مم', q: 160, w: 7.25, u: 3625}], fr: 300000, site: 'المنيا'});
   add('exp', {id: 'ir_shot3', amt: 300000, date: addDays(t, -20), note: 'مصروف تجربة'});
-  add('draw', {id: 'ir_shot4', amt: 1000000, date: addDays(t, -10)}); }
+  add('draw', {id: 'ir_shot4', amt: 1000000, date: addDays(t, -10)});
+  add('prof', {id: 'ir_shot5', amt: 125000, date: addDays(t, -5), note: 'مكافأة تجربة'}); }
 `;
 /* المصنع والتجارة: مصاريف بكلام حر زي الحقيقة (القاموس بيفهمها لوحده)، وفاتورة فيها تجارة */
 const FACSHOT = `if (!IDX.tx.get('t_fac0')) { const v = defVault(), d = n => addDays(todayISO(), -n);

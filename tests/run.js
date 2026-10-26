@@ -1299,6 +1299,17 @@ const T0 = Date.now();
       const v = ivList().find(x => x.name === 'مساهم تجربة عميل'), R = ivReport(v); go('jrd/iv/' + v.id); renderJrd();
       const pg = buildReportPages(R), th = [...pg[0].querySelectorAll('thead th')].map(x => x.textContent); $('#render').innerHTML = '';
       return [th.join('|'), !!$('#p-jrd tr[data-pe]'), R.fin[0]]; }), ['الصنف|العدد|الوزن|ربح الوحدة|الإجمالي', true, 'إجمالي المستحق للمساهم']);
+    /* "+ ربح" للمساهم المربوط بعميل: مبلغ وملحوظة من غير شهر، وبيبان في الكروت والكشف (PDF) ورصيده وتقرير الأرباح */
+    await A.evaluate(() => { const v = ivList().find(x => x.name === 'مساهم تجربة عميل'); go('jrd/iv/' + v.id); renderJrd(); $('#ivProf').click(); });
+    await A.waitForSelector('#imOk');
+    const pf = await A.evaluate(() => [!!$('#imM'), $('#modal').textContent.includes('ملحوظة (بتتكتب في كشف حسابه)')]);
+    await A.fill('#imA', '1,250'); await A.fill('#imN', 'مكافأة تجربة'); await A.click('#imOk');
+    eq('المساهم: "+ ربح" بمبلغ وملحوظة من غير شهر، وظاهر في الكروت والكشف والرصيد وتقرير الأرباح', await A.evaluate(([pf]) => {
+      const v = ivList().find(x => x.name === 'مساهم تجربة عميل'), r = db.ivrs.find(x => !x.del && x.iv === v.id && x.k === 'prof' && x.note === 'مكافأة تجربة'), R = ivReport(v);
+      const out = [...pf, !!r && r.amt === 125000 && !r.m, $('#p-jrd').textContent.includes('أرباح إضافية') && $('#p-jrd').textContent.includes('مكافأة تجربة'),
+        R.rows.some(x => x.foot && x.foot[0].includes('ربح — مكافأة تجربة') && x.foot[1] === '1,250'), R.sum.some(x => x[0] === '(+) أرباح إضافية' && x[1] === '1,250'),
+        ivProfit(r.date, r.date) >= 125000];
+      const b0 = ivSums(v.id).bal; r.del = true; out.push(ivSums(v.id).bal === b0 - 125000); renderJrd(); return out; }, [pf]), [false, true, true, true, true, true, true, true]);
     /* "✕ شيلها": فاتورة مالهاش ربح للمساهم بتختفي من "بانتظار الربح" (skip في المساهم)، والفاتورة نفسها وأرباح المساهم زي ما هم، والتراجع و"رجّعهم" بيرجعوها */
     eq('المساهم: "✕ شيلها" بتشيل الفاتورة من غير ربح، والتراجع و"رجّعهم" بيرجعوها، والفاتورة نفسها متتلمسش', await A.evaluate(() => {
       const v = ivList().find(x => x.name === 'مساهم تجربة عميل'); go('jrd/iv/' + v.id); renderJrd();

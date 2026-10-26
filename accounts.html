@@ -6228,7 +6228,7 @@ function ivReport(v) {
   const noteOf = m => m.src === 'tx' ? m.r.pnote || '' : m.k === 'exp' ? '' : m.r.note || '';
   if (v.mode === 'c') {
     const sec = (k, title) => { const L = ms.map((m, i) => [m, i]).filter(([m]) => m.k === k); if (!L.length) return; rows.push({grp: title});
-      L.forEach(([m, i]) => rows.push({i, foot: [`${dispDate(m.date)} — ${k === 'exp' ? m.r.note || 'مصروفات' : k === 'draw' ? 'مسحوبات' + vtx(m) : 'رأس المال' + vtx(m)}${k === 'exp' || /رأس/.test(noteOf(m)) || !noteOf(m) ? '' : ' — ' + noteOf(m)}`, fmtP(Math.abs(m.amt))]})); };
+      L.forEach(([m, i]) => rows.push({i, foot: [`${dispDate(m.date)} — ${k === 'exp' ? m.r.note || 'مصروفات' : k === 'draw' ? 'مسحوبات' + vtx(m) : k === 'prof' ? 'ربح' : 'رأس المال' + vtx(m)}${k === 'exp' || /رأس/.test(noteOf(m)) || !noteOf(m) ? '' : ' — ' + noteOf(m)}`, fmtP(Math.abs(m.amt))]})); };
     sec('cap', 'رأس المال');
     const ships = ms.map((m, i) => [m, i]).filter(([m]) => m.k === 'ship');
     if (ships.length) rows.push({grp: `الشحنات (${ships.length})`, big: 1});
@@ -6239,10 +6239,11 @@ function ivReport(v) {
       if (r.fr) rows.push({i, cls: 'fr', foot: ['النقل والمصاريف', fmtP(-r.fr)]});
       if (r.fr || ls.length > 1) rows.push({i, cls: 'nt', foot: ['صافي الشحنة', fmtP(m.amt)]});
     });
-    sec('exp', 'المصروفات'); sec('draw', 'المسحوبات');
+    sec('prof', 'أرباح إضافية'); sec('exp', 'المصروفات'); sec('draw', 'المسحوبات');
+    const extra = ms.filter(m => m.k === 'prof').reduce((n, m) => n + m.amt, 0);
     return {title: `كشف حساب ${v.name}`, period: `لحد ${dispDate(todayISO())}`, ivc: true,
       cols: [{h: 'الصنف', w: 45, c: 'l'}, {h: 'العدد', w: 10, c: 'n'}, {h: 'الوزن', w: 10, c: 'n'}, {h: 'ربح الوحدة', w: 15, c: 'n'}, {h: 'الإجمالي', w: 20, c: 'b'}],
-      rows, sum: [['إجمالي العمولات', fmtP(s.gross)], ['(−) نقل ومصاريف الشحنات', fmtP(s.fr)], ...[...s.expBy].map(([k, x]) => ['(−) ' + (k.startsWith('مصاريف') ? k : 'مصاريف ' + k), fmtP(x)]),
+      rows, sum: [['إجمالي العمولات', fmtP(s.gross)], ['(−) نقل ومصاريف الشحنات', fmtP(s.fr)], ...(extra ? [['(+) أرباح إضافية', fmtP(extra)]] : []), ...[...s.expBy].map(([k, x]) => ['(−) ' + (k.startsWith('مصاريف') ? k : 'مصاريف ' + k), fmtP(x)]),
         ['صافي العمولات', fmtP(s.prof), 'sub'], ['(−) المسحوبات', fmtP(s.draw)], ['الأرباح المتبقية', fmtP(s.prof - s.draw), 'sub'], ['(+) رأس المال', fmtP(s.cap)]],
       fin: ['إجمالي المستحق للمساهم', fmtP(s.bal)]};
   }
@@ -6263,7 +6264,7 @@ function ivCards(v, ms) {
     const L = ms.map((m, i) => [m, i]).filter(([m]) => m.k === k); if (!L.length) return '';
     return card(`${title} (${L.length})`, fmtP(L.reduce((n, [m]) => n + Math.abs(m.amt), 0)), L.map(([m, i]) => {
       const nt0 = m.src === 'tx' ? m.r.pnote || '' : k === 'exp' ? '' : m.r.note || '', nt = /رأس/.test(nt0) ? '' : nt0, vt = m.src === 'tx' ? (k === 'cap' ? 'أُودع في ' : 'من ') + vName(m.r.vault) : '';
-      return `<tr data-k="${i}"><td class="d">${shortDate(m.date)}</td><td class="w"><b>${esc(k === 'exp' ? m.r.note || 'مصروفات' : k === 'cap' ? 'رأس المال' : 'مسحوبات')}</b>${[vt, nt].filter(Boolean).length ? `<small>${esc([vt, nt].filter(Boolean).join(' — '))}</small>` : ''}</td><td class="am">${fmtP(Math.abs(m.amt))}</td></tr>`; }).join(''), cls);
+      return `<tr data-k="${i}"><td class="d">${shortDate(m.date)}</td><td class="w"><b>${esc(k === 'exp' ? m.r.note || 'مصروفات' : k === 'cap' ? 'رأس المال' : k === 'prof' ? 'ربح' : 'مسحوبات')}</b>${[vt, nt].filter(Boolean).length ? `<small>${esc([vt, nt].filter(Boolean).join(' — '))}</small>` : ''}</td><td class="am">${fmtP(Math.abs(m.amt))}</td></tr>`; }).join(''), cls);
   };
   const shipHtml = ships.map(([m, i]) => {
     const r = m.r, sg = r.ret ? -1 : 1;
@@ -6273,6 +6274,7 @@ function ivCards(v, ms) {
   }).join('');
   return (simple('cap', 'رأس المال', 'inc') ? `<div class="cwrap">${simple('cap', 'رأس المال', 'inc')}</div>` : '')
     + (ships.length ? `<h2 class="rph">الشحنات (${ships.length})<small>الرقم الأخضر أعلى كل بطاقة = صافي الشحنة (الكمية × ربح الوحدة − النقل والمصاريف)</small></h2><div class="cwrap">${shipHtml}</div>` : '')
+    + (simple('prof', 'أرباح إضافية', 'inc') ? `<div class="cwrap">${simple('prof', 'أرباح إضافية', 'inc')}</div>` : '')
     + (simple('exp', 'المصروفات', 'exp') || simple('draw', 'المسحوبات', 'exp') ? `<div class="cwrap">${simple('exp', 'المصروفات', 'exp')}${simple('draw', 'المسحوبات', 'exp')}</div>` : '');
 }
 function renderIv(id) {
@@ -6280,7 +6282,7 @@ function renderIv(id) {
   if (!v) { go('jrd/iv'); return; }
   const s = ivSums(v.id), R = ivReport(v), ms = ivMoves(v.id), pend = ivPending(v), due = ivDue(v), cp = P.get(v.party);
   pg.innerHTML = `<div class="sech ppbar tb" style="margin-top:0"><a id="ivBack">→<em> المساهمين</em></a><b class="tt">💰 ${esc(v.name)}</b><a id="ivSet">⚙ بياناته</a></div>
-    <div class="cbar">${v.mode === 'm' ? '<button class="btn gold" id="ivProf" type="button">+ ربح الشهر</button>' : '<button class="btn line" id="ivExp" type="button">− مصروفات</button>'}
+    <div class="cbar">${v.mode === 'm' ? '<button class="btn gold" id="ivProf" type="button">+ ربح الشهر</button>' : '<button class="btn gold" id="ivProf" type="button">+ ربح</button><button class="btn line" id="ivExp" type="button">− مصروفات</button>'}
       <button class="btn redf" id="ivDraw" type="button">− مسحوبات</button><button class="btn line" id="ivCap" type="button">+ رأس مال</button></div>
     <div class="tots"><div class="k"><span>الرصيد المستحق للمساهم</span><b class="${s.bal < 0 ? 'cr' : ''}">${fmtP(s.bal)} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
       <div><span>رأس المال</span><b>${fmtP(s.cap)}</b></div><div><span>الأرباح المستحقة (بعد المسحوبات)</span><b>${fmtP(s.prof - s.draw)}</b></div></div>
@@ -6321,17 +6323,18 @@ function ivMoveModal(v, kind, m, month) {
   if (r && isLocked(r.date)) return ivLockedModal(`${IVM[kind]} ${v.name} ${fmtP(r.amt)}`, r.date);
   ensureVaults();
   const t = todayISO(), pm = (() => { const [y, mo] = t.split('-').map(Number), d = new Date(y, mo - 2, 1); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`; })();
-  const mm = r && r.m || month || (ivDue(v)[0] || pm), sg = kind === 'prof' && isNew ? ivSuggest(v, mm) : null;
+  const byM = kind === 'prof' && v.mode === 'm';   // المربوط بعميل: "+ ربح" مبلغ وملحوظة بس من غير شهر (بطلبه 26/10/2026)
+  const mm = r && r.m || month || (ivDue(v)[0] || pm), sg = byM && isNew ? ivSuggest(v, mm) : null;
   const vsel = isTx ? r.vault : isNew ? (kind === 'draw' ? defVault() : '') : '';
   const notes = [...new Set(db.ivrs.filter(x => !x.del && x.k === 'exp' && x.note).map(x => x.note))];
   modal(`<h3 class="${kind === 'draw' || kind === 'exp' ? 'exp' : 'inc'}">${isNew ? (kind === 'draw' || kind === 'exp' ? '− ' : '+ ') + IVM[kind] : 'تعديل ' + IVM[kind]} — ${esc(v.name)}</h3>
-    ${kind === 'prof' ? `<div class="fld"><label>ربح شهر</label><input class="inp" type="month" id="imM" value="${mm}"></div>
+    ${byM ? `<div class="fld"><label>ربح شهر</label><input class="inp" type="month" id="imM" value="${mm}"></div>
       ${sg ? `<div class="sync" id="imSg">💡 المقترح <b>${fmtP(sg.amt)}</b> — ${esc(sg.why)}. <a class="lnk" id="imUse">اعتماده</a></div>` : isNew ? '<p class="hint">يظهر اقتراح تلقائي بعد تسجيل أرباح بعض الشهور السابقة.</p>' : ''}` : ''}
     ${kind === 'exp' ? `<div class="fld"><label>بيان المصروف (مثال: حمدي)</label><input class="inp" id="imN" list="imNL" value="${esc(r ? r.note || '' : '')}" autocomplete="off"><datalist id="imNL">${notes.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>` : ''}
     <div class="fld"><label>المبلغ</label><input class="inp num amt" id="imA" placeholder="0" value="${r ? fmtP(r.amt) : ''}"></div>
     ${canV ? `<div class="fld"><label>${kind === 'cap' ? 'أُودع في خزنة' : 'صُرف من خزنة'}</label><select class="inp" id="imV">${vaultOpts(vsel, kind === 'cap' ? 'بدون خزنة (المبلغ مستثمر في النشاط من قبل)' : 'بدون خزنة')}</select></div>` : ''}
-    <div class="fld"><label>التاريخ</label><input class="inp" id="imD" type="date" value="${r ? r.date : kind === 'prof' ? (mm < t.slice(0, 7) ? nextMonth(mm) + '-01' : t) : t}"></div>
-    ${kind !== 'exp' ? `<div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="imN" value="${esc(r ? (isTx ? r.pnote : r.note) || '' : '')}" autocomplete="off"></div>` : ''}
+    <div class="fld"><label>التاريخ</label><input class="inp" id="imD" type="date" value="${r ? r.date : byM ? (mm < t.slice(0, 7) ? nextMonth(mm) + '-01' : t) : t}"></div>
+    ${kind !== 'exp' ? `<div class="fld"><label>${kind === 'prof' && !byM ? 'ملحوظة (بتتكتب في كشف حسابه)' : 'ملاحظة (اختياري)'}</label><input class="inp" id="imN" value="${esc(r ? (isTx ? r.pnote : r.note) || '' : '')}" autocomplete="off"></div>` : ''}
     ${r ? histHtml(r) : ''}
     <div class="stack" style="margin-top:8px"><button class="btn ${kind === 'draw' || kind === 'exp' ? 'redf' : 'gold'}" id="imOk" type="button">${isNew ? 'حفظ' : 'حفظ التعديل'}</button>
     ${isNew ? '' : '<button class="btn red sm" id="imDel" type="button">إلغاء الحركة</button>'}<button class="btn line" id="imX" type="button">رجوع</button></div>`);
@@ -6340,13 +6343,13 @@ function ivMoveModal(v, kind, m, month) {
   $('#imX').onclick = closeModal;
   if (isNew) focusSoon('#imA', 50);
   $('#imOk').onclick = () => {
-    const amt = toP($('#imA').value), date = $('#imD').value, note = $('#imN').value.trim(), vault = canV ? $('#imV').value : '', mo = kind === 'prof' ? $('#imM').value : '';
-    if (amt < 0 || (amt === 0 && kind !== 'prof')) return toast('أدخل المبلغ');
+    const amt = toP($('#imA').value), date = $('#imD').value, note = $('#imN').value.trim(), vault = canV ? $('#imV').value : '', mo = byM ? $('#imM').value : '';
+    if (amt < 0 || (amt === 0 && !byM)) return toast('أدخل المبلغ');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختر التاريخ');
-    if (kind === 'prof' && !/^\d{4}-\d{2}$/.test(mo)) return toast('اختر الشهر');
+    if (byM && !/^\d{4}-\d{2}$/.test(mo)) return toast('اختر الشهر');
     if (kind === 'exp' && !note) return toast('أدخل بيان المصروف');
     if (isLocked(date)) return lockToast();
-    if (kind === 'prof' && db.ivrs.some(x => !x.del && x !== r && x.iv === v.id && x.k === 'prof' && x.m === mo)) return toast(`ربح شهر ${monthName(mo)} مسجَّل بالفعل. افتحه من الكشف إن أردت تعديله.`, 5000);
+    if (byM && db.ivrs.some(x => !x.del && x !== r && x.iv === v.id && x.k === 'prof' && x.m === mo)) return toast(`ربح شهر ${monthName(mo)} مسجَّل بالفعل. افتحه من الكشف إن أردت تعديله.`, 5000);
     const now = nowS(), wantTx = !!vault;
     const desc = x => `${IVM[kind]} ${v.name} ${fmtP(x.amt)}${x.vault ? ' — ' + vName(x.vault) : ''}`;
     if (r && wantTx === !!isTx) {
@@ -6354,7 +6357,7 @@ function ivMoveModal(v, kind, m, month) {
       if (same) return closeModal();
       (r.hist = r.hist || []).push({t: now, date: r.date, desc: desc(r), dr: r.amt, cr: 0});
       if (isTx) { ensureIvCats(); Object.assign(r, {amt, date, vault, pnote: note, note: `${IVM[kind]} ${v.name}${note ? ' — ' + note : ''}`}); }
-      else Object.assign(r, {amt, date, note}, kind === 'prof' ? {m: mo} : {});
+      else Object.assign(r, {amt, date, note}, byM ? {m: mo} : {});
       touch(r); toast('تم التعديل ✔');
     } else {
       if (r) { r.del = true; r.delAt = now; touch(r); }   // اتنقلت من خزنة لـ "من غير خزنة" أو العكس: القديمة بتتلغي والجديدة بتتسجل
@@ -6363,7 +6366,7 @@ function ivMoveModal(v, kind, m, month) {
         const x = {id: newId('t_'), type: kind === 'cap' ? 'inc' : 'exp', amt, vault, to: '', cat: IV_CATS[kind][0], iv: v.id, pnote: note, note: `${IVM[kind]} ${v.name}${note ? ' — ' + note : ''}`, date, at: now, upd: now, del: false, hist: []};
         db.txs.push(x); IDX.tx.set(x.id, x);
       } else {
-        const x = Object.assign({id: newId('ir_'), iv: v.id, k: kind, amt, date, note, at: now, upd: now, del: false, hist: []}, kind === 'prof' ? {m: mo} : {});
+        const x = Object.assign({id: newId('ir_'), iv: v.id, k: kind, amt, date, note, at: now, upd: now, del: false, hist: []}, byM ? {m: mo} : {});
         db.ivrs.push(x); IDX.ivr.set(x.id, x);
       }
       toast(r ? 'تم التعديل ✔' : 'تم التسجيل ✔');

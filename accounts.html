@@ -264,6 +264,7 @@ table.ldg.rp.wide{min-width:520px}.ldg.rp td{white-space:nowrap}.ldg.rp td.l{whi
 .stm div b{display:block;font-size:var(--f4);font-weight:800;direction:ltr}
 .stm .k{grid-column:1/-1;background:var(--bar)}.stm .k span{color:var(--gold)}.stm .k b{color:#fff;font-size:var(--f5)}
 /* المزامنة */
+.drr .drok{margin-inline-start:auto;flex:none}
 .sync{display:flex;align-items:center;gap:8px;font-weight:700;font-size:var(--f2);padding:8px 12px;border-radius:10px;background:var(--gold-l);border:1.5px dashed var(--gold);margin-bottom:12px;flex-wrap:wrap}
 .sync.ok{background:var(--green-l);border-color:#A9DDB8;color:var(--green)}
 .sync.warn{background:var(--red-l);border-color:#F0B9B3;color:var(--red)}
@@ -5946,7 +5947,7 @@ async function docOpen() {
   try { await drLoad(); r = await window.docRun(true); } catch (e) { closeModal(); return toast('مش قادر يفتح دلوقتي، اتأكد من النت وجرّب تاني.'); }
   if (db !== d0) return;
   docKeep(r);
-  const row = (x, cls) => `<div class="sync ${cls} drr"${x.go ? ` data-go="${esc(x.go)}" role="button"` : ''}>${cls === 'warn' && r.bad.includes(x) ? '❌' : '⚠️'} ${esc(x.t)}</div>`;
+  const row = (x, cls) => `<div class="sync ${cls} drr"${x.go ? ` data-go="${esc(x.go)}" role="button"` : ''}>${cls === 'warn' && r.bad.includes(x) ? '❌' : '⚠️'} ${esc(x.t)}${cls ? '' : `<button class="btn line sm drok" type="button" data-k="${esc(x.k)}">مش غلط</button>`}</div>`;
   modal(`<h3>✅ فحص البيانات</h3>
     ${r.bad.length + r.warn.length ? r.bad.map(x => row(x, 'warn')).join('') + r.warn.map(x => row(x, '')).join('') : '<div class="sync ok">✅ كله سليم</div>'}
     <p class="hint">${r.n.e} حركة · ${r.n.p} حساب · ${r.n.t} حركة خزنة · ${r.n.v} خزن${r.ms ? ` · الحفظ ${(r.ms / 1000).toFixed(1)} ثانية` : ''}${r.info.map(t => '<br>' + esc(t)).join('')}</p>
@@ -5954,6 +5955,8 @@ async function docOpen() {
     <button class="btn line" id="drX" type="button">تمام</button>`);
   $('#drX').onclick = closeModal;
   $$('.drr[data-go]').forEach(el => el.onclick = () => { closeModal(); go(el.dataset.go); });
+  /* "مش غلط": التنبيه ده ميظهرش تاني على أي جهاز (إعداد docOk بس، الحركات زي ما هي) */
+  $$('.drok').forEach(b => b.onclick = ev => { ev.stopPropagation(); const k = b.dataset.k, a = (getSet('docOk', []) || []).filter(x => x !== k); putSet('docOk', a.concat(k).slice(-300)); toast('تمام، مش هيقول عليها تاني'); docOpen().then(() => renderHome && document.body.dataset.pg === 'home' && renderHome()); });
   renderDocBox();
 }
 /* مكتبات الـ PDF تقيلة (حوالي 600 كيلو)، فبتتحمّل بس أول مرة حد يعمل PDF مش مع كل فتحة للبرنامج */

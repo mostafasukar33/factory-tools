@@ -2817,6 +2817,15 @@ const T0 = Date.now();
       if (!(await A.evaluate(() => !!$('#sDocGo').offsetParent))) await A.click('#sDoc >> xpath=../h2');   // الكارت مقفول (كروت الإعدادات بتتفتح بدوسة)
       await A.click('#sDocGo'); await A.waitForSelector('#drX');
       eq('فحص البيانات: زرار "افحص دلوقتي" بيفتح النتيجة', await A.evaluate(() => /حركة ·/.test($('#modal').textContent) && /آخر فحص/.test($('#sDoc').textContent)), true);
+      /* مصروفين مختلفين بنفس المبلغ ورا بعض: "مش غلط" بيخفي التنبيه ده بس (إعداد مشترك docOk)، ومبيغيّرش أي حركة */
+      await A.evaluate(() => { closeModal(); const v = vaultsAll()[0], at = nowS(), d = todayISO(); db.txs.push({id: 'tzok1', type: 'exp', vault: v.id, cat: 'c_exp0', amt: 4500, date: d, at, upd: at, note: 'بنزين'}, {id: 'tzok2', type: 'exp', vault: v.id, cat: 'c_exp0', amt: 4500, date: d, at: at + 60000, upd: at, note: 'بنزين'}, {id: 'tzok3', type: 'exp', vault: v.id, cat: 'c_exp0', amt: 4500, date: d, at: at + 120000, upd: at, note: 'عيش'}); reindex(); docOpen(); });
+      await A.waitForSelector('#drX');
+      const ok0 = await A.evaluate(() => $$('#modal .drok[data-k*=tzok]').length);
+      await A.click('#modal .drok[data-k*=tzok]');
+      await A.waitForFunction(() => $('#drX') && !$('#modal .drok[data-k*=tzok]'));
+      const ok1 = await A.evaluate(async () => { const r = await docRun(false), t = db.txs.filter(t => /^tzok/.test(t.id)); return [r.warn.some(x => /^twin:tzok/.test(x.k)), (getSet('docOk', []) || []).filter(k => /tzok/.test(k)).length, IDX.set.get('docOk').upd > 0, t.length, t.every(x => !x.del && x.amt === 4500), r.warn.some(x => /tzok3/.test(x.k))]; });
+      eq('فحص البيانات: مصروفين بنفس المبلغ وكلام مختلف مش تكرار، و"مش غلط" بيخفي التنبيه ومبيغيّرش الحركات', [ok0, ...ok1], [1, false, 1, true, 3, true, false]);
+      await A.evaluate(() => { db.txs = db.txs.filter(t => !/^tzok/.test(t.id)); const r = IDX.set.get('docOk'); db.sets = db.sets.filter(x => x !== r); reindex(); });
       await A.evaluate(() => { closeModal(); delete db.cfg.doc; flushSave(); go('home'); }); await A.settle(300);
       /* الآيفون بيقطع الاتصال بالتخزين في الخلفية: الحفظ بيفتح اتصال جديد ويكمّل من غير رسالة "مش قادر يحفظ" */
       eq('الحفظ بعد ما الاتصال بالتخزين اتقطع: اتحفظ من غير تحذير', await A.evaluate(async () => {

@@ -12,7 +12,8 @@
   --red:#C2352A;      /* طلع */
   --tr:#2463A6;       /* تحويل، وكمان لون مصطفى */
   --ah:#2C8580;       /* لون أحمد (بطلبه 26/10/2026: مصطفى أزرق وأحمد تركواز في كل شاشة فيها "مع مين") */
-  --gold-l:#FAF3E1;--green-l:#E7F4EB;--red-l:#FCEBE9;--tr-l:#E8EFF8;--ah-l:#E6F3F2;
+  --hs:#A4561B;       /* لون حسن (عهدة المصنع، 29/10/2026) */
+  --gold-l:#FAF3E1;--green-l:#E7F4EB;--red-l:#FCEBE9;--tr-l:#E8EFF8;--ah-l:#E6F3F2;--hs-l:#FBEEE3;
   --bg:#F4F3EF;--card:#FFFFFF;--line:#E5E1D6;--row:#F2EFE7;--field:#D6CFBD;
   --bar:#15130F;      /* الشريط الغامق فوق وتحت */
   --shadow:0 1px 2px #1b150a0d;
@@ -20,8 +21,8 @@
   --f1:13px;--f2:15px;--f3:17px;--f4:22px;--f5:32px;
 }
 html[data-theme=dark]{
-  --ink:#EEEADF;--sub:#A8A290;--gold:#DDB765;--gold-d:#E2C27A;--green:#4FC777;--red:#FF7F75;--tr:#7FB5E3;--ah:#6CC4BC;
-  --gold-l:#2A2313;--green-l:#15291B;--red-l:#3A1D1A;--tr-l:#1A2836;--ah-l:#16302E;
+  --ink:#EEEADF;--sub:#A8A290;--gold:#DDB765;--gold-d:#E2C27A;--green:#4FC777;--red:#FF7F75;--tr:#7FB5E3;--ah:#6CC4BC;--hs:#E9A066;
+  --gold-l:#2A2313;--green-l:#15291B;--red-l:#3A1D1A;--tr-l:#1A2836;--ah-l:#16302E;--hs-l:#33241A;
   --bg:#12110E;--card:#1D1C17;--line:#36332B;--row:#25231D;--field:#4A463A;
   --bar:#0D0C0A;--shadow:0 1px 2px #0009;--shadow2:0 1px 2px #0009;
 }
@@ -216,6 +217,28 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
 .kfc{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .kfc>span{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 12px;font-weight:800;font-size:var(--f2)}
 .kfme{background:var(--tr-l);color:var(--tr)}.kfmk{background:var(--ah-l);color:var(--ah)}
+/* حسن جنبهم في نفس السطر (للعلم، مش داخل في الرقم الكبير). الكارت ممنوع يطول: لو مكفوش الخط بيصغر (.sm من kfcFit) */
+.kfhs{background:var(--hs-l);color:var(--hs);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
+.kfc:has(.kfhs){flex-wrap:nowrap;gap:6px}.kfc:has(.kfhs)>span{padding:3px 10px;white-space:nowrap}
+.kfc.sm>span{font-size:var(--f1);padding:3px 8px}
+/* عهدة حسن (lib/hsn.js): النوافذ نفس شكل نافذة الخزنة (.ksheet/.kit) بلون حسن، وكارت في الوارد */
+.ksheet.ksh-hs .ksh2>span,.ksheet.ksh-hs .ksh2>.n{color:var(--hs)}
+.hsh .n{font-weight:800;direction:ltr;unicode-bidi:isolate;white-space:nowrap;font-variant-numeric:tabular-nums lining-nums}
+.hsio{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.hsio>div{border-radius:12px;padding:8px 12px;min-width:0}.hsio span{display:block;font-weight:800;font-size:var(--f2)}
+.hsio .n{display:block;font-size:var(--f4);text-align:right;font-weight:800;direction:ltr;unicode-bidi:isolate}
+.hsw{border:1.5px solid var(--red);background:var(--red-l);color:var(--red);border-radius:12px;padding:8px 12px;margin:10px 0;font-size:var(--f2);font-weight:700}
+.hsw b,.hsw span{display:block}
+.hsh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 2px 4px;margin-top:6px;font-weight:800;font-size:var(--f2);color:var(--sub);border-bottom:1px solid var(--line)}
+.hsh .n{color:var(--ink)}
+.kit small.hsg{color:var(--hs);font-weight:800}
+.kit.hsq{cursor:default;align-items:flex-start}.kit.hsq>div{flex:1;min-width:0}
+.hsin{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;margin:8px 0 6px}
+.hsin label{font-weight:700;font-size:var(--f2);color:var(--sub)}.hsin small{grid-column:1/-1}
+.hsq .g2 .btn{margin:0}
+.hsc{background:var(--card);border-radius:16px;box-shadow:var(--shadow2);border-top:6px solid var(--hs);padding:12px 14px;margin-bottom:12px}
+.hsct{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.hsct b{font-size:var(--f4);color:var(--hs)}.hsct small{font-size:var(--f1);color:var(--sub);font-weight:600}
+.hsc .kit{cursor:default}.hsc .btn{width:100%;margin-top:10px}
 .kfc>span .n{color:inherit}
 .kfme.tap{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}.kfme .kch{color:inherit;font-size:var(--f1)}
 .kf .kvs{padding:10px 0 0}

@@ -185,6 +185,24 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-fac-pick-' + sfx, go: facGo('pick')},
   {name: 'acc-iv-' + sfx, go: accEval(IVSHOT + "go('jrd/iv/ip_shot')"), full: true},
 ].map(x => Object.assign({app: 'acc', vp}, x, extra, vp.width > 999 ? {full: false} : {}));
+/* بيانات عهدة حسن التجريبية: أسامي عمال تجريبية، والعهدة والمرتبات والسلف والمصاريف حوالين النهارده (مرة واحدة بس في كل صفحة) */
+const HSSHOT = `if (!getSet('paySheet', null)) {
+  const t = todayISO(), d = n => addDays(t, -n), u = 'https://script.google.com/macros/s/SHOT-PAY/exec', th = thuOnOrAfter(d(7)), th2 = thuOnOrAfter(d(14));
+  putSet('paySheet', {u, k: 'Shot-Pay-Key'});
+  if (!partners()) putSet('partners', {on: false, amt: 700000, vault: defVault(), start: d(30), list: [{id: 'pa', name: 'مصطفى'}, {id: 'pb', name: 'حسن'}, {id: 'pc', name: 'أحمد'}]});
+  const R = {w1: {k: 'wk', name: 'عامل تجربة واحد'}, w2: {k: 'wk', name: 'عامل تجربة اتنين'}, w3: {k: 'wk', name: 'عامل تجربة تلاتة'},
+    c1: {k: 'cus', amt: 1500000, date: d(9)}, c2: {k: 'cus', amt: 1000000, date: d(2)}, c3: {k: 'cus', amt: 300000, date: d(5)},
+    x1: {k: 'exp', amt: 45000, date: d(3), note: 'عيش وشاي', to: 'البوفيه'}, x2: {k: 'exp', amt: 120000, date: d(6), note: 'كسر', to: 'مورد تجربة'}, x3: {k: 'exp', amt: 30000, date: d(1), note: 'مسامير'},
+    a1: {k: 'adv', w: 'w2', amt: 50000, date: d(4), note: ''}};
+  [['w1', 280000], ['w2', 250000], ['w3', 230000]].forEach(([w, a], i) => { R['p' + i] = {k: 'pd', w, thu: th, amt: a, date: th}; R['q' + i] = {k: 'pd', w, thu: th2, amt: a - 20000, date: th2}; });
+  db.pay = {u, cur: 30, recs: R, bal: 0, at: Date.now()};
+  ensureMktVault();
+  const c = catsL('exp')[0].id, add = (id, amt, note, date, vault, cat) => { const r = {id, type: 'exp', amt, vault, to: '', cat: cat || c, note, date, at: Date.now(), upd: Date.now(), del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); };
+  add('t_hsh1', 1500000, 'حسن', d(9), defVault(), 'c_hsn'); add('t_hsh2', 1700000, 'حسن عيسى', d(2), 'v_mkt'); add('t_hsh3', 700000, 'أحمد فهيم', d(1), 'v_mkt'); add('t_hsh4', 250000, 'حسن', d(4), defVault());
+  if (!IDX.cat.get('c_hsn')) { const r = {id: 'c_hsn', type: 'exp', name: 'عهدة حسن', ord: 98, upd: 1, del: false}; db.cats.push(r); IDX.cat.set(r.id, r); }
+  saveDB();
+  hsLoad('hsData').then(x => { db.pay.bal = x.bal; });
+}`;
 const SCREENS = [
   ...ACC('m', MOB),
   {name: 'acc-rep-ah-m', app: 'acc', vp: MOB, full: true, go: accEval(`go('rep'); repKind = 'ah'; repMode = 'week'; repDay = addDays(todayISO(), -3); renderReports()`)},
@@ -233,6 +251,13 @@ const SCREENS = [
   {name: 'mkt-homeinv-m-dark', app: 'mkt', vp: MOB, dark: true, full: true, go: async M => { await M.evaluate(() => { ldTab = 'inv'; nav(''); drawHome(); }); }},
   {name: 'mkt-cust-m-dark', app: 'mkt', vp: MOB, dark: true, go: mktGo('c')},
   {name: 'mkt-arch-m-dark', app: 'mkt', vp: MOB, dark: true, go: mktGo('a')},
+  /* عهدة حسن (lib/hsn.js): تطبيق المرتبات متربط وفيه بيانات تجريبية (من غير نت، db.pay جاهز) */
+  {name: 'acc-hsn-cash-m', app: 'acc', vp: MOB, go: async A => { await A.evaluate(HSSHOT); await accEval(`cashView = 'type'; cashMode = 'week'; cashDay = ''; cashOpenV = false; go('cash'); renderCash()`)(A); }},
+  {name: 'acc-hsn-m', app: 'acc', vp: MOB, go: async A => { await A.evaluate(HSSHOT); await accEval(`go('cash'); renderCash()`)(A); await A.evaluate(() => hsLoad('hsWin')); await A.waitForSelector('#hsM'); }},
+  {name: 'acc-hsn-wk-m', app: 'acc', vp: MOB, go: async A => { await A.evaluate(HSSHOT); await A.evaluate(() => hsLoad('hsWin')); await A.waitForSelector('#hsM'); await A.click('#modal .kit[data-k=wk]'); }},
+  {name: 'acc-hsn-rev-m', app: 'acc', vp: MOB, go: async A => { await A.evaluate(HSSHOT); await A.evaluate(() => hsLoad('hsReview')); await A.waitForSelector('#hrX'); }},
+  {name: 'acc-hsn-in-m', app: 'acc', vp: MOB, go: async A => { await A.evaluate(HSSHOT); await accEval("mkView = 'in'; go('mkt'); renderMkt()")(A); await A.waitForSelector('#hsCard'); }},
+  {name: 'acc-hsn-m-dark', app: 'acc', vp: MOB, dark: true, go: async A => { await A.evaluate(HSSHOT); await accEval(`go('cash'); renderCash()`)(A); await A.evaluate(() => hsLoad('hsWin')); await A.waitForSelector('#hsM'); }},
   /* ورق الـ PDF (لازم ميتغيرش): بيتصور آخر حاجة في كل جهاز لأن الورقة بتتحط قدام الصفحة */
   {name: 'pdf-stmt', app: 'acc', vp: LAP, el: '#render .pg', go: accEval(`go('p/' + ${party}.id); buildStmtPages(${party}, stmtData(${party}.id, '', '')); Object.assign($('#render').style, {left: '0', zIndex: 9999})`)},
   {name: 'pdf-stmt-all', app: 'acc', vp: LAP, el: '#render', go: accEval(`go('p/' + ${party}.id); buildStmtPages(${party}, stmtData(${party}.id, '', '')); Object.assign($('#render').style, {left: '0', zIndex: 9999, width: 'auto', display: 'flex', gap: '24px', background: '#888', padding: '24px'})`)},

@@ -11,7 +11,7 @@ const {makeGas} = require('./gasmock');
 let pw; try { pw = require('playwright'); } catch (e) { pw = require('/opt/node-tools/node_modules/playwright'); }
 const ROOT = path.join(__dirname, '..');
 const CHROME = process.env.PW_CHROMIUM || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find(f => fs.existsSync(f));
-const ACC_URL = 'https://script.google.com/macros/s/TEST-ACC/exec', CASH_URL = 'https://script.google.com/macros/s/TEST-CASH/exec', MKT_URL = 'https://script.google.com/macros/s/TEST-MKT/exec';
+const ACC_URL = 'https://script.google.com/macros/s/TEST-ACC/exec', CASH_URL = 'https://script.google.com/macros/s/TEST-CASH/exec', MKT_URL = 'https://script.google.com/macros/s/TEST-MKT/exec', PAY_URL = 'https://script.google.com/macros/s/TEST-PAY/exec';
 const PASS = '246810', KEY = 'Test-Key-2026';
 let CI_MOCK = [{id: 1, conclusion: 'success', created_at: '2026-10-01T10:00:00Z'}];
 
@@ -79,7 +79,7 @@ async function newDevice(browser, base, sheets) {
     if (ctx.netDown) return r.abort('failed');
     if (ctx.netOnce > 0) { ctx.netOnce--; return r.abort('failed'); }   // النت اتهز لحظة
     if (ctx.hangOnce > 0) { ctx.hangOnce--; return; }   // طلب مبيردش خالص (الأيفون قطع الاتصال وهو في الخلفية)
-    const q = r.request(), g = q.url().includes('TEST-CASH') ? sheets.cash : q.url().includes('TEST-MKT') ? sheets.mkt : sheets.acc;
+    const q = r.request(), g = q.url().includes('TEST-CASH') ? sheets.cash : q.url().includes('TEST-MKT') ? sheets.mkt : q.url().includes('TEST-PAY') ? sheets.pay : sheets.acc;
     if (ctx.lockedOnce > 0 && g === sheets.acc) { ctx.lockedOnce--; return r.fulfill({status: 200, contentType: 'application/json', body: '{"ok":false,"error":"locked"}'}); }   // جوجل وصّل الطلب للشيت فاضي (doGet)
     if (ctx.pageOnce > 0 && g === sheets.acc) { ctx.pageOnce--; return r.fulfill({status: 200, contentType: 'text/html', body: '<html>Google error</html>'}); }   // جوجل بيرد بصفحة خطأ لحظية
     if (!g.ctx.doPost) return r.fulfill({status: 200, contentType: 'text/html', body: '<html>no script</html>'});
@@ -281,7 +281,9 @@ const T0 = Date.now();
 (async () => {
   const srv = await serve(), base = `http://localhost:${srv.address().port}/`;
   const browser = BROWSER = await pw.chromium.launch(CHROME ? {executablePath: CHROME} : {});
-  const sheets = {acc: makeGas(), cash: makeGas(), mkt: makeGas()};
+  const sheets = {acc: makeGas(), cash: makeGas(), mkt: makeGas(), pay: makeGas()};
+  /* شيت المرتبات بكوده الحقيقي من payroll.html (عهدة حسن بتقرا منه بس) */
+  sheets.pay.load(fs.readFileSync(path.join(ROOT, 'payroll.html'), 'utf8').match(/const payScript = \(\) => `([\s\S]*?)`;/)[1]);
   let DM = null, D2 = null, B = null;
   const D1 = await newDevice(browser, base, sheets);
   const bad = importFile(); bad.parties[0].expected = 1;
@@ -1083,6 +1085,70 @@ const T0 = Date.now();
       nvr.del = true; a.del = true; touch(nvr); touch(a); putSet('partners', s0);
       return [r1, r2];
     }), [['v_mkt', -1000, 0], [0, -1000, 8000, false]]);
+
+    sec('١٢ب) عهدة حسن (lib/hsn.js): قراية بس من تطبيق المرتبات، والخزنة مبتتحركش');
+    {
+      const PK = 'Pay-Key-12345678', pp = o => JSON.parse(sheets.pay.post(JSON.stringify(Object.assign({key: PK}, o))));
+      const T = await A.evaluate(() => todayISO()), dd = n => A.evaluate(n => addDays(todayISO(), -n), n);
+      const d20 = await dd(20), d10 = await dd(10), d15 = await dd(15), d5 = await dd(5), th20 = await A.evaluate(d => thuOnOrAfter(d), d20);
+      const row = (id, kind, data) => ({id, kind, upd: 1, del: false, view: [], data: Object.assign({id, k: kind}, data)});
+      eq('شيت المرتبات اتجهز', pp({action: 'push', rows: [row('w1', 'wk', {name: 'عامل تجربة'}), row('c1', 'cus', {amt: 300000, date: d20, note: ''}), row('c2', 'cus', {amt: 500000, date: d10}),
+        row('x1', 'exp', {amt: 20000, date: d10, note: 'شاي', to: 'البوفيه'}), row('a1', 'adv', {w: 'w1', amt: 10000, date: d10}), row('p1', 'pd', {w: 'w1', thu: th20, amt: 150000, date: th20})]}).ok, true);
+      const link = base + 'payroll.html#payjoin=' + Buffer.from(JSON.stringify({u: PAY_URL, k: PK})).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      eq('لينك غلط بيترفض', await bg(A, `hsConnect('https://x.com/payroll.html')`) !== '', true);
+      eq('اتربط بلينك تطبيق المرتبات', await bg(A, `hsConnect(${JSON.stringify(link)})`), '');
+      eq('رقم حسن = اللي فاضل معاه في تطبيق المرتبات', await A.evaluate(() => hsBal()), 800000 - 180000);
+      /* حركات تجريبية زي ما بتتكتب فعلاً */
+      const mk = await A.evaluate(([d20, d10, d15, d5]) => {
+        const c = catsL('exp')[0].id, add = (amt, note, date, vault = 'v_main') => { const r = {id: newId('t_'), type: 'exp', amt, vault, to: '', cat: c, note, date, at: nowS(), upd: nowS(), del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); return r.id; };
+        ensureMktVault();
+        return {split: add(301000, 'حسن عيسى', d20, 'v_mkt'), cus: add(500000, 'حسن', d10), sal: add(1000, 'حسن', d15), ah: add(1000, 'أحمد فهيم', d5, 'v_mkt'), ask: add(77700, 'حسن', d5), shosha: add(500000, 'حسن ابو شوشه', d5), other: add(1000, 'عربية', d5)};
+      }, [d20, d10, d15, d5]);
+      const B0 = await A.evaluate(() => [vaultBal(''), vaultBal('v_mkt')]);
+      eq('الاقتراحات: عهدة، عهدة + مرتب، مرتب حسن، مرتب أحمد، وسؤال واحد (وأبو شوشه والعربية مش منهم)', await A.evaluate(mk => { const P = hsPlan(); return [P.sure.map(x => [Object.keys(mk).find(k => mk[k] === x.t.id), x.kind, partName(x.pid || '') || '', x.cus || 0, x.sal || 0]).sort(), P.ask.map(x => [Object.keys(mk).find(k => mk[k] === x.t.id), x.cus])]; }, mk),
+        [[['ah', 'sal', 'أحمد', 0, 1000], ['cus', 'cus', '؟', 500000, 0], ['sal', 'sal', 'حسن', 0, 1000], ['split', 'split', 'حسن', 300000, 1000]], [['ask', 77700]]]);
+      await A.evaluate(() => go('cash')); await A.waitForSelector('#kHs'); await A.click('#kHs'); await A.waitForSelector('#hsRev');
+      await A.click('#hsRev'); await A.waitForSelector('#hrAll'); await A.click('#hrAll'); await A.settle(200);
+      eq('صلّح الكل: الخزن زي ما هي بالقرش', await A.evaluate(() => [vaultBal(''), vaultBal('v_mkt')]), B0);
+      eq('عهدة 3000 + مرتب حسن 10 من نفس خزنة أحمد ونفس اليوم', await A.evaluate(id => { const t = IDX.tx.get(id), s = IDX.tx.get('t_hss_' + id); return [t.cat, t.amt, t.hsx, t.hist.length, s.amt, s.vault, s.date === t.date, partName(s.pt), s.cat]; }, mk.split), ['c_hsn', 300000, 1000, 1, 1000, 'v_mkt', true, 'حسن', 'c_psal']);
+      eq('مرتب أحمد ومرتب حسن بقوا مرتب شريك', await A.evaluate(mk => [partName(IDX.tx.get(mk.ah).pt), partName(IDX.tx.get(mk.sal).pt), IDX.tx.get(mk.cus).cat], mk), ['أحمد', 'حسن', 'c_hsn']);
+      eq('العهدة كلها راكبة مع تطبيق حسن', await A.evaluate(() => { const M = hsMatch(); return [M.theirs.length, M.ours.length]; }), [0, 0]);
+      eq('العهدة مش مصروف في الأرباح، والمرتبات في الشركاء', await A.evaluate(([f, mk]) => { const c = cashSums(f, todayISO()); const ids = Object.values(mk); return [c.byCat.has('− عهدة حسن'), db.txs.filter(t => ids.includes(t.id) || ids.includes(t.id.replace('t_hss_', ''))).filter(t => !t.del && t.pt).reduce((s, t) => s + t.amt, 0)]; }, [d20, mk]), [false, 3000]);
+      /* السؤال: 777 منها 700 عهدة والباقي مرتب */
+      await A.waitForSelector('[data-c="0"]'); await A.fill('[data-c="0"]', '767'); await A.click('[data-ok="0"]'); await A.settle(150);
+      eq('اللي محتاج رأيك: عهدة 767 + مرتب 10', await A.evaluate(id => [IDX.tx.get(id).amt, IDX.tx.get('t_hss_' + id).amt, vaultBal('')], mk.ask), [76700, 1000, B0[0]]);
+      eq('حسن مكتبهاش: بتبان في "مش راكبة"', await A.evaluate(() => hsMatch().ours.map(t => t.amt)), [76700]);
+      await A.click('#hrX');
+      /* نقل مصاريف حسن: بتدخل الأرباح ومبتلمسش الخزنة */
+      const ex0 = await A.evaluate(f => cashSums(f, todayISO()).exp, d20 > th20 ? th20 : d20);
+      eq('أسابيع لسه متنقلتش', await A.evaluate(() => hsWeeks().filter(w => w.st === 'new').map(w => w.tot).sort((a, b) => a - b)), [30000, 150000]);
+      await A.click('#kHs'); await A.waitForSelector('#hsMv'); await A.click('#hsMv'); await A.waitForSelector('#hmOk'); await A.click('#hmOk'); await A.settle(150);
+      eq('اتنقلت: الأرباح زادت 1800 والخزن زي ما هي ومبتظهرش في الخزنة', await A.evaluate(([f, ex0]) => [cashSums(f, todayISO()).exp - ex0, vaultBal(''), vaultBal('v_mkt'), hsPend().length, vaultMoves('').some(m => m.r.id.startsWith('t_hs_'))], [d20 > th20 ? th20 : d20, ex0]), [180000, B0[0], B0[1], 0, false]);
+      pp({action: 'push', rows: [Object.assign(row('a1', 'adv', {w: 'w1', amt: 25000, date: d10}), {upd: 2})]});
+      await bg(A, 'hsPull(true)');
+      eq('حسن عدّل سلفة بعد النقل: الأسبوع بيرجع "اتغيّر" ورقمه اتحدث', await A.evaluate(() => [hsWeeks().filter(w => w.st).map(w => [w.st, w.adv]), hsBal()]), [[['chg', 25000]], 800000 - 195000]);
+      eq('النقل تاني بيحدّث نفس السطر (مش تكرار)', await A.evaluate(th => { hsMoveAll(); return [db.txs.filter(t => t.id.startsWith('t_hs_') && !t.del).length, IDX.tx.get(`t_hs_${thuOnOrAfter(addDays(todayISO(), -10))}_adv`).amt]; }, th20), [3, 25000]);
+      /* الكارت الأسود: حسن جنبهم للعلم، الرقم الكبير معاك + أحمد بس، وسطر واحد */
+      await A.evaluate(() => go('cash')); await A.waitForSelector('#kHs');
+      eq('الكارت الأسود: "أحمد" و"حسن" من غير "مع"، والرقم الكبير من غير حسن، وكلهم سطر واحد', await A.evaluate(() => {
+        const sp = [...document.querySelectorAll('#p-cash .kfc>span')], tops = new Set(sp.map(e => Math.round(e.getBoundingClientRect().top)));
+        return [sp.map(e => e.textContent.replace(/[\d,.\s▾\u2212\u200f-]/g, '')), +$('.kfn').dataset.cnt === vaultBal('') + vaultBal('v_mkt'), tops.size, $('#kHs b').textContent === fmtP(hsBal())]; }),
+        [['معاك', 'أحمد', 'حسن'], true, 1, true]);
+      await A.click('#kHs'); await A.waitForSelector('#hsM');
+      eq('نافذة حسن: فاضل معاه والمصاريف', await A.evaluate(() => [$('#modal .ksh2 .n').textContent === fmtP(hsBal()), $$('#modal .kit[data-k]').length]), [true, 3]);
+      await colOk('نافذة حسن', A, '#modal', '.kit>.n');
+      await segOk(A, 'نافذة حسن');
+      await A.click('#modal .kit[data-k=wk]'); await A.waitForSelector('#hiX');
+      eq('مرتبات العمال: العامل باسمه', await A.evaluate(() => $('#modal .kits .kit b').textContent), 'عامل تجربة');
+      await A.click('#hiX'); await A.click('#hsX'); await closed(A);
+      /* ننضّف علشان باقي الاختبارات (الأرباح في ١٣ بالقرش) */
+      await A.evaluate(mk => {
+        const ids = new Set(Object.values(mk)); db.txs.forEach(t => { if (ids.has(t.id) || ids.has(t.id.replace('t_hss_', '')) || t.id.startsWith('t_hs_')) { t.del = true; t.delAt = nowS(); touch(t); } });
+        putSet('paySheet', null); delete db.pay; saveDB();
+      }, mk);
+      await A.evaluate(() => renderCash());
+      eq('من غير ربط مفيش "حسن" في الكارت', await A.$('#kHs'), null);
+    }
 
     sec('١٣) الأرباح ولوحة النهارده والبحث');
     const PR = await A.evaluate(() => { const y = todayISO().slice(0, 4) + '-01-01', x = profitOf(y, todayISO()), ex = db.txs.filter(t => !t.del && t.type === 'exp' && !t.pt && !NOT_PL.has(t.cat) && t.date >= y).reduce((s, t) => s + t.amt, 0); return [x.sales, x.purch, x.part, x.exp === ex, x.before === x.sales - x.purch - x.exp + x.inc, x.after === x.before - x.part]; });

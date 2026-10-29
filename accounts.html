@@ -1642,6 +1642,7 @@ body{font-size:var(--f3);line-height:1.6}
     
   </div>
   <div class="card" id="sMkt"></div>
+  <div class="card" id="sHsn"></div>
   <div class="card">
     <h2>🔑 كلمة السر</h2>
     
@@ -3752,7 +3753,7 @@ function renderSetStat() {
 }
 function renderSettings() {
   bindUI();
-  refreshBio(); renderMktSettings();
+  refreshBio(); renderMktSettings(); renderHsSettings();
   $('#sVer').textContent = verText();
   const c = db.cfg;
   renderSetStat(); renderDocBox();
@@ -4745,7 +4746,7 @@ function renderCash() {
     </div>
     <div class="kb kf">
       <div class="kbme"><div class="kfl">${hasM ? 'المصنع كله دلوقتي' : 'معاك دلوقتي'}</div><b class="n kfn${total < 0 ? ' neg' : ''}" data-ck="c:total" data-cnt="${total}">${fmtP(total)}</b>
-        <div class="kfc"><span class="kfme${nV > 1 ? ' tap' : ''}" id="kMe"${nV > 1 ? ' role="button" tabindex="0"' : ''}>معاك <b class="n${meB < 0 ? ' neg' : ''}" data-ck="c:me" data-cnt="${meB}">${fmtP(meB)}</b>${nV > 1 ? ` <i class="kch">▾</i>` : ''}</span>${hasM ? `<span class="kfmk" id="kMk">مع ${MK_PN} <b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></span>` : ''}</div>
+        <div class="kfc"><span class="kfme${nV > 1 ? ' tap' : ''}" id="kMe"${nV > 1 ? ' role="button" tabindex="0"' : ''}>معاك <b class="n${meB < 0 ? ' neg' : ''}" data-ck="c:me" data-cnt="${meB}">${fmtP(meB)}</b>${nV > 1 ? ` <i class="kch">▾</i>` : ''}</span>${hasM ? `<span class="kfmk" id="kMk">${MK_PN} <b class="n${mkB < 0 ? ' neg' : ''}" data-ck="c:mk" data-cnt="${mkB}">${fmtP(mkB)}</b></span>` : ''}${payCreds() ? `<span class="kfhs" id="kHs" role="button" tabindex="0">حسن <b class="n${hsBal() < 0 ? ' neg' : ''}">${fmtP(hsBal())}</b></span>` : ''}</div>
         <div class="kvs"${cashOpenV ? '' : ' hidden'}>${tiles}</div></div>
       <div class="ktools">
         <button class="btn line kmore" id="cMore" type="button" title="أدوات الخزنة" aria-label="أدوات الخزنة">⋯</button>
@@ -4818,6 +4819,9 @@ function renderCash() {
   }
   $('#cSet').onclick = vaultSettings;
   $('#cPart').onclick = () => go('part');
+  /* حسن (lib/hsn.js): للعلم بس، مش داخل في الرقم الكبير. الدوسة بتفتح عهدته، وبيسحب الجديد من تطبيق المرتبات في الخلفية */
+  if ($('#kHs')) { tap($('#kHs'), () => hsLoad('hsWin')); hsLoad('hsPull').then(ch => { if (ch && document.body.dataset.pg === 'cash') hsChip(); }, () => {}); }
+  kfcFit();
   $('#cOpen2').onclick = openingModal;
   /* الموبايل: عدّ الفلوس والتحويل والخزن والشركاء في زرار واحد ⋯ جنب الأرصدة (بطلبه 15/10/2026) */
   $('#cMore').onclick = () => {
@@ -5461,7 +5465,7 @@ function tradeSums(f, t) {
   return {sales, purch};
 }
 /* مصروفات وإيرادات الخزنة في الفترة (من غير التحويلات والدفعات والتحصيل القديم) */
-const NOT_PL = new Set(['c_inc0', 'c_payout', 'c_adj_in', 'c_adj_out']);   // تسوية الجرد مش مصروف ولا إيراد (بطلب صاحب المشروع)
+const NOT_PL = new Set(['c_inc0', 'c_payout', 'c_adj_in', 'c_adj_out', 'c_hsn']);   // + الفلوس اللي راحت لحسن: عهدة مش مصروف (اللي صرفه هو المصروف، lib/hsn.js)   // تسوية الجرد مش مصروف ولا إيراد (بطلب صاحب المشروع)
 function cashSums(f, t) {
   const r = {exp: 0, inc: 0, part: 0, byCat: new Map()};
   for (const x of db.txs) {
@@ -6976,6 +6980,57 @@ function ordLoad(fn) {
   ordP = ordP || new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'lib/orders.js'; sc.onload = ok; sc.onerror = () => { sc.remove(); no(); }; document.head.appendChild(sc); }).catch(e => { ordP = null; throw e; });
   ordP.then(() => window[fn]()).catch(() => toast('مش قادر يفتح دلوقتي، اتأكد من النت وجرّب تاني.'));
 }
+/* عهدة حسن (lib/hsn.js، بطلبه 29/10/2026): الحسابات بتقرا تطبيق المرتبات بتاع حسن (قراية بس، من غير أي تغيير فيه ولا في كود شيته).
+   الربط إعداد مشترك (set) اسمه paySheet = {u, k} من لينك تطبيق المرتبات (#payjoin=)، والسحب نسخة محلية في db.pay (زي db.mkt).
+   - الفلوس اللي بتروح لحسن بند c_hsn (عهدة حسن): بتنزل من الخزنة زي ما هي، بس مش مصروف في الأرباح (NOT_PL).
+   - اللي حسن صرفه بيتنقل بإيد مصطفى كل أسبوع (t_hs_<خميس>_<wk|adv|oth>) من غير خزنة (nv)، فبيدخل الأرباح ومبيلمسش أي رصيد ولا بيظهر في الخزنة.
+   - "حسن" في الكارت الأسود للعلم بس (مش داخل في "المصنع كله")، ورقمه = اللي فاضل معاه في تطبيق المرتبات. */
+const HS_CATS = {cus: ['c_hsn', 'عهدة حسن'], wk: ['c_hwk', 'مرتبات العمال'], adv: ['c_hadv', 'سلف العمال'], oth: ['c_hoth', 'مصاريف المصنع من حسن']};
+Object.values(HS_CATS).forEach(([id]) => SPECIAL_CATS.add(id));
+const payCreds = () => { const s = db && getSet('paySheet', null); return s && s.u && s.k ? s : null; };
+const hsBal = () => (db && db.pay && db.pay.bal) || 0;
+function hsChip() { const b = $('#kHs b'); if (!b) return; b.textContent = fmtP(hsBal()); b.classList.toggle('neg', hsBal() < 0); kfcFit(); }
+/* الكارت الأسود ممنوع يطول (بطلبه): الأرصدة سطر واحد، ولو مكفتش الخط بيصغر */
+function kfcFit() { const c = $('#p-cash .kfc'); if (!c) return; c.classList.remove('sm'); if (c.scrollWidth > c.clientWidth + 1) c.classList.add('sm'); }
+let hsP = null;
+function hsLoad(fn) {
+  if (window[fn]) return Promise.resolve(window[fn]());
+  hsP = hsP || new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'lib/hsn.js'; sc.onload = ok; sc.onerror = () => { sc.remove(); no(); }; document.head.appendChild(sc); }).catch(e => { hsP = null; throw e; });
+  return hsP.then(() => window[fn](), e => { if (fn !== 'hsPull' && fn !== 'hsInbox') toast('مش قادر يفتح دلوقتي، اتأكد من النت وجرّب تاني.'); throw e; });
+}
+function renderHsSettings() {
+  const box = $('#sHsn'); if (!box || !db) return;
+  const c = payCreds();
+  box.innerHTML = `<h2>🏭 عهدة حسن (تطبيق المرتبات)</h2>
+    ${c ? `<div class="sync ok">✔ مربوط بتطبيق المرتبات. الحسابات بتقرا منه بس ومبتغيّرش فيه حاجة.</div>
+      <div class="stack"><button class="btn line" id="shOpen" type="button">افتح عهدة حسن</button><button class="btn line" id="shRev" type="button">راجع الفلوس اللي راحت لحسن والشركاء</button></div>`
+    : `<p class="hint" style="margin:0 0 10px">علشان تشوف حسن معاه كام وصرف في إيه، افتح تطبيق المرتبات ← الإعدادات ← "ابعت لينك التطبيق"، وانسخ اللينك والصقه هنا (مرة واحدة).</p>`}
+    <details class="fld"${c ? '' : ' open'}><summary style="font-weight:700;color:var(--sub);cursor:pointer">لينك تطبيق المرتبات</summary>
+      <div class="fld" style="margin-top:6px"><input class="inp" id="shUrl" style="direction:ltr;font-size:var(--f2)" placeholder="https://.../payroll.html#payjoin=..." autocomplete="off"></div>
+      <button class="btn ${c ? 'line sm' : 'gold'}" id="shGo" type="button">اربط</button></details>
+    <div class="err" id="shE" style="color:var(--red);font-weight:800;margin-top:6px"></div>`;
+  $('#shGo').onclick = async () => {
+    $('#shGo').disabled = true; $('#shE').textContent = '⏳ بجرب الاتصال…';
+    const err = await hsConnect($('#shUrl').value);
+    if (!$('#shGo')) return;
+    $('#shGo').disabled = false; $('#shE').textContent = err ? '❌ ' + err : '';
+    if (!err) { toast('✔ اتربط تطبيق المرتبات', 5000); renderHsSettings(); }
+  };
+  if (!c) return;
+  $('#shOpen').onclick = () => hsLoad('hsWin').catch(() => {});
+  $('#shRev').onclick = () => hsLoad('hsReview').catch(() => {});
+}
+async function hsConnect(t) {
+  const m = String(t || '').match(/payjoin=([\w-]+)/);
+  let o = null; try { o = m && JSON.parse(unb64u(m[1])); } catch (e) {}
+  if (!o || !o.u || !o.k) return 'ده مش لينك تطبيق المرتبات. من تطبيق المرتبات ← الإعدادات ← "ابعت لينك التطبيق".';
+  let j; try { j = await callSheet({action: 'ping'}, o.u, o.k, 30000); } catch (e) { return 'معرفتش أوصل لشيت المرتبات. اتأكد من النت وجرّب تاني.'; }
+  if (!j || !j.ok) return j && j.error === 'key' ? 'شيت المرتبات رفض المفتاح. ابعت اللينك من تطبيق المرتبات تاني.' : 'شيت المرتبات رد بخطأ.';
+  if (j.app !== 'fo-pay') return 'ده لينك شيت تاني، مش تطبيق المرتبات.';
+  putSet('paySheet', {u: o.u, k: o.k});
+  await hsLoad('hsPull').catch(() => {});
+  return '';
+}
 const mkSt = id => mkDb().st['st_' + id];
 /* أنواع العمليات: pay دفعة عميل، inv فاتورة عميل (إجمالي بس من الشريك، ومصطفى بيكتب بنودها)، spay دفعة مورد (كاش)، exp مصروف، hand كاش سلّمه الشريك لمصطفى.
    لما تتنقل: pay/spay بتبقى دفعة على الحساب (e_mk_<id>)، وinv فاتورة بيع على الحساب (e_mk_<id>)، وexp/hand بيبقوا حركة خزنة (t_mk_<id>) */
@@ -7026,6 +7081,7 @@ function mkFollow() {
     if (isE) (rec.hist = rec.hist || []).push(snapshot(rec));
     if (o.del) {
       rec.del = true; rec.delAt = nowS(); touch(rec);
+      const hss = rec.hsx && IDX.tx.get('t_hss_' + rec.id); if (hss && !hss.del) { hss.del = true; hss.delAt = nowS(); touch(hss); }   // مرتب حسن اللي اتقسم منها (lib/hsn.js)
       mkSetSt(o.id, {done: false, dv: 0}); n++;
       msgs.push(`🗑 شريكك مسح: ${mkLine(o)} — واتشالت من الحسابات`);
       return;
@@ -7038,6 +7094,7 @@ function mkFollow() {
     else if (o.t === 'rt') Object.assign(rec, {amt: o.amt, date: day, note: 'مرتجع/شغل (السوق)' + (o.note ? ' — ' + o.note : '')});
     else {
       Object.assign(rec, {amt: o.amt, date: day});
+      if (rec.hsx && o.amt > rec.hsx) rec.amt = o.amt - rec.hsx;   // اتقسمت عهدة + مرتب حسن (lib/hsn.js): المرتب ثابت والعهدة هي الباقي
       if (o.t === 'exp') rec.note = o.cat + (o.note ? ' — ' + o.note : '');
       if (o.t === 'cs') { rec.note = mkCsNote(o); if (mkCsTr(o) === isMkv(rec.vault)) rec.vault = mkCsTr(o) ? mkCsVault() : MKV; }
     }
@@ -7637,7 +7694,7 @@ function renderMkt() {
   $$('#mkTabs button').forEach(b => b.onclick = () => { mkView = b.dataset.v; renderMkt(); });
   $('#mkOrd').onclick = () => ordLoad('ordOpen'); $('#mkPrc').onclick = () => ordLoad('prcOpen');
   mkStatBind();
-  if (mkView === 'arch') mkArch(); else mkInbox();
+  if (mkView === 'arch') mkArch(); else { mkInbox(); if (payCreds()) hsLoad('hsInbox').catch(() => {}); }
 }
 function mkStatParts() {
   const cash = db.vaults.some(v => v.id === MKV && !v.del) ? Math.max(0, vaultBal(MKV)) : 0;

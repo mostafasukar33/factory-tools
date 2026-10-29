@@ -198,7 +198,7 @@ const HSSHOT = `if (!getSet('paySheet', null)) {
   db.pay = {u, cur: 30, recs: R, bal: 0, at: Date.now()};
   ensureMktVault();
   const c = catsL('exp')[0].id, add = (id, amt, note, date, vault, cat) => { const r = {id, type: 'exp', amt, vault, to: '', cat: cat || c, note, date, at: Date.now(), upd: Date.now(), del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); };
-  add('t_hsh1', 1500000, 'حسن', d(9), defVault(), 'c_hsn'); add('t_hsh2', 1700000, 'حسن عيسى', d(2), 'v_mkt'); add('t_hsh3', 700000, 'أحمد فهيم', d(1), 'v_mkt'); add('t_hsh4', 250000, 'حسن', d(4), defVault());
+  add('t_hsh1', 1500000, 'حسن', d(9), defVault(), 'c_hsn'); add('t_hsh2', 1700000, 'حسن عيسى', d(2), 'v_mkt'); add('t_hsh3', 700000, 'أحمد فهيم', d(1), 'v_mkt'); add('t_hsh4', 250000, 'حسن', d(4), defVault()); add('t_hsh5', 2000000, 'حسن عيسى', d(5), 'v_mkt');
   if (!IDX.cat.get('c_hsn')) { const r = {id: 'c_hsn', type: 'exp', name: 'عهدة حسن', ord: 98, upd: 1, del: false}; db.cats.push(r); IDX.cat.set(r.id, r); }
   saveDB();
   hsLoad('hsData').then(x => { db.pay.bal = x.bal; });

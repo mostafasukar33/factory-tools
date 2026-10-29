@@ -1115,9 +1115,14 @@ const T0 = Date.now();
       eq('العهدة كلها راكبة مع تطبيق حسن', await A.evaluate(() => { const M = hsMatch(); return [M.theirs.length, M.ours.length]; }), [0, 0]);
       eq('العهدة مش مصروف في الأرباح، والمرتبات في الشركاء', await A.evaluate(([f, mk]) => { const c = cashSums(f, todayISO()); const ids = Object.values(mk); return [c.byCat.has('− عهدة حسن'), db.txs.filter(t => ids.includes(t.id) || ids.includes(t.id.replace('t_hss_', ''))).filter(t => !t.del && t.pt).reduce((s, t) => s + t.amt, 0)]; }, [d20, mk]), [false, 3000]);
       /* السؤال: 777 منها 700 عهدة والباقي مرتب */
-      await A.waitForSelector('[data-c="0"]'); await A.fill('[data-c="0"]', '767'); await A.click('[data-ok="0"]'); await A.settle(150);
+      await A.waitForSelector('[data-sal="0"]'); await A.click('#modal .hsman summary'); await A.fill('[data-c="0"]', '767'); await A.click('[data-ok="0"]'); await A.settle(150);
       eq('اللي محتاج رأيك: عهدة 767 + مرتب 10', await A.evaluate(id => [IDX.tx.get(id).amt, IDX.tx.get('t_hss_' + id).amt, vaultBal('')], mk.ask), [76700, 1000, B0[0]]);
       eq('حسن مكتبهاش: بتبان في "مش راكبة"', await A.evaluate(() => hsMatch().ours.map(t => t.amt)), [76700]);
+      /* زرار "مرتب حسن" على طول: والمبلغ ده بيتعرف مرتب بعد كده لوحده */
+      const q2 = await A.evaluate(d5 => { const c = catsL('exp')[0].id, r = {id: newId('t_'), type: 'exp', amt: 55500, vault: 'v_main', to: '', cat: c, note: 'حسن عيسى', date: d5, at: nowS(), upd: nowS(), del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); hsReview(); return r.id; }, d5);
+      await A.waitForSelector('[data-sal="0"]'); await A.click('[data-sal="0"]'); await A.settle(150);
+      eq('دوسة "مرتب حسن": مرتب شريك بنفس المبلغ والخزنة، والمرة الجاية نفس المبلغ واضح لوحده', await A.evaluate(([id, d5]) => { const t = IDX.tx.get(id); const c = catsL('exp')[0].id, r = {id: newId('t_'), type: 'exp', amt: 55500, vault: 'v_main', to: '', cat: c, note: 'حسن', date: d5, at: nowS(), upd: nowS(), del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r);
+        const P = hsPlan(), k = P.sure.find(x => x.t.id === r.id); const o = [t.cat, partName(t.pt), t.amt, t.vault]; r.del = t.del = true; touch(r); touch(t); saveDB(); return [...o, k && k.kind, P.ask.length]; }, [q2, d5]), ['c_psal', 'حسن', 55500, 'v_main', 'sal', 0]);
       await A.click('#hrX');
       /* نقل مصاريف حسن: بتدخل الأرباح ومبتلمسش الخزنة */
       const ex0 = await A.evaluate(f => cashSums(f, todayISO()).exp, d20 > th20 ? th20 : d20);

@@ -236,6 +236,10 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
 .hsin{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;margin:8px 0 6px}
 .hsin label{font-weight:700;font-size:var(--f2);color:var(--sub)}.hsin small{grid-column:1/-1}
 .hsq .g2 .btn{margin:0}
+.hsw2{margin:8px 0 6px;font-size:var(--f2);color:var(--ink);line-height:1.6}.hsw2 b{color:var(--hs)}
+.kit.hsq{flex-wrap:wrap}.kit.hsq>.hsqx{flex:0 0 100%}
+.hsbt{display:grid;gap:6px}.hsbt .btn{margin:0;width:100%}
+.hsman{margin-top:8px;font-size:var(--f2);color:var(--sub)}.hsman summary{cursor:pointer}.hsman .btn{margin:0;width:100%}
 .hsc{background:var(--card);border-radius:16px;box-shadow:var(--shadow2);border-top:6px solid var(--hs);padding:12px 14px;margin-bottom:12px}
 .hsct{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.hsct b{font-size:var(--f4);color:var(--hs)}.hsct small{font-size:var(--f1);color:var(--sub);font-weight:600}
 .hsc .kit{cursor:default}.hsc .btn{width:100%;margin-top:10px}

@@ -23,7 +23,7 @@ function eq(name, got, want) {
 /* ====================== 1) قواعد الحساب ====================== */
 const html = fs.readFileSync(path.join(ROOT, 'payroll.html'), 'utf8');
 const eng = vm.createContext({console});
-vm.runInContext(html.match(/<script id="engine">([\s\S]*?)<\/script>/)[1] + '\n;this.E = {ownerThursday, weekDates, settle, unitsText, buildIdx, calcWeek, missingDays};', eng);
+vm.runInContext(html.match(/<script id="engine">([\s\S]*?)<\/script>/)[1] + '\n;this.E = {ownerThursday, weekDates, settle, unitsText, buildIdx, calcWeek, missingDays, cuCalc};', eng);
 const E = eng.E;
 const J = x => JSON.parse(JSON.stringify(x));
 console.log('\n١) قواعد الحساب');
@@ -72,6 +72,17 @@ eq('العامل الواقف مبيتطلبش له أيام', E.missingDays(E.b
 
 
 /* ---- المرحلة التانية: فرق الجمعة ---- */
+console.log('\n١-هـ) النحاس: تكلفة لفة السلك');
+{
+  const r = J(E.cuCalc({d: 0.5, n: 7, len: 100, w100: 2800, labor: 1200, cp: 56000, pp: 6000, reel: 1000, sell: 115000, rolls: 50}));
+  eq('وزن النحاس = القطر × نفسه × الطروف × 7 × المتر (0.5، 7، 100 = 1.225 ك)', r.cuG, 1225);
+  eq('البلاستيك = وزن اللفة − النحاس', r.plG, 2800 - 1225);
+  eq('التكلفة = نحاس + بلاستيك + بكرة + مصنعية (بالقرش)', [r.cuC, r.plC, r.cost], [68600, 9450, 68600 + 9450 + 1000 + 1200]);
+  eq('المكسب وإجمالي الطلبية', [r.profit, r.tot.cost, r.tot.profit, r.tot.cuG, r.tot.reels], [115000 - 80250, 80250 * 50, (115000 - 80250) * 50, 1225 * 50, 50]);
+  const h = J(E.cuCalc({d: 0.5, n: 7, len: 90, w100: 2800, labor: 1200}));
+  eq('المتر بيغيّر النحاس ووزن اللفة، والمصنعية ثابتة', [h.cuG, h.rollG, h.labor], [Math.round(0.25 * 7 * 7 * 90), 2520, 1200]);
+}
+
 console.log('\n١-ب) فرق الجمعة (اللي اتدفعلهم ومجوش)');
 const wk3 = E.weekDates('2026-10-29').slice(0, 6);
 const w1days = [wk1, wk2, wk3].flatMap(w => w.map(d => day('w1', d, 1, 25000)));
@@ -165,7 +176,7 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     eq('أول مرة: شاشة الاسم', (await A.textContent('.gate')).includes('اكتب اسمك'), true);
     await A.click('#lgNew'); await A.fill('#lgN', 'مشرف تجربة 1'); await A.fill('#lgP', '1234'); await A.click('#lgGo');
     await A.waitForSelector('#tabs button');
-    eq('دخل والتبويبات ظهرت', await A.$$eval('#tabs button', b => b.map(x => x.textContent.trim())), ['النهارده', 'الأسبوع', 'العمال', 'الأرشيف', 'مصاريف', 'السجل']);
+    eq('دخل والتبويبات ظهرت', await A.$$eval('#tabs button', b => b.map(x => x.textContent.trim())), ['النهارده', 'الأسبوع', 'العمال', 'الأرشيف', 'مصاريف', 'السجل', 'النحاس']);
     eq('الرقم السري متخزن hash مش نص', await A.evaluate(() => { const s = me(); return [s.ph.length, s.ph.includes('1234')]; }), [64, false]);
     /* العمال */
     const addW = async (name, rate, fri, from) => {
@@ -551,6 +562,19 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     eq('الأزرار بالترتيب: غاب، نص، يوم، يوم ونص، يومين', await A.$$eval('#main .wr:nth-child(1) .ub button', b => b.map(x => x.textContent)), ['غاب', 'نص', 'يوم', 'يوم ونص', 'يومين']);
     await A.click('#main .wr:nth-child(1) .ub button[data-u="2"]'); await A.waitForTimeout(150);
     eq('يومين اتسجلت والأجر اتحسب مرتين', await A.evaluate(() => { const r = [...idx().day.values()].find(x => x.date === '2026-10-30'); return [r.u, calcWeek(idx(), '2026-11-05').rows[r.w].daysPay === 2 * r.rate]; }), [2, true]);
+
+    console.log('\n٢٠) النحاس (على الموبايل بس)');
+    await A.evaluate(() => { closeModal(); nav('c/z'); }); await A.waitForSelector('.cut');
+    eq('المقاسات من 1 لـ 35 من غير 2.5', await A.$$eval('.cut [data-rm]', b => b.map(x => x.dataset.rm)), ['1', '1.5', '2', '3', '4', '6', '10', '16', '25', '35']);
+    await A.fill('.cut input[data-z="2"][data-f="w"]', '2.8'); await A.fill('.cut input[data-z="2"][data-f="l"]', '12');
+    await A.click('#cuSeg button[data-v=""]'); await A.waitForSelector('#cu_name');
+    await A.fill('#cu_name', 'طلبية تجريبية'); await A.click('#cuSz .chip[data-z="2"]');
+    for (const [k, v] of [['d', '0.5'], ['rolls', '50'], ['cp', '560'], ['pp', '60'], ['reel', '10'], ['sell', '1150']]) await A.fill('#cu_' + k, v);
+    eq('التكلفة في الشاشة', await A.textContent('#cuCost b'), '802.5');
+    await A.click('#cuSave'); await A.click('#cuSeg button[data-v="s"]'); await A.waitForSelector('.row[data-cu]');
+    eq('الحسبة اتحفظت ومبتروحش الشيت', await A.evaluate(() => [S.cu.list.length, S.cu.list[0].name, Object.values(S.recs).some(r => r.k === 'cu' || String(r.id).startsWith('cu_')), pending().length]), [1, 'طلبية تجريبية', false, 0]);
+    await A.click('.row[data-cu]'); await A.waitForSelector('#cuDel');
+    eq('فتح المحفوظ بيرجّع الأسعار', await A.inputValue('#cu_cp'), '560');
 
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }

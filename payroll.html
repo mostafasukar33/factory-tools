@@ -148,6 +148,7 @@ html[data-theme=dark] .ub button.on{color:#0B0E13}
 .cun .inp{direction:rtl;text-align:right;font-weight:700}
 .cuf small{display:block;text-align:center;font-size:11px;color:var(--sub);font-weight:600;margin-top:2px}
 .cusz .chip{min-width:46px;text-align:center;padding:5px 10px}
+.cusz .cuChg,.cusz.picked .chip[data-z]:not(.on){display:none}.cusz.picked .cuChg{display:inline-block;color:var(--gold-d);border-style:dashed}
 .cuauto{display:flex;justify-content:space-between;gap:8px;background:var(--row);border-radius:10px;padding:6px 12px;font-size:13px;font-weight:700;color:var(--sub);margin-top:4px}
 .cuauto b{color:var(--ink)}
 .cubar{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:8px 0 4px;background:var(--row)}
@@ -155,6 +156,7 @@ html[data-theme=dark] .ub button.on{color:#0B0E13}
 .culg{display:flex;gap:12px;font-size:12px;font-weight:700;color:var(--sub);flex-wrap:wrap}
 .culg span::before{content:'';display:inline-block;width:9px;height:9px;border-radius:3px;margin-inline-end:4px;background:var(--c)}
 .kv.tot b.cuc{color:var(--ink)}
+.row .m small.cuL{display:flex;justify-content:space-between;gap:8px;color:var(--ink);background:var(--row);border-radius:8px;padding:2px 8px;margin-top:3px}.row .m small.cuL b{font-weight:800;color:#C26A2E}html[data-theme=dark] .row .m small.cuL b{color:#E8955A}
 table.cut{width:100%;border-collapse:collapse;font-size:14.5px}
 table.cut th{font-size:12px;color:var(--sub);font-weight:700;padding:8px 4px;text-align:center;border-bottom:1px solid var(--line)}
 table.cut td{padding:5px 4px;text-align:center;border-bottom:1px solid var(--row);font-weight:800;white-space:nowrap}
@@ -471,6 +473,19 @@ function cuCalc(o) {
   const sell = Math.round(+o.sell || 0), profit = sell ? sell - cost : 0;
   return {cuG, rollG, plG, cuC, plC, reel, labor, cost, sell, profit, rolls,
     tot: {cuG: cuG * rolls, plG: Math.max(0, plG) * rolls, reels: rolls, cost: cost * rolls, profit: profit * rolls}};
+}
+/* طلبية فيها كذا بند (كل بند مقاس وشعرة ولفات وسعر بيع)، والأسعار (النحاس والبلاستيك والبكرة) واحدة للطلبية.
+   byD = النحاس اللي هيتشرى من كل قطر شعرة (البنود اللي ليها نفس القطر بتتجمع)، علشان طلب النحاس. البند الناقص مبيدخلش. */
+function cuOrder(lines, pr) {
+  const L = lines.map(l => { const ok = !!(+l.d && +l.n && +l.len && l.w100 != null); return {ok, r: ok ? cuCalc(Object.assign({}, pr, l)) : null}; });
+  const by = new Map(), tot = {cuG: 0, plG: 0, reels: 0, cost: 0, profit: 0, rolls: 0, sell: false};
+  L.forEach((x, i) => {
+    if (!x.ok || !x.r.rolls) return;
+    const d = +lines[i].d; by.set(d, (by.get(d) || 0) + x.r.tot.cuG);
+    ['cuG', 'plG', 'reels', 'cost', 'profit'].forEach(k => { tot[k] += x.r.tot[k]; });
+    tot.rolls += x.r.rolls; if (x.r.sell) tot.sell = true;
+  });
+  return {L, byD: [...by].sort((a, b) => a[0] - b[0]).map(([d, g]) => ({d, g})), tot};
 }
 </script>
 
@@ -1759,11 +1774,19 @@ async function shareLink() {
    متخزن جوه fo_pay_v1 في S.cu (مش في recs، فمبيتزامنش): المقاسات (وزن اللفة على 100 متر بالجرام والمصنعية بالقرش)،
    والحسبة اللي مفتوحة dr (بأسعارها، فبتفضل مكتوبة للمرة الجاية)، والمحفوظ list. الحسبة نفسها cuCalc فوق. */
 const CU_SZ = ['1', '1.5', '2', '3', '4', '6', '10', '16', '25', '35'];
+const cuLine = l => Object.assign({size: '', d: null, n: 7, len: 100, rolls: null, sell: null}, l);
+/* الحسبة القديمة كانت بند واحد (size/d/n/len/rolls/sell على الحسبة نفسها): بتتحول لبند جوه lines */
+function cuMig(o) {
+  if (!o.lines) { o.lines = [cuLine({size: o.size || '', d: o.d, n: o.n || 7, len: o.len || 100, rolls: o.rolls, sell: o.sell})]; ['size', 'd', 'n', 'len', 'rolls', 'sell'].forEach(k => delete o[k]); }
+  return o;
+}
 function cuS() {
   if (!S.cu) S.cu = {sz: {}, list: [], dr: {}};
   const c = S.cu;
   if (!c.szInit) { CU_SZ.forEach(z => { if (!c.sz[z]) c.sz[z] = {w: null, l: null}; }); c.szInit = 1; }
-  c.dr = Object.assign({name: '', size: '', d: null, n: 7, len: 100, rolls: null, cp: null, pp: null, reel: null, sell: null}, c.dr);
+  c.dr = cuMig(Object.assign({name: '', cp: null, pp: null, reel: null}, c.dr));
+  if (!c.dr.lines.length) c.dr.lines.push(cuLine());
+  c.list.forEach(cuMig);
   return c;
 }
 const cuNum = v => { const t = normDigits(v).replace(/٫/g, '.').replace(/,/g, '').replace(/[^\d.]/g, ''); return t === '' || isNaN(+t) ? null : +t; };
@@ -1771,96 +1794,105 @@ const cuKg = g => (g / 1000).toFixed(3);
 const cuIn = x => x == null ? '' : String(x);
 const cuP = p => p == null ? '' : String(p / 100);
 const szSort = a => a.sort((x, y) => +x - +y);
-function cuOf(dr) {
-  const z = S.cu.sz[dr.size] || {};
-  return cuCalc({d: dr.d, n: dr.n, len: dr.len, rolls: dr.rolls, w100: z.w, labor: z.l, cp: dr.cp, pp: dr.pp, reel: dr.reel, sell: dr.sell});
+function cuOf(o) {
+  return cuOrder(o.lines.map(l => { const z = S.cu.sz[l.size] || {}; return Object.assign({}, l, {w100: z.w == null ? null : z.w, labor: z.l}); }), {cp: o.cp, pp: o.pp, reel: o.reel});
 }
 function drawCu() {
   const c = cuS(), sub = scr.sub;
   const seg = `<div class="seg" id="cuSeg" style="--n:3;margin-bottom:10px">${[['', 'حسبة جديدة'], ['s', 'المحفوظ'], ['z', 'المقاسات']].map(([k, t]) => `<button type="button" data-v="${k}" class="${sub === k ? 'on' : ''}">${t}${k === 's' && c.list.length ? ` (${c.list.length})` : ''}</button>`).join('')}</div>`;
   if (sub === 's') {
     const L = c.list.slice().sort((a, b) => b.at - a.at);
-    $('#main').innerHTML = seg + (L.length ? `<div class="list">${L.map(o => { const r = cuOf(Object.assign({}, o, {size: o.size})); return `<div class="row" data-cu="${esc(o.id)}"><div class="m"><b>${esc(o.name)}</b><small>${esc(o.size)} مم · ${o.rolls || 0} لفة · ${dm(o.date)}${RLM}/${RLM}${o.date.slice(0, 4)}</small></div><div class="a"><span class="money">${fmt(r.tot.cost)}</span>${o.sell ? `<small class="sm ${r.profit < 0 ? 'bk' : 'ok'}">مكسب اللفة <span class="money">${fmtN(r.profit)}</span></small>` : ''}</div></div>`; }).join('')}</div><p class="hint">دوس على أي حسبة تفتحها وتعدّل فيها</p>` : '<div class="list"><div class="empty">لسه مفيش حسابات محفوظة.<br>اعمل حسبة ودوس "احفظ الحسبة".</div></div>');
+    $('#main').innerHTML = seg + (L.length ? `<div class="list">${L.map(o => { const r = cuOf(o); return `<div class="row" data-cu="${esc(o.id)}"><div class="m"><b>${esc(o.name)}</b><small>${r.tot.rolls} لفة · ${dm(o.date)}${RLM}/${RLM}${o.date.slice(0, 4)}</small>${o.lines.map((l, i) => l.size && l.d ? `<small class="cuL"><span>${esc(l.size)} مم · شعرة ${l.d} · ${l.rolls || 0} لفة</span><b class="money">${r.L[i].ok && r.L[i].r.rolls ? cuKg(r.L[i].r.tot.cuG) + ' ك نحاس' : '—'}</b></small>` : '').join('')}</div><div class="a"><span class="money">${fmt(r.tot.cost)}</span>${r.tot.sell ? `<small class="sm ${r.tot.profit < 0 ? 'bk' : 'ok'}">مكسب <span class="money">${fmtN(r.tot.profit)}</span></small>` : ''}</div></div>`; }).join('')}</div><p class="hint">دوس على أي حسبة تفتحها وتعدّل فيها</p>` : '<div class="list"><div class="empty">لسه مفيش حسابات محفوظة.<br>اعمل حسبة ودوس "احفظ الحسبة".</div></div>');
   } else if (sub === 'z') {
     const Z = szSort(Object.keys(c.sz));
     $('#main').innerHTML = seg + `<div class="panel" style="padding:6px 10px"><table class="cut"><tr><th>المقاس</th><th>وزن اللفة (100 متر) ك</th><th>المصنعية ج</th></tr>
       ${Z.map(z => `<tr><td><button type="button" data-rm="${esc(z)}">${esc(z)} مم</button></td><td><input data-z="${esc(z)}" data-f="w" inputmode="decimal" autocomplete="off" placeholder="—" value="${c.sz[z].w == null ? '' : cuKg(c.sz[z].w)}"></td><td><input data-z="${esc(z)}" data-f="l" inputmode="decimal" autocomplete="off" placeholder="—" value="${cuP(c.sz[z].l)}"></td></tr>`).join('')}</table></div>
       <button class="lnk" id="cuAdd" type="button">＋ مقاس جديد</button><p class="hint">دوس على اسم المقاس لو عاوز تشيله</p>`;
     $$('#main .cut input').forEach(i => i.addEventListener('input', () => { const v = cuNum(i.value), o = c.sz[i.dataset.z]; if (i.dataset.f === 'w') o.w = v == null ? null : Math.round(v * 1000); else o.l = v == null ? null : Math.round(v * 100); save(); }));
-    $$('#main .cut [data-rm]').forEach(b => b.onclick = async () => { if (await ask(`تشيل مقاس ${b.dataset.rm} مم من الجدول؟`, 'أيوه شيله')) { delete c.sz[b.dataset.rm]; if (c.dr.size === b.dataset.rm) c.dr.size = ''; save(); drawCu(); } });
+    $$('#main .cut [data-rm]').forEach(b => b.onclick = async () => { if (await ask(`تشيل مقاس ${b.dataset.rm} مم من الجدول؟`, 'أيوه شيله')) { delete c.sz[b.dataset.rm]; c.dr.lines.forEach(l => { if (l.size === b.dataset.rm) l.size = ''; }); save(); drawCu(); } });
     $('#cuAdd').onclick = () => {
       modal(`<h3>مقاس جديد</h3><div class="cuf" style="--n:1"><div><label for="cuNz">المقاس بالمللي</label><input class="inp" id="cuNz" inputmode="decimal" autocomplete="off"></div></div><button class="big b-ok" id="cuNzOk" type="button">ضيفه</button><button class="big b-home" id="cuNzX" type="button">رجوع</button>`);
       $('#cuNz').focus(); $('#cuNzX').onclick = closeModal;
       $('#cuNzOk').onclick = () => { const v = cuNum($('#cuNz').value); if (!v) return toast('اكتب المقاس'); const z = String(v); if (c.sz[z]) return toast('المقاس ده موجود'); c.sz[z] = {w: null, l: null}; save(); closeModal(); drawCu(); };
     };
   } else {
-    const d = c.dr, Z = szSort(Object.keys(c.sz)), z = c.sz[d.size];
-    const fld = (k, t, unit, v) => `<div><label for="cu_${k}">${t}</label><input class="inp" id="cu_${k}" data-k="${k}" inputmode="decimal" autocomplete="off" value="${v}">${unit ? `<small>${unit}</small>` : ''}</div>`;
+    const d = c.dr, Z = szSort(Object.keys(c.sz)), many = d.lines.length > 1;
+    const fld = (k, t, unit, v, i) => `<div><label for="cu_${k}${i == null ? '' : '_' + i}">${t}</label><input class="inp" id="cu_${k}${i == null ? '' : '_' + i}" data-k="${k}"${i == null ? '' : ` data-li="${i}"`} inputmode="decimal" autocomplete="off" value="${v}">${unit ? `<small>${unit}</small>` : ''}</div>`;
     $('#main').innerHTML = seg + `<div class="lbl">الأسعار بالجنيه <span>بتفضل مكتوبة للمرة الجاية</span></div>
-      <div class="panel"><div class="cuf">${fld('cp', 'كيلو النحاس', '', cuP(d.cp))}${fld('pp', 'كيلو البلاستيك', '', cuP(d.pp))}${fld('reel', 'البكرة', '', cuP(d.reel))}${fld('sell', 'سعر بيع اللفة', '', cuP(d.sell))}</div></div>
-      <div class="lbl">اللفة</div>
-      <div class="panel"><div class="lbl" style="margin:0 2px 4px">المقاس (مم)</div>
-        <div class="chips cusz" id="cuSz">${Z.map(x => `<button type="button" class="chip ${d.size === x ? 'on' : ''}" data-z="${esc(x)}">${esc(x)}</button>`).join('')}</div>
-        <div id="cuAuto"></div>
-        <div class="cuf" style="--n:3;margin-top:12px">${fld('d', 'قطر الشعرة', 'مم', cuIn(d.d))}${fld('n', 'عدد الطروف', '', cuIn(d.n))}${fld('len', 'طول اللفة', 'متر', cuIn(d.len))}</div></div>
-      <div id="cuRes"></div>
+      <div class="panel"><div class="cuf" style="--n:3">${fld('cp', 'كيلو النحاس', '', cuP(d.cp))}${fld('pp', 'كيلو البلاستيك', '', cuP(d.pp))}${fld('reel', 'البكرة', '', cuP(d.reel))}</div></div>
+      ${d.lines.map((l, i) => `<div class="lbl">${many ? `بند ${i + 1}` : 'اللفة'}${many ? `<button class="lnk bk" type="button" data-rmli="${i}" style="width:auto;margin:0;padding:0 4px">شيل البند</button>` : ''}</div>
+      <div class="panel" data-line="${i}"><div class="lbl" style="margin:0 2px 4px">المقاس (مم)</div>
+        <div class="chips cusz ${l.size && c.sz[l.size] ? 'picked' : ''}">${Z.map(x => `<button type="button" class="chip ${l.size === x ? 'on' : ''}" data-li="${i}" data-z="${esc(x)}">${esc(x)}</button>`).join('')}<button type="button" class="chip cuChg" data-li="${i}">غيّر المقاس</button></div>
+        <div class="cuA"></div>
+        <div class="cuf" style="--n:3;margin-top:12px">${fld('d', 'قطر الشعرة', 'مم', cuIn(l.d), i)}${fld('n', 'عدد الطروف', '', cuIn(l.n), i)}${fld('len', 'طول اللفة', 'متر', cuIn(l.len), i)}</div>
+        <div class="cuf" style="margin-top:8px">${fld('rolls', 'عدد اللفات', '', cuIn(l.rolls), i)}${fld('sell', 'سعر بيع اللفة', '', cuP(l.sell), i)}</div>
+        <div class="cuR"></div></div>`).join('')}
+      <button class="lnk" id="cuAddLn" type="button">＋ بند تاني (مقاس تاني)</button>
+      <div id="cuSum"></div>
       <div class="lbl">الطلبية${d.id ? ' <b>(محفوظة، أي تعديل هيتحفظ عليها)</b>' : ''}</div>
-      <div class="panel"><div class="cun"><label class="sm" for="cu_name" style="margin:0 2px 3px">اسم الطلبية</label><input class="inp" id="cu_name" autocomplete="off" value="${esc(d.name)}"></div>
-        <div class="cuf" style="--n:1;margin-top:8px">${fld('rolls', 'عدد اللفات في الطلبية', '', cuIn(d.rolls))}</div></div>
-      <div id="cuTot"></div>
+      <div class="panel"><div class="cun"><label class="sm" for="cu_name" style="margin:0 2px 3px">اسم الطلبية</label><input class="inp" id="cu_name" autocomplete="off" value="${esc(d.name)}"></div></div>
       <button class="big b-ok" id="cuSave" type="button">${d.id ? 'احفظ التعديل' : 'احفظ الحسبة'}</button>
       <button class="lnk" id="cuNew" type="button">ابدأ حسبة جديدة (الأسعار بتفضل)</button>
       ${d.id ? '<button class="lnk bk" id="cuDel" type="button">امسح الحسبة دي</button>' : ''}`;
     const paint = () => {
-      const zz = c.sz[d.size];
-      $('#cuAuto').innerHTML = zz ? `<div class="cuauto"><span>وزن اللفة (100 متر) <b class="money">${zz.w == null ? '—' : cuKg(zz.w) + ' ك'}</b></span><span>المصنعية <b class="money">${zz.l == null ? '—' : fmt(zz.l) + ' ج'}</b></span></div>` : '';
-      let h = '', t = '';
-      if (!zz) h = '<p class="hint">اختار المقاس</p>';
-      else if (zz.w == null) h = `<div class="alert"><span class="tx">وزن لفة مقاس ${esc(d.size)} مم لسه مش مكتوب. اكتبه في "المقاسات".</span></div>`;
-      else if (!d.d || !d.n || !d.len) h = '<p class="hint">اكتب قطر الشعرة وعدد الطروف وطول اللفة</p>';
-      else {
-        const r = cuOf(d), pc = r.rollG ? Math.round(r.cuG / r.rollG * 100) : 0;
-        h = `<div class="lbl">اللفة الواحدة <b>${esc(d.size)} مم · ${d.len} متر</b></div><div class="panel">
-          <div class="kv"><span>وزن النحاس</span><b class="money">${cuKg(r.cuG)} ك</b></div>
-          <div class="kv"><span>وزن البلاستيك</span><b class="money ${r.plG < 0 ? 'bk' : ''}">${r.plG < 0 ? '-' : ''}${cuKg(Math.abs(r.plG))} ك</b></div>
-          ${r.plG < 0 ? '<div class="note">النحاس طلع أتقل من وزن اللفة كلها. راجع قطر الشعرة أو وزن اللفة في المقاسات.</div>' : `<div class="cubar"><i class="c" style="width:${pc}%"></i><i class="p" style="width:${100 - pc}%"></i></div><div class="culg"><span style="--c:#C26A2E">نحاس ${pc}%</span><span style="--c:#98A2B3">بلاستيك ${100 - pc}%</span></div>`}</div>
-          <div class="lbl">تكلفة اللفة</div><div class="panel">
-          <div class="kv"><span>النحاس (${cuKg(r.cuG)} × ${fmt(d.cp || 0)})</span><b class="money">${fmt(r.cuC)}</b></div>
-          <div class="kv"><span>البلاستيك (${cuKg(Math.max(0, r.plG))} × ${fmt(d.pp || 0)})</span><b class="money">${fmt(r.plC)}</b></div>
-          <div class="kv"><span>البكرة</span><b class="money">${fmt(r.reel)}</b></div>
-          <div class="kv"><span>المصنعية</span><b class="money">${zz.l == null ? '—' : fmt(r.labor)}</b></div>
-          <div class="kv tot" id="cuCost"><span>التكلفة</span><b class="money cuc">${fmt(r.cost)}</b></div>
-          ${d.sell ? `<div class="kv"><span>سعر البيع ${fmt(r.sell)} · المكسب</span><b class="money ${r.profit < 0 ? 'bk' : 'ok'}">${fmtN(r.profit)}</b></div>` : ''}</div>
-`;
-        t = `${r.rolls ? `<div class="lbl">الطلبية كلها <b>${r.rolls} لفة</b></div><div class="panel">
-          <div class="kv"><span>نحاس هتشتريه</span><b class="money">${cuKg(r.tot.cuG)} ك</b></div>
-          <div class="kv"><span>بلاستيك</span><b class="money">${cuKg(r.tot.plG)} ك</b></div>
-          <div class="kv"><span>بكر</span><b>${r.tot.reels} بكرة</b></div>
-          <div class="kv tot"><span>تكلفة الطلبية</span><b class="money cuc">${fmt(r.tot.cost)}</b></div>
-          ${d.sell ? `<div class="kv"><span>مكسب الطلبية</span><b class="money ${r.tot.profit < 0 ? 'bk' : 'ok'}">${fmtN(r.tot.profit)}</b></div>` : ''}</div>` : ''}`;
-      }
-      $('#cuRes').innerHTML = h; $('#cuTot').innerHTML = t;
+      const R = cuOf(d);
+      d.lines.forEach((l, i) => {
+        const box = $(`#main [data-line="${i}"]`), zz = c.sz[l.size], x = R.L[i];
+        box.querySelector('.cuA').innerHTML = zz ? `<div class="cuauto"><span>وزن اللفة (100 متر) <b class="money">${zz.w == null ? '—' : cuKg(zz.w) + ' ك'}</b></span><span>المصنعية <b class="money">${zz.l == null ? '—' : fmt(zz.l) + ' ج'}</b></span></div>` : '';
+        let h;
+        if (!zz) h = '<p class="hint">اختار المقاس</p>';
+        else if (zz.w == null) h = `<div class="alert" style="margin:10px 0 0"><span class="tx">وزن لفة مقاس ${esc(l.size)} مم لسه مش مكتوب. اكتبه في "المقاسات".</span></div>`;
+        else if (!x.ok) h = '<p class="hint">اكتب قطر الشعرة وعدد الطروف وطول اللفة</p>';
+        else {
+          const r = x.r, pc = r.rollG ? Math.max(0, Math.min(100, Math.round(r.cuG / r.rollG * 100))) : 0;
+          h = `<div class="lbl" style="margin:14px 2px 2px">اللفة الواحدة <b>${esc(l.size)} مم · ${l.len} متر</b></div>
+            <div class="kv"><span>وزن النحاس</span><b class="money">${cuKg(r.cuG)} ك</b></div>
+            <div class="kv"><span>وزن البلاستيك</span><b class="money ${r.plG < 0 ? 'bk' : ''}">${r.plG < 0 ? '-' : ''}${cuKg(Math.abs(r.plG))} ك</b></div>
+            ${r.plG < 0 ? '<div class="note">النحاس طلع أتقل من وزن اللفة كلها. راجع قطر الشعرة أو وزن اللفة في المقاسات.</div>' : `<div class="cubar"><i class="c" style="width:${pc}%"></i><i class="p" style="width:${100 - pc}%"></i></div><div class="culg"><span style="--c:#C26A2E">نحاس ${pc}%</span><span style="--c:#98A2B3">بلاستيك ${100 - pc}%</span></div>`}
+            <div class="kv"><span>النحاس (${cuKg(r.cuG)} × ${fmt(d.cp || 0)})</span><b class="money">${fmt(r.cuC)}</b></div>
+            <div class="kv"><span>البلاستيك (${cuKg(Math.max(0, r.plG))} × ${fmt(d.pp || 0)})</span><b class="money">${fmt(r.plC)}</b></div>
+            <div class="kv"><span>البكرة</span><b class="money">${fmt(r.reel)}</b></div>
+            <div class="kv"><span>المصنعية</span><b class="money">${zz.l == null ? '—' : fmt(r.labor)}</b></div>
+            <div class="kv tot cuCost"><span>تكلفة اللفة</span><b class="money cuc">${fmt(r.cost)}</b></div>
+            ${r.sell ? `<div class="kv"><span>سعر البيع ${fmt(r.sell)} · المكسب</span><b class="money ${r.profit < 0 ? 'bk' : 'ok'}">${fmtN(r.profit)}</b></div>` : ''}
+            ${r.rolls ? `<div class="kv tot"><span>نحاس البند كله (${r.rolls} لفة)</span><b class="money cuc">${cuKg(r.tot.cuG)} ك</b></div>` : ''}`;
+        }
+        box.querySelector('.cuR').innerHTML = h;
+      });
+      const T = R.tot;
+      $('#cuSum').innerHTML = R.byD.length ? `<div class="lbl">هتشتري كام من كل شعرة</div><div class="panel" id="cuByD">
+          ${R.byD.map(x => `<div class="kv"><span>شعرة ${x.d} مم</span><b class="money">${cuKg(x.g)} ك</b></div>`).join('')}
+          ${R.byD.length > 1 ? `<div class="kv tot"><span>النحاس كله</span><b class="money cuc">${cuKg(T.cuG)} ك</b></div>` : ''}</div>
+        <div class="lbl">الطلبية كلها <b>${T.rolls} لفة</b></div><div class="panel">
+          <div class="kv"><span>بلاستيك</span><b class="money">${cuKg(T.plG)} ك</b></div>
+          <div class="kv"><span>بكر</span><b>${T.reels} بكرة</b></div>
+          <div class="kv tot"><span>تكلفة الطلبية</span><b class="money cuc">${fmt(T.cost)}</b></div>
+          ${T.sell ? `<div class="kv"><span>مكسب الطلبية</span><b class="money ${T.profit < 0 ? 'bk' : 'ok'}">${fmtN(T.profit)}</b></div>` : ''}</div>` : '';
     };
     paint();
     $('#cu_name').addEventListener('input', e => { d.name = e.target.value; save(); });
     $$('#main .cuf input').forEach(i => i.addEventListener('input', () => {
-      const k = i.dataset.k, v = cuNum(i.value);
-      d[k] = ['cp', 'pp', 'reel', 'sell'].includes(k) ? (v == null ? null : Math.round(v * 100)) : k === 'n' || k === 'rolls' ? (v == null ? null : Math.round(v)) : v;
+      const k = i.dataset.k, v = cuNum(i.value), o = i.dataset.li == null ? d : d.lines[+i.dataset.li];
+      o[k] = ['cp', 'pp', 'reel', 'sell'].includes(k) ? (v == null ? null : Math.round(v * 100)) : k === 'n' || k === 'rolls' ? (v == null ? null : Math.round(v)) : v;
       save(); paint();
     }));
-    $$('#cuSz .chip').forEach(b => b.onclick = () => { d.size = b.dataset.z; $$('#cuSz .chip').forEach(x => x.classList.toggle('on', x === b)); save(); paint(); });
+    /* بعد ما المقاس يتختار باقي المقاسات بتستخبى (علشان ميتلخبطش ويغيّره من غير ما ياخد باله)، و"غيّر المقاس" بيرجّعهم */
+    $$('#main .cusz .chip[data-z]').forEach(b => b.onclick = () => { const i = +b.dataset.li; d.lines[i].size = b.dataset.z; $$(`#main .cusz .chip[data-li="${i}"]`).forEach(x => x.classList.toggle('on', x === b)); b.parentNode.classList.add('picked'); save(); paint(); });
+    $$('#main .cuChg').forEach(b => b.onclick = () => b.parentNode.classList.remove('picked'));
+    $('#cuAddLn').onclick = () => { d.lines.push(cuLine()); save(); drawCu(); const el = $(`#main [data-line="${d.lines.length - 1}"]`); if (el) el.scrollIntoView({block: 'center'}); };
+    $$('#main [data-rmli]').forEach(b => b.onclick = async () => { if (await ask(`تشيل بند ${+b.dataset.rmli + 1}؟`, 'أيوه شيله')) { d.lines.splice(+b.dataset.rmli, 1); save(); drawCu(); } });
     $('#cuSave').onclick = () => {
       const nm = d.name.trim();
       if (!nm) { toast('اكتب اسم الطلبية'); $('#cu_name').focus(); return; }
-      if (!d.size || !d.d) return toast('اختار المقاس واكتب قطر الشعرة');
-      const o = {id: d.id || newId('cu'), name: nm, date: (d.id && (c.list.find(x => x.id === d.id) || {}).date) || today(), at: Date.now(), size: d.size, d: d.d, n: d.n, len: d.len, rolls: d.rolls, cp: d.cp, pp: d.pp, reel: d.reel, sell: d.sell};
+      if (!d.lines.some(l => l.size && l.d)) return toast('اختار المقاس واكتب قطر الشعرة');
+      const o = {id: d.id || newId('cu'), name: nm, date: (d.id && (c.list.find(x => x.id === d.id) || {}).date) || today(), at: Date.now(), cp: d.cp, pp: d.pp, reel: d.reel, lines: d.lines.map(l => Object.assign({}, l))};
       c.list = c.list.filter(x => x.id !== o.id).concat(o); d.id = o.id; save(); drawCu(); toast('اتحفظت ✔');
     };
-    $('#cuNew').onclick = () => { Object.assign(d, {id: '', name: '', d: null, rolls: null, n: 7, len: 100}); save(); drawCu(); window.scrollTo(0, 0); };
+    $('#cuNew').onclick = () => { Object.assign(d, {id: '', name: '', lines: [cuLine()]}); save(); drawCu(); window.scrollTo(0, 0); };
     if ($('#cuDel')) $('#cuDel').onclick = async () => { if (await ask(`تمسح حسبة "${d.name}"؟`, 'أيوه امسحها', 'لأ', true)) { c.list = c.list.filter(x => x.id !== d.id); Object.assign(d, {id: '', name: ''}); save(); drawCu(); } };
   }
   $$('#cuSeg button').forEach(b => b.onclick = () => { if (b.dataset.v !== sub) nav('c' + (b.dataset.v ? '/' + b.dataset.v : '')); });
-  $$('#main .row[data-cu]').forEach(r => r.onclick = () => { const o = c.list.find(x => x.id === r.dataset.cu); if (!o) return; c.dr = Object.assign({}, o); save(); nav('c'); });
+  $$('#main .row[data-cu]').forEach(r => r.onclick = () => { const o = c.list.find(x => x.id === r.dataset.cu); if (!o) return; c.dr = JSON.parse(JSON.stringify(o)); save(); nav('c'); });
 }
 function drawSettings() {
   const u = uiGet(), n = pending().length, sups = idx().sup.slice().sort((a, b) => a.at - b.at);

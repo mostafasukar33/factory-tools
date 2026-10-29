@@ -23,7 +23,7 @@ function eq(name, got, want) {
 /* ====================== 1) قواعد الحساب ====================== */
 const html = fs.readFileSync(path.join(ROOT, 'payroll.html'), 'utf8');
 const eng = vm.createContext({console});
-vm.runInContext(html.match(/<script id="engine">([\s\S]*?)<\/script>/)[1] + '\n;this.E = {ownerThursday, weekDates, settle, unitsText, buildIdx, calcWeek, missingDays, cuCalc};', eng);
+vm.runInContext(html.match(/<script id="engine">([\s\S]*?)<\/script>/)[1] + '\n;this.E = {ownerThursday, weekDates, settle, unitsText, buildIdx, calcWeek, missingDays, cuCalc, cuOrder};', eng);
 const E = eng.E;
 const J = x => JSON.parse(JSON.stringify(x));
 console.log('\n١) قواعد الحساب');
@@ -80,6 +80,9 @@ console.log('\n١-هـ) النحاس: تكلفة لفة السلك');
   eq('التكلفة = نحاس + بلاستيك + بكرة + مصنعية (بالقرش)', [r.cuC, r.plC, r.cost], [68600, 9450, 68600 + 9450 + 1000 + 1200]);
   eq('المكسب وإجمالي الطلبية', [r.profit, r.tot.cost, r.tot.profit, r.tot.cuG, r.tot.reels], [115000 - 80250, 80250 * 50, (115000 - 80250) * 50, 1225 * 50, 50]);
   const h = J(E.cuCalc({d: 0.5, n: 7, len: 90, w100: 2800, labor: 1200}));
+  const O = J(E.cuOrder([{d: 0.6, n: 7, len: 100, rolls: 50, w100: 2800, labor: 1200}, {d: 0.7, n: 7, len: 100, rolls: 20, w100: 3900, labor: 1500}, {d: 0.6, n: 7, len: 100, rolls: 10, w100: 1400, labor: 800}, {d: 0.5, n: 7, len: 100, rolls: 5, w100: null}], {cp: 56000, pp: 6000, reel: 1000}));
+  eq('طلبية بكذا بند: نحاس كل شعرة لوحدها (نفس القطر بيتجمع، والبند الناقص مبيدخلش)', O.byD, [{d: 0.6, g: 1764 * 60}, {d: 0.7, g: 2401 * 20}]);
+  eq('إجمالي الطلبية = مجموع البنود', [O.tot.rolls, O.tot.cuG, O.tot.cost], [80, 1764 * 60 + 2401 * 20, O.L.filter(x => x.ok).reduce((t, x) => t + x.r.tot.cost, 0)]);
   eq('المتر بيغيّر النحاس ووزن اللفة، والمصنعية ثابتة', [h.cuG, h.rollG, h.labor], [Math.round(0.25 * 7 * 7 * 90), 2520, 1200]);
 }
 
@@ -564,17 +567,28 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     eq('يومين اتسجلت والأجر اتحسب مرتين', await A.evaluate(() => { const r = [...idx().day.values()].find(x => x.date === '2026-10-30'); return [r.u, calcWeek(idx(), '2026-11-05').rows[r.w].daysPay === 2 * r.rate]; }), [2, true]);
 
     console.log('\n٢٠) النحاس (على الموبايل بس)');
-    await A.evaluate(() => { closeModal(); nav('c/z'); }); await A.waitForSelector('.cut');
+    await A.evaluate(() => { closeModal(); S.cu = {sz: {'2': {w: 2800, l: 1200}}, dr: {cp: 56000, pp: 6000, reel: 1000}, list: [{id: 'cu_old', name: 'حسبة قديمة', date: '2026-10-29', at: 1, size: '2', d: 0.5, n: 7, len: 100, rolls: 10, cp: 56000, pp: 6000, reel: 1000, sell: 115000}]}; save(); nav('c/z'); });
+    await A.waitForSelector('.cut');
     eq('المقاسات من 1 لـ 35 من غير 2.5', await A.$$eval('.cut [data-rm]', b => b.map(x => x.dataset.rm)), ['1', '1.5', '2', '3', '4', '6', '10', '16', '25', '35']);
-    await A.fill('.cut input[data-z="2"][data-f="w"]', '2.8'); await A.fill('.cut input[data-z="2"][data-f="l"]', '12');
+    await A.fill('.cut input[data-z="3"][data-f="w"]', '3.9'); await A.fill('.cut input[data-z="3"][data-f="l"]', '15');
+    await A.click('#cuSeg button[data-v="s"]'); await A.waitForSelector('.row[data-cu]');
+    eq('الحسبة القديمة (بند واحد) بتتفتح عادي', await A.evaluate(() => [S.cu.list[0].lines.length, S.cu.list[0].lines[0].size, document.querySelector('.row[data-cu] .a .money').textContent]), [1, '2', '8,025']);
     await A.click('#cuSeg button[data-v=""]'); await A.waitForSelector('#cu_name');
-    await A.fill('#cu_name', 'طلبية تجريبية'); await A.click('#cuSz .chip[data-z="2"]');
-    for (const [k, v] of [['d', '0.5'], ['rolls', '50'], ['cp', '560'], ['pp', '60'], ['reel', '10'], ['sell', '1150']]) await A.fill('#cu_' + k, v);
-    eq('التكلفة في الشاشة', await A.textContent('#cuCost b'), '802.5');
+    await A.fill('#cu_name', 'طلبية تجريبية'); await A.click('.cusz .chip[data-li="0"][data-z="2"]');
+    for (const [k, v] of [['d_0', '0.5'], ['rolls_0', '50'], ['sell_0', '1150']]) await A.fill('#cu_' + k, v);
+    eq('تكلفة اللفة بتظهر على طول', await A.textContent('[data-line="0"] .cuCost b'), '802.5');
+    await A.click('#cuAddLn'); await A.waitForSelector('[data-line="1"]');
+    await A.click('.cusz .chip[data-li="1"][data-z="3"]');
+    for (const [k, v] of [['d_1', '0.7'], ['rolls_1', '20']]) await A.fill('#cu_' + k, v);
+    await A.click('#cuAddLn'); await A.waitForSelector('[data-line="2"]');
+    await A.click('.cusz .chip[data-li="2"][data-z="2"]');
+    for (const [k, v] of [['d_2', '0.5'], ['rolls_2', '10']]) await A.fill('#cu_' + k, v);
+    eq('هتشتري كام من كل شعرة (0.5 بتتجمع من البندين)', await A.$$eval('#cuByD .kv', r => r.map(x => x.textContent.replace(/\s+/g, ' ').trim())), ['شعرة 0.5 مم73.500 ك', 'شعرة 0.7 مم48.020 ك', 'النحاس كله121.520 ك']);
     await A.click('#cuSave'); await A.click('#cuSeg button[data-v="s"]'); await A.waitForSelector('.row[data-cu]');
-    eq('الحسبة اتحفظت ومبتروحش الشيت', await A.evaluate(() => [S.cu.list.length, S.cu.list[0].name, Object.values(S.recs).some(r => r.k === 'cu' || String(r.id).startsWith('cu_')), pending().length]), [1, 'طلبية تجريبية', false, 0]);
+    eq('الحسبة اتحفظت ومبتروحش الشيت', await A.evaluate(() => [S.cu.list.length, S.cu.list.find(x => x.name === 'طلبية تجريبية').lines.length, Object.values(S.recs).some(r => r.k === 'cu' || String(r.id).startsWith('cu_')), pending().length]), [2, 3, false, 0]);
+    eq('المحفوظ مكتوب فيه نحاس كل بند', await A.$$eval('.row[data-cu] .cuL', r => r.map(x => x.textContent.replace(/\s+/g, ' ').trim())), ['2 مم · شعرة 0.5 · 50 لفة61.250 ك نحاس', '3 مم · شعرة 0.7 · 20 لفة48.020 ك نحاس', '2 مم · شعرة 0.5 · 10 لفة12.250 ك نحاس', '2 مم · شعرة 0.5 · 10 لفة12.250 ك نحاس']);
     await A.click('.row[data-cu]'); await A.waitForSelector('#cuDel');
-    eq('فتح المحفوظ بيرجّع الأسعار', await A.inputValue('#cu_cp'), '560');
+    eq('فتح المحفوظ بيرجّع البنود والأسعار', [await A.inputValue('#cu_cp'), await A.inputValue('#cu_d_1')], ['560', '0.7']);
 
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);
   } catch (e) { fails++; console.log('  ✖ الاختبار وقف:', e.message.split('\n').slice(0, 6).join(' | ')); if (process.env.DBG) console.log(e.stack); }

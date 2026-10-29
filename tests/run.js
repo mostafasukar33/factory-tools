@@ -457,8 +457,10 @@ const T0 = Date.now();
       const bal = d => vaultBal('', d) + (window.__ldg.hasMk ? vaultBal('v_mkt', d) : 0), L = ldgItems('2001-03-01', '2001-03-03'), D = fbDays('2001-03-01', '2001-03-03');
       return [D.every(o => o.none || (o.in === ldgSum(L.filter(x => x.m.date === o.d), 'in') && o.out === ldgSum(L.filter(x => x.m.date === o.d), 'out'))),
         $$('#fbL .fbd').length === 3 && [...$$('#fbL .fbd')].every(el => +el.querySelector('.fbf [data-b1]').dataset.b1 === bal(addDays(el.dataset.d, 1)) && el.querySelector('.fbh').textContent.includes(fmtP(bal(el.dataset.d))) && !el.querySelector('.fbf.bad')),
-        D.filter(o => !o.none).every(o => o.ok)];
-    })()`), [true, true, true]);
+        D.filter(o => !o.none).every(o => o.ok),
+        /* بداية اليوم زي القفل: معاك ومع أحمد فوق جنب اسم اليوم = قفل اليوم اللي قبله، ومجموعهم = "بدأ بـ" */
+        !window.__ldg.hasMk || [...$$('#fbL .fbd')].every(el => { const d = el.dataset.d, c = el.querySelector('.fbh .fbc'); return !!c && c.querySelector('.me .n').textContent === fmtP(vaultBal('', d)) && c.querySelector('.mk .n').textContent === fmtP(vaultBal('v_mkt', d)); })];
+    })()`), [true, true, true, true]);
     if (ldgSetup) eq('الخزنة بالتاريخ: تسليم أحمد سطر رمادي "وصلك من أحمد" مش وارد ولا منصرف، وعميل السوق مكتوب تحته منك ومعاه، ومصروف أحمد منصرف وعليه اسمه', await ldgOpen(`(() => {
       const d3 = $('#fbL .fbd[data-d="2001-03-03"]'), x = d3.querySelector('.fbx'), c = [...$$('#fbL .fbr')].find(r => r.textContent.includes('عميل سوق دفتر تجربة')), b = [...d3.querySelectorAll('.fbr')].find(r => r.textContent.includes('بنزين دفتر تجربة'));
       return [!!x && x.textContent.includes('وصلك من أحمد') && x.textContent.includes('كاش') && x.querySelector('.n').textContent === '770', c.querySelector('small').textContent, !!b && !!b.querySelector('td:last-child .n.out') && b.querySelector('small').textContent.includes('أحمد')];

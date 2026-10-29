@@ -226,7 +226,8 @@ html:not([data-theme=dark]) :is(.card,.panel,.list,.ldgw):not(#render *){border-
 .fbd,.fbk{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow2);overflow:hidden;margin-bottom:12px}
 .fbk{margin:0}
 .fbd .n,.fbk .n,.kf .n,.fbe .n{font-weight:800;direction:ltr;unicode-bidi:isolate;white-space:nowrap;font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1}
-.fbh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 14px;background:var(--gold-l)}
+.fbh{display:flex;justify-content:space-between;align-items:center;gap:6px 8px;padding:9px 14px;background:var(--gold-l);flex-wrap:wrap}
+.fbh .fbc{flex-basis:100%;justify-content:flex-end}
 .fbh>b{font-size:var(--f3);font-weight:800}
 .fbh>span{font-size:var(--f1);font-weight:700;color:var(--sub)}.fbh>span .n{color:var(--ink)}
 table.fbt{width:100%;border-collapse:collapse}

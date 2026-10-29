@@ -4640,12 +4640,12 @@ function fbDays(from, to) {
   const day = d => by.get(d) || by.set(d, {d, R: [], X: [], A: []}).get(d);
   R.forEach(x => day(x.date).R.push(x)); X.forEach(x => day(x.date).X.push(x)); A.forEach(x => day(x.date).A.push(x));
   let last = to < t ? to : t; by.forEach((v, d) => { if (d > last) last = d; });
-  const bal = d => vaultBal('', d) + (hm ? vaultBal(MKV, d) : 0), out = [];
+  const out = [];
   for (let d = last; d >= from; d = addDays(d, -1)) {
     const o = by.get(d);
     if (!o) { out.push({d, none: true}); continue; }
-    const b0 = bal(d), n = addDays(d, 1), me = vaultBal('', n), mk = hm ? vaultBal(MKV, n) : 0, din = fbSum(o.R, x => x.dir === 'in'), dout = fbSum(o.R, x => x.dir !== 'in'), adj = fbSum(o.A);
-    out.push(Object.assign(o, {b0, me, mk, b1: me + mk, in: din, out: dout, adj, ok: b0 + din - dout + adj === me + mk, rows: fbDayRows(o.R)}));
+    const me0 = vaultBal('', d), mk0 = hm ? vaultBal(MKV, d) : 0, b0 = me0 + mk0, n = addDays(d, 1), me = vaultBal('', n), mk = hm ? vaultBal(MKV, n) : 0, din = fbSum(o.R, x => x.dir === 'in'), dout = fbSum(o.R, x => x.dir !== 'in'), adj = fbSum(o.A);
+    out.push(Object.assign(o, {b0, me0, mk0, me, mk, b1: me + mk, in: din, out: dout, adj, ok: b0 + din - dout + adj === me + mk, rows: fbDayRows(o.R)}));
   }
   return out;
 }
@@ -4668,7 +4668,7 @@ function fbDateHtml(days) {
     const o = days[i];
     if (o.none) { let j = i; while (j + 1 < days.length && days[j + 1].none) j++; html.push(fbEmpty(o.d, days[j].d)); i = j; continue; }
     const t = o.d === todayISO(), firstOut = o.rows.findIndex(x => x.dir !== 'in');
-    html.push(`<section class="fbd" data-d="${o.d}"><div class="fbh"><b>${AR_DAYS[dowOf(o.d)]} ${fbSd(o.d)}</b><span>بدأ بـ <b class="n">${fmtP(o.b0)}</b></span></div>
+    html.push(`<section class="fbd" data-d="${o.d}"><div class="fbh"><b>${AR_DAYS[dowOf(o.d)]} ${fbSd(o.d)}</b><span>بدأ بـ <b class="n">${fmtP(o.b0)}</b></span>${hm ? `<span class="fbc"><i class="me">معاك <b class="n">${fmtP(o.me0)}</b></i><i class="mk">مع ${MK_PN} <b class="n">${fmtP(o.mk0)}</b></i></span>` : ''}</div>
       <table class="fbt"><thead><tr><th>البيان</th><th class="c">وارد</th><th class="c">منصرف</th></tr></thead><tbody>
       ${o.rows.map((x, j) => `<tr class="fbr${j && j === firstOut ? ' fbs' : ''}" data-r="${i}:${j}" data-ak="${o.d}|${esc(x.k)}" role="button" tabindex="0"><td><b>${esc(fbName(x))}</b>${(s => s ? `<small>${s}</small>` : '')(fbSub(x))}</td><td class="c">${x.dir === 'in' ? `<span class="n in">${fmtP(x.amt)}</span>` : ''}</td><td class="c">${x.dir !== 'in' ? `<span class="n out">${fmtP(x.amt)}</span>` : ''}</td></tr>`).join('')}
       ${fbXRows(o, i)}

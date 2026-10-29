@@ -1123,6 +1123,10 @@ const T0 = Date.now();
       await A.waitForSelector('[data-sal="0"]'); await A.click('[data-sal="0"]'); await A.settle(150);
       eq('دوسة "مرتب حسن": مرتب شريك بنفس المبلغ والخزنة، والمرة الجاية نفس المبلغ واضح لوحده', await A.evaluate(([id, d5]) => { const t = IDX.tx.get(id); const c = catsL('exp')[0].id, r = {id: newId('t_'), type: 'exp', amt: 55500, vault: 'v_main', to: '', cat: c, note: 'حسن', date: d5, at: nowS(), upd: nowS(), del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r);
         const P = hsPlan(), k = P.sure.find(x => x.t.id === r.id); const o = [t.cat, partName(t.pt), t.amt, t.vault]; r.del = t.del = true; touch(r); touch(t); saveDB(); return [...o, k && k.kind, P.ask.length]; }, [q2, d5]), ['c_psal', 'حسن', 55500, 'v_main', 'sal', 0]);
+      /* خانة مرتب الشريك فوق المراجعة: تتحفظ في الشركاء والمبلغ يبقى واضح */
+      const q3 = await A.evaluate(d5 => { const c = catsL('exp')[0].id, r = {id: newId('t_'), type: 'exp', amt: 12300, vault: 'v_main', to: '', cat: c, note: 'حسن', date: d5, at: nowS(), upd: nowS(), del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); hsReview(); return r.id; }, d5);
+      await A.waitForSelector('#hrSal'); await A.fill('#hrSal', '123'); await A.evaluate(() => $('#hrSal').dispatchEvent(new Event('change'))); await A.settle(150);
+      eq('خانة المرتب: اتحفظت والـ 123 بقت مرتب واضح', await A.evaluate(id => { const k = hsPlan().sure.find(x => x.t.id === id); const r = [partners().amt, k && k.kind]; const t = IDX.tx.get(id); t.del = true; touch(t); saveDB(); return r; }, q3), [12300, 'sal']);
       await A.click('#hrX');
       /* نقل مصاريف حسن: بتدخل الأرباح ومبتلمسش الخزنة */
       const ex0 = await A.evaluate(f => cashSums(f, todayISO()).exp, d20 > th20 ? th20 : d20);

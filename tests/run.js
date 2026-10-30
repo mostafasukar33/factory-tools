@@ -1284,6 +1284,25 @@ const T0 = Date.now();
       db.entries.splice(n0); db.parties.splice(np); ['e_mo1', 'e_mo2', 'e_mo3'].forEach(id => E.delete(id)); P.delete(sub.id);
       const sr = IDX.set.get('matMap'); if (sr) { db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('matMap'); } repKind = 'home'; repMode = 'year'; saveDB();
       return r; }), [5000, 28100000, 1, 1, 5000000, false, 25, true, 'no', 'no', false, true, 1]);
+    eq('الكرتونة: الصنف اللي ليه عدد في الكرتونة بيفهم البند المكتوب قطعة بسعر كرتونة، والكرتونة بوحدتها، والشراء بالكرتونة بسعر القطعة، والكمية في التقرير بالقطعة', await A.evaluate(() => {
+      const n0 = db.entries.length, c = liveParties().find(p => p.sec === 'mkt' && !p.noTot), sp = liveParties().find(p => p.sec === 'sup'), MG = 'علبة تجربة ماجيك مفرد';
+      const add = (id, party, kind, date, lines) => { const e = {id, party, kind, date, lines, disc: 0, at: 1, upd: 1, del: false, hist: []}, v = docTotal(e); e.dr = kind === 'inv' ? v : 0; e.cr = kind === 'inv' ? 0 : v; db.entries.push(e); E.set(id, e); return e; };
+      const L = (name, unit, qty, price) => ({name, unit, qty, price});
+      const iA = add('e_pk1', c.id, 'inv', '1997-05-01', [L(MG, 'قطعة', 100, 700)]);
+      const iB = add('e_pk2', c.id, 'inv', '1997-05-02', [L(MG, 'قطعة', 2, 150000)]);
+      const iC = add('e_pk3', c.id, 'inv', '1997-05-03', [L(MG, 'كرتونة', 1, 150000)]);
+      putSet('itemCost', {k: {[icKey(MG, 'قطعة')]: {n: MG, u: 'قطعة', h: [['1997-01-01', 500]]}}});
+      const r = [docMargin(iB).m];   // من غير عدد الكرتونة: الكرتونة بتتحسب بتكلفة القطعة
+      putSet('itemCost', {k: {[icKey(MG, 'قطعة')]: {n: MG, u: 'قطعة', h: [['1997-01-01', 500]]}}, p: {[norm(MG)]: 225}});
+      r.push(docMargin(iA).m, docMargin(iB).m, docMargin(iC).m);
+      repGmKind = 'item'; const R = gmReport('1997-01-01', '1997-12-31'), row = R.rows.find(x => x.cells[0] === MG); r.push(row && row.cells[1]);
+      add('e_pk4', sp.id, 'pur', '1997-04-01', [L(MG, 'قطعة', 3, 112500)]);
+      putSet('itemCost', {k: {}, p: {[norm(MG)]: 225}}); r.push(docMargin(iA).m, docMargin(iB).m);   // من غير تكلفة مكتوبة: من الشراء (كرتونة مكتوبة قطعة) بسعر القطعة
+      costModal(); const el = $$('#icL .icr').find(x => x.querySelector('.icn b').textContent === MG); r.push(!el.querySelector('.icpk').hidden, el.querySelector('.ipk').value);
+      el.querySelector('.ipk').value = '60'; $('#icOk').click(); r.push(icPack()[norm(MG)]);
+      db.entries.splice(n0); ['e_pk1', 'e_pk2', 'e_pk3', 'e_pk4'].forEach(id => E.delete(id));
+      const sr = IDX.set.get('itemCost'); if (sr) { db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('itemCost'); } saveDB();
+      return r; }), [299000, 20000, 75000, 37500, '775 قطعة', 20000, 75000, true, '225', 60]);
     eq('سطر الفاتورة بيتقرّب لأقرب قرش (1.5 × 3.33 = 5)', await A.evaluate(() => [lineTot({qty: 1.5, price: 333}), docTotal({lines: [{qty: 1.5, price: 333}, {qty: 0.333, price: 1000}], disc: 0})]), [500, 833]);
 
     eq('مفيش أرقام فواتير: لا خانة ولا عرض في الكشف ولا العنوان', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv'); const f = !!$('#dcNo'); closeModal();

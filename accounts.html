@@ -240,10 +240,12 @@ nav .nb{position:absolute;top:6px;inset-inline-start:calc(50% + 6px);background:
 .icn b{display:block;font-size:var(--f3);overflow-wrap:anywhere}.icn small{color:var(--sub);font-size:var(--f1);font-weight:600}
 .icr .inp{min-height:44px;text-align:center}.icp{font-size:var(--f2);font-weight:800;color:var(--green);text-align:center;direction:ltr}.icp.neg{color:var(--red)}
 table.ldg.rp tr.mute td{color:var(--sub)}
-.icr .icb{grid-column:1/-1;justify-self:start;font-size:var(--f1);font-weight:700;color:var(--gold-d);background:none;border:0;padding:0;cursor:pointer}
+.icl{grid-column:1/-1;display:flex;gap:16px}.icl .lnk{font-size:var(--f1);font-weight:700;color:var(--gold-d);background:none;border:0;padding:0;cursor:pointer}
 .icrr{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:end;padding:6px 8px;border-radius:10px;background:var(--row)}.icrr[hidden]{display:none}
 .icrr label{display:flex;flex-direction:column;gap:2px;font-size:var(--f1);font-weight:700;color:var(--sub)}.icrr .inp{min-height:40px}.icrr .icq{grid-column:1/-1;font-size:var(--f1);font-weight:700;color:var(--ink)}
 .icr .inp:disabled{background:var(--row);color:var(--ink);opacity:1}
+.icpk{grid-column:1/-1;display:grid;gap:4px;padding:6px 8px;border-radius:10px;background:var(--row)}.icpk[hidden]{display:none}
+.icpk label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--f1);font-weight:700;color:var(--sub)}.icpk .inp{max-width:110px;min-height:40px;text-align:center}.icpk small{font-size:var(--f1);color:var(--sub)}
 .mtr{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.mtr b{font-size:var(--f3);overflow-wrap:anywhere}.mtr .inp{min-height:42px}
 .rcd{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer;min-width:0;box-shadow:0 1px 2px rgba(0,0,0,.05)}
 .rcd span{display:block;font-size:var(--f1);font-weight:800;color:var(--sub)}
@@ -2391,7 +2393,7 @@ function partyModal(p) {
    الشيك مبيدخلش خزنة غير لما يتصرف، وتاريخ دخوله الخزنة هو cdate.
    open = رصيد أول المدة، man = حركة قديمة يدوية (من النسخة الأولى)
    الفاتورة فيها lines [{name, unit, qty, price(بالقرش)}] و disc (خصم بالقرش)، و dr/cr بيتحسبوا منها وقت الحفظ. */
-const UNITS = ['كيلو', 'لفة', 'قطعة', 'وحدة', 'متر'];
+const UNITS = ['كيلو', 'لفة', 'قطعة', 'وحدة', 'متر', 'كرتونة'];
 const KIND = {inv: 'فاتورة بيع', pay: 'دفعة مستلمة', pur: 'فاتورة شراء', ppay: 'دفعة مدفوعة', rinv: 'مرتجع بيع', rpur: 'مرتجع شراء', adj: 'خصم / تسوية', bnc: 'شيك مرتجع', open: 'رصيد أول المدة', man: 'حركة'};
 const isRet = e => e.kind === 'rinv' || e.kind === 'rpur';
 const METHODS = ['نقدي', 'تحويل', 'شيك'];
@@ -5584,20 +5586,47 @@ function stockDiff(f, t) {
    عرض بس: مبيغيّرش أي حركة ولا رصيد ولا الربح (profitOf)، ومش بيظهر في ورقة الفاتورة أو الكشف اللي بتروح للعميل */
 const icKey = (name, unit) => norm(name) + '|' + (unit || '');
 const icAll = () => (getSet('itemCost', null) || {}).k || {};
+/* الكرتونة (بطلبه 30/10/2026: "علبة ماجيك مفرد" الكرتونة 225 قطعة و"مجوز" 60، وبعض العملا بيتكتبلهم بالكرتونة وبعضهم بالقطعة):
+   عدد القطع في الكرتونة لكل اسم في itemCost.p {الاسم: العدد}. البند يبقى كرتونة لو وحدته كرتونة، أو سعره فوق تكلفة القطعة × جذر العدد
+   (القطعة عمرها ما تتباع بالسعر ده، والكرتونة عمرها ما تتباع أقل منه)، وتكلفته = تكلفة القطعة × العدد */
+const PACK_U = /كرتون/;
+const icPack = () => (getSet('itemCost', null) || {}).p || {};
 function costBook() {
-  const man = icAll(), pur = new Map(), mp = matPricer();
+  const man = icAll(), pk = icPack(), pur = new Map(), mp = matPricer(), sst = new Map();
+  if (Object.keys(pk).length) for (const e of db.entries) {   // أقل وأعلى سعر بيع للوحدة (مش كرتونة) للأصناف اللي ليها عدد في الكرتونة
+    if (e.del || (e.kind !== 'inv' && e.kind !== 'rinv')) continue;
+    (e.lines || []).forEach(l => { const n = norm(l.name || ''), pr = +l.price || 0; if (!(pk[n] > 1) || pr <= 0 || PACK_U.test(l.unit || '')) return;
+      const x = sst.get(n) || {lo: pr, hi: pr}; x.lo = Math.min(x.lo, pr); x.hi = Math.max(x.hi, pr); sst.set(n, x); });
+  }
+  const saleT = n => { const x = sst.get(n); return x && x.hi / x.lo >= pk[n] / 4 ? Math.sqrt(x.lo * x.hi) : 0; };   // لو البيع فيه قطعة وكرتونة: الحد بينهم
   for (const e of db.entries) {
     if (e.del || e.kind !== 'pur' || e.mkNL) continue;
-    (e.lines || []).forEach(l => { const pr = +l.price || 0; if (pr <= 0 || !l.name) return; const k = icKey(l.name, l.unit); if (!pur.has(k)) pur.set(k, []); pur.get(k).push([e.date, pr]); });
+    (e.lines || []).forEach(l => {
+      let pr = +l.price || 0; if (pr <= 0 || !l.name) return;
+      const n = norm(l.name); let k = icKey(l.name, l.unit);
+      if (pk[n] > 1) { const T = saleT(n); if (PACK_U.test(l.unit || '') || (T && pr >= T)) pr /= pk[n]; k = n + '|*'; }   // الشراء بسعر القطعة
+      if (!pur.has(k)) pur.set(k, []); pur.get(k).push([e.date, pr]);
+    });
   }
   pur.forEach(a => a.sort((x, y) => x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0));
   const row = (a, d) => { let r = a[0]; for (const x of a) { if (x[0] <= d) r = x; else break; } return r; }, pick = (a, d) => row(a, d)[1];
-  /* (اسم، وحدة، يوم) ← {c: قرش للوحدة، src: r خامة + مصنعية / m مكتوبة / p آخر شراء} أو null.
-     r = [[من يوم, جرام خامة في الوحدة, مصنعية بالقرش]] وg نوع الخامة: التكلفة = الكيلو × سعر الخامة يومها (matPricer) + المصنعية */
-  return (name, unit, d) => {
-    const k = icKey(name, unit), m = man[k];
-    if (m && m.r && m.r.length) { const [, gr, w] = row(m.r, d), pr = mp(m.g || 'plastic', d); if (pr !== null) return {c: Math.round(gr * pr / 1000) + w, src: 'r', kp: pr}; }
-    if (m && m.h && m.h.length) return {c: pick(m.h, d), src: 'm'};
+  /* تكلفة مكتوبة لمفتاح: r = [[من يوم, جرام خامة في الوحدة, مصنعية بالقرش]] وg نوع الخامة (الكيلو × سعر الخامة يومها + المصنعية)، أو h مكتوبة */
+  const one = (k, d) => { const m = man[k]; if (!m) return null;
+    if (m.r && m.r.length) { const [, gr, w] = row(m.r, d), pr = mp(m.g || 'plastic', d); if (pr !== null) return {c: Math.round(gr * pr / 1000) + w, src: 'r', kp: pr}; }
+    return m.h && m.h.length ? {c: pick(m.h, d), src: 'm'} : null; };
+  /* تكلفة القطعة: لما الصنف ليه عدد في الكرتونة، أي تكلفة مكتوبة في أي سطر بتاعه = تكلفة القطعة (زي ما النافذة بتقول)، وإلا آخر شراء بسعر القطعة */
+  const piece = (n, d) => { let alt = null;
+    for (const k in man) { if (!k.startsWith(n + '|')) continue; const c = one(k, d); if (!c) continue; if (!PACK_U.test(k.slice(n.length + 1))) return c; alt = alt || c; }
+    if (alt) return alt; const a = pur.get(n + '|*'); return a ? {c: pick(a, d), src: 'p'} : null; };
+  /* (اسم، وحدة، يوم، سعر الوحدة) ← {c: قرش للوحدة، src: r خامة + مصنعية / m مكتوبة / p آخر شراء، N وctn للكرتونة} أو null */
+  return (name, unit, d, price = 0) => {
+    const n = norm(name || ''), N = pk[n];
+    if (N > 1) {
+      const cp = piece(n, d); if (!cp) return null;
+      const T = (cp.src === 'p' && saleT(n)) || cp.c * Math.sqrt(N), ctn = PACK_U.test(unit || '') || (price > 0 && price >= T);
+      return {c: Math.round(ctn ? cp.c * N : cp.c), src: cp.src, N, ctn};
+    }
+    const k = icKey(name, unit), c = one(k, d); if (c) return c;
     const a = pur.get(k); return a ? {c: pick(a, d), src: 'p'} : null;
   };
 }
@@ -5605,8 +5634,8 @@ function costBook() {
 function docGmLines(e, cb) {
   const sg = e.kind === 'rinv' ? -1 : 1, ls = (e.lines || []).filter(l => lineTot(l)), rev = ls.reduce((s, l) => s + lineTot(l), 0);
   return ls.map(l => {
-    const v = lineTot(l), net = v - (rev && e.disc ? Math.round(e.disc * v / rev) : 0), c = l.name ? cb(l.name, l.unit, e.date) : null;
-    return {l, net: sg * net, cost: c ? sg * Math.round((+l.qty || 0) * c.c) : null};
+    const v = lineTot(l), net = v - (rev && e.disc ? Math.round(e.disc * v / rev) : 0), c = l.name ? cb(l.name, l.unit, e.date, +l.price || 0) : null;
+    return {l, net: sg * net, cost: c ? sg * Math.round((+l.qty || 0) * c.c) : null, pk: c && c.N ? (c.ctn ? c.N : 1) : 0};   // pk = قطع في الوحدة (للكرتونة)
   });
 }
 /* مكسب فاتورة: البنود اللي ليها تكلفة بس. cov = بيعها، m = مكسبها، miss = أسامي البنود اللي مالهاش تكلفة */
@@ -5625,9 +5654,9 @@ function gmData(f, t) {
     if (e.del || (e.kind !== 'inv' && e.kind !== 'rinv') || e.date < f || e.date > t) continue;
     const p = P.get(e.party); if (!p || p.noTot || p.sec === 'sup') continue;
     docGmLines(e, cb).forEach(x => {
-      const k = icKey(x.l.name, x.l.unit), sg = e.kind === 'rinv' ? -1 : 1;
-      const o = it.get(k) || {name: x.l.name, unit: x.l.unit, q: 0, v: 0, cv: 0, c: 0, miss: false}; it.set(k, o);
-      o.q += sg * (+x.l.qty || 0); o.v += x.net;
+      const k = x.pk ? norm(x.l.name) + '|قطعة' : icKey(x.l.name, x.l.unit), sg = e.kind === 'rinv' ? -1 : 1;   // الصنف اللي ليه كرتونة: الكمية كلها بالقطعة
+      const o = it.get(k) || {name: x.l.name, unit: x.pk ? 'قطعة' : x.l.unit, q: 0, v: 0, cv: 0, c: 0, miss: false}; it.set(k, o);
+      o.q += sg * (+x.l.qty || 0) * (x.pk || 1); o.v += x.net;
       if (x.cost === null) { o.miss = true; return; }
       o.cv += x.net; o.c += x.cost; A += x.net - x.cost; B += x.net;
       for (const [map, key, nm] of [[cu, p.id, p.name], [mo, e.date.slice(0, 7), '']]) { const y = map.get(key) || {name: nm, cv: 0, c: 0}; y.cv += x.net; y.c += x.cost; map.set(key, y); }
@@ -5800,10 +5829,12 @@ function costModal(after) {
   const kp = Object.fromEntries(Object.keys(MAT_G).map(g => [g, mp(g, t)]));   // سعر كيلو الخامة النهارده (متوسط آخر شهر)
   const last = a => a && a.length ? a[a.length - 1] : null;
   /* كل صنف: خانة التكلفة، وتحتها "خامة + مصنعية" (كام كيلو خامة في الوحدة والمصنعية) والتكلفة بتتحسب لوحدها من سعر الخامة */
-  const row = (o, i) => { const M = man[o.k] || {}, hc = last(M.h), rc = last(M.r), au = !hc && !rc && cb(o.name, o.unit, t), kg1 = matKg(o.unit) === 1;
-    return `<div class="icr" data-i="${i}"><div class="icn"><b>${esc(o.name)}</b><small>${esc(o.unit || '')}${o.price ? ` · آخر بيع ${fmtP(o.price)}` : ''}${au ? ` · آخر شراء ${fmtP(au.c)}` : ''}</small></div>
+  const P0 = icPack();
+  const row = (o, i) => { const M = man[o.k] || {}, hc = last(M.h), rc = last(M.r), au0 = !hc && !rc && cb(o.name, o.unit, t, o.price), au = au0 && au0.N && au0.ctn ? Object.assign({}, au0, {c: Math.round(au0.c / au0.N)}) : au0, kg1 = matKg(o.unit) === 1, N = P0[norm(o.name)];
+    return `<div class="icr" data-i="${i}"><div class="icn"><b>${esc(o.name)}</b><small>${esc(o.unit || '')}${o.price ? ` · آخر بيع ${fmtP(o.price)}` : ''}${au ? ` · ${au.N ? 'القطعة من آخر شراء' : 'آخر شراء'} ${fmtP(au.c)}` : ''}</small></div>
       <input class="inp num icm" inputmode="decimal" placeholder="${au ? fmtP(au.c) : 'التكلفة'}" value="${hc ? fmtP(hc[1]) : ''}" aria-label="تكلفة ${esc(o.name)}"><span class="icp"></span>
-      <button class="lnk icb" type="button">🏭 خامة + مصنعية</button>
+      <div class="icl"><button class="lnk icb" type="button">🏭 خامة + مصنعية</button><button class="lnk icb2" type="button">📦 كرتونة</button></div>
+      <div class="icpk" ${N ? '' : 'hidden'}><label>الكرتونة فيها كام قطعة؟<input class="inp num ipk" inputmode="numeric" placeholder="0" value="${N || ''}"></label><small>التكلفة اللي فوق تبقى للقطعة، والفاتورة اللي سعرها سعر كرتونة بتتحسب كرتونة لوحدها</small></div>
       <div class="icrr" ${rc ? '' : 'hidden'}><label>كيلو خامة في ${o.unit === 'كيلو' ? 'الكيلو' : 'ال' + esc(o.unit || 'وحدة')}<input class="inp num ick" inputmode="decimal" placeholder="${kg1 ? '1' : '0'}" value="${rc ? fmtQ(rc[1] / 1000) : kg1 ? '1' : ''}"></label>
         <label>المصنعية<input class="inp num icw" inputmode="decimal" placeholder="0" value="${rc && rc[2] ? fmtP(rc[2]) : ''}"></label>
         <label>الخامة<select class="inp icg">${Object.entries(MAT_G).map(([g, n]) => `<option value="${g}" ${(M.g || 'plastic') === g ? 'selected' : ''}>${n}</option>`).join('')}</select></label><small class="icq"></small></div></div>`; };
@@ -5822,17 +5853,20 @@ function costModal(after) {
     if (R) { const pr = kp[R.g]; c = pr === null ? 0 : Math.round(R.gr * pr / 1000) + R.w; main.disabled = true; main.value = c ? fmtP(c) : '';
       q.textContent = pr === null ? `مفيش سعر ${MAT_G[R.g]} لسه (مفيش فواتير شراء بالكيلو)` : `= ${fmtQ(R.gr / 1000)} كيلو × ${fmtP(Math.round(pr))}${R.w ? ' + مصنعية ' + fmtP(R.w) : ''} = ${fmtP(c)} النهارده`; }
     else { if (main.disabled) { main.disabled = false; main.value = ''; } q.textContent = ''; c = toP(main.value) || (cb(o.name, o.unit, t) || {}).c || 0; }
+    const pkb = el.querySelector('.icpk'), N = pkb.hidden ? 0 : Math.round(num(el.querySelector('.ipk').value));   // آخر بيع كان كرتونة؟ يتقارن بتكلفة الكرتونة
+    if (N > 1 && c && (PACK_U.test(o.unit) || o.price >= c * Math.sqrt(N))) c *= N;
     const p = el.querySelector('.icp'); p.textContent = c && o.price ? gmPct(o.price - c, o.price) + '%' : ''; p.className = 'icp' + (c > o.price ? ' neg' : '');
   };
   $$('#icL .icr').forEach(el => {
     calc(el); el.querySelectorAll('input,select').forEach(x => x.addEventListener(x.tagName === 'SELECT' ? 'change' : 'input', () => calc(el)));
     [el.querySelector('.icm'), el.querySelector('.icw')].forEach(bindMoney);
     el.querySelector('.icb').onclick = () => { const r = el.querySelector('.icrr'); r.hidden = !r.hidden; calc(el); if (!r.hidden) el.querySelector('.ick').focus(); };
+    el.querySelector('.icb2').onclick = () => { const r = el.querySelector('.icpk'); r.hidden = !r.hidden; calc(el); if (!r.hidden) el.querySelector('.ipk').focus(); };
   });
   if ($('#icQ')) $('#icQ').oninput = () => { const q = norm($('#icQ').value.trim()); $$('#icL .icr').forEach(el => { el.style.display = !q || norm(L[+el.dataset.i].name).includes(q) ? '' : 'none'; }); };
   $('#icX').onclick = closeModal;
   $('#icOk').onclick = () => {
-    const k0 = JSON.stringify(icAll()), K = JSON.parse(k0);
+    const k0 = JSON.stringify(icAll()), K = JSON.parse(k0), p0 = JSON.stringify(P0), PK = JSON.parse(p0), setN = new Set();
     const push = (a, v) => { a = a ? a.slice() : []; const l = a[a.length - 1]; if (l && JSON.stringify(l.slice(1)) === JSON.stringify(v)) return a; if (l && l[0] === t) a.pop(); a.push([t, ...v]); return a; };
     $$('#icL .icr').forEach(el => {
       const o = L[+el.dataset.i], R = rec(el), cur = K[o.k] || {n: o.name, u: o.unit};
@@ -5843,8 +5877,11 @@ function costModal(after) {
         if (v > 0) cur.h = push(cur.h, [v]); else if (!v) delete cur.h;
       }
       if (cur.r || cur.h) K[o.k] = Object.assign(cur, {n: o.name, u: o.unit}); else delete K[o.k];
+      /* عدد القطع في الكرتونة للاسم: اللي اتغيّر في أي سطر بيكسب، والمقفول أو الفاضي بيتشال لو مفيش سطر تاني بنفس الاسم حدده */
+      const n = norm(o.name), pb = el.querySelector('.icpk'), N = pb.hidden ? 0 : Math.round(num(el.querySelector('.ipk').value));
+      if (N > 1) { if (N !== P0[n] || !setN.has(n)) { PK[n] = N; setN.add(n); } } else if (!setN.has(n)) delete PK[n];
     });
-    if (JSON.stringify(K) !== k0) { putSet('itemCost', {k: K}); toast('اتحفظت التكلفة ✔'); }
+    if (JSON.stringify(K) !== k0 || JSON.stringify(PK) !== p0) { putSet('itemCost', Object.keys(PK).length ? {k: K, p: PK} : {k: K}); toast('اتحفظت التكلفة ✔'); }
     closeModal(); if (after) after();
   };
 }

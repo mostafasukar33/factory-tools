@@ -198,6 +198,7 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-mat-sup-' + sfx, go: accEval(MATSHOT + "go('rep'); repKind = 'mat'; repMatKind = 'sup'; repMode = 'year'; renderReports()"), full: true},
   {name: 'acc-matcls-' + sfx, go: accEval(MATSHOT + 'matModal()')},
   {name: 'acc-cost-mat-' + sfx, go: accEval(MATSHOT + GMSHOT + "costModal(); const el = $$('#icL .icr')[1]; el.querySelector('.icb').click(); el.querySelector('.ick').value = '2.5'; el.querySelector('.icw').value = '40'; el.querySelector('.ick').dispatchEvent(new Event('input'))")},
+  {name: 'acc-cost-pack-' + sfx, go: accEval(GMSHOT + "costModal(); const el = $$('#icL .icr').find(x => x.querySelector('.icn b').textContent === 'وصلة تجربة'); el.querySelector('.icb2').click(); el.querySelector('.ipk').value = '225'; el.querySelector('.icm').value = '0.70'; el.querySelector('.ipk').dispatchEvent(new Event('input')); el.scrollIntoView()")},
   {name: 'acc-inv-gm-' + sfx, go: accEval(GMSHOT + `docModal(${party}, 'inv', [...E.values()].filter(e => e.party === ${party}.id && e.kind === 'inv' && !e.del && (e.lines || []).length > 1).pop())`)},
 ].map(x => Object.assign({app: 'acc', vp}, x, extra, vp.width > 999 ? {full: false} : {}));
 /* بيانات عهدة حسن التجريبية: أسامي عمال تجريبية، والعهدة والمرتبات والسلف والمصاريف حوالين النهارده (مرة واحدة بس في كل صفحة) */

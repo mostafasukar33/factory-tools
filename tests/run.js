@@ -1268,6 +1268,22 @@ const T0 = Date.now();
       db.entries.splice(n0); ['e_mt1', 'e_mt2', 'e_mt3', 'e_mt4', 'e_mt5'].forEach(id => E.delete(id));
       ['itemCost', 'matMap'].forEach(k => { const sr = IDX.set.get(k); if (sr) { db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete(k); } }); saveDB();
       return r; }), ['plastic', 'plastic', 'plastic', 'copper', null, 1900, 9500000, 3, true, true, 3889, 6000, 6000, '1.9 طن', true, '50', 5389, 7500, 16110, 'plastic', 1950, true]);
+    eq('الخامات: الكيلو اللي سعره سعر طن بيتحسب بالطن، والشكارة المكتوبة كيلو "سعرها غريب" ومش داخلة، والحساب الفرعي مبيتعدّش، و"مش خامة" للاسم الغريب بيتحفظ فيختفي', await A.evaluate(() => {
+      const n0 = db.entries.length, np = db.parties.length, s1 = liveParties().find(p => p.sec === 'sup');
+      const sub = {id: 'p_mtsub', sec: 'sup', name: 'مورد فرعي تجربة', noTot: true, upd: 1, del: false, hist: []}; db.parties.push(sub); P.set(sub.id, sub);
+      const add = (id, party, date, lines) => { const e = {id, party, kind: 'pur', date, lines, disc: 0, at: 1, upd: 1, del: false, hist: []}; e.cr = docTotal(e); e.dr = 0; db.entries.push(e); E.set(id, e); return e; };
+      const L = (name, unit, qty, price) => ({name, unit, qty, price});
+      add('e_mo1', s1.id, '1998-06-01', [L('سابك تجربة', 'كيلو', 1000, 6000), L('لينير تجربة', 'كيلو', 1000, 5000), L('مسح تجربة', 'كيلو', 1000, 5500)]);
+      add('e_mo2', s1.id, '1998-06-05', [L('سابك تجربة', 'كيلو', 2, 5800000), L('مبلور تجربة', 'كيلو', 40, 125000), L('ماستر تجربة', 'كيلو', 25, 15000), L('نقل تجربة', 'كيلو', 1, 50000)]);
+      add('e_mo3', sub.id, '1998-06-06', [L('سابك تجربة', 'كيلو', 500, 6000)]);
+      const D = matData('1998-01-01', '1998-12-31'), G = D.G.plastic;
+      const r = [G.kg, G.v, G.tonN, G.odd.length, G.oddV, G.sp.has(sub.id), (D.G.color || {}).kg, D.unk.includes('نقل تجربة')];
+      matModal(); const sl = $$('#mtL select').find(x => x.closest('.mtr').querySelector('b').textContent === 'نقل تجربة'); r.push(sl.value); $('#mtOk').click();
+      r.push((getSet('matMap', null) || {})[norm('نقل تجربة')], matData('1998-01-01', '1998-12-31').unk.includes('نقل تجربة'));
+      repKind = 'mat'; repMode = 'range'; repFrom = '1998-01-01'; repTo = '1998-12-31'; go('rep'); route(); renderReports(); r.push(!!$('#rpXO')); $('#rpXO').click(); r.push($$('#modal .cm[data-i]').length); closeModal();
+      db.entries.splice(n0); db.parties.splice(np); ['e_mo1', 'e_mo2', 'e_mo3'].forEach(id => E.delete(id)); P.delete(sub.id);
+      const sr = IDX.set.get('matMap'); if (sr) { db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('matMap'); } repKind = 'home'; repMode = 'year'; saveDB();
+      return r; }), [5000, 28100000, 1, 1, 5000000, false, 25, true, 'no', 'no', false, true, 1]);
     eq('سطر الفاتورة بيتقرّب لأقرب قرش (1.5 × 3.33 = 5)', await A.evaluate(() => [lineTot({qty: 1.5, price: 333}), docTotal({lines: [{qty: 1.5, price: 333}, {qty: 0.333, price: 1000}], disc: 0})]), [500, 833]);
 
     eq('مفيش أرقام فواتير: لا خانة ولا عرض في الكشف ولا العنوان', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv'); const f = !!$('#dcNo'); closeModal();

@@ -5662,8 +5662,8 @@ function gmReport(f, t) {
    البرنامج بيفهم بنود فواتير الشراء اللي بالكيلو أو الطن من اسمها (سابك، لينير، خامة، مسح، مبلور، كسر، ماستر...) = بلاستيك، ونحاس = نحاس.
    اللي مفهمهوش أو فهمه غلط بيتظبط مرة واحدة في نافذة "تصنيف الخامات" ويتحفظ في إعداد set اسمه matMap {الاسم: plastic|copper|no}.
    عرض بس: مبيلمسش أي حركة ولا رصيد */
-const MAT_G = {plastic: 'بلاستيك', copper: 'نحاس'};
-const MAT_W = {copper: /نحاس|copper/, plastic: /سابك|لينير|لينر|خام|مسح|بولي|ايثيلين|بلاستيك|مبلور|مخرز|كسر|فرز|محبب|حبيبات|معاد|ريسايكل|ماستر|صبغ|بي في سي|\b(lldpe|ldpe|hdpe|pe|pp|pvc)\b/};
+const MAT_G = {plastic: 'بلاستيك', color: 'ألوان', copper: 'نحاس'};   // الألوان لوحدها علشان سعرها أغلى كتير وميبانش "غريب" جنب البلاستيك
+const MAT_W = {copper: /نحاس|copper/, color: /ماستر|صبغ|الوان/, plastic: /سابك|لينير|لينر|خام|مسح|بولي|ايثيلين|بلاستيك|مبلور|مخرز|كسر|فرز|محبب|حبيبات|معاد|ريسايكل|بي في سي|\b(lldpe|ldpe|hdpe|pe|pp|pvc)\b/};
 const matKg = u => { const x = norm(u || ''); return x === 'طن' ? 1000 : /^(كيلو|كجم|كج|ك|كيلوجرام|كيلو جرام|kg)$/.test(x) ? 1 : 0; };
 function matOf(name, M = getSet('matMap', null) || {}) {
   const k = norm(name || ''); if (!k) return null;
@@ -5672,16 +5672,28 @@ function matOf(name, M = getSet('matMap', null) || {}) {
   return null;
 }
 /* كل بند خامة في فواتير الشراء (والمرتجع بالسالب) بعد نصيبه من الخصم: {e, l, g, kg, v} */
+/* الوحدة الغلط (بطلبه 30/10/2026: "الأرقام شكلها مش مظبوط"): الكيلو اللي سعره 5000 جنيه أو أكتر مستحيل يبقى كيلو خامة، فده سعر طن
+   والكمية بالطن (ton). وبعد كده أي بند سعر الكيلو فيه أكتر من 6 أضعاف أو أقل من سدس السعر المعتاد للخامة دي (الوسيط) = غالباً الوحدة غلط
+   (شكارة مثلاً): مبيدخلش في الأطنان ولا المتوسط (odd) وبيتعرض في "بنود سعرها غريب" علشان يتصلح من الفاتورة. حساب فرعي (noTot) مبيتعدّش (نسخته متنقلة للأساسي) */
+const MAT_TON = 500000;
 function matLines(f = '', t = '9999') {
-  const M = getSet('matMap', null) || {}, out = [];
+  const M = getSet('matMap', null) || {}, all = [], ppk = {};
   for (const e of db.entries) {
-    if (e.del || (e.kind !== 'pur' && e.kind !== 'rpur') || e.date < f || e.date > t) continue;
-    const p = P.get(e.party); if (!p || p.sec !== 'sup') continue;
+    if (e.del || (e.kind !== 'pur' && e.kind !== 'rpur')) continue;
+    const p = P.get(e.party); if (!p || p.sec !== 'sup' || p.noTot) continue;
     const sg = e.kind === 'rpur' ? -1 : 1, ls = (e.lines || []).filter(l => lineTot(l)), rev = ls.reduce((a, l) => a + lineTot(l), 0);
-    ls.forEach(l => { const g = matOf(l.name, M); if (!g) return; const v = lineTot(l) - (rev && e.disc ? Math.round(e.disc * lineTot(l) / rev) : 0);
-      out.push({e, l, g, kg: sg * (+l.qty || 0) * matKg(l.unit), v: sg * v}); });
+    ls.forEach(l => {
+      const g = matOf(l.name, M); if (!g) return;
+      const v = lineTot(l) - (rev && e.disc ? Math.round(e.disc * lineTot(l) / rev) : 0), u = matKg(l.unit), ton = u === 1 && (+l.price || 0) >= MAT_TON, kg = (+l.qty || 0) * (ton ? 1000 : u);
+      const x = {e, l, g, kg: sg * kg, v: sg * v, ton}; all.push(x);
+      if (kg > 0) (ppk[g] = ppk[g] || []).push(v / kg);
+    });
   }
-  return out;
+  const med = {}; for (const g in ppk) { const a = ppk[g].sort((x, y) => x - y); med[g] = a[Math.floor(a.length / 2)]; }
+  return all.filter(x => {
+    if (x.kg && med[x.g]) { const r = Math.abs(x.v / x.kg) / med[x.g]; if (r > 6 || r < 1 / 6) { x.odd = true; x.kg = 0; } }
+    return x.e.date >= f && x.e.date <= t;
+  });
 }
 /* سعر كيلو الخامة يوم d بالقرش: متوسط اللي اتشرى في آخر 30 يوم (بالكيلو، فبيعبّر عن الخلطة)، ولو مفيش فيهم: آخر شراء قبله، وإلا أول شراء بعده */
 function matPricer() {
@@ -5703,8 +5715,10 @@ function matPricer() {
 function matData(f, t) {
   const G = {}, unk = new Map(), M = getSet('matMap', null) || {};
   matLines(f, t).forEach(x => {
-    const o = G[x.g] || (G[x.g] = {kg: 0, v: 0, nkV: 0, nm: new Map(), sp: new Map(), mo: new Map()});
+    const o = G[x.g] || (G[x.g] = {kg: 0, v: 0, nkV: 0, oddV: 0, odd: [], tonN: 0, nm: new Map(), sp: new Map(), mo: new Map()});
+    if (x.odd) { o.oddV += x.v; o.odd.push(x); return; }
     if (!x.kg) { o.nkV += x.v; return; }
+    if (x.ton) o.tonN++;
     o.kg += x.kg; o.v += x.v;
     const add = (map, key, name) => { const y = map.get(key) || {name, kg: 0, v: 0}; y.kg += x.kg; y.v += x.v; if (name) y.name = name; map.set(key, y); };
     add(o.nm, norm(x.l.name), x.l.name); add(o.sp, x.e.party, (P.get(x.e.party) || {}).name || '؟'); add(o.mo, x.e.date.slice(0, 7), '');
@@ -5717,7 +5731,7 @@ function matData(f, t) {
 }
 let repMatKind = 'name', repMatG = 'plastic';
 function matReport(f, t) {
-  const D = matData(f, t), gs = Object.keys(D.G), g = D.G[repMatG] ? repMatG : gs[0] || 'plastic', G = D.G[g] || {kg: 0, v: 0, nkV: 0, nm: new Map(), sp: new Map(), mo: new Map()};
+  const D = matData(f, t), gs = Object.keys(D.G), g = D.G[repMatG] ? repMatG : gs[0] || 'plastic', G = D.G[g] || {kg: 0, v: 0, nkV: 0, oddV: 0, odd: [], tonN: 0, nm: new Map(), sp: new Map(), mo: new Map()};
   const ton = kg => fmtQ(Math.round(kg) / 1000) + ' طن', avg = (v, kg) => kg ? fmtP(Math.round(v / kg)) : '—';
   let cols, rows;
   if (repMatKind === 'sup') {
@@ -5731,11 +5745,22 @@ function matReport(f, t) {
     rows = [...G.nm.values()].sort((a, b) => b.kg - a.kg).map(x => ({cells: [x.name, ton(x.kg), fmtP(x.v), avg(x.v, x.kg)]}));
   }
   const sum = [['الكمية', ton(G.kg)], ['القيمة', fmtP(G.v)], ['متوسط الكيلو', avg(G.v, G.kg)],
+    ...(G.tonN ? [['بنود الوحدة فيها كيلو والسعر سعر طن (اتحسبت بالطن)', String(G.tonN)]] : []),
+    ...(G.odd.length ? [[`بنود سعرها غريب، مش محسوبة (${G.odd.length})`, fmtP(G.oddV)]] : []),
     ...(G.nkV ? [['بنود مش بالكيلو (مش في الأطنان)', fmtP(G.nkV)]] : []), ...(D.unk.length ? [['أسامي بالكيلو مش متصنفة لسه', String(D.unk.length)]] : [])];
-  return {title: `خامات ${MAT_G[g] || ''} ${({sup: 'بالمورد', month: 'بالشهر'})[repMatKind] || 'بالخامة'}`, period: rangeText(f, t), cols, rows, sum, groups: gs, g, unk: D.unk,
+  return {title: `خامات ${MAT_G[g] || ''} ${({sup: 'بالمورد', month: 'بالشهر'})[repMatKind] || 'بالخامة'}`, period: rangeText(f, t), cols, rows, sum, groups: gs, g, unk: D.unk, odd: G.odd,
     fin: [`${MAT_G[g] || 'الخامات'} اللي اتشرى`, ton(G.kg)],
     note: 'من فواتير الشراء عند الموردين اللي بالكيلو أو الطن، والمرتجع بيتخصم. البرنامج بيعرف الخامة من اسمها (سابك، لينير، خامة، مسح، مبلور، كسر، ماستر...)، واللي مش فاهمه بتظبطه مرة واحدة من "تصنيف الخامات". '
       + 'الكمية هنا = اللي اتشرى في الفترة، وده استهلاك المصنع تقريباً (من غير جرد خامات).'};
+}
+/* البنود اللي سعرها غريب: كل سطر بيفتح الفاتورة علشان تتصلح الوحدة أو الكمية */
+function matOddModal(L) {
+  modal(`<h3>⚠ بنود سعرها غريب</h3>
+    <p class="hint" style="margin:0 0 8px">سعر الكيلو فيهم بعيد جداً عن سعر الخامة المعتاد، فغالباً الوحدة أو الكمية مكتوبة غلط (شكارة أو طن مكتوب كيلو). مش داخلين في الأطنان ولا المتوسط لحد ما تصلحهم. دوس على أي واحد يفتح الفاتورة.</p>
+    <div>${L.map((x, i) => `<div class="cm" data-i="${i}"><div class="m"><b>${esc(x.l.name)}</b><small>${fmtQ(x.l.qty)} ${esc(x.l.unit || '')} × ${fmtP(x.l.price)}</small><small>${dispDate(x.e.date)} — ${esc((P.get(x.e.party) || {}).name || '')}</small></div><div class="a">${fmtP(Math.abs(x.v))}</div></div>`).join('')}</div>
+    <button class="btn line" id="moX" type="button" style="margin-top:10px">رجوع</button>`, true);
+  $('#moX').onclick = closeModal;
+  $$('#modal .cm[data-i]').forEach(el => el.onclick = () => { const x = L[+el.dataset.i]; closeModal(); docModal(P.get(x.e.party), x.e.kind, x.e); });
 }
 /* نافذة تصنيف الخامات: كل اسم بالكيلو في فواتير الشراء واتصنف إيه (المش متصنف فوق)، والتغيير بيتحفظ في matMap */
 function matModal(after) {
@@ -5748,12 +5773,13 @@ function matModal(after) {
   const L = [...m.values()].map(o => Object.assign(o, {a: auto(o.k), cur: M0[o.k] || auto(o.k)})).sort((a, b) => (a.cur !== 'no') - (b.cur !== 'no') || b.n - a.n);
   modal(`<h3>🏷 تصنيف الخامات</h3>
     <p class="hint" style="margin:0 0 8px">ده كل صنف بالكيلو اشتريته من الموردين. البرنامج فهم أغلبهم لوحده من الاسم، ولو فيه حاجة غلط أو "مش خامة" وهي خامة، غيّرها مرة واحدة.</p>
-    <div id="mtL">${L.length ? L.map((o, i) => `<div class="mtr"><b>${esc(o.name)}</b><select class="inp" data-i="${i}">${[['plastic', 'بلاستيك'], ['copper', 'نحاس'], ['no', 'مش خامة']].map(([v, n]) => `<option value="${v}" ${o.cur === v ? 'selected' : ''}>${n}</option>`).join('')}</select></div>`).join('') : '<p class="hint">مفيش فواتير شراء بالكيلو لسه.</p>'}</div>
+    <div id="mtL">${L.length ? L.map((o, i) => `<div class="mtr"><b>${esc(o.name)}</b><select class="inp" data-i="${i}">${[...Object.entries(MAT_G), ['no', 'مش خامة']].map(([v, n]) => `<option value="${v}" ${o.cur === v ? 'selected' : ''}>${n}</option>`).join('')}</select></div>`).join('') : '<p class="hint">مفيش فواتير شراء بالكيلو لسه.</p>'}</div>
     <div class="mfoot"><div class="mrow"><button class="btn gold" id="mtOk" type="button">حفظ</button><button class="btn line" id="mtX" type="button">رجوع</button></div></div>`, true);
   $('#mtX').onclick = closeModal;
   $('#mtOk').onclick = () => {
     const M = Object.assign({}, M0);
-    $$('#mtL select').forEach(sl => { const o = L[+sl.dataset.i]; if (sl.value === o.a) delete M[o.k]; else M[o.k] = sl.value; });
+    /* الاسم اللي البرنامج مفهمهوش (تلقائي = مش خامة) بيتحفظ زي ما اتقال علشان ميتسألش عليه تاني، والمفهوم بيتحفظ بس لو اتغيّر */
+    $$('#mtL select').forEach(sl => { const o = L[+sl.dataset.i]; if (o.a === 'no') M[o.k] = sl.value; else if (sl.value === o.a) delete M[o.k]; else M[o.k] = sl.value; });
     if (JSON.stringify(M) !== JSON.stringify(M0)) { putSet('matMap', M); toast('اتحفظ التصنيف ✔'); }
     closeModal(); if (after) after();
   };
@@ -5769,7 +5795,7 @@ function costModal(after) {
     });
   }
   const L = [...m.values()].sort((a, b) => b.v - a.v || (a.name < b.name ? -1 : 1));
-  const kp = {plastic: mp('plastic', t), copper: mp('copper', t)};   // سعر كيلو الخامة النهارده (متوسط آخر شهر)
+  const kp = Object.fromEntries(Object.keys(MAT_G).map(g => [g, mp(g, t)]));   // سعر كيلو الخامة النهارده (متوسط آخر شهر)
   const last = a => a && a.length ? a[a.length - 1] : null;
   /* كل صنف: خانة التكلفة، وتحتها "خامة + مصنعية" (كام كيلو خامة في الوحدة والمصنعية) والتكلفة بتتحسب لوحدها من سعر الخامة */
   const row = (o, i) => { const M = man[o.k] || {}, hc = last(M.h), rc = last(M.r), au = !hc && !rc && cb(o.name, o.unit, t), kg1 = matKg(o.unit) === 1;
@@ -6145,6 +6171,7 @@ function renderReports() {
       ${(repKind === 'profit' || repKind === 'gm' || repKind === 'mat') && !mob ? qh(esc(R.note)) : ''}
       ${repKind === 'gm' ? '<button class="btn line" id="rpIC" type="button" style="margin-top:8px;width:100%">💰 تكلفة الأصناف</button>' : ''}
       ${repKind === 'mat' ? `<button class="btn line" id="rpXC" type="button" style="margin-top:8px;width:100%">🏷 تصنيف الخامات${R.unk.length ? ` (${R.unk.length} مش متصنفة)` : ''}</button>` : ''}
+      ${repKind === 'mat' && R.odd.length ? `<button class="btn line" id="rpXO" type="button" style="margin-top:8px;width:100%;color:var(--red)">⚠ ${R.odd.length === 1 ? 'بند سعره غريب' : R.odd.length + ' بنود سعرها غريب'} (غالباً الوحدة غلط)</button>` : ''}
       ${repKind === 'cash' ? `<select class="inp" id="rpV" style="margin-top:8px"><option value="">كل الخزن</option>${vaultsL().map(v => `<option value="${esc(v.id)}" ${repVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>` : ''}
     </div>
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
@@ -6163,6 +6190,7 @@ function renderReports() {
   $$('#rpXK button').forEach(b => b.onclick = () => { repMatKind = b.dataset.v; renderReports(); });
   $$('#rpXG button').forEach(b => b.onclick = () => { repMatG = b.dataset.v; renderReports(); });
   if ($('#rpXC')) $('#rpXC').onclick = () => matModal(renderReports);
+  if ($('#rpXO')) $('#rpXO').onclick = () => matOddModal(R.odd);
   if ($('#rpPer')) $('#rpPer').onclick = () => { repPerOpen = !repPerOpen; renderReports(); };
   if ($('#rpPick')) $('#rpPick').onclick = () => {
     const IC = {home: '📊', profit: '💰', col: '💵', debt: '📤', tot: '👥', cash: '💸', item: '📦', gm: '🏷', mat: '🏭', ah: '🏪'};

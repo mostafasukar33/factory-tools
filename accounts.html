@@ -246,6 +246,7 @@ table.ldg.rp tr.mute td{color:var(--sub)}
 .icr .inp:disabled{background:var(--row);color:var(--ink);opacity:1}
 .icpk{grid-column:1/-1;display:grid;gap:4px;padding:6px 8px;border-radius:10px;background:var(--row)}.icpk[hidden]{display:none}
 .icpk label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--f1);font-weight:700;color:var(--sub)}.icpk .inp{max-width:110px;min-height:40px;text-align:center}.icpk small{font-size:var(--f1);color:var(--sub)}
+#icK .inp{max-width:150px}#icK [hidden]{display:none}#icK small b{color:var(--ink)}
 .mtr{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.mtr b{font-size:var(--f3);overflow-wrap:anywhere}.mtr .inp{min-height:42px}
 .rcd{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer;min-width:0;box-shadow:0 1px 2px rgba(0,0,0,.05)}
 .rcd span{display:block;font-size:var(--f1);font-weight:800;color:var(--sub)}
@@ -264,7 +265,7 @@ table.ldg.rp.mtt th{white-space:normal;line-height:1.15}table.ldg.rp.mtt td:nth-
 @media (max-width:640px){table.mtt{min-width:0!important;width:100%}table.mtt td.l{min-width:0}table.mts :is(th,td):nth-child(4){display:none}
   table.gmi{min-width:0!important;width:100%}table.gmi :is(th,td):nth-child(2){display:none}table.gmi td.l small.rpsub{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}table.gmi td.l{min-width:0}
   table.rpc{min-width:0!important;width:100%}table.rpc :is(th,td):nth-child(3){display:none}table.rpc .rpsub{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}}.rph small{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}
-.ldg.rp tr[data-p],.ldg.rp tr[data-k]{cursor:pointer}
+.ldg.rp tr[data-p],.ldg.rp tr[data-k],.ldg.rp tr[data-e]{cursor:pointer}
 table.ldg.rp.wide{min-width:520px}.ldg.rp td{white-space:nowrap}.ldg.rp td.l{white-space:normal;min-width:110px}
 .sech{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;font-weight:800;color:var(--gold-d)}
 .sech a{font-size:var(--f2);text-decoration:underline;cursor:pointer}
@@ -5591,8 +5592,14 @@ const icAll = () => (getSet('itemCost', null) || {}).k || {};
    (القطعة عمرها ما تتباع بالسعر ده، والكرتونة عمرها ما تتباع أقل منه)، وتكلفته = تكلفة القطعة × العدد */
 const PACK_U = /كرتون/;
 const icPack = () => (getSet('itemCost', null) || {}).p || {};
-function costBook() {
-  const man = icAll(), pk = icPack(), pur = new Map(), mp = matPricer(), sst = new Map();
+/* مصنعية ومصاريف الكيلو (بطلبه 30/10/2026): الصنف اللي بيتباع بالكيلو (أو الطن) ومالوش تكلفة مكتوبة ومش بيتشرى بنفس الاسم = كيلو خامة بآخر سعر
+   + مصنعية الكيلو، و"خامة + مصنعية" اللي مصنعيته فاضية = كيلو الخامة فيه × مصنعية الكيلو. itemCost.kw = [[من يوم, 'a' لوحدها | قرش للكيلو | 'x' من غير]]
+   ومن غيره = لوحدها. "لوحدها" = مصاريف الخزنة (نفس مصاريف الأرباح) في آخر KW_DAYS يوم ÷ الكيلوهات اللي اتباعت فيهم (اللي بالكيلو + كيلو الخامة
+   المكتوب في الأصناف التانية، من غير التجارة والكرتونة)، ولو الكيلوهات أقل من KW_MIN مفيش رقم */
+const KW_DAYS = 60, KW_MIN = 100;
+const kwExp = x => !x.del && x.type === 'exp' && !NOT_PL.has(x.cat) && !x.iv && x.cat !== 'c_ivdraw' && x.cat !== 'c_ivcap' && !x.pt && x.cat !== 'c_psal' && x.cat !== 'c_pdraw';   // زي cashSums
+function costBook(kwH = (getSet('itemCost', null) || {}).kw) {
+  const man = icAll(), pk = icPack(), pur = new Map(), mp = matPricer(), sst = new Map(), MM = getSet('matMap', null) || {};
   if (Object.keys(pk).length) for (const e of db.entries) {   // أقل وأعلى سعر بيع للوحدة (مش كرتونة) للأصناف اللي ليها عدد في الكرتونة
     if (e.del || (e.kind !== 'inv' && e.kind !== 'rinv')) continue;
     (e.lines || []).forEach(l => { const n = norm(l.name || ''), pr = +l.price || 0; if (!(pk[n] > 1) || pr <= 0 || PACK_U.test(l.unit || '')) return;
@@ -5610,25 +5617,54 @@ function costBook() {
   }
   pur.forEach(a => a.sort((x, y) => x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0));
   const row = (a, d) => { let r = a[0]; for (const x of a) { if (x[0] <= d) r = x; else break; } return r; }, pick = (a, d) => row(a, d)[1];
-  /* تكلفة مكتوبة لمفتاح: r = [[من يوم, جرام خامة في الوحدة, مصنعية بالقرش]] وg نوع الخامة (الكيلو × سعر الخامة يومها + المصنعية)، أو h مكتوبة */
+  /* الاسم والمفتاح والكيلو في الوحدة لكل (اسم، وحدة) مرة واحدة بس (norm تقيلة لما تتكرر على كل بند) */
+  const nk = new Map(), meta = (name, unit) => { const key = name + '\u0001' + (unit || ''); let x = nk.get(key);
+    if (!x) { const n = norm(name); x = {n, k: n + '|' + (unit || ''), u: matKg(unit), g: ''}; nk.set(key, x); } return x; };
+  /* كيلو الخامة في الوحدة اللي البرنامج عارفه (للمصنعية اللي بتتحسب لوحدها) */
+  const kgU = (name, unit, d) => { if (!name) return 0; const x = meta(name, unit); if (pk[x.n] > 1) return 0;
+    const m = man[x.k]; if (m && m.r && m.r.length) return row(m.r, d)[1] / 1000;
+    return x.u && (m || !pur.has(x.k)) ? x.u : 0; };
+  let AU = null; const kwM = new Map();
+  const pre = mp0 => { const ks = [...mp0.keys()].sort(), s = []; let a = 0; ks.forEach(k => { a += mp0.get(k); s.push(a); }); return {ks, s}; };
+  const upTo = (X, d) => { let lo = 0, hi = X.ks.length; while (lo < hi) { const md = (lo + hi) >> 1; if (X.ks[md] <= d) lo = md + 1; else hi = md; } return lo ? X.s[lo - 1] : 0; };
+  const auto = () => { if (AU) return AU;
+    const kd = new Map(), xd = new Map(), cs = [];
+    for (const e of db.entries) {
+      if (e.del || (e.kind !== 'inv' && e.kind !== 'rinv')) continue;
+      const p = P.get(e.party); if (!p || p.noTot || p.sec === 'sup') continue; const sg = e.kind === 'rinv' ? -1 : 1;
+      (e.lines || []).forEach(l => { const g = kgU(l.name, l.unit, e.date) * (+l.qty || 0); if (g) kd.set(e.date, (kd.get(e.date) || 0) + sg * g); });
+    }
+    for (const x of db.txs) if (kwExp(x)) { xd.set(x.date, (xd.get(x.date) || 0) + x.amt); cs.push(x); }
+    return AU = {k: pre(kd), x: pre(xd), cs};
+  };
+  /* مصنعية الكيلو "لوحدها" يوم d: {exp, kg, v قرش للكيلو، f أول يوم} أو null */
+  const kwInfo = d => { if (kwM.has(d)) return kwM.get(d);
+    const A = auto(), f = addDays(d, -KW_DAYS), exp = upTo(A.x, d) - upTo(A.x, f), kg = upTo(A.k, d) - upTo(A.k, f);
+    const r = kg >= KW_MIN ? {exp, kg, v: Math.max(0, exp) / kg, f: addDays(f, 1)} : null; kwM.set(d, r); return r; };
+  const kwAt = d => { const v = kwH && kwH.length ? row(kwH, d)[1] : 'a'; if (v === 'x') return null; if (v !== 'a') return +v || 0; const i = kwInfo(d); return i ? i.v : null; };
+  /* تكلفة مكتوبة لمفتاح: r = [[من يوم, جرام خامة في الوحدة, مصنعية بالقرش]] وg نوع الخامة (الكيلو × سعر الخامة يومها + المصنعية، والفاضية = مصنعية الكيلو)، أو h مكتوبة */
   const one = (k, d) => { const m = man[k]; if (!m) return null;
-    if (m.r && m.r.length) { const [, gr, w] = row(m.r, d), pr = mp(m.g || 'plastic', d); if (pr !== null) return {c: Math.round(gr * pr / 1000) + w, src: 'r', kp: pr}; }
+    if (m.r && m.r.length) { const [, gr, w] = row(m.r, d), pr = mp(m.g || 'plastic', d); if (pr !== null) return {c: Math.round(gr * pr / 1000) + (w || Math.round(gr * (kwAt(d) || 0) / 1000)), src: 'r', kp: pr}; }
     return m.h && m.h.length ? {c: pick(m.h, d), src: 'm'} : null; };
   /* تكلفة القطعة: لما الصنف ليه عدد في الكرتونة، أي تكلفة مكتوبة في أي سطر بتاعه = تكلفة القطعة (زي ما النافذة بتقول)، وإلا آخر شراء بسعر القطعة */
   const piece = (n, d) => { let alt = null;
     for (const k in man) { if (!k.startsWith(n + '|')) continue; const c = one(k, d); if (!c) continue; if (!PACK_U.test(k.slice(n.length + 1))) return c; alt = alt || c; }
     if (alt) return alt; const a = pur.get(n + '|*'); return a ? {c: pick(a, d), src: 'p'} : null; };
-  /* (اسم، وحدة، يوم، سعر الوحدة) ← {c: قرش للوحدة، src: r خامة + مصنعية / m مكتوبة / p آخر شراء، N وctn للكرتونة} أو null */
-  return (name, unit, d, price = 0) => {
-    const n = norm(name || ''), N = pk[n];
+  /* (اسم، وحدة، يوم، سعر الوحدة) ← {c: قرش للوحدة، src: r خامة + مصنعية / m مكتوبة / p آخر شراء / k خامة + مصنعية الكيلو، N وctn للكرتونة} أو null */
+  const cb = (name, unit, d, price = 0) => {
+    const x = meta(name || '', unit), n = x.n, N = pk[n];
     if (N > 1) {
       const cp = piece(n, d); if (!cp) return null;
       const T = (cp.src === 'p' && saleT(n)) || cp.c * Math.sqrt(N), ctn = PACK_U.test(unit || '') || (price > 0 && price >= T);
       return {c: Math.round(ctn ? cp.c * N : cp.c), src: cp.src, N, ctn};
     }
-    const k = icKey(name, unit), c = one(k, d); if (c) return c;
-    const a = pur.get(k); return a ? {c: pick(a, d), src: 'p'} : null;
+    const k = x.k, c = one(k, d); if (c) return c;
+    const a = pur.get(k); if (a) return {c: pick(a, d), src: 'p'};
+    const u = x.u, kw = u ? kwAt(d) : null, pr = kw === null ? null : mp(x.g || (x.g = matOf(name, MM) || 'plastic'), d);
+    return pr === null ? null : {c: Math.round(u * (pr + kw)), src: 'k', kp: pr, kw};
   };
+  cb.kwAt = kwAt; cb.kwInfo = kwInfo; cb.kwCats = (f, t) => { const m = new Map(); auto().cs.forEach(x => { if (x.date >= f && x.date <= t) m.set(x.cat, (m.get(x.cat) || 0) + x.amt); }); return [...m].sort((a, b) => b[1] - a[1]); };
+  return cb;
 }
 /* بنود فاتورة بيع (أو مرتجع بيع بالسالب) بعد نصيبها من الخصم، وتكلفة كل بند لو ليه */
 function docGmLines(e, cb) {
@@ -5648,7 +5684,7 @@ const gmPct = (m, v) => v ? Math.round(m * 1000 / v) / 10 : 0;
 /* مكسب البضاعة في فترة: بالصنف وبالعميل وبالشهر. B = بيع ليه تكلفة، A = مكسبه، C = باقي المبيعات (من غير تكلفة: بيع كاش،
    فواتير بالإجمالي، خصومات وتسويات، أصناف مالهاش تكلفة) = profitOf().sales − B، وتقديره بنفس نسبة A/B */
 function gmData(f, t) {
-  const cb = costBook(), it = new Map(), cu = new Map(), mo = new Map();
+  const cb = costBook(), it = new Map(), cu = new Map(), mo = new Map(), dc = new Map();
   let A = 0, B = 0;
   for (const e of db.entries) {
     if (e.del || (e.kind !== 'inv' && e.kind !== 'rinv') || e.date < f || e.date > t) continue;
@@ -5657,19 +5693,27 @@ function gmData(f, t) {
       const k = x.pk ? norm(x.l.name) + '|قطعة' : icKey(x.l.name, x.l.unit), sg = e.kind === 'rinv' ? -1 : 1;   // الصنف اللي ليه كرتونة: الكمية كلها بالقطعة
       const o = it.get(k) || {name: x.l.name, unit: x.pk ? 'قطعة' : x.l.unit, q: 0, v: 0, cv: 0, c: 0, miss: false}; it.set(k, o);
       o.q += sg * (+x.l.qty || 0) * (x.pk || 1); o.v += x.net;
-      if (x.cost === null) { o.miss = true; return; }
-      o.cv += x.net; o.c += x.cost; A += x.net - x.cost; B += x.net;
+      const z = dc.get(e.id) || {e, name: p.name, cv: 0, c: 0, miss: false}; dc.set(e.id, z);
+      if (x.cost === null) { o.miss = true; z.miss = true; return; }
+      o.cv += x.net; o.c += x.cost; A += x.net - x.cost; B += x.net; z.cv += x.net; z.c += x.cost;
       for (const [map, key, nm] of [[cu, p.id, p.name], [mo, e.date.slice(0, 7), '']]) { const y = map.get(key) || {name: nm, cv: 0, c: 0}; y.cv += x.net; y.c += x.cost; map.set(key, y); }
     });
   }
   const S = profitOf(f, t).sales, C = S - B, est = B > 0 ? Math.round(C * A / B / 100) * 100 : 0;   // تقدير: بالجنيه من غير قروش
-  return {A, B, S, C, est, pct: gmPct(A, B), cov: S ? Math.round(B * 100 / S) : 0, it, cu, mo, missN: [...it.values()].filter(x => x.miss && x.v).length};
+  return {A, B, S, C, est, pct: gmPct(A, B), cov: S ? Math.round(B * 100 / S) : 0, it, cu, mo, dc, missN: [...it.values()].filter(x => x.miss && x.v).length};
 }
 let repGmKind = 'item';
+const GM_DOCS = 300;   // بالفاتورة: أقل 300 فاتورة في المكسب بس (الفترة الكبيرة فيها آلاف، والشاشة والـ PDF يتقلوا)
 function gmReport(f, t) {
   const D = gmData(f, t), cell = (cv, c) => [fmtP(cv), fmtP(c), fmtP(cv - c), gmPct(cv - c, cv) + '%'];
-  let cols, rows;
-  if (repGmKind === 'cust') {
+  let cols, rows, dN = 0;
+  if (repGmKind === 'doc') {   // بالفاتورة (بطلبه 30/10/2026): الأقل مكسب (بالنسبة) فوق والمرتجعات تحت، والدوس بيفتح الفاتورة
+    cols = [{h: 'الفاتورة', w: 34, c: 'l'}, {h: 'البيع', w: 17, c: 'n'}, {h: 'التكلفة', w: 17, c: 'n'}, {h: 'المكسب', w: 17, c: 'b'}, {h: 'النسبة', w: 15, c: 'n'}];
+    const L = [...D.dc.values()].filter(x => x.cv).map(x => ({x, r: x.e.kind === 'rinv', pc: gmPct(x.cv - x.c, x.cv)})).sort((a, b) => a.r - b.r || a.pc - b.pc || (a.x.cv - a.x.c) - (b.x.cv - b.x.c));
+    dN = L.length;
+    rows = L.slice(0, GM_DOCS).map(({x, r}) => { const nm = `${r ? 'مرتجع · ' : ''}${x.name}${x.miss ? ' *' : ''}`;   // الشاشة: التاريخ سطر صغير تحت الاسم، والـ PDF في نفس الخانة
+      return {e: x.e.id, nm, sub: dispDate(x.e.date), cells: [`${nm} · ${dispDate(x.e.date)}`, ...cell(x.cv, x.c)], cls: x.cv - x.c < 0 ? 'ret' : ''}; });
+  } else if (repGmKind === 'cust') {
     cols = [{h: 'العميل', w: 34, c: 'l'}, {h: 'البيع', w: 17, c: 'n'}, {h: 'التكلفة', w: 17, c: 'n'}, {h: 'المكسب', w: 17, c: 'b'}, {h: 'النسبة', w: 15, c: 'n'}];
     rows = [...D.cu.entries()].map(([id, x]) => ({id, m: x.cv - x.c, cells: [x.name, ...cell(x.cv, x.c)], cls: x.cv - x.c < 0 ? 'ret' : ''})).sort((a, b) => b.m - a.m);
   } else if (repGmKind === 'month') {
@@ -5682,10 +5726,12 @@ function gmReport(f, t) {
   }
   const sum = [['المبيعات كلها', fmtP(D.S)], ['منها ليه تكلفة', `${fmtP(D.B)} (${D.cov}%)`], ['مكسبه', `${fmtP(D.A)} (${D.pct}%)`],
     ...(D.C && D.B ? [['من غير تكلفة', fmtP(D.C)], ['تقدير مكسبه بنفس النسبة', '~ ' + fmtP(D.est)]] : D.C ? [['من غير تكلفة', fmtP(D.C)]] : []),
-    ...(D.missN ? [['أصناف مالهاش تكلفة لسه', String(D.missN)]] : [])];
-  return {title: 'مكسب البضاعة ' + ({cust: 'بالعميل', month: 'بالشهر'}[repGmKind] || 'بالصنف'), period: rangeText(f, t), cols, rows, sum,
+    ...(D.missN ? [['أصناف مالهاش تكلفة لسه', String(D.missN)]] : []),
+    ...(repGmKind === 'doc' && dN ? [['الفواتير', dN > GM_DOCS ? `${dN} (ظاهر أقل ${GM_DOCS} في المكسب، اختار فترة أصغر تشوفهم كلهم)` : String(dN)]] : [])];
+  return {title: 'مكسب البضاعة ' + ({cust: 'بالعميل', month: 'بالشهر', doc: 'بالفاتورة'}[repGmKind] || 'بالصنف'), period: rangeText(f, t), cols, rows, sum,
     fin: [D.C && D.B ? 'المكسب كله تقريباً' : 'مكسب البضاعة', (D.C && D.B ? '~ ' : '') + fmtP(D.A + (D.B ? D.est : 0))],
-    note: 'المكسب = سعر البيع بعد الخصم − التكلفة اللي انت كاتبها للصنف (أو خامة + مصنعية بسعر الخامة وقتها، ولو مش كاتبها وبتشتريه بنفس الاسم: آخر سعر شراء). مش داخل فيه المصاريف اللي مش في التكلفة ولا الشركاء. '
+    note: 'المكسب = سعر البيع بعد الخصم − التكلفة اللي انت كاتبها للصنف (أو خامة + مصنعية بآخر سعر خامة وقتها، ولو مش كاتبها وبتشتريه بنفس الاسم: آخر سعر شراء، ولو بيتباع بالكيلو: كيلو خامة + مصنعية الكيلو). مش داخل فيه المصاريف اللي مش في التكلفة ولا الشركاء. '
+      + (repGmKind === 'doc' ? 'الفاتورة اللي جنبها * فيها أصناف مالهاش تكلفة، ومكسبها على الباقي بس. ' : '')
       + 'البيع اللي مالوش تكلفة (بيع كاش، فواتير بالإجمالي، خصومات وتسويات، أصناف لسه متكتبش تكلفتها) بيتقدّر بنفس نسبة المكسب. ده عرض بس، ومبيغيّرش تقرير الأرباح.'};
 }
 /* ====================== الخامات (بطلبه 30/10/2026) ======================
@@ -5817,7 +5863,7 @@ function matModal(after) {
 }
 /* نافذة تكلفة الأصناف: كل صنف اتباع (الأكتر بيع في آخر سنة فوق)، وخانة تكلفة الوحدة زي ما بتتباع. الحفظ بيزوّد سطر "من النهارده" */
 function costModal(after) {
-  const cb = costBook(), mp = matPricer(), t = todayISO(), y0 = addDays(t, -365), man = icAll(), m = new Map();
+  let cb = costBook(); const mp = matPricer(), t = todayISO(), y0 = addDays(t, -365), man = icAll(), m = new Map();
   for (const e of db.entries) {
     if (e.del || e.kind !== 'inv' || e.mkNL) continue;
     (e.lines || []).forEach(l => {
@@ -5828,20 +5874,27 @@ function costModal(after) {
   const L = [...m.values()].sort((a, b) => b.v - a.v || (a.name < b.name ? -1 : 1));
   const kp = Object.fromEntries(Object.keys(MAT_G).map(g => [g, mp(g, t)]));   // سعر كيلو الخامة النهارده (آخر شراء)
   const last = a => a && a.length ? a[a.length - 1] : null;
+  /* مصنعية ومصاريف الكيلو (costBook): لوحدها / رقم ثابت / من غير، والحفظ بيزوّد سطر "من النهارده" في itemCost.kw */
+  const kw0 = (getSet('itemCost', null) || {}).kw, kwCur = kw0 && kw0.length ? kw0.reduce((r, x) => x[0] <= t ? x : r, kw0[0])[1] : 'a', km0 = kwCur === 'a' || kwCur === 'x' ? kwCur : 'n';
+  const kwPush = (a, v) => { a = a ? a.slice() : []; const l = a[a.length - 1]; if (l && l[1] === v) return a; if (l && l[0] === t) a.pop(); a.push([t, v]); return a; };
+  const kwLive = () => { const k = $('#icKm').value, v = k === 'n' ? toP($('#icKv').value) : k; return v === kwCur ? kw0 : kwPush(kw0, v); };
+  const kwOn = cb.kwAt(t) !== null;
   /* كل صنف: خانة التكلفة، وتحتها "خامة + مصنعية" (كام كيلو خامة في الوحدة والمصنعية) والتكلفة بتتحسب لوحدها من سعر الخامة */
   const P0 = icPack();
   const row = (o, i) => { const M = man[o.k] || {}, hc = last(M.h), rc = last(M.r), au0 = !hc && !rc && cb(o.name, o.unit, t, o.price), au = au0 && au0.N && au0.ctn ? Object.assign({}, au0, {c: Math.round(au0.c / au0.N)}) : au0, kg1 = matKg(o.unit) === 1, N = P0[norm(o.name)];
-    return `<div class="icr" data-i="${i}"><div class="icn"><b>${esc(o.name)}</b><small>${esc(o.unit || '')}${o.price ? ` · آخر بيع ${fmtP(o.price)}` : ''}${au ? ` · ${au.N ? 'القطعة من آخر شراء' : 'آخر شراء'} ${fmtP(au.c)}` : ''}</small></div>
+    return `<div class="icr" data-i="${i}"><div class="icn"><b>${esc(o.name)}</b><small>${esc(o.unit || '')}${o.price ? ` · آخر بيع ${fmtP(o.price)}` : ''}${au ? ` · ${au.src === 'k' ? 'تلقائي: خامة + مصنعية الكيلو' : `${au.N ? 'القطعة من آخر شراء' : 'آخر شراء'} ${fmtP(au.c)}`}` : ''}</small></div>
       <input class="inp num icm" inputmode="decimal" placeholder="${au ? fmtP(au.c) : 'التكلفة'}" value="${hc ? fmtP(hc[1]) : ''}" aria-label="تكلفة ${esc(o.name)}"><span class="icp"></span>
       <div class="icl"><button class="lnk icb" type="button">🏭 خامة + مصنعية</button><button class="lnk icb2" type="button">📦 كرتونة</button></div>
       <div class="icpk" ${N ? '' : 'hidden'}><label>الكرتونة فيها كام قطعة؟<input class="inp num ipk" inputmode="numeric" placeholder="0" value="${N || ''}"></label><small>التكلفة اللي فوق تبقى للقطعة، والفاتورة اللي سعرها سعر كرتونة بتتحسب كرتونة لوحدها</small></div>
       <div class="icrr" ${rc ? '' : 'hidden'}><label>كيلو خامة في ${o.unit === 'كيلو' ? 'الكيلو' : 'ال' + esc(o.unit || 'وحدة')}<input class="inp num ick" inputmode="decimal" placeholder="${kg1 ? '1' : '0'}" value="${rc ? fmtQ(rc[1] / 1000) : kg1 ? '1' : ''}"></label>
-        <label>المصنعية<input class="inp num icw" inputmode="decimal" placeholder="0" value="${rc && rc[2] ? fmtP(rc[2]) : ''}"></label>
+        <label>المصنعية<input class="inp num icw" inputmode="decimal" placeholder="${kwOn ? 'تلقائي' : '0'}" value="${rc && rc[2] ? fmtP(rc[2]) : ''}"></label>
         <label>الخامة<select class="inp icg">${Object.entries(MAT_G).map(([g, n]) => `<option value="${g}" ${(M.g || 'plastic') === g ? 'selected' : ''}>${n}</option>`).join('')}</select></label><small class="icq"></small></div></div>`; };
   modal(`<h3>💰 تكلفة الأصناف</h3>
     <p class="hint" style="margin:0 0 8px">اكتب تكلفة الوحدة زي ما بتبيعها، أو دوس <b>🏭 خامة + مصنعية</b> والتكلفة تتحسب لوحدها من سعر الخامة (آخر سعر اشتريت بيه).
       الصنف اللي بتشتريه وتبيعه زي ما هو بياخد آخر سعر شراء لوحده. والفواتير القديمة بتفضل على حسبتها.</p>
     ${kp.plastic !== null || kp.copper !== null ? `<div class="sync ok" style="margin-bottom:8px">${Object.entries(kp).filter(([, v]) => v !== null).map(([g, v]) => `كيلو ال${MAT_G[g]} دلوقتي <b>${fmtP(Math.round(v))}</b>`).join(' · ')}</div>` : ''}
+    <div class="icpk" id="icK" style="margin-bottom:8px"><label>🏭 مصنعية ومصاريف الكيلو<select class="inp" id="icKm">${[['a', 'تتحسب لوحدها'], ['n', 'رقم ثابت'], ['x', 'من غير']].map(([k, n]) => `<option value="${k}" ${km0 === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label id="icKn" ${km0 === 'n' ? '' : 'hidden'}>مصنعية الكيلو<input class="inp num" id="icKv" inputmode="decimal" placeholder="0" value="${km0 === 'n' && kwCur ? fmtP(kwCur) : ''}"></label><small id="icKq"></small></div>
     ${L.length > 8 ? '<input class="inp" id="icQ" type="search" placeholder="دوّر على صنف" autocomplete="off" style="margin-bottom:8px">' : ''}
     <div id="icL">${L.length ? L.map(row).join('') : '<p class="hint">مفيش فواتير بيع بأصناف لسه.</p>'}</div>
     <div class="mfoot"><div class="mrow"><button class="btn gold" id="icOk" type="button">حفظ التكلفة</button><button class="btn line" id="icX" type="button">رجوع</button></div></div>`, true);
@@ -5850,9 +5903,11 @@ function costModal(after) {
   const calc = el => {
     const o = L[+el.dataset.i], R = rec(el), main = el.querySelector('.icm'), q = el.querySelector('.icq');
     let c = 0;
-    if (R) { const pr = kp[R.g]; c = pr === null ? 0 : Math.round(R.gr * pr / 1000) + R.w; main.disabled = true; main.value = c ? fmtP(c) : '';
-      q.textContent = pr === null ? `مفيش سعر ${MAT_G[R.g]} لسه (مفيش فواتير شراء بالكيلو)` : `= ${fmtQ(R.gr / 1000)} كيلو × ${fmtP(Math.round(pr))}${R.w ? ' + مصنعية ' + fmtP(R.w) : ''} = ${fmtP(c)} النهارده`; }
-    else { if (main.disabled) { main.disabled = false; main.value = ''; } q.textContent = ''; c = toP(main.value) || (cb(o.name, o.unit, t) || {}).c || 0; }
+    if (R) { const pr = kp[R.g], kv = R.w ? 0 : Math.round(R.gr * (cb.kwAt(t) || 0) / 1000); c = pr === null ? 0 : Math.round(R.gr * pr / 1000) + (R.w || kv); main.disabled = true; main.value = c ? fmtP(c) : '';
+      q.textContent = pr === null ? `مفيش سعر ${MAT_G[R.g]} لسه (مفيش فواتير شراء بالكيلو)` : `= ${fmtQ(R.gr / 1000)} كيلو × ${fmtP(Math.round(pr))}${R.w ? ' + مصنعية ' + fmtP(R.w) : kv ? ' + مصنعية الكيلو ' + fmtP(kv) : ''} = ${fmtP(c)} النهارده`; }
+    else { if (main.disabled) { main.disabled = false; main.value = ''; } q.textContent = ''; const b = cb(o.name, o.unit, t);
+      if (b && b.src === 'k') { main.placeholder = fmtP(b.c); el.dataset.k = 1; } else if (el.dataset.k) main.placeholder = 'التكلفة';
+      c = toP(main.value) || (b || {}).c || 0; }
     const pkb = el.querySelector('.icpk'), N = pkb.hidden ? 0 : Math.round(num(el.querySelector('.ipk').value));   // آخر بيع كان كرتونة؟ يتقارن بتكلفة الكرتونة
     if (N > 1 && c && (PACK_U.test(o.unit) || o.price >= c * Math.sqrt(N))) c *= N;
     const p = el.querySelector('.icp'); p.textContent = c && o.price ? gmPct(o.price - c, o.price) + '%' : ''; p.className = 'icp' + (c > o.price ? ' neg' : '');
@@ -5863,6 +5918,15 @@ function costModal(after) {
     el.querySelector('.icb').onclick = () => { const r = el.querySelector('.icrr'); r.hidden = !r.hidden; calc(el); if (!r.hidden) el.querySelector('.ick').focus(); };
     el.querySelector('.icb2').onclick = () => { const r = el.querySelector('.icpk'); r.hidden = !r.hidden; calc(el); if (!r.hidden) el.querySelector('.ipk').focus(); };
   });
+  const kwText = () => { const k = $('#icKm').value, q = $('#icKq'), i = k === 'a' && cb.kwInfo(t);
+    $('#icKn').hidden = k !== 'n';
+    if (k === 'x') q.textContent = 'الأصناف اللي بالكيلو ومالهاش تكلفة مش هتتحسب';
+    else if (k === 'n') q.textContent = 'بتتحط على أي صنف بالكيلو مالوش تكلفة، وعلى كيلو الخامة في الأصناف اللي مصنعيتها فاضية';
+    else if (!i) q.textContent = `لسه مفيش كيلوهات كفاية اتباعت في آخر شهرين (أقل من ${KW_MIN} كيلو)`;
+    else { const top = cb.kwCats(i.f, t).slice(0, 3).map(([c, v]) => `${esc(cName(c))} ${fmtP(v)}`).join('، ');
+      q.innerHTML = `مصاريف الخزنة من ${dispDate(i.f)}: ${fmtP(i.exp)} ÷ ${fmtQ(Math.round(i.kg))} كيلو اتباعوا = <b>${fmtP(Math.round(i.v))}</b> للكيلو${top ? `<br>أكبرها: ${top}` : ''}`; } };
+  let kwT = 0; const kwRe = () => { clearTimeout(kwT); kwT = setTimeout(() => { if (!$('#icKm')) return; cb = costBook(kwLive()); kwText(); $$('#icL .icr').forEach(calc); }, 150); };
+  kwText(); $('#icKm').onchange = kwRe; bindMoney($('#icKv')); $('#icKv').addEventListener('input', kwRe);
   if ($('#icQ')) $('#icQ').oninput = () => { const q = norm($('#icQ').value.trim()); $$('#icL .icr').forEach(el => { el.style.display = !q || norm(L[+el.dataset.i].name).includes(q) ? '' : 'none'; }); };
   $('#icX').onclick = closeModal;
   $('#icOk').onclick = () => {
@@ -5881,7 +5945,8 @@ function costModal(after) {
       const n = norm(o.name), pb = el.querySelector('.icpk'), N = pb.hidden ? 0 : Math.round(num(el.querySelector('.ipk').value));
       if (N > 1) { if (N !== P0[n] || !setN.has(n)) { PK[n] = N; setN.add(n); } } else if (!setN.has(n)) delete PK[n];
     });
-    if (JSON.stringify(K) !== k0 || JSON.stringify(PK) !== p0) { putSet('itemCost', Object.keys(PK).length ? {k: K, p: PK} : {k: K}); toast('اتحفظت التكلفة ✔'); }
+    const kwN = kwLive();
+    if (JSON.stringify(K) !== k0 || JSON.stringify(PK) !== p0 || JSON.stringify(kwN) !== JSON.stringify(kw0)) { const o = {k: K}; if (Object.keys(PK).length) o.p = PK; if (kwN) o.kw = kwN; putSet('itemCost', o); toast('اتحفظت التكلفة ✔'); }
     closeModal(); if (after) after();
   };
 }
@@ -6200,7 +6265,7 @@ function renderReports() {
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'col' ? `<div class="seg s2" id="rpCM">${[['week', 'أسبوعي'], ['month', 'شهري']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repColMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${repColMode === 'week' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">` : `<input class="inp num" id="rpYear" inputmode="numeric" value="${repYear || t.slice(0, 4)}">`}` : ''}
-      ${repKind === 'gm' ? `<div class="seg s3" id="rpGK">${[['item', 'بالصنف'], ['cust', 'بالعميل'], ['month', 'بالشهر']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repGmKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
+      ${repKind === 'gm' ? `<div class="seg s4" id="rpGK">${[['item', 'بالصنف'], ['cust', 'بالعميل'], ['month', 'بالشهر'], ['doc', 'بالفاتورة']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repGmKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'mat' ? `<div class="seg s3" id="rpXK">${[['name', 'بالخامة'], ['sup', 'بالمورد'], ['month', 'بالشهر']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repMatKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${R.groups.length > 1 ? `<div class="seg s2" id="rpXG">${R.groups.map(k => `<button type="button" data-v="${k}" class="${R.g === k ? 'on' : ''}">${MAT_G[k]}</button>`).join('')}</div>` : ''}` : ''}
       ${repKind === 'item' ? `<div class="seg" id="rpIK">${[['inv', 'المبيعات'], ['pur', 'المشتريات']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repItemKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
@@ -6216,7 +6281,7 @@ function renderReports() {
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
     ${repKind === 'profit' ? profitChart(R.rows) : ''}
     ${R.rows.some(r => !r.empty) ? `<div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''} ${repKind === 'profit' ? 'pft' : ''} ${repKind === 'cash' ? 'rpc' : ''} ${repKind === 'gm' && R.cols.length === 6 ? 'gmi' : ''} ${repKind === 'mat' ? 'mtt' : ''} ${repKind === 'mat' && repMatKind === 'sup' ? 'mts' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
-      ${R.rows.filter(r => !r.empty).map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(i === 0 && yr1 ? String(x).replace(/\s*\d{4}$/, '') : x)}${repKind === 'cash' && i === 1 && r.cells[2] ? `<small class="rpsub">${esc(r.cells[2])}</small>` : ''}${repKind === 'gm' && i === 0 && R.cols.length === 6 && r.cells[1] ? `<small class="rpsub">${esc(r.cells[1])}</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
+      ${R.rows.filter(r => !r.empty).map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : r.e ? `data-e="${esc(r.e)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(i === 0 && r.nm ? r.nm : i === 0 && yr1 ? String(x).replace(/\s*\d{4}$/, '') : x)}${i === 0 && r.sub ? `<small class="rpsub">${esc(r.sub)}</small>` : ''}${repKind === 'cash' && i === 1 && r.cells[2] ? `<small class="rpsub">${esc(r.cells[2])}</small>` : ''}${repKind === 'gm' && i === 0 && R.cols.length === 6 && r.cells[1] ? `<small class="rpsub">${esc(r.cells[1])}</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
     ${R.warn ? `<a class="ldpend" href="#mkt">${esc(R.warn)}</a>` : ''}
     <div class="card" style="margin-top:10px">${R.sum.map(([a, b, st]) => `<div class="bl ${st || ''}"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
     <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>
@@ -6245,6 +6310,7 @@ function renderReports() {
   bindI('#rpDay', v => repDay = v); bindI('#rpMonth', v => repMonth = v); bindI('#rpYear', v => repYear = normDigits(v).replace(/\D/g, '').slice(0, 4));
   bindI('#rpFrom', v => repFrom = v); bindI('#rpTo', v => repTo = v); bindI('#rpV', v => repVault = v);
   $$('#p-rep tr[data-p]').forEach(el => el.onclick = () => go('p/' + el.dataset.p));
+  $$('#p-rep tr[data-e]').forEach(el => el.onclick = () => { const e = E.get(el.dataset.e); if (e && P.get(e.party)) docModal(P.get(e.party), e.kind, e); });
   if ($('#rpJrd')) $('#rpJrd').onclick = () => go('jrd');
   if ($('#rpBack')) $('#rpBack').onclick = () => go('home');
   if ($('#rpHome')) $('#rpHome').onclick = () => { repKind = 'home'; renderReports(); window.scrollTo(0, 0); };

@@ -381,7 +381,7 @@ const T0 = Date.now();
     await A.click('#fbPay'); await A.fill('#pyAmt', '400'); await A.click('#pyOk'); await closed(A);
     eq('بعد فاتورة 1400−50 ودفع 400', await bal(A, 'عميل تجربة واحد'), 270000 + 135000 - 40000);
     eq('الدفعة دخلت الخزنة', await vbal(A, 'v_main'), 140000);
-    await A.click('#ppRet'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.fill('.li [data-f=qty]', '1'); await A.fill('.li [data-f=price]', '350'); await A.click('#dcOk'); await closed(A);
+    await A.click('#ppMore'); await A.click('#modal [data-b=ppRet]'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.fill('.li [data-f=qty]', '1'); await A.fill('.li [data-f=price]', '350'); await A.click('#dcOk'); await closed(A);
     /* الفاتورة جدول: آخر سطر فاضي دايماً، والجديد بوحدة اللي قبله، وEnter بينقل، و✕ بيمسح */
     await A.click('#fbDoc');
     eq('الفاتورة الجديدة بسطر فاضي واحد ومن غير زرار "+ صنف"', [await A.$$eval('#dcLines .li', l => l.length), !!(await A.$('#dcAdd'))], [1, false]);
@@ -394,7 +394,7 @@ const T0 = Date.now();
     await A.click('#dcLines .li:nth-child(1) [data-del]');
     eq('✕ بيمسح السطر ويفضل سطر فاضي', await A.$$eval('#dcLines .li', l => l.length), 1);
     await A.click('#dcX'); await closed(A);
-    await A.click('#ppAdj'); await A.fill('#adAmt', '15'); await A.fill('#adNote', 'جبر كسور'); await A.click('#adOk'); await closed(A);
+    await A.click('#ppMore'); await A.click('#modal [data-b=ppAdj]'); await A.fill('#adAmt', '15'); await A.fill('#adNote', 'جبر كسور'); await A.click('#adOk'); await closed(A);
     eq('بعد مرتجع 350 وخصم 15', await bal(A, 'عميل تجربة واحد'), 365000 - 35000 - 1500);
     await A.click('#fbPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await closed(A);
     await A.click('#fbPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await A.settle(150);
@@ -1171,14 +1171,14 @@ const T0 = Date.now();
     }), [true, 4, true, true, true, true, true, true, '2026-02-28', '2026-10-24', '2025-10-24']);
     await A.click('#p-rep .rcd[data-go=profit]'); await A.settle(200);
     eq('تقرير الأرباح من الكارت: نفس الفترة (الشهر)، وزرار الملخص بيرجّع للكروت', [await A.getAttribute('#rpK .on', 'data-v'), await A.evaluate(() => repMode), (await A.textContent('#p-rep .ldgf')).includes('بعد الشركاء'), !!(await A.$('#rpHome'))], ['profit', 'month', true, true]);
-    await A.click('#rpHome'); await A.settle(150);
+    await A.click('#rpPick'); await A.click('#modal [data-v=home]'); await A.settle(150);
     eq('زرار الملخص بيرجّع للكروت', !!(await A.$('#p-rep .rcd')), true);
     await A.click('#p-rep .rcd[data-go=profit]'); await A.settle(150);
     await A.evaluate(() => { repMode = 'year'; renderReports(); }); await A.settle(150);   // باقي الاختبارات بتبدأ من الأرباح بالسنة زي الأول
     /* تقرير التحصيل: دفعات عملاء السوق والمواقع (من غير الموردين والحساب الفرعي)، أسبوعي وشهري */
     await A.evaluate(() => { const p = liveParties().find(x => x.sec === 'site'), now = Date.now();
       if (p) { const e = addEntry({id: 'e_colsite', party: p.id, kind: 'pay', amt: 33300, date: todayISO(), method: 'نقدي', vault: 'v_main', note: ''}); applyAmounts(e); saveDB(); } });
-    await A.click('#rpK button[data-v=col]'); await A.settle(200);
+    await A.click('#rpPick'); await A.click('#modal [data-v=col]'); await A.settle(200);
     const CR = await A.evaluate(() => {
       const t = todayISO(), m = t.slice(0, 7), want = {mkt: 0, site: 0};
       db.entries.forEach(e => { const p = P.get(e.party); if (!e.del && e.kind === 'pay' && e.date.startsWith(m) && p && !p.noTot && want[p.sec] !== undefined) want[p.sec] += e.amt; });
@@ -1189,7 +1189,7 @@ const T0 = Date.now();
     });
     eq('تقرير التحصيل: أسبوعي = دفعات السوق والمواقع بالظبط، والشهري نفس الرقم للشهر ده', CR, ['التحصيل الأسبوعي', true, true, true, true, true, 'التحصيل الشهري', true, 'الأسبوع']);
     /* تقرير أحمد: عملاء السوق بس، باع وحصّل في الأسبوع (سبت→جمعة)، وأول + باع − حصّل = آخر بالقرش، ومن غير مصاريف */
-    await A.click('#rpK button[data-v=ah]'); await A.settle(200);
+    await A.click('#rpPick'); await A.click('#modal [data-v=ah]'); await A.settle(200);
     eq('تقرير أحمد: عملاء السوق بس، باع − حصّل = الفرق بين أول وآخر الفترة، وسطر الوارد مش في الـ PDF', await A.evaluate(() => {
       const [f, t] = repRange(), ps = liveParties().filter(p => p.sec === 'mkt' && !p.noTot); let s = 0, c = 0;
       db.entries.forEach(e => { if (e.del || e.kind === 'open' || e.date < f || e.date > t || !ps.some(p => p.id === e.party)) return; const v = (e.dr || 0) - (e.cr || 0); e.kind === 'pay' ? c -= v : s += v; });
@@ -1201,7 +1201,7 @@ const T0 = Date.now();
     eq('لوحة النهارده اتشالت من الرئيسية', await A.$('#hDash'), null);
     const SR = await A.evaluate(() => [searchAll('لفة تجربة').length, searchAll('1350').map(r => r.title)[0] || '', searchAll('سلفة').length, searchAll('x').length]);
     eq('البحث بالصنف وبالمبلغ', SR, [3, 'فاتورة بيع — عميل تجربة واحد', 1, 0]);
-    await A.evaluate(() => go('home')); await A.settle(150); await A.click('#bSearchAll'); await A.fill('#saQ', 'سلفة'); await A.settle(400);
+    await A.evaluate(() => go('home')); await A.settle(150); await A.fill('#hSearch', 'سلفة'); await A.settle(100); await A.click('#bSearchAll'); await A.fill('#saQ', 'سلفة'); await A.settle(400);
     eq('البحث في الحركات', (await A.textContent('#saR')).includes('مسحوبات الشركاء'), true); await A.click('#saX2'); await A.fill('#hSearch', ''); await A.settle(150);
     eq('البحث في الحسابات: كل قسم بيطلع حساباته بس (الموردين موردين بس، والسوق سوق بس)', await A.evaluate(() => {
       const t0 = tab, r = [];
@@ -1555,6 +1555,18 @@ const T0 = Date.now();
       const vis = el => getComputedStyle(el).display !== 'none', th = [...$$('#p-party .ldg thead th')].filter(vis).map(x => x.textContent);
       return [th.join('|'), $$('#p-party .ldg tr.yr').length > 0 && vis($('#p-party .ldg tr.yr')), [...$$('#p-party .ldg td.dt small')].some(vis), [...$$('#p-party .ldg td.l .qp')].some(vis),
         $('#p-party .ldgw').scrollWidth <= $('#p-party .ldgw').clientWidth + 1]; }), ['التاريخ|البيان|الإجمالي|دفعة|الرصيد', true, false, true, true]);
+    eq('الموبايل (بطلبه 30/10/2026): صفحة الحساب ⋯ فيها تعديل ومرتجع وخصم، و📞 بيتصل، والشريط الرفيع بالاسم والرصيد بيظهر لما تنزل', await A.evaluate(() => {
+      const p = liveParties().find(x => x.sec === 'mkt'), ph0 = p.phone; p.phone = '0100 000 0009'; go('p/' + p.id); renderParty(p.id); const box = $('#p-party'), r = [!!$('#ppMore').offsetParent, $('#ppCall').getAttribute('href').startsWith('tel:'), !$('#ppRet').offsetParent];
+      $('#ppMore').click(); r.push($$('#modal .kmenu [data-b]').map(b => b.dataset.b).join(',').startsWith('ppEdit2,ppRet,ppAdj')); closeModal();
+      r.push($('#ppStk').classList.contains('on')); box.scrollTop = box.scrollHeight; box.dispatchEvent(new Event('scroll')); r.push(!box.scrollTop || $('#ppStk').classList.contains('on')); box.scrollTop = 0; box.dispatchEvent(new Event('scroll'));
+      r.push($('#ppCall').getAttribute('href')); p.phone = ph0; renderParty(p.id); return r; }), [true, true, true, true, false, true, 'tel:01000000009']);
+    eq('الموبايل (بطلبه 30/10/2026): التقارير زرار تقرير وزرار فترة، والفترة بتفتح وتقفل، واسم الشهر من غير السنة على الشاشة بس', await A.evaluate(() => {
+      go('rep'); route(); repKind = 'profit'; repMode = 'year'; repPerOpen = false; renderReports();
+      const r = [!$('#rpK').offsetParent, !!$('#rpPick').offsetParent && $('#rpPick').textContent.includes('الأرباح'), $('#rpPer').textContent.includes('سنة ' + todayISO().slice(0, 4)), !$('#rpM').offsetParent];
+      $('#rpPer').click(); r.push(!!$('#rpM').offsetParent); $('#rpPer').click(); r.push(!$('#rpM').offsetParent);
+      const td = $('#p-rep table.ldg td'); r.push(!!td && !/\d{4}$/.test(td.textContent.trim()), buildReport().rows.some(x => /\d{4}$/.test(x.cells[0])));
+      $('#rpPick').click(); r.push($$('#modal .rpkm [data-v]').length === 9); $('#modal .rpkm [data-v=gm]').click(); r.push(repKind === 'gm' && !!$('#rpGK').offsetParent);
+      repKind = 'home'; renderReports(); return r; }), [true, true, true, true, true, true, true, true, true, true]);
     eq('الموبايل: كل زراير صفحة العميل جوه الشاشة', await A.evaluate(() => [...$$('#p-party .acts .btn')].filter(b => b.offsetParent).every(b => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })), true);
     eq('رسالة التراجع: صغيرة فوق مكان الاسم، مش فوق أي زرار، وبتختفي في أقل من 5 ثواني', await A.evaluate(async () => {
       toastUndo('اتلغت حركة تجربة طويلة شوية علشان نشوف الاسم بيتقص ولا لأ', () => {});
@@ -1566,9 +1578,10 @@ const T0 = Date.now();
     await A.evaluate(() => { tab = 'mkt'; go('home'); }); await A.settle(200);
     eq('الموبايل: مفيش زرار الليلي فوق، وزرار الحساب الجديد مش نفس ＋ بتاع التسجيل السريع، وسطر "آخر دفعة" تحت الاسم', await A.evaluate(() => [!!$('#bTheme').offsetParent, $('#bNewParty').textContent.includes('＋'), !!$('#bNewParty svg'),
       [...$$('#hList .lpy')].some(x => x.offsetParent && x.textContent.startsWith('آخر دفعة'))]), [false, false, true, true]);
-    eq('الموبايل: خانة البحث على طول فوق القايمة (من غير زرار عدسة)، والزراير (التقارير، الجرد، حساب جديد) في سطر واحد كبار ومتباعدين', await A.evaluate(() => {
-      const bs = ['#hRep', '#hJrd', '#bNewParty'].map(x => $(x).getBoundingClientRect()), q = $('#hSearch').getBoundingClientRect();
-      return [!!$('#hSearch').offsetParent, !!$('#bSearch').offsetParent, q.bottom <= $('#hList').getBoundingClientRect().top + 1, bs.every(r => Math.abs(r.top - bs[0].top) < 2 && r.height >= 50 && r.width >= 70), bs.slice(1).every((r, i) => Math.abs(r.right - bs[i].left) >= 6 || Math.abs(bs[i].right - r.left) >= 6)]; }), [true, false, true, true, true]);
+    eq('الموبايل (بطلبه 30/10/2026): البحث والتقارير والجرد وجديد في سطر واحد، و"في الحركات" مستخبي لحد ما تكتب، والترتيب جنب التبويبات من غير سطر "الاسم/عليه"', await A.evaluate(() => {
+      const bs = ['#hRep', '#hJrd', '#bNewParty'].map(x => $(x).getBoundingClientRect()), q = $('#hSearch').getBoundingClientRect(), tb = $('#hTabs').getBoundingClientRect(), so = $('#hSortB').getBoundingClientRect();
+      return [!!$('#hSearch').offsetParent, !!$('#bSearch').offsetParent, q.bottom <= $('#hList').getBoundingClientRect().top + 1, bs.every(r => Math.abs(r.top - q.top) < 3 && r.height >= 44 && r.width >= 44 && r.left >= 0),
+        bs.slice(1).every((r, i) => Math.abs(r.right - bs[i].left) >= 6 || Math.abs(bs[i].right - r.left) >= 6), !!$('#bSearchAll').offsetParent, !!$('#hTabs #hSortB') && so.top >= tb.top - 1 && so.bottom <= tb.bottom + 1, !$('#hList .pth').offsetParent]; }), [true, false, true, true, true, false, true, true]);
     await A.fill('#hSearch', 'تجربة واحد'); await A.settle(200);
     eq('الكتابة في خانة البحث بتفلتر القايمة على طول', await A.evaluate(() => $$('#hList .pt').length), 1);
     await A.click('#bSearchAll'); await A.settle(400);
@@ -2509,7 +2522,7 @@ const T0 = Date.now();
     eq('مسح القسم: العملاء فضلوا والتبويب اتشال', await M.evaluate(() => [$$('#gTabs button[data-g]').length, $$('#lists .pt[data-c]').length === customers().size]), [1, true]);
     eq('الأقسام مبتروحش الشيت ولا الحسابات', sheets.mkt.sheets['الحركات'].rows.some(r => String(r[10]).includes('منطقة تجربة')), false);
     /* حصّل من دول: مصطفى بيعلّم من الحسابات، والشريك بيشوفها في الرئيسية وبتتشطب لما يسجل دفعة */
-    await openParty(A, C1); await A.click('#ppWant'); await A.fill('#wqA', '1,000'); await A.fill('#wqN', 'قبل الخميس'); await A.click('#wqOk'); await A.settle(200);
+    await openParty(A, C1); await A.click('#ppMore'); await A.click('#modal [data-b=ppWant]'); await A.fill('#wqA', '1,000'); await A.fill('#wqN', 'قبل الخميس'); await A.click('#wqOk'); await A.settle(200);
     eq('الحسابات: العميل اتعلّم "مطلوب" وظهر سطر في صفحته', [await A.evaluate(id => mkWants()[id] && mkWants()[id].amt, pid1), (await A.textContent('#ppWantL')).includes('لسه')], [100000, true]);
     await sync2(); await M.evaluate(() => nav('', true)); await M.settle(150);
     eq('الشريك: كارت "مطلوب تحصّل من دول" اتشال من الرئيسية (بطلب مصطفى 23/10/2026)، و"معاك كاش" أول حاجة', await M.evaluate(() => [!$('#want'), $('#main > section, #main > .alert') && $('#main > section').classList.contains('cashc')]), [true, true]);

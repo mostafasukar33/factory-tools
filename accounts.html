@@ -1570,6 +1570,54 @@ body{font-size:var(--f3);line-height:1.6}
   #p-party .phd .pbk{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;width:34px;height:34px;margin-inline-end:8px;border:0;border-radius:9px;background:var(--row);color:var(--gold-d);font:inherit;font-size:var(--f3);font-weight:800;cursor:pointer}
   #p-party .phd .ped{display:inline-flex;margin-inline-start:8px;padding:2px 10px;border:1px solid var(--line);border-radius:8px;background:var(--row);color:var(--gold-d);font:inherit;font-weight:700;cursor:pointer}
 }
+/* الشكل المختصر على الموبايل (بطلبه 30/10/2026 بعد صور التصور): العملا والحساب والتقارير. اللاب زي ما هو */
+.pmb,.pstk,.rpbar2,.srow .lbm,#p-rep .rpjb{display:none}
+.phd .plb,.phd .sep{font-style:normal}
+.rpkm{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rpkm .btn{margin:0;min-height:50px;justify-content:flex-start;font-weight:800;font-size:var(--f3)}
+.rpkm .btn.on{background:var(--bar);border-color:var(--bar);color:var(--gold)}
+@media (max-width:999.98px){
+  /* العملا: البحث والتقارير والجرد وجديد في سطر واحد، و"في الحركات" تحته لما تكتب، والترتيب جنب التبويبات */
+  html body main .srow{flex-wrap:wrap;gap:7px}
+  html body main .srow #hSearch{order:-2;flex:1 1 0;min-width:0}
+  html body main .srow #hRep,html body main .srow #hJrd,html body main .srow #bNewParty{order:-1;flex:0 0 54px;min-height:48px;height:48px;flex-direction:column;gap:2px;padding:3px 2px;border-radius:12px}
+  html body main .srow .lb{font-size:var(--f1)}
+  html body main .srow .lbw{display:none}html body main .srow .lbm{display:block}
+  html body main .srow #bSearchAll{display:none}
+  html body main .srow.q #bSearchAll{display:flex;order:5;flex:1 1 100%;min-height:42px;height:42px}
+  #hList .pth{display:none}
+  #hTabs{display:flex;gap:8px;align-items:center}
+  #hTabs>button:not(.psort){flex:1 1 0;min-width:0}
+  #hTabs .psort{display:inline-flex;flex:none;align-items:center;min-height:42px;padding:2px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;font-size:var(--f2);font-weight:700;cursor:pointer;white-space:nowrap}
+  /* صفحة الحساب: الاسم وجنبه 📞 و⋯، والعلامات تحته، والرصيد سطر واحد. مرتجع وخصم وحصّل منه وتعديل ورا ⋯ */
+  #p-party .acts{display:none}
+  #p-party .phd{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"n n" "s s" "b m";column-gap:10px;padding:10px 14px}
+  #p-party .phd .pnm{grid-area:n}
+  #p-party .phd .pnm h2{flex:1 1 calc(100% - 100px);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.25}
+  #p-party .pmb{display:flex;gap:6px;flex:none;align-self:flex-start}
+  #p-party .pmc{width:42px;height:38px;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;font-size:var(--f4);font-weight:800;line-height:1;padding:0;text-decoration:none}
+  #p-party a.pmc{color:var(--gold-d)}
+  #p-party .phd>small{grid-area:s;margin-top:4px}
+  #p-party .phd>small.pmin,#p-party .phd>small .psec,#p-party .phd>small #ppEdit2,#p-party .phd>small .psec+.pnt>.sep{display:none}
+  #p-party .phd .bal{grid-area:b;margin-top:8px;padding-top:8px;display:flex;flex-direction:row;align-items:baseline;justify-content:flex-start;gap:6px;flex-wrap:wrap;align-self:stretch;align-content:flex-end}
+  #p-party .phd .bal .plb{display:none}
+  #p-party .phd .mini2{grid-area:m;align-self:stretch;margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line);flex-direction:column;justify-content:flex-end;gap:2px;flex-wrap:nowrap}
+  #p-party .pstk{display:flex;align-items:center;gap:8px;position:fixed;top:var(--hh,48px);inset-inline:0;z-index:30;padding:8px 14px;background:var(--card);border-bottom:2px solid var(--gold);box-shadow:var(--shadow);visibility:hidden}
+  #p-party .pstk.on{visibility:visible}
+  #p-party .pstk .pbk{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:9px;background:var(--row);color:var(--gold-d);font:inherit;font-size:var(--f3);font-weight:800;flex:none}
+  #p-party .pstk>b:first-of-type{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--f3)}
+  #p-party .pstk span{font-size:var(--f1);color:var(--sub);font-weight:700}
+  #p-party .pstk b.n{font-size:var(--f4);direction:ltr}#p-party .pstk b.n.cr{color:var(--red)}
+  /* التقارير: زرار التقرير وزرار الفترة بدل التبويبات والكارت، والجرد زرار صغير في الشريط */
+  #p-rep #rpK,#p-rep .tstrip{display:none}
+  #p-rep .rpjb{display:inline-flex;margin-inline-start:auto;width:auto;min-height:34px;padding:2px 12px;font-size:var(--f2)}
+  .rpbar2{display:flex;gap:8px;align-items:center;margin:2px 0 10px}
+  .rpbar2>button{flex:1 1 0;min-width:0;min-height:50px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:var(--f3);font-weight:800;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 14px;box-shadow:var(--shadow);white-space:nowrap;overflow:hidden}
+  .rpbar2>button.k{background:var(--bar);border-color:var(--bar);color:var(--gold)}
+  .rpbar2>button i{font-style:normal;font-size:var(--f2);opacity:.8}
+  .rpbar2 .qh{flex:none}
+  #p-rep .card.rpcard.e0:not(.po){display:none}
+  #p-rep .card.rpcard:not(.po) .rpper{display:none}
+}
 /* اللاب: القايمة الجانبية من غير تكرار عملاء السوق/المواقع/الموردين (موجودين فوق القايمة)، وآخر زرار مش مستخبي ورا القفل */
 @media (min-width:1000px){nav .qk{display:none}nav{overflow-y:auto;padding-bottom:64px;scrollbar-width:none}}
 </style>
@@ -1607,7 +1655,7 @@ body{font-size:var(--f3);line-height:1.6}
     <select class="inp" id="hSort"><option value="bal">الأكبر</option><option value="name">بالاسم</option><option value="last">الأحدث</option></select>
     <button class="btn line" id="bSearch" type="button" title="دوّر في كل الحركات (مبلغ، صنف، ملاحظة…)" aria-label="بحث">🔎<span class="lb">بحث</span></button>
     <span id="hTools"></span>
-    <button class="btn gold" id="bNewParty" type="button" title="حساب جديد" aria-label="حساب جديد"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 9.5-4.9M19 14v6M16 17h6"/></svg><span class="lb">حساب جديد</span></button>
+    <button class="btn gold" id="bNewParty" type="button" title="حساب جديد" aria-label="حساب جديد"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 9.5-4.9M19 14v6M16 17h6"/></svg><span class="lb lbw">حساب جديد</span><span class="lb lbm">جديد</span></button>
     <button class="btn line" id="bSearchAll" type="button">🔎 في الحركات</button>
   </div>
   <div class="tabs" id="hTabs"></div>
@@ -2213,6 +2261,7 @@ function renderList(bal) {
   if (sort === 'bal') ps.sort((a, b) => Math.abs(bal.get(b.id)) - Math.abs(bal.get(a.id)));
   else if (sort === 'last') ps.sort((a, b) => (last.get(b.id) || '').localeCompare(last.get(a.id) || ''));
   else ps.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  $('.srow').classList.toggle('q', !!q);   // الموبايل: "في الحركات" بيظهر بس لما تكتب في البحث
   if (!ps.length) { $('#hList').innerHTML = `<div class="empty">${liveParties().length ? 'مفيش حساب بالاسم ده في القسم ده' : 'لسه مفيش حسابات. اضغط "+ حساب جديد".'}</div>`; return; }
   $('#hList').classList.toggle('srch', !!q);
   /* على اللاب: كلمة "عليه/ليه" مكتوبة مرة واحدة فوق عمود الأرقام (ثابتة)، وجنب الرقم بتظهر بس لو مختلفة عنها */
@@ -2228,8 +2277,11 @@ function renderList(bal) {
     const i = payInfo(p, pays.get(p.id) || [], b), f = first.get(p.id);
     const ago = i ? i.ago : f ? Math.max(0, Math.round((Date.parse(todayISO() + 'T00:00:00Z') - Date.parse(f + 'T00:00:00Z')) / 864e5)) : 0;
     return ago < 30 ? 'age-g' : ago <= 60 ? 'age-y' : 'age-r'; };
-  const sortT = {bal: 'الأكبر', name: 'بالاسم', last: 'الأحدث'};
-  $('#hList').innerHTML = `<div class="pth"><span>الاسم</span><button class="psort" id="hSortB" type="button">⇅ ${sortT[sort]}</button><span>${hw}</span></div>` + ps.map(p => {
+  const sortT = {bal: 'الأكبر', name: 'بالاسم', last: 'الأحدث'}, sortB = `<button class="psort" id="hSortB" type="button">⇅ ${sortT[sort]}</button>`, mob = !isWide();
+  /* الموبايل (بطلبه 30/10/2026): زرار الترتيب جنب التبويبات، وسطر "الاسم/عليه" اتشال */
+  const ob = $('#hTabs #hSortB'); if (ob) ob.remove();
+  if (mob) $('#hTabs').insertAdjacentHTML('beforeend', sortB);
+  $('#hList').innerHTML = `<div class="pth"><span>الاسم</span>${mob ? '' : sortB}<span>${hw}</span></div>` + ps.map(p => {
     const b = bal.get(p.id) || 0;
     return `<div class="pt ${p.id === curParty ? 'cur' : ''} ${p.sec === 'sup' ? 'sup' : ''} ${b ? '' : 'zero'} ${b < 0 ? 'neg' : ''} ${limitClass(p, b)} ${ageClass(p, b)}" data-id="${esc(p.id)}">
       <div class="m"><b>${esc(p.name)}</b>${lpy(p, b)}<small><span class="tag ${p.sec === 'sup' ? 'sup' : ''}">${SEC1[p.sec]}</span>${p.noTot ? '<span class="tag off">خارج الإجمالي</span>' : ''}<span class="ph">${esc(p.phone || '')}</span></small></div>
@@ -2482,8 +2534,8 @@ function renderParty(id) {
   const nX = all.filter(e => e.del).length;
   $('#p-party').innerHTML = `
     <div class="sech ppbar tb" style="margin-top:0"><a id="ppBack">→<em> كل الحسابات</em></a><b class="tt">${esc(p.name)}</b><span class="jb"><button id="jUp" type="button">↑ فوق</button><button id="jDn" type="button">↓ آخر حركة</button></span><a id="ppEdit" title="تعديل البيانات">✎<em> تعديل البيانات</em></a></div>
-    <div class="phd"><div class="pnm"><h2><button class="pbk" id="ppBack2" type="button" aria-label="رجوع">→</button>${esc(p.name)}</h2>${payRhythm(p, all, b)}${limitChip(p, b)}</div><small>${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}${p.note ? ' — ' + esc(p.note) : ''}${p.noTot ? ' — <b style="color:var(--gold)">حساب فرعي خارج الإجماليات</b>' : ''}<button class="ped" id="ppEdit2" type="button">✎ تعديل</button></small>
-      <div class="bal"><span>الرصيد: ${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}" data-ck="pb:${esc(id)}" data-cnt="${Math.abs(b)}">${fmtP(Math.abs(b))} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
+    <div class="phd"><div class="pnm"><h2><button class="pbk" id="ppBack2" type="button" aria-label="رجوع">→</button>${esc(p.name)}</h2><span class="pmb">${p.phone ? `<a class="pmc" id="ppCall" href="tel:${esc(normDigits(p.phone).replace(/[^\d+]/g, ''))}" aria-label="اتصل"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg></a>` : ''}<button class="pmc" id="ppMore" type="button" aria-label="كمان">⋯</button></span>${payRhythm(p, all, b)}${limitChip(p, b)}</div><small class="${p.note || p.noTot ? '' : 'pmin'}"><span class="psec">${SEC1[p.sec]}${p.phone ? ' — <span dir="ltr">' + esc(p.phone) + '</span>' : ''}</span>${p.note ? '<span class="pnt"><i class="sep"> — </i>' + esc(p.note) + '</span>' : ''}${p.noTot ? '<span class="pnt"><i class="sep"> — </i><b style="color:var(--gold)">حساب فرعي خارج الإجماليات</b></span>' : ''}<button class="ped" id="ppEdit2" type="button">✎ تعديل</button></small>
+      <div class="bal"><span><i class="plb">الرصيد: </i>${balWord(b)}</span><b class="${b < 0 ? 'cr' : ''}" data-ck="pb:${esc(id)}" data-cnt="${Math.abs(b)}">${fmtP(Math.abs(b))} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b></div>
       <div class="mini2"><span>${sup ? 'المشتريات' : 'المبيعات'}: <b>${fmtP(tDoc)}</b></span><span>${sup ? 'اللي دفعته' : 'اللي استلمته'}: <b>${fmtP(tPay)}</b></span></div></div>
     ${isFwdSrc(p) ? (fwAutoLink(p), fwBar(p)) : ''}
     ${p.sec === 'mkt' && mkCreds() ? ((w, g) => w ? `<div class="sync mkwp ${g.paid ? 'ok' : ''}" id="ppWantL">📌 مطلوب من شريكك يحصّل منه <b>${fmtP(w.amt)}</b>${w.note ? ' — ' + esc(w.note) : ''}${g.paid ? ` · ✓ حصّل ${fmtP(g.paid)}` : ' · لسه'} <a>تعديل</a></div>` : '')(mkWants()[id], mkWants()[id] ? mkWantGot(id, mkWants()[id]) : null) : ''}
@@ -2499,6 +2551,7 @@ function renderParty(id) {
     </div>
     <div class="fab2"><button class="btn big" id="fbDoc" type="button">🧾 ${sup ? 'فاتورة شراء' : 'فاتورة بيع'}</button><button class="btn green big" id="fbPay" type="button">💵 ${sup ? 'دفعت له' : 'استلمت دفعة'}</button><button class="btn gold big" id="fbStmt" type="button">📄 كشف حساب</button></div>
     ${ledgerTable(p)}
+    <div class="pstk" id="ppStk" aria-hidden="true"><button class="pbk" type="button" tabindex="-1">→</button><b>${esc(p.name)}</b><span>${balWord(b)}</span><b class="n ${b < 0 ? 'cr' : ''}">${fmtP(Math.abs(b))}</b></div>
     ${nX ? `<div class="sech" style="margin-top:6px"><span></span><a id="ppX">${showX ? 'إخفاء الملغي' : `إظهار الملغي (${nX})`}</a></div>` : ''}
     ${showX && nX ? `<div class="sech"><span>الحركات الملغية</span></div>${all.filter(e => e.del).reverse().map(e => entryCard(e, 0)).join('')}` : ''}`;
   $('#ppBack').onclick = $('#ppBack2').onclick = () => go(!isWide() && sup ? 'sup' : 'home'); bindBar();
@@ -2509,6 +2562,15 @@ function renderParty(id) {
   $('#ppRet').onclick = () => docModal(p, sup ? 'rpur' : 'rinv');
   $('#ppAdj').onclick = () => adjModal(p);
   if ($('#ppWant')) $('#ppWant').onclick = () => mkWantModal(p);
+  /* الموبايل (بطلبه 30/10/2026): تعديل ومرتجع وخصم وحصّل منه ورا ⋯، وشريط رفيع بالاسم والرصيد لما تنزل في الكشف */
+  $('#ppMore').onclick = () => {
+    modal(`<div class="kmenu">${[['ppEdit2', '✎', 'تعديل البيانات'], ['ppRet', '↩', sup ? 'مرتجع شراء' : 'مرتجع بيع'], ['ppAdj', '✂', 'خصم / تسوية'], ...($('#ppWant') ? [['ppWant', '📌', 'حصّل منه']] : [])]
+      .map(([bid, ic, n]) => `<button class="btn line" type="button" data-b="${bid}">${ic} ${n}</button>`).join('')}<button class="btn line" type="button" id="kmX">رجوع</button></div>`);
+    $$('#modal .kmenu [data-b]').forEach(x => x.onclick = () => { const t = $('#' + x.dataset.b); closeModal(); t.click(); });
+    $('#kmX').onclick = closeModal;
+  };
+  $('#ppStk .pbk').onclick = () => $('#ppBack2').click();
+  ppStkWatch();
   if ($('#ppWantL')) $('#ppWantL').onclick = () => mkWantModal(p);
   if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
   $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => el.dataset.g ? mkGrpModal(p, el.dataset.g.split(',')) : el.dataset.li !== undefined ? lineModal(p, E.get(el.dataset.id), +el.dataset.li) : openEntry(p, E.get(el.dataset.id)));
@@ -2518,6 +2580,12 @@ function renderParty(id) {
   if (isFwdSrc(p)) fwBind(p);
   $$('#p-party [data-nl]').forEach(el => el.onclick = nlModal);
   runCounters($('#p-party'));
+}
+function ppStkWatch() {
+  const box = $('#p-party');
+  const f = () => { const k = $('#ppStk'), h = $('#p-party .phd'); if (!k || !h) return; k.classList.toggle('on', !isWide() && box.scrollTop > h.offsetTop + h.offsetHeight - 8); };
+  if (!box.dataset.stk) { box.dataset.stk = '1'; box.addEventListener('scroll', f, {passive: true}); }
+  f();
 }
 function entryCard(e, runB) {
   const flags = `${e.kind === 'open' ? '<span class="flag o">أول المدة</span>' : ''}${e.hist && e.hist.length ? '<span class="flag">اتعدّلت</span>' : ''}${e.del ? '<span class="flag x">ملغية</span>' : ''}`;
@@ -5705,7 +5773,7 @@ function searchModal(q0) {
   focusSoon('#saQ', 50);
 }
 let repColMode = 'week';   // تقرير التحصيل: أسبوعي (أسابيع الشهر، السبت للجمعة) أو شهري (شهور السنة)
-let repKind = 'home', repSum = 'month', repSide = 'mkt', repMode = 'year', repDay = '', repMonth = '', repYear = '', repFrom = '', repTo = '', repVault = '', repItemKind = 'inv';
+let repKind = 'home', repSum = 'month', repSide = 'mkt', repMode = 'year', repDay = '', repMonth = '', repYear = '', repFrom = '', repTo = '', repVault = '', repItemKind = 'inv', repPerOpen = false;
 function repRange() {
   const t = todayISO();
   if (repMode === 'day') { const d = repDay || t; return [d, d]; }
@@ -5914,8 +5982,10 @@ function renderReports() {
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
   const needRange = repKind === 'ah' || repKind === 'cash' || repKind === 'item' || repKind === 'profit' || repKind === 'gm';
   const jw = isWide() ? 0 : ivWaiting(), home = repKind === 'home';
-  const head = (isWide() ? '' : `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b></div>`)
-    + ((st => st ? `<div class="tstrip">${st}</div>` : '')((home ? '' : '<button class="btn line sm" id="rpHome" type="button">📊 الملخص</button>') + (isWide() ? '' : `<button class="btn line sm" id="rpJrd" type="button">📦 الجرد والمساهمون${jw ? ` (${jw})` : ''}</button>`)));
+  /* الموبايل (بطلبه 30/10/2026): الجرد زرار صغير في الشريط، والتقرير والفترة زرارين بيفتحوا اختيار (#rpPick/#rpPer) بدل التبويبات والكارت */
+  const mob = !isWide();
+  const head = (mob ? `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b><button class="btn line sm rpjb" id="rpJrd" type="button">📦 الجرد${jw ? ` (${jw})` : ''}</button></div>` : '')
+    + ((st => st ? `<div class="tstrip">${st}</div>` : '')(home ? '' : '<button class="btn line sm" id="rpHome" type="button">📊 الملخص</button>'));
   if (home) {
     $('#p-rep').innerHTML = head + repCards();
     $$('#rpS button').forEach(b => b.onclick = () => { repSum = b.dataset.v; renderReports(); });
@@ -5924,25 +5994,29 @@ function renderReports() {
     if ($('#rpBack')) $('#rpBack').onclick = () => go('home');
     return;
   }
+  const KS = [['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف'], ['gm', 'المكسب'], ['ah', MK_PN]];
+  const perLabel = repMode === 'day' ? dispDate(f) : repMode === 'week' ? 'أسبوع ' + dispDate(f) : repMode === 'month' ? `${MONTHS[+f.slice(5, 7) - 1]} ${f.slice(0, 4)}` : repMode === 'year' ? 'سنة ' + f.slice(0, 4) : `${dispDate(f)} ← ${dispDate(to)}`;
+  const yr1 = mob && R.cols[0] && R.cols[0].h === 'الشهر' && f.slice(0, 4) === to.slice(0, 4);   // الموبايل: اسم الشهر من غير السنة لو الفترة في سنة واحدة (الـ PDF زي ما هو)
   $('#p-rep').innerHTML = head + `
-    <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف'], ['gm', 'المكسب'], ['ah', MK_PN]].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
-    <div class="card">
+    <div class="seg s6" id="rpK">${KS.map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    ${mob ? `<div class="rpbar2"><button class="k" id="rpPick" type="button">${esc((KS.find(x => x[0] === repKind) || ['', ''])[1])} <i>▾</i></button>${needRange ? `<button id="rpPer" type="button">${esc(perLabel)} <i>▾</i></button>` : ''}${repKind === 'profit' || repKind === 'gm' ? qh(esc(R.note)) : ''}</div>` : ''}
+    <div class="card rpcard${mob && !['debt', 'col', 'gm', 'item', 'cash'].includes(repKind) ? ' e0' : ''}${repPerOpen ? ' po' : ''}">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'col' ? `<div class="seg s2" id="rpCM">${[['week', 'أسبوعي'], ['month', 'شهري']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repColMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${repColMode === 'week' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">` : `<input class="inp num" id="rpYear" inputmode="numeric" value="${repYear || t.slice(0, 4)}">`}` : ''}
       ${repKind === 'gm' ? `<div class="seg s3" id="rpGK">${[['item', 'بالصنف'], ['cust', 'بالعميل'], ['month', 'بالشهر']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repGmKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'item' ? `<div class="seg" id="rpIK">${[['inv', 'المبيعات'], ['pur', 'المشتريات']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repItemKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
-      ${needRange ? `<div class="seg s4" id="rpM">${(repKind === 'ah' ? [['week', 'أسبوع'], ['month', 'شهر'], ['range', 'من–إلى']] : [['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']]).map(([k, n]) => `<button type="button" data-m="${k}" class="${repMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+      ${needRange ? `<div class="rpper"><div class="seg s4" id="rpM">${(repKind === 'ah' ? [['week', 'أسبوع'], ['month', 'شهر'], ['range', 'من–إلى']] : [['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']]).map(([k, n]) => `<button type="button" data-m="${k}" class="${repMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${repMode === 'day' || repMode === 'week' ? `<input class="inp" type="date" id="rpDay" value="${repDay || t}">` : repMode === 'month' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">`
-          : repMode === 'year' ? `<input class="inp num" id="rpYear" inputmode="numeric" value="${repYear || t.slice(0, 4)}">` : `<div class="g2"><input class="inp" type="date" id="rpFrom" value="${f}"><input class="inp" type="date" id="rpTo" value="${to}"></div>`}` : ''}
-      ${repKind === 'profit' || repKind === 'gm' ? qh(esc(R.note)) : ''}
+          : repMode === 'year' ? `<input class="inp num" id="rpYear" inputmode="numeric" value="${repYear || t.slice(0, 4)}">` : `<div class="g2"><input class="inp" type="date" id="rpFrom" value="${f}"><input class="inp" type="date" id="rpTo" value="${to}"></div>`}</div>` : ''}
+      ${(repKind === 'profit' || repKind === 'gm') && !mob ? qh(esc(R.note)) : ''}
       ${repKind === 'gm' ? '<button class="btn line" id="rpIC" type="button" style="margin-top:8px;width:100%">💰 تكلفة الأصناف</button>' : ''}
       ${repKind === 'cash' ? `<select class="inp" id="rpV" style="margin-top:8px"><option value="">كل الخزن</option>${vaultsL().map(v => `<option value="${esc(v.id)}" ${repVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>` : ''}
     </div>
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
     ${repKind === 'profit' ? profitChart(R.rows) : ''}
     ${R.rows.some(r => !r.empty) ? `<div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''} ${repKind === 'profit' ? 'pft' : ''} ${repKind === 'cash' ? 'rpc' : ''} ${repKind === 'gm' && R.cols.length === 6 ? 'gmi' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
-      ${R.rows.filter(r => !r.empty).map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}${repKind === 'cash' && i === 1 && r.cells[2] ? `<small class="rpsub">${esc(r.cells[2])}</small>` : ''}${repKind === 'gm' && i === 0 && R.cols.length === 6 && r.cells[1] ? `<small class="rpsub">${esc(r.cells[1])}</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
+      ${R.rows.filter(r => !r.empty).map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(i === 0 && yr1 ? String(x).replace(/\s*\d{4}$/, '') : x)}${repKind === 'cash' && i === 1 && r.cells[2] ? `<small class="rpsub">${esc(r.cells[2])}</small>` : ''}${repKind === 'gm' && i === 0 && R.cols.length === 6 && r.cells[1] ? `<small class="rpsub">${esc(r.cells[1])}</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
     ${R.warn ? `<a class="ldpend" href="#mkt">${esc(R.warn)}</a>` : ''}
     <div class="card" style="margin-top:10px">${R.sum.map(([a, b, st]) => `<div class="bl ${st || ''}"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
     <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>
@@ -5952,9 +6026,18 @@ function renderReports() {
   $$('#rpIK button').forEach(b => b.onclick = () => { repItemKind = b.dataset.v; renderReports(); });
   $$('#rpGK button').forEach(b => b.onclick = () => { repGmKind = b.dataset.v; renderReports(); });
   if ($('#rpIC')) $('#rpIC').onclick = () => costModal(renderReports);
+  if ($('#rpPer')) $('#rpPer').onclick = () => { repPerOpen = !repPerOpen; renderReports(); };
+  if ($('#rpPick')) $('#rpPick').onclick = () => {
+    const IC = {home: '📊', profit: '💰', col: '💵', debt: '📤', tot: '👥', cash: '💸', item: '📦', gm: '🏷', ah: '🏪'};
+    modal(`<h3>اختار التقرير</h3><div class="rpkm">${[['home', 'الملخص'], ...KS].map(([k, n]) => `<button class="btn line ${repKind === k ? 'on' : ''}" type="button" data-v="${k}">${IC[k]} ${esc(n)}</button>`).join('')}</div>`);
+    $$('#modal .rpkm [data-v]').forEach(b => b.onclick = () => {
+      const k = b.dataset.v, x = $(`#rpK button[data-v=${k}]`); closeModal(); repPerOpen = false;
+      if (k === 'home') { repKind = 'home'; renderReports(); window.scrollTo(0, 0); } else if (x) x.click();
+    });
+  };
   $$('#rpCM button').forEach(b => b.onclick = () => { repColMode = b.dataset.v; renderReports(); });
   $$('#rpM button').forEach(b => b.onclick = () => { repMode = b.dataset.m; renderReports(); });
-  const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); renderReports(); }; };
+  const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); repPerOpen = false; renderReports(); }; };
   bindI('#rpDay', v => repDay = v); bindI('#rpMonth', v => repMonth = v); bindI('#rpYear', v => repYear = normDigits(v).replace(/\D/g, '').slice(0, 4));
   bindI('#rpFrom', v => repFrom = v); bindI('#rpTo', v => repTo = v); bindI('#rpV', v => repVault = v);
   $$('#p-rep tr[data-p]').forEach(el => el.onclick = () => go('p/' + el.dataset.p));

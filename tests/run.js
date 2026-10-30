@@ -1166,7 +1166,7 @@ const T0 = Date.now();
     eq('التقارير: أول صفحة كروت، والأرقام من نفس حسبة التقارير بالقرش', await A.evaluate(() => {
       const card = g => $(`#p-rep .rcd[data-go=${g}] b`).textContent, R = sumRange('month'), x = profitOf(R.f, R.to), bal = allBalances();
       let ly = 0, al = 0; liveParties().forEach(p => { if (p.noTot) return; const v = bal.get(p.id) || 0; if (v > 0) ly += v; else al -= v; });
-      return [!$('#rpK'), $$('#rpS button').length, card('profit') === fmtP(x.before), $$('#p-rep .rcd[data-go=item] b')[0].textContent === fmtP(x.sales), card('cash') === fmtP(x.exp), card('tot') === fmtP(ly), card('debtp') === fmtP(al),
+      return [!$('#rpK'), $$('#rpS button').length, card('profit') === fmtP(x.before), $$('#p-rep .rcd[data-go=profit] b')[1].textContent === fmtP(x.sales), card('cash') === fmtP(x.exp), card('tot') === fmtP(ly), card('debtp') === fmtP(al),
         card('cashp') === fmtP(vaultBal('') + (hasMkv() ? vaultBal(MKV) : 0)), sumRange('month', '2026-03-31').pt, sumRange('week', '2026-10-24').f, sumRange('year', '2026-10-24').pt];
     }), [true, 4, true, true, true, true, true, true, '2026-02-28', '2026-10-24', '2025-10-24']);
     await A.click('#p-rep .rcd[data-go=profit]'); await A.settle(200);
@@ -1213,6 +1213,15 @@ const T0 = Date.now();
       db.txs.push(mk('t_tinc2', 'c_adj_in', 7000)); const b2 = profitOf(y, t);
       db.txs.splice(n);
       return [b1.before - b0.before, b1.inc - b0.inc, b2.before - b1.before, b1.exp === b0.exp]; }), [12345, 12345, 0, true]);
+    eq('البيع الكاش داخل في المبيعات، وجدول الأرباح بالشهر راكب على الملخص (المبيعات والمصروفات)', await A.evaluate(() => {
+      const y = todayISO().slice(0, 4) + '-01-01', t = todayISO(), b0 = profitOf(y, t), n = db.txs.length, mk = (id, cat, amt) => ({id, type: 'inc', vault: 'v_main', amt, cat, date: t, note: '', at: 1, upd: 1, del: false, hist: []});
+      db.txs.push(mk('t_tcs1', 'c_inc1', 45600)); const b1 = profitOf(y, t);
+      const R1 = profitReport(y, t), col = i => R1.rows.reduce((s, r) => s + toP(r.cells[i]), 0), sv = k => (R1.sum.find(r => r[0].trim() === k) || [])[1];
+      const r = [b1.sales - b0.sales, b1.inc - b0.inc, b1.before - b0.before, b1.cs - b0.cs, R1.cols[1].h, fmtP(col(1)) === sv('صافي المبيعات'), fmtP(col(3)) === sv('المصروفات'),
+        sv('منها بيع كاش') === fmtP(b1.cs), !R1.sum.some(r => r[0].includes('+ ' + cName('c_inc1'))), monthSheet({f: t.slice(0, 8) + '01', to: t, m: t.slice(0, 7)}).text.split('\n')[1].startsWith('🧾 مبيعات: ' + fmtP(profitOf(t.slice(0, 8) + '01', t).sales))];
+      db.txs.push(mk('t_tinc3', 'c_inc2', 1000)); const R2 = profitReport(y, t), col2 = R2.rows.reduce((s, x) => s + toP(x.cells[1]), 0);
+      r.push(R2.cols[1].h, fmtP(col2) === (R2.sum.find(x => x[0] === 'إجمالي الداخل') || [])[1], fmtP(R2.rows.reduce((s, x) => s + toP(x.cells[3]), 0)) === (R2.sum.find(x => x[0] === 'المصروفات') || [])[1]);
+      db.txs.splice(n); return r; }), [45600, 0, 45600, 45600, 'المبيعات', true, true, true, true, true, 'الداخل', true, true]);
     eq('سطر الفاتورة بيتقرّب لأقرب قرش (1.5 × 3.33 = 5)', await A.evaluate(() => [lineTot({qty: 1.5, price: 333}), docTotal({lines: [{qty: 1.5, price: 333}, {qty: 0.333, price: 1000}], disc: 0})]), [500, 833]);
 
     eq('مفيش أرقام فواتير: لا خانة ولا عرض في الكشف ولا العنوان', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv'); const f = !!$('#dcNo'); closeModal();

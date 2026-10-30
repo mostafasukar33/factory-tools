@@ -5467,19 +5467,22 @@ function tradeSums(f, t) {
 /* مصروفات وإيرادات الخزنة في الفترة (من غير التحويلات والدفعات والتحصيل القديم) */
 const NOT_PL = new Set(['c_inc0', 'c_payout', 'c_adj_in', 'c_adj_out', 'c_hsn']);   // + الفلوس اللي راحت لحسن: عهدة مش مصروف (اللي صرفه هو المصروف، lib/hsn.js)   // تسوية الجرد مش مصروف ولا إيراد (بطلب صاحب المشروع)
 function cashSums(f, t) {
-  const r = {exp: 0, inc: 0, part: 0, byCat: new Map()};
+  const r = {exp: 0, inc: 0, part: 0, cs: 0, byCat: new Map()};
   for (const x of db.txs) {
     if (x.del || x.type === 'tr' || x.date < f || x.date > t || NOT_PL.has(x.cat)) continue;
     if (x.iv || x.cat === 'c_ivdraw' || x.cat === 'c_ivcap') continue;   // فلوس المساهمين (رأس مال وسحب) مش مصروف ولا إيراد
     if (x.pt || x.cat === 'c_psal' || x.cat === 'c_pdraw') { r.part += x.amt; continue; }
     if (x.type === 'exp') r.exp += x.amt; else r.inc += x.amt;
+    if (x.cat === 'c_inc1') { r.cs += x.amt; continue; }   // البيع الكاش مبيعات مش بند إيراد (بطلبه 30/10/2026)
     const k = (x.type === 'exp' ? '− ' : '+ ') + cName(x.cat); r.byCat.set(k, (r.byCat.get(k) || 0) + x.amt);
   }
   return r;
 }
+/* المبيعات = الفواتير بعد المرتجع + البيع الكاش (cs)، وinc = الإيرادات التانية بس (بطلبه 30/10/2026: كارت المبيعات كان من غير الكاش).
+   before نفسه متغيرش */
 function profitOf(f, t) {
   const a = tradeSums(f, t), c = cashSums(f, t), iv = ivProfit(f, t), before = a.sales - a.purch - c.exp + c.inc;
-  return {sales: a.sales, purch: a.purch, exp: c.exp, inc: c.inc, part: c.part, iv, before, after: before - c.part - iv, byCat: c.byCat};
+  return {sales: a.sales + c.cs, cs: c.cs, purch: a.purch, exp: c.exp, inc: c.inc - c.cs, part: c.part, iv, before, after: before - c.part - iv, byCat: c.byCat};
 }
 const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 function stockDiff(f, t) {
@@ -5487,12 +5490,12 @@ function stockDiff(f, t) {
   return a && b && a !== b ? {a, b, d: b.stock - a.stock} : null;
 }
 function profitReport(f, t) {
-  const rows = [], tot = {sales: 0, purch: 0, exp: 0, inc: 0, part: 0, iv: 0, before: 0, after: 0}, cats = new Map();
+  const rows = [], tot = {sales: 0, cs: 0, purch: 0, exp: 0, inc: 0, part: 0, iv: 0, before: 0, after: 0}, cats = new Map();
   for (let m = f.slice(0, 7); m <= t.slice(0, 7);) {
     const [y, mo] = m.split('-').map(Number), ms = m + '-01' < f ? f : m + '-01', me0 = m + '-' + pad2(new Date(y, mo, 0).getDate()), me = me0 > t ? t : me0;
     const x = profitOf(ms, me);
     Object.keys(tot).forEach(k => tot[k] += x[k]); x.byCat.forEach((v, k) => cats.set(k, (cats.get(k) || 0) + v));
-    rows.push({empty: !x.sales && !x.purch && !x.exp && !x.inc && !x.part && !x.iv, raw: {m: MONTHS[mo - 1], s: x.sales, p: x.after}, cells: [`${MONTHS[mo - 1]} ${y}`, fmtP(x.sales), fmtP(x.purch), fmtP(x.exp - x.inc), fmtP(x.before), fmtP(x.part + x.iv), fmtP(x.after)], cls: x.after < 0 ? 'ret' : ''});
+    rows.push({empty: !x.sales && !x.purch && !x.exp && !x.inc && !x.part && !x.iv, raw: {m: MONTHS[mo - 1], s: x.sales, p: x.after}, cells: [`${MONTHS[mo - 1]} ${y}`, fmtP(x.sales + x.inc), fmtP(x.purch), fmtP(x.exp), fmtP(x.before), fmtP(x.part + x.iv), fmtP(x.after)], cls: x.after < 0 ? 'ret' : ''});
     m = mo === 12 ? `${y + 1}-01` : `${y}-${pad2(mo + 1)}`;
   }
   /* الفرق في المخزون (بطلبه 17/10/2026): لو أول الفترة وآخرها عند جرد فيه مخزون، الربح بيزيد بزيادة المخزون أو يقل بنقصه، فيطابق الجرد.
@@ -5501,15 +5504,16 @@ function profitReport(f, t) {
   if (stk) { tot.before += stk.d; tot.after += stk.d; }
   /* الملخص بالترتيب (بطلبه 17/10/2026): الداخل كله، بعده الخارج كله، وبعدين الربح. نفس الأرقام */
   const byCat = sg => [...cats.entries()].filter(([k]) => k.startsWith(sg)).sort((a, b) => b[1] - a[1]).map(([k, v]) => ['   ' + k, fmtP(v)]);
-  const sum = [['صافي المبيعات', fmtP(tot.sales)], ...byCat('+ '), ...(tot.inc ? [['إجمالي الداخل', fmtP(tot.sales + tot.inc), 'sub']] : []),
+  const sum = [['صافي المبيعات', fmtP(tot.sales)], ...(tot.cs ? [['   منها فواتير (بعد المرتجع)', fmtP(tot.sales - tot.cs)], ['   منها بيع كاش', fmtP(tot.cs)]] : []), ...byCat('+ '), ...(tot.inc ? [['إجمالي الداخل', fmtP(tot.sales + tot.inc), 'sub']] : []),
     ['صافي المشتريات', fmtP(tot.purch)], ['المصروفات', fmtP(tot.exp)], ...byCat('− '), ['إجمالي الخارج', fmtP(tot.purch + tot.exp), 'sub'],
     ...(stk ? [[stk.d >= 0 ? '+ زاد المخزون (من الجرد)' : '− نقص المخزون (من الجرد)', fmtP(Math.abs(stk.d))]] : []),
     ['الربح قبل الشركاء', fmtP(tot.before)], ['مرتبات ومسحوبات الشركاء', fmtP(tot.part)], ...(tot.iv ? [['أرباح المساهمين', fmtP(tot.iv)]] : [])];
   return {title: 'الأرباح بالشهر', period: rangeText(f, t),
-    cols: [{h: 'الشهر', w: 16, c: 'l'}, {h: 'المبيعات', w: 14, c: 'n'}, {h: 'المشتريات', w: 14, c: 'n'}, {h: 'المصروفات', w: 13, c: 'n'}, {h: 'الربح قبل الشركاء', w: 15, c: 'n'}, {h: tot.iv ? 'الشركاء والمساهمين' : 'الشركاء', w: 13, c: 'n'}, {h: 'الباقي', w: 15, c: 'b'}],
+    cols: [{h: 'الشهر', w: 16, c: 'l'}, {h: tot.inc ? 'الداخل' : 'المبيعات', w: 14, c: 'n'}, {h: 'المشتريات', w: 14, c: 'n'}, {h: 'المصروفات', w: 13, c: 'n'}, {h: 'الربح قبل الشركاء', w: 15, c: 'n'}, {h: tot.iv ? 'الشركاء والمساهمين' : 'الشركاء', w: 13, c: 'n'}, {h: 'الباقي', w: 15, c: 'b'}],
     rows, sum, fin: [(tot.after >= 0 ? 'الباقي بعد الشركاء' : 'خسارة بعد الشركاء') + (tot.iv ? ' والمساهمين' : ''), fmtP(tot.after)],
-    note: stk ? `الربح هنا = المبيعات − المشتريات − المصروفات + الفرق في المخزون من جرد ${dispDate(stk.a.date)} لجرد ${dispDate(stk.b.date)}. المصروفات = مصروفات الخزنة ناقص إيراداتها التانية.`
-      : 'الربح هنا = المبيعات − المشتريات − المصروفات في نفس الفترة، من غير حساب المخزون. المصروفات = مصروفات الخزنة ناقص إيراداتها التانية.'
+    note: (stk ? `الربح هنا = المبيعات − المشتريات − المصروفات + الفرق في المخزون من جرد ${dispDate(stk.a.date)} لجرد ${dispDate(stk.b.date)}.`
+      : 'الربح هنا = المبيعات − المشتريات − المصروفات في نفس الفترة، من غير حساب المخزون.') + ' المبيعات = الفواتير بعد المرتجع + البيع الكاش.'
+        + (tot.inc ? ' «الداخل» في الجدول = المبيعات + الإيرادات التانية.' : '')
         + (jrdSaved().some(x => !x.n.noStock) ? ' علشان المخزون يدخل في الحسبة اختار «من–إلى» من يوم جرد لحد يوم جرد تاني.' : '')};
 }
 function renderDash(box = $('#hDash')) {
@@ -5745,7 +5749,7 @@ function repCards() {
       card('profit', 'الربح قبل الشركاء', fmtP(a.before), sumCmp(a.before, b.before, 1, pn), a.before < 0),
       card('cashp', D.hasM ? 'المصنع كله دلوقتي' : 'في الخزن دلوقتي', fmtP(D.me + D.mk), `<small>${D.hasM ? `معاك ${fmtP(D.me)} + مع ${esc(MK_PN)} ${fmtP(D.mk)}` : 'كل الخزن'}</small>`, D.me + D.mk < 0)])}
     ${sec('شغلي', [
-      card('item', 'المبيعات', fmtP(a.sales), sumCmp(a.sales, b.sales, 1, pn)),
+      card('profit', 'المبيعات', fmtP(a.sales), sumCmp(a.sales, b.sales, 1, pn)),   // فيها البيع الكاش، فبتفتح الأرباح مش «بالصنف»
       card('itemp', 'المشتريات', fmtP(a.purch), sumCmp(a.purch, b.purch, -1, pn)),
       card('cash', 'المصروفات', fmtP(a.exp), sumCmp(a.exp, b.exp, -1, pn)),
       card('item', 'أكتر صنف اتباع', D.top ? esc(D.top.name) : '—', `<small>${D.top ? (D.top.unit ? fmtQ(D.top.q) + ' ' + esc(D.top.unit) + ' — ' : '') + fmtP(D.top.v) : 'مفيش فواتير بأصناف'}</small>`)])}
@@ -8253,11 +8257,11 @@ function rangeSum(f, to, head, end, detail) {
   let col = 0, paid = 0;
   for (const e of db.entries) { if (e.del || !isPay(e) || e.date < f || e.date > to) continue; const p = P.get(e.party); if (!p || p.noTot) continue; if (e.kind === 'pay') col += e.amt; else paid += e.amt; }
   const nx = new Date(to + 'T12:00:00'); nx.setDate(nx.getDate() + 1);
-  const L = [head, `🧾 مبيعات: ${fmtP(t.sales)}`, `💵 تحصيل من العملاء: ${fmtP(col)}`, `🏭 دفعت للموردين: ${fmtP(paid)}`, `📤 مصروفات: ${fmtP(cs.exp + cs.part)}`];
+  const L = [head, `🧾 مبيعات: ${fmtP(t.sales + cs.cs)}`, `💵 تحصيل من العملاء: ${fmtP(col)}`, `🏭 دفعت للموردين: ${fmtP(paid)}`, `📤 مصروفات: ${fmtP(cs.exp + cs.part)}`];
   if (detail) [...cs.byCat].filter(([k]) => k.startsWith('− ')).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => L.push(`   • ${k.slice(2)}: ${fmtP(v)}`));
   if (detail && cs.part) L.push(`   • الشركاء: ${fmtP(cs.part)}`);
   if (t.purch) L.push(`📦 مشتريات: ${fmtP(t.purch)}`);
-  if (cs.inc) L.push(`📥 إيرادات تانية: ${fmtP(cs.inc)}`);
+  if (cs.inc - cs.cs) L.push(`📥 إيرادات تانية: ${fmtP(cs.inc - cs.cs)}`);
   L.push(`💰 رصيد الخزن ${end}: ${fmtP(vaultBal('', isoOf(nx.getTime())))}`);
   const n = mkCreds() ? mkPending().length : 0; if (n) L.push(`📥 وارد السوق مستني تنقله: ${n}`);
   return {text: L.join('\n'), empty: !t.sales && !t.purch && !col && !paid && !cs.exp && !cs.part && !cs.inc};

@@ -86,6 +86,7 @@ const srv = http.createServer((q, r) => {
   await measure('كشف حساب عميل كبير', pg('p/' + big));
   await measure('الخزنة', pg('cash'));
   await measure('التقارير', pg('rep'));
+  await measure('المكسب بالنوع (سنة)', `async () => { repKind = 'gm'; repGmKind = 'type'; repMode = 'year'; history.replaceState(null, '', '#rep'); route(); }`);
   await measure('مكسب البضاعة بالفاتورة (سنة)', `async () => { repKind = 'gm'; repGmKind = 'doc'; repMode = 'year'; history.replaceState(null, '', '#rep'); route(); }`);
   await measure('نافذة تكلفة الأصناف (ومصنعية الكيلو لوحدها)', 'async () => { costModal(); closeModal(); }');
   await measure('الإعدادات', pg('set'));

@@ -193,6 +193,7 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-fac-pick-' + sfx, go: facGo('pick')},
   {name: 'acc-iv-' + sfx, go: accEval(IVSHOT + "go('jrd/iv/ip_shot')"), full: true},
   {name: 'acc-gm-' + sfx, go: accEval(GMSHOT + "go('rep'); repKind = 'gm'; repGmKind = 'item'; repMode = 'year'; renderReports()"), full: true},
+  {name: 'acc-gm-type-' + sfx, go: accEval(MATSHOT + GMSHOT + "go('rep'); repKind = 'gm'; repGmKind = 'type'; repMode = 'month'; renderReports()"), full: true},
   {name: 'acc-gm-doc-' + sfx, go: accEval(MATSHOT + GMSHOT + "go('rep'); repKind = 'gm'; repGmKind = 'doc'; repMode = 'year'; renderReports()"), full: true},
   {name: 'acc-cost-' + sfx, go: accEval(GMSHOT + 'costModal()')},
   {name: 'acc-mat-' + sfx, go: accEval(MATSHOT + "go('rep'); repKind = 'mat'; repMatKind = 'name'; repMode = 'year'; renderReports()"), full: true},

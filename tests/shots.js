@@ -155,6 +155,11 @@ const facGo = rev => async A => { await accEval(FACSHOT + "go('fac')")(A); await
 /* تكلفة تجريبية لتلات أصناف (والباقي من غير تكلفة علشان يبان "مالوش تكلفة") */
 const GMSHOT = `if (!getSet('itemCost', null)) putSet('itemCost', {k: Object.fromEntries([['خرطوم تجربة 16 مم', 42000], ['خرطوم تجربة 20 مم', 58000], ['خرطوم تجربة 25 مم', 78000]]
   .map(([n, c]) => [icKey(n, 'لفة'), {n, u: 'لفة', h: [[addDays(todayISO(), -400), c]]}]))});`;
+/* مشتريات خامات تجريبية من موردين تجربة (بلاستيك بأسامي مختلفة) علشان تقرير الخامات وتكلفة "خامة + مصنعية" */
+const MATSHOT = `if (!E.get('e_matshot0')) { const sp = liveParties().filter(p => p.sec === 'sup'), t = todayISO(), d = n => addDays(t, -n);
+  [[0, 40, [['سابك تجربة', 'طن', 2, 6200000]]], [1, 25, [['لينير تجربة', 'كيلو', 1500, 5400], ['ماستر تجربة', 'كيلو', 50, 14000]]], [0, 12, [['مبلور تجربة', 'كيلو', 2500, 3100]]], [1, 4, [['كسر تجربة', 'كيلو', 1200, 2600], ['حاجة تجربة غريبة', 'كيلو', 100, 1500]]]]
+    .forEach(([si, n, ls], i) => { const e = {id: 'e_matshot' + i, party: sp[si % sp.length].id, kind: 'pur', date: d(n), lines: ls.map(([name, unit, qty, price]) => ({name, unit, qty, price})), disc: 0, at: Date.now(), upd: Date.now(), del: false, hist: []}; e.cr = docTotal(e); e.dr = 0; db.entries.push(e); E.set(e.id, e); });
+  reindex(); saveDB(); }`;
 const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-list-' + sfx, go: accEval("tab = 'mkt'; go('home'); renderHome()"), full: true},
   {name: 'acc-site-' + sfx, go: accEval("tab = 'site'; go('home'); renderHome()")},
@@ -189,6 +194,10 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-iv-' + sfx, go: accEval(IVSHOT + "go('jrd/iv/ip_shot')"), full: true},
   {name: 'acc-gm-' + sfx, go: accEval(GMSHOT + "go('rep'); repKind = 'gm'; repGmKind = 'item'; repMode = 'year'; renderReports()"), full: true},
   {name: 'acc-cost-' + sfx, go: accEval(GMSHOT + 'costModal()')},
+  {name: 'acc-mat-' + sfx, go: accEval(MATSHOT + "go('rep'); repKind = 'mat'; repMatKind = 'name'; repMode = 'year'; renderReports()"), full: true},
+  {name: 'acc-mat-sup-' + sfx, go: accEval(MATSHOT + "go('rep'); repKind = 'mat'; repMatKind = 'sup'; repMode = 'year'; renderReports()"), full: true},
+  {name: 'acc-matcls-' + sfx, go: accEval(MATSHOT + 'matModal()')},
+  {name: 'acc-cost-mat-' + sfx, go: accEval(MATSHOT + GMSHOT + "costModal(); const el = $$('#icL .icr')[1]; el.querySelector('.icb').click(); el.querySelector('.ick').value = '2.5'; el.querySelector('.icw').value = '40'; el.querySelector('.ick').dispatchEvent(new Event('input'))")},
   {name: 'acc-inv-gm-' + sfx, go: accEval(GMSHOT + `docModal(${party}, 'inv', [...E.values()].filter(e => e.party === ${party}.id && e.kind === 'inv' && !e.del && (e.lines || []).length > 1).pop())`)},
 ].map(x => Object.assign({app: 'acc', vp}, x, extra, vp.width > 999 ? {full: false} : {}));
 /* بيانات عهدة حسن التجريبية: أسامي عمال تجريبية، والعهدة والمرتبات والسلف والمصاريف حوالين النهارده (مرة واحدة بس في كل صفحة) */

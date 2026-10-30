@@ -1247,6 +1247,27 @@ const T0 = Date.now();
       db.entries.splice(n0); ['e_gm1', 'e_gm2p', 'e_gm2', 'e_gm3', 'e_gm4'].forEach(id => E.delete(id));
       const sr = IDX.set.get('itemCost'); db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('itemCost'); repGmKind = 'item'; saveDB();
       return r; }), [true, 30000, [110000, 80000, 30000, 1], 3000, 12000, 75000, 270000, true, true, '650', '—', true, true, true, true, true, true, 26000]);
+    eq('الخامات: بيفهم البلاستيك من اسمه، والطن والمرتجع، وبالمورد ومتوسط الكيلو، والتصنيف بالإيد، وتكلفة الصنف = خامة × سعرها يومها + مصنعية', await A.evaluate(() => {
+      const n0 = db.entries.length, sp = liveParties().filter(p => p.sec === 'sup'), s1 = sp[0], s2 = sp[1] || sp[0], c = liveParties().find(p => p.sec === 'mkt' && !p.noTot);
+      const add = (id, party, kind, date, lines) => { const e = {id, party, kind, date, lines, disc: 0, at: 1, upd: 1, del: false, hist: []}, v = docTotal(e); e.dr = kind === 'inv' ? v : 0; e.cr = kind === 'inv' ? 0 : v; db.entries.push(e); E.set(id, e); return e; };
+      const L = (name, unit, qty, price) => ({name, unit, qty, price}), HO = 'خرطوم تجربة خامة';
+      add('e_mt1', s1.id, 'pur', '1999-01-05', [L('سابك تجربة', 'طن', 1, 6000000)]);
+      add('e_mt2', s2.id, 'pur', '1999-03-01', [L('لينير تجربة', 'كيلو', 500, 5000), L('مبلور تجربة', 'كيلو', 500, 3000), L('كرتون تجربة', 'قطعة', 10, 1000)]);
+      add('e_mt3', s2.id, 'rpur', '1999-03-10', [L('لينير تجربة', 'كيلو', 100, 5000)]);
+      add('e_mt4', s1.id, 'pur', '1999-03-12', [L('حاجة تجربة غريبة', 'كيلو', 50, 2000)]);
+      const i1 = add('e_mt5', c.id, 'inv', '1999-03-15', [L(HO, 'كيلو', 10, 7000)]);
+      const D = matData('1999-01-01', '1999-12-31'), G = D.G.plastic, mp = matPricer();
+      const r = [matOf('سابك تجربة'), matOf('مسح أبيض'), matOf('خامة لينير'), matOf('نحاس احمر'), matOf('كرتون تجربة'), G.kg, G.v, G.nm.size, G.sp.get(s2.id).kg === (s1.id === s2.id ? 1900 : 900), D.unk.includes('حاجة تجربة غريبة'),
+        Math.round(mp('plastic', '1999-03-15')), mp('plastic', '1999-02-20'), mp('plastic', '1998-12-01')];
+      repMatKind = 'sup'; const R = matReport('1999-01-01', '1999-12-31'); r.push(R.fin[1], R.rows.some(x => x.id === s2.id) && R.title.includes('بالمورد'), R.sum.find(x => x[0] === 'متوسط الكيلو')[1]); repMatKind = 'name';
+      putSet('itemCost', {k: {[icKey(HO, 'كيلو')]: {n: HO, u: 'كيلو', g: 'plastic', r: [['1999-01-01', 1000, 1500]]}}});
+      const cb = costBook(); r.push(cb(HO, 'كيلو', '1999-03-15').c, cb(HO, 'كيلو', '1999-02-20').c, docMargin(i1).m);
+      matModal(); const sl = $$('#mtL select').find(x => x.closest('.mtr').querySelector('b').textContent === 'حاجة تجربة غريبة'); sl.value = 'plastic'; $('#mtOk').click();
+      r.push(matOf('حاجة تجربة غريبة'), matData('1999-01-01', '1999-12-31').G.plastic.kg);
+      costModal(); const el = $$('#icL .icr').find(x => x.querySelector('.icn b').textContent === HO); r.push(!!el && el.querySelector('.icm').disabled && el.querySelector('.icq').textContent.includes('مصنعية 15')); closeModal();
+      db.entries.splice(n0); ['e_mt1', 'e_mt2', 'e_mt3', 'e_mt4', 'e_mt5'].forEach(id => E.delete(id));
+      ['itemCost', 'matMap'].forEach(k => { const sr = IDX.set.get(k); if (sr) { db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete(k); } }); saveDB();
+      return r; }), ['plastic', 'plastic', 'plastic', 'copper', null, 1900, 9500000, 3, true, true, 3889, 6000, 6000, '1.9 طن', true, '50', 5389, 7500, 16110, 'plastic', 1950, true]);
     eq('سطر الفاتورة بيتقرّب لأقرب قرش (1.5 × 3.33 = 5)', await A.evaluate(() => [lineTot({qty: 1.5, price: 333}), docTotal({lines: [{qty: 1.5, price: 333}, {qty: 0.333, price: 1000}], disc: 0})]), [500, 833]);
 
     eq('مفيش أرقام فواتير: لا خانة ولا عرض في الكشف ولا العنوان', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv'); const f = !!$('#dcNo'); closeModal();
@@ -1565,7 +1586,7 @@ const T0 = Date.now();
       const r = [!$('#rpK').offsetParent, !!$('#rpPick').offsetParent && $('#rpPick').textContent.includes('الأرباح'), $('#rpPer').textContent.includes('سنة ' + todayISO().slice(0, 4)), !$('#rpM').offsetParent];
       $('#rpPer').click(); r.push(!!$('#rpM').offsetParent); $('#rpPer').click(); r.push(!$('#rpM').offsetParent);
       const td = $('#p-rep table.ldg td'); r.push(!!td && !/\d{4}$/.test(td.textContent.trim()), buildReport().rows.some(x => /\d{4}$/.test(x.cells[0])));
-      $('#rpPick').click(); r.push($$('#modal .rpkm [data-v]').length === 9); $('#modal .rpkm [data-v=gm]').click(); r.push(repKind === 'gm' && !!$('#rpGK').offsetParent);
+      $('#rpPick').click(); r.push($$('#modal .rpkm [data-v]').length === 10); $('#modal .rpkm [data-v=gm]').click(); r.push(repKind === 'gm' && !!$('#rpGK').offsetParent);
       repKind = 'home'; renderReports(); return r; }), [true, true, true, true, true, true, true, true, true, true]);
     eq('الموبايل: كل زراير صفحة العميل جوه الشاشة', await A.evaluate(() => [...$$('#p-party .acts .btn')].filter(b => b.offsetParent).every(b => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })), true);
     eq('رسالة التراجع: صغيرة فوق مكان الاسم، مش فوق أي زرار، وبتختفي في أقل من 5 ثواني', await A.evaluate(async () => {
@@ -2899,7 +2920,7 @@ const T0 = Date.now();
       go('mkt'); return r; }), [true, true, true, true, true, true]);
     sec('قاعدة التبويبات: سطر واحد ونفس الارتفاع ومفيش كلام مقطوع');
     /* أي مجموعة تبويبات (.seg) ظاهرة: كل زرار نفس الارتفاع، الكلام مش ملفوف على سطرين ولا متقطع */
-    for (const k of ['home', 'profit', 'col', 'debt', 'tot', 'cash', 'item', 'gm']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
+    for (const k of ['home', 'profit', 'col', 'debt', 'tot', 'cash', 'item', 'gm', 'mat']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
     await A.evaluate(() => { cashView = 'type'; go('cash'); renderCash(); $('#cPer').classList.add('pk'); }); await A.settle(200); await segOk(A, 'الحسابات — الخزنة (النهارده/الأسبوع/الشهر/من لـ)');
     await A.evaluate(() => { mkView = 'arch'; mkAMode = 'day'; go('mkt'); renderMkt(); }); await A.settle(200); if (await A.$('#maMode')) await segOk(A, 'الحسابات — أرشيف الوارد'); await A.evaluate(() => { mkView = 'in'; });
         await A.evaluate(() => go('set')); await A.settle(200); await segOk(A, 'الحسابات — الإعدادات');

@@ -5725,18 +5725,18 @@ function matLines(f = '', t = '9999') {
     return x.e.date >= f && x.e.date <= t;
   });
 }
-/* سعر كيلو الخامة يوم d بالقرش: متوسط اللي اتشرى في آخر 30 يوم (بالكيلو، فبيعبّر عن الخلطة)، ولو مفيش فيهم: آخر شراء قبله، وإلا أول شراء بعده */
+/* سعر كيلو الخامة يوم d بالقرش: آخر يوم شراء لحد يوم d (بطلبه 30/10/2026: السعر بيتغير كل يوم، فالفاتورة على سعر وقتها مش المتوسط)،
+   ولو اتشرى في اليوم ده كذا نوع = متوسطهم بالكيلو. المرتجع والسعر الغريب مبيدخلوش، ولو مفيش شراء قبله: أول شراء بعده */
 function matPricer() {
   const by = new Map(), memo = new Map();
-  matLines().forEach(x => { if (!x.kg) return; if (!by.has(x.g)) by.set(x.g, []); by.get(x.g).push([x.e.date, x.kg, x.v]); });
+  matLines().forEach(x => { if (!(x.kg > 0)) return; if (!by.has(x.g)) by.set(x.g, []); by.get(x.g).push([x.e.date, x.kg, x.v]); });
   by.forEach(a => a.sort((x, y) => x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0));
   return (g, d) => {
     const key = g + d; if (memo.has(key)) return memo.get(key);
     const a = by.get(g); let r = null;
     if (a && a.length) {
-      const f = addDays(d, -30); let kg = 0, v = 0, lastD = '';
-      for (const x of a) { if (x[0] > d) break; if (x[0] > f) { kg += x[1]; v += x[2]; } lastD = x[0]; }
-      if (kg <= 0) { const dd = lastD || a[0][0]; kg = 0; v = 0; a.forEach(x => { if (x[0] === dd) { kg += x[1]; v += x[2]; } }); }
+      let dd = a[0][0], kg = 0, v = 0; for (const x of a) { if (x[0] > d) break; dd = x[0]; }
+      a.forEach(x => { if (x[0] === dd) { kg += x[1]; v += x[2]; } });
       r = kg > 0 ? v / kg : null;
     }
     memo.set(key, r); return r;
@@ -5826,7 +5826,7 @@ function costModal(after) {
     });
   }
   const L = [...m.values()].sort((a, b) => b.v - a.v || (a.name < b.name ? -1 : 1));
-  const kp = Object.fromEntries(Object.keys(MAT_G).map(g => [g, mp(g, t)]));   // سعر كيلو الخامة النهارده (متوسط آخر شهر)
+  const kp = Object.fromEntries(Object.keys(MAT_G).map(g => [g, mp(g, t)]));   // سعر كيلو الخامة النهارده (آخر شراء)
   const last = a => a && a.length ? a[a.length - 1] : null;
   /* كل صنف: خانة التكلفة، وتحتها "خامة + مصنعية" (كام كيلو خامة في الوحدة والمصنعية) والتكلفة بتتحسب لوحدها من سعر الخامة */
   const P0 = icPack();
@@ -5839,7 +5839,7 @@ function costModal(after) {
         <label>المصنعية<input class="inp num icw" inputmode="decimal" placeholder="0" value="${rc && rc[2] ? fmtP(rc[2]) : ''}"></label>
         <label>الخامة<select class="inp icg">${Object.entries(MAT_G).map(([g, n]) => `<option value="${g}" ${(M.g || 'plastic') === g ? 'selected' : ''}>${n}</option>`).join('')}</select></label><small class="icq"></small></div></div>`; };
   modal(`<h3>💰 تكلفة الأصناف</h3>
-    <p class="hint" style="margin:0 0 8px">اكتب تكلفة الوحدة زي ما بتبيعها، أو دوس <b>🏭 خامة + مصنعية</b> والتكلفة تتحسب لوحدها من سعر الخامة (متوسط اللي اشتريته في آخر شهر).
+    <p class="hint" style="margin:0 0 8px">اكتب تكلفة الوحدة زي ما بتبيعها، أو دوس <b>🏭 خامة + مصنعية</b> والتكلفة تتحسب لوحدها من سعر الخامة (آخر سعر اشتريت بيه).
       الصنف اللي بتشتريه وتبيعه زي ما هو بياخد آخر سعر شراء لوحده. والفواتير القديمة بتفضل على حسبتها.</p>
     ${kp.plastic !== null || kp.copper !== null ? `<div class="sync ok" style="margin-bottom:8px">${Object.entries(kp).filter(([, v]) => v !== null).map(([g, v]) => `كيلو ال${MAT_G[g]} دلوقتي <b>${fmtP(Math.round(v))}</b>`).join(' · ')}</div>` : ''}
     ${L.length > 8 ? '<input class="inp" id="icQ" type="search" placeholder="دوّر على صنف" autocomplete="off" style="margin-bottom:8px">' : ''}

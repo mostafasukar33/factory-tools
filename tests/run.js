@@ -1247,7 +1247,7 @@ const T0 = Date.now();
       db.entries.splice(n0); ['e_gm1', 'e_gm2p', 'e_gm2', 'e_gm3', 'e_gm4'].forEach(id => E.delete(id));
       const sr = IDX.set.get('itemCost'); db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('itemCost'); repGmKind = 'item'; saveDB();
       return r; }), [true, 30000, [110000, 80000, 30000, 1], 3000, 12000, 75000, 270000, true, true, '650', '—', true, true, true, true, true, true, 26000]);
-    eq('الخامات: بيفهم البلاستيك من اسمه، والطن والمرتجع، وبالمورد ومتوسط الكيلو، والتصنيف بالإيد، وتكلفة الصنف = خامة × سعرها يومها + مصنعية', await A.evaluate(() => {
+    eq('الخامات: بيفهم البلاستيك من اسمه، والطن والمرتجع، وبالمورد ومتوسط الكيلو، والتصنيف بالإيد، وتكلفة الصنف = خامة × آخر سعر شراء لحد يومها (من غير المرتجع) + مصنعية', await A.evaluate(() => {
       const n0 = db.entries.length, sp = liveParties().filter(p => p.sec === 'sup'), s1 = sp[0], s2 = sp[1] || sp[0], c = liveParties().find(p => p.sec === 'mkt' && !p.noTot);
       const add = (id, party, kind, date, lines) => { const e = {id, party, kind, date, lines, disc: 0, at: 1, upd: 1, del: false, hist: []}, v = docTotal(e); e.dr = kind === 'inv' ? v : 0; e.cr = kind === 'inv' ? 0 : v; db.entries.push(e); E.set(id, e); return e; };
       const L = (name, unit, qty, price) => ({name, unit, qty, price}), HO = 'خرطوم تجربة خامة';
@@ -1267,7 +1267,7 @@ const T0 = Date.now();
       costModal(); const el = $$('#icL .icr').find(x => x.querySelector('.icn b').textContent === HO); r.push(!!el && el.querySelector('.icm').disabled && el.querySelector('.icq').textContent.includes('مصنعية 15')); closeModal();
       db.entries.splice(n0); ['e_mt1', 'e_mt2', 'e_mt3', 'e_mt4', 'e_mt5'].forEach(id => E.delete(id));
       ['itemCost', 'matMap'].forEach(k => { const sr = IDX.set.get(k); if (sr) { db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete(k); } }); saveDB();
-      return r; }), ['plastic', 'plastic', 'plastic', 'copper', null, 1900, 9500000, 3, true, true, 3889, 6000, 6000, '1.9 طن', true, '50', 5389, 7500, 16110, 'plastic', 1950, true]);
+      return r; }), ['plastic', 'plastic', 'plastic', 'copper', null, 1900, 9500000, 3, true, true, 4000, 6000, 6000, '1.9 طن', true, '50', 5500, 7500, 15000, 'plastic', 1950, true]);
     eq('الخامات: الكيلو اللي سعره سعر طن بيتحسب بالطن، والشكارة المكتوبة كيلو "سعرها غريب" ومش داخلة، والحساب الفرعي مبيتعدّش، و"مش خامة" للاسم الغريب بيتحفظ فيختفي', await A.evaluate(() => {
       const n0 = db.entries.length, np = db.parties.length, s1 = liveParties().find(p => p.sec === 'sup');
       const sub = {id: 'p_mtsub', sec: 'sup', name: 'مورد فرعي تجربة', noTot: true, upd: 1, del: false, hist: []}; db.parties.push(sub); P.set(sub.id, sub);

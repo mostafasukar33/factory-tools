@@ -258,7 +258,8 @@ table.ldg.rp tr.mute td{color:var(--sub)}
 @media (min-width:1000px){.rcg{grid-template-columns:repeat(4,1fr)}}
 /* تقرير الخزنة على الموبايل (بطلبه 24/10/2026): التفاصيل تحت اسم الحركة بدل عمود لوحده، علشان داخل/خارج/الرصيد يبانوا من غير سحب */
 .rpsub{display:none}table.gmi td.l small.rpsub{display:none}
-@media (max-width:640px){table.mts{min-width:0!important;width:100%}table.mts :is(th,td):nth-child(3){display:none}table.mts td.l{min-width:0}
+table.ldg.rp.mtt th{white-space:normal;line-height:1.15}table.ldg.rp.mtt td:nth-child(3){text-align:center;color:var(--sub)}
+@media (max-width:640px){table.mtt{min-width:0!important;width:100%}table.mtt td.l{min-width:0}table.mts :is(th,td):nth-child(4){display:none}
   table.gmi{min-width:0!important;width:100%}table.gmi :is(th,td):nth-child(2){display:none}table.gmi td.l small.rpsub{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}table.gmi td.l{min-width:0}
   table.rpc{min-width:0!important;width:100%}table.rpc :is(th,td):nth-child(3){display:none}table.rpc .rpsub{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}}.rph small{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}
 .ldg.rp tr[data-p],.ldg.rp tr[data-k]{cursor:pointer}
@@ -5732,17 +5733,18 @@ function matData(f, t) {
 let repMatKind = 'name', repMatG = 'plastic';
 function matReport(f, t) {
   const D = matData(f, t), gs = Object.keys(D.G), g = D.G[repMatG] ? repMatG : gs[0] || 'plastic', G = D.G[g] || {kg: 0, v: 0, nkV: 0, oddV: 0, odd: [], tonN: 0, nm: new Map(), sp: new Map(), mo: new Map()};
-  const ton = kg => fmtQ(Math.round(kg) / 1000) + ' طن', avg = (v, kg) => kg ? fmtP(Math.round(v / kg)) : '—';
+  /* الكمية رقم والوحدة عمود لوحدها (بطلبه 30/10/2026): طن من أول 1000 كيلو، وأقل من كده بالكيلو (800 كيلو) */
+  const qu = kg => Math.abs(kg) >= 1000 ? [fmtQ(Math.round(kg) / 1000), 'طن'] : [fmtQ(Math.round(kg)), 'كيلو'], ton = kg => qu(kg).join(' '), avg = (v, kg) => kg ? fmtP(Math.round(v / kg)) : '—';
   let cols, rows;
   if (repMatKind === 'sup') {
-    cols = [{h: 'المورد', w: 34, c: 'l'}, {h: 'الكمية', w: 18, c: 'n'}, {h: 'القيمة', w: 18, c: 'n'}, {h: 'متوسط الكيلو', w: 16, c: 'b'}, {h: 'النسبة', w: 14, c: 'n'}];
-    rows = [...G.sp.entries()].sort((a, b) => b[1].kg - a[1].kg).map(([id, x]) => ({id, cells: [x.name, ton(x.kg), fmtP(x.v), avg(x.v, x.kg), (G.kg ? Math.round(x.kg * 1000 / G.kg) / 10 : 0) + '%']}));
+    cols = [{h: 'المورد', w: 30, c: 'l'}, {h: 'الكمية', w: 12, c: 'n'}, {h: 'الوحدة', w: 9, c: ''}, {h: 'القيمة', w: 17, c: 'n'}, {h: 'متوسط الكيلو', w: 16, c: 'b'}, {h: 'النسبة', w: 16, c: 'n'}];
+    rows = [...G.sp.entries()].sort((a, b) => b[1].kg - a[1].kg).map(([id, x]) => ({id, cells: [x.name, ...qu(x.kg), fmtP(x.v), avg(x.v, x.kg), (G.kg ? Math.round(x.kg * 1000 / G.kg) / 10 : 0) + '%']}));
   } else if (repMatKind === 'month') {
-    cols = [{h: 'الشهر', w: 25, c: 'l'}, {h: 'الكمية', w: 25, c: 'n'}, {h: 'القيمة', w: 25, c: 'n'}, {h: 'متوسط الكيلو', w: 25, c: 'b'}];
-    rows = [...G.mo.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([m, x]) => ({cells: [`${MONTHS[+m.slice(5) - 1]} ${m.slice(0, 4)}`, ton(x.kg), fmtP(x.v), avg(x.v, x.kg)]}));
+    cols = [{h: 'الشهر', w: 24, c: 'l'}, {h: 'الكمية', w: 16, c: 'n'}, {h: 'الوحدة', w: 12, c: ''}, {h: 'القيمة', w: 24, c: 'n'}, {h: 'متوسط الكيلو', w: 24, c: 'b'}];
+    rows = [...G.mo.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([m, x]) => ({cells: [`${MONTHS[+m.slice(5) - 1]} ${m.slice(0, 4)}`, ...qu(x.kg), fmtP(x.v), avg(x.v, x.kg)]}));
   } else {
-    cols = [{h: 'الخامة', w: 34, c: 'l'}, {h: 'الكمية', w: 22, c: 'n'}, {h: 'القيمة', w: 22, c: 'n'}, {h: 'متوسط الكيلو', w: 22, c: 'b'}];
-    rows = [...G.nm.values()].sort((a, b) => b.kg - a.kg).map(x => ({cells: [x.name, ton(x.kg), fmtP(x.v), avg(x.v, x.kg)]}));
+    cols = [{h: 'الخامة', w: 32, c: 'l'}, {h: 'الكمية', w: 14, c: 'n'}, {h: 'الوحدة', w: 10, c: ''}, {h: 'القيمة', w: 22, c: 'n'}, {h: 'متوسط الكيلو', w: 22, c: 'b'}];
+    rows = [...G.nm.values()].sort((a, b) => b.kg - a.kg).map(x => ({cells: [x.name, ...qu(x.kg), fmtP(x.v), avg(x.v, x.kg)]}));
   }
   const sum = [['الكمية', ton(G.kg)], ['القيمة', fmtP(G.v)], ['متوسط الكيلو', avg(G.v, G.kg)],
     ...(G.tonN ? [['بنود الوحدة فيها كيلو والسعر سعر طن (اتحسبت بالطن)', String(G.tonN)]] : []),
@@ -6176,7 +6178,7 @@ function renderReports() {
     </div>
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
     ${repKind === 'profit' ? profitChart(R.rows) : ''}
-    ${R.rows.some(r => !r.empty) ? `<div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''} ${repKind === 'profit' ? 'pft' : ''} ${repKind === 'cash' ? 'rpc' : ''} ${repKind === 'gm' && R.cols.length === 6 ? 'gmi' : ''} ${repKind === 'mat' && R.cols.length === 5 ? 'mts' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
+    ${R.rows.some(r => !r.empty) ? `<div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''} ${repKind === 'profit' ? 'pft' : ''} ${repKind === 'cash' ? 'rpc' : ''} ${repKind === 'gm' && R.cols.length === 6 ? 'gmi' : ''} ${repKind === 'mat' ? 'mtt' : ''} ${repKind === 'mat' && repMatKind === 'sup' ? 'mts' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
       ${R.rows.filter(r => !r.empty).map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(i === 0 && yr1 ? String(x).replace(/\s*\d{4}$/, '') : x)}${repKind === 'cash' && i === 1 && r.cells[2] ? `<small class="rpsub">${esc(r.cells[2])}</small>` : ''}${repKind === 'gm' && i === 0 && R.cols.length === 6 && r.cells[1] ? `<small class="rpsub">${esc(r.cells[1])}</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
     ${R.warn ? `<a class="ldpend" href="#mkt">${esc(R.warn)}</a>` : ''}
     <div class="card" style="margin-top:10px">${R.sum.map(([a, b, st]) => `<div class="bl ${st || ''}"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>

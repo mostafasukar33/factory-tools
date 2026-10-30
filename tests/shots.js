@@ -152,6 +152,9 @@ const FACSHOT = `if (!IDX.tx.get('t_fac0')) { const v = defVault(), d = n => add
   const c = liveParties().find(p => p.name === 'عميل تجربة اتنين'); const e = {id: 'e_fac1', party: c.id, kind: 'inv', date: d(3), lines: [{name: 'مواسير تجربة 4 بوصة', unit: 'ماسورة', qty: 20, price: 30000}, {name: 'خرطوم تجربة 16 مم', unit: 'لفة', qty: 10, price: 45000}], at: Date.now(), upd: Date.now(), del: false, hist: []};
   e.dr = docTotal(e); e.cr = 0; db.entries.push(e); E.set(e.id, e); saveDB(); }`;
 const facGo = rev => async A => { await accEval(FACSHOT + "go('fac')")(A); await A.waitForSelector('#p-fac .fc'); if (rev) { await A.click('#fcRev'); await A.waitForSelector('#modal .ldr, #modal .fcs'); } if (rev === 'pick') { await A.click('#modal .csr .ldr'); await A.waitForSelector('#modal .fch'); } };
+/* تكلفة تجريبية لتلات أصناف (والباقي من غير تكلفة علشان يبان "مالوش تكلفة") */
+const GMSHOT = `if (!getSet('itemCost', null)) putSet('itemCost', {k: Object.fromEntries([['خرطوم تجربة 16 مم', 42000], ['خرطوم تجربة 20 مم', 58000], ['خرطوم تجربة 25 مم', 78000]]
+  .map(([n, c]) => [icKey(n, 'لفة'), {n, u: 'لفة', h: [[addDays(todayISO(), -400), c]]}]))});`;
 const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-list-' + sfx, go: accEval("tab = 'mkt'; go('home'); renderHome()"), full: true},
   {name: 'acc-site-' + sfx, go: accEval("tab = 'site'; go('home'); renderHome()")},
@@ -184,6 +187,9 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-fac-rev-' + sfx, go: facGo(true)},
   {name: 'acc-fac-pick-' + sfx, go: facGo('pick')},
   {name: 'acc-iv-' + sfx, go: accEval(IVSHOT + "go('jrd/iv/ip_shot')"), full: true},
+  {name: 'acc-gm-' + sfx, go: accEval(GMSHOT + "go('rep'); repKind = 'gm'; repGmKind = 'item'; repMode = 'year'; renderReports()"), full: true},
+  {name: 'acc-cost-' + sfx, go: accEval(GMSHOT + 'costModal()')},
+  {name: 'acc-inv-gm-' + sfx, go: accEval(GMSHOT + `docModal(${party}, 'inv', [...E.values()].filter(e => e.party === ${party}.id && e.kind === 'inv' && !e.del && (e.lines || []).length > 1).pop())`)},
 ].map(x => Object.assign({app: 'acc', vp}, x, extra, vp.width > 999 ? {full: false} : {}));
 /* بيانات عهدة حسن التجريبية: أسامي عمال تجريبية، والعهدة والمرتبات والسلف والمصاريف حوالين النهارده (مرة واحدة بس في كل صفحة) */
 const HSSHOT = `if (!getSet('paySheet', null)) {

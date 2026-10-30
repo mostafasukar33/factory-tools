@@ -1222,6 +1222,31 @@ const T0 = Date.now();
       db.txs.push(mk('t_tinc3', 'c_inc2', 1000)); const R2 = profitReport(y, t), col2 = R2.rows.reduce((s, x) => s + toP(x.cells[1]), 0);
       r.push(R2.cols[1].h, fmtP(col2) === (R2.sum.find(x => x[0] === 'إجمالي الداخل') || [])[1], fmtP(R2.rows.reduce((s, x) => s + toP(x.cells[3]), 0)) === (R2.sum.find(x => x[0] === 'المصروفات') || [])[1]);
       db.txs.splice(n); return r; }), [45600, 0, 45600, 45600, 'المبيعات', true, true, true, true, true, 'الداخل', true, true]);
+    eq('تكلفة الأصناف: المكسب بالتكلفة اللي كانت وقتها، وآخر سعر شراء للتجارة، والخصم، والتقرير راكب على المبيعات، والربح متغيرش', await A.evaluate(() => {
+      const t = todayISO(), d = n => addDays(t, -n), n0 = db.entries.length, y = d(60), c = liveParties().find(p => p.sec !== 'sup' && !p.noTot), sp = liveParties().find(p => p.sec === 'sup');
+      const add = (id, party, kind, date, lines, disc) => { const e = {id, party, kind, date, lines, disc: disc || 0, at: 1, upd: 1, del: false, hist: []}, v = docTotal(e); e.dr = kind === 'inv' ? v : 0; e.cr = kind === 'inv' ? 0 : v; db.entries.push(e); E.set(id, e); return e; };
+      const CI = 'صنف تكلفة تجربة', TR = 'صنف تجارة تجربة', NO = 'صنف من غير تكلفة تجربة', L = (name, unit, qty, price) => ({name, unit, qty, price});
+      const p0 = profitOf(y, t).before;
+      putSet('itemCost', {k: {[icKey(CI, 'كيلو')]: {n: CI, u: 'كيلو', h: [[d(20), 5000], [d(5), 6000]]}}});
+      const r = [profitOf(y, t).before === p0], G0 = gmData(y, t);
+      const i1 = add('e_gm1', c.id, 'inv', d(10), [L(CI, 'كيلو', 10, 8000)]);
+      add('e_gm2p', sp.id, 'pur', d(3), [L(TR, 'لفة', 5, 10000)]);
+      const i2 = add('e_gm2', c.id, 'inv', d(2), [L(CI, 'كيلو', 10, 8000), L(TR, 'لفة', 2, 15000), L(NO, 'لفة', 1, 5000)]);
+      const i3 = add('e_gm3', c.id, 'inv', d(30), [L(CI, 'كيلو', 1, 8000)]);
+      const i4 = add('e_gm4', c.id, 'inv', d(1), [L(CI, 'كيلو', 10, 8000), L(NO, 'لفة', 4, 5000)], 10000);
+      const m2 = docMargin(i2), G1 = gmData(y, t);
+      r.push(docMargin(i1).m, [m2.cov, m2.cost, m2.m, m2.miss.length], docMargin(i3).m, docMargin(i4).m, G1.A - G0.A, G1.B - G0.B, G1.S === profitOf(y, t).sales, G1.C === G1.S - G1.B);
+      repGmKind = 'item'; const R = gmReport(y, t), row = R.rows.find(x => x.cells[0] === CI), nrow = R.rows.find(x => x.cells[0].startsWith(NO + ' —'));
+      repGmKind = 'cust'; const RC = gmReport(y, t);
+      r.push(row && row.cells[4], nrow && nrow.cells[3], RC.rows.some(x => x.id === c.id), R.fin[1].includes(fmtP(G1.A + G1.est)));
+      docModal(c, 'inv', i2); r.push(($('#dcGm') || {}).textContent.includes('مكسبك فيها تقريباً ' + fmtP(30000)) && $('#dcGm').textContent.includes('من غير تكلفة')); closeModal();
+      docModal(sp, 'pur'); r.push(!$('#dcGm')); closeModal();
+      costModal(); const el = $$('#icL .icr').find(x => x.querySelector('.icn b').textContent === TR), inp = el && el.querySelector('input');
+      r.push(!!inp && inp.placeholder === fmtP(10000) && !inp.value); inp.value = '120'; $('#icOk').click();
+      r.push(JSON.stringify(icAll()[icKey(TR, 'لفة')].h) === JSON.stringify([[t, 12000]]), docMargin(i2).m);
+      db.entries.splice(n0); ['e_gm1', 'e_gm2p', 'e_gm2', 'e_gm3', 'e_gm4'].forEach(id => E.delete(id));
+      const sr = IDX.set.get('itemCost'); db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('itemCost'); repGmKind = 'item'; saveDB();
+      return r; }), [true, 30000, [110000, 80000, 30000, 1], 3000, 12000, 75000, 270000, true, true, '650', '—', true, true, true, true, true, true, 26000]);
     eq('سطر الفاتورة بيتقرّب لأقرب قرش (1.5 × 3.33 = 5)', await A.evaluate(() => [lineTot({qty: 1.5, price: 333}), docTotal({lines: [{qty: 1.5, price: 333}, {qty: 0.333, price: 1000}], disc: 0})]), [500, 833]);
 
     eq('مفيش أرقام فواتير: لا خانة ولا عرض في الكشف ولا العنوان', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv'); const f = !!$('#dcNo'); closeModal();
@@ -2861,7 +2886,7 @@ const T0 = Date.now();
       go('mkt'); return r; }), [true, true, true, true, true, true]);
     sec('قاعدة التبويبات: سطر واحد ونفس الارتفاع ومفيش كلام مقطوع');
     /* أي مجموعة تبويبات (.seg) ظاهرة: كل زرار نفس الارتفاع، الكلام مش ملفوف على سطرين ولا متقطع */
-    for (const k of ['home', 'profit', 'col', 'debt', 'tot', 'cash', 'item']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
+    for (const k of ['home', 'profit', 'col', 'debt', 'tot', 'cash', 'item', 'gm']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
     await A.evaluate(() => { cashView = 'type'; go('cash'); renderCash(); $('#cPer').classList.add('pk'); }); await A.settle(200); await segOk(A, 'الحسابات — الخزنة (النهارده/الأسبوع/الشهر/من لـ)');
     await A.evaluate(() => { mkView = 'arch'; mkAMode = 'day'; go('mkt'); renderMkt(); }); await A.settle(200); if (await A.$('#maMode')) await segOk(A, 'الحسابات — أرشيف الوارد'); await A.evaluate(() => { mkView = 'in'; });
         await A.evaluate(() => go('set')); await A.settle(200); await segOk(A, 'الحسابات — الإعدادات');

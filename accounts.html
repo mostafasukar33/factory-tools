@@ -233,6 +233,13 @@ nav .nb{position:absolute;top:6px;inset-inline-start:calc(50% + 6px);background:
 .rcper{font-size:var(--f1);color:var(--sub);font-weight:700;margin:2px 4px 4px}
 .rch3{font-size:var(--f2);color:var(--sub);font-weight:800;margin:14px 4px 6px}
 .rcg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:999px){.rcg>.rcd.w{grid-column:1/-1}}
+/* تكلفة الأصناف ومكسب البضاعة */
+.dgm{font-size:var(--f2);color:var(--sub);font-weight:700;margin:6px 2px 0}.dgm:empty{display:none}.dgm b{color:var(--green);direction:ltr;unicode-bidi:isolate}.dgm b.neg{color:var(--red)}
+.icr{display:grid;grid-template-columns:minmax(0,1fr) 110px 54px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.icn b{display:block;font-size:var(--f3);overflow-wrap:anywhere}.icn small{color:var(--sub);font-size:var(--f1);font-weight:600}
+.icr .inp{min-height:44px;text-align:center}.icp{font-size:var(--f2);font-weight:800;color:var(--green);text-align:center;direction:ltr}.icp.neg{color:var(--red)}
+table.ldg.rp tr.mute td{color:var(--sub)}
 .rcd{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer;min-width:0;box-shadow:0 1px 2px rgba(0,0,0,.05)}
 .rcd span{display:block;font-size:var(--f1);font-weight:800;color:var(--sub)}
 .rcd b{display:block;font-size:var(--f4);color:var(--ink);margin:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -245,8 +252,9 @@ nav .nb{position:absolute;top:6px;inset-inline-start:calc(50% + 6px);background:
 .rcd small.up{color:var(--green)}.rcd small.dn{color:var(--red)}
 @media (min-width:1000px){.rcg{grid-template-columns:repeat(4,1fr)}}
 /* تقرير الخزنة على الموبايل (بطلبه 24/10/2026): التفاصيل تحت اسم الحركة بدل عمود لوحده، علشان داخل/خارج/الرصيد يبانوا من غير سحب */
-.rpsub{display:none}
-@media (max-width:640px){table.rpc{min-width:0!important;width:100%}table.rpc :is(th,td):nth-child(3){display:none}table.rpc .rpsub{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}}.rph small{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}
+.rpsub{display:none}table.gmi td.l small.rpsub{display:none}
+@media (max-width:640px){table.gmi{min-width:0!important;width:100%}table.gmi :is(th,td):nth-child(2){display:none}table.gmi td.l small.rpsub{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}table.gmi td.l{min-width:0}
+  table.rpc{min-width:0!important;width:100%}table.rpc :is(th,td):nth-child(3){display:none}table.rpc .rpsub{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}}.rph small{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}
 .ldg.rp tr[data-p],.ldg.rp tr[data-k]{cursor:pointer}
 table.ldg.rp.wide{min-width:520px}.ldg.rp td{white-space:nowrap}.ldg.rp td.l{white-space:normal;min-width:110px}
 .sech{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;font-weight:800;color:var(--gold-d)}
@@ -2669,11 +2677,13 @@ function docModal(p, kind, e, opts = {}) {
     <div id="dcWarn"></div>
     <div class="mfoot">
       <div class="dtot"><span>${ret ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}<small id="dcDs"></small></span><b id="dcTot">0</b></div>
+      ${kind === 'inv' ? '<div class="dgm" id="dcGm"></div>' : ''}
       ${!isNew ? `<div class="msec">${kind === 'inv' ? '<button class="btn line sm" id="dcDlv" type="button">🚚 إذن تسليم</button>' : ''}<button class="btn red sm" id="dcDel" type="button">${ret ? 'إلغاء المرتجع' : 'إلغاء الفاتورة'}</button></div>` : ''}
       <div class="mrow"><button class="btn gold" id="dcOk" type="button">${isNew ? 'حفظ الفاتورة' : nl ? 'حفظ البنود' : 'حفظ التعديل'}</button><button class="btn line" id="dcX" type="button">رجوع</button></div></div>`, true);
   if ($('#fwMk')) $('#fwMk').onclick = () => { e.fwMan = true; touch(e); saveDB(); closeModal(); route(); toast('✔ اتعلّمت إنها متنقلة (من غير ما تتنقل تاني)'); };
   if ($('#fwUn')) $('#fwUn').onclick = () => { delete e.fwMan; touch(e); saveDB(); closeModal(); route(); toast('رجعت "متنقلتش"'); };
   if ($('#fwOne')) $('#fwOne').onclick = () => { if (fwMove(p, e)) { saveDB(); closeModal(); route(); toast(`✔ اتنقلت لحساب ${fwdMain(p).name}`); } };
+  let gmCb = null;
   const readLines = () => $$('#dcLines .li').map(el => ({name: el.querySelector('[data-f=name]').value.trim().replace(/\s+/g, ' '), unit: el.querySelector('[data-f=unit]').value, qty: el.querySelector('[data-f=qty]').value, price: el.querySelector('[data-f=price]').value}));
   const calc = () => {
     let t = 0;
@@ -2684,6 +2694,10 @@ function docModal(p, kind, e, opts = {}) {
     const ds = toP($('#dcDisc').value); t -= ds;
     $('#dcDs').textContent = ds ? 'بعد خصم ' + fmtP(ds) : '';
     $('#dcTot').textContent = fmtP(t) + ' ' + CUR; $('#dcTot').style.color = t < 0 ? 'var(--red)' : '';
+    if ($('#dcGm')) {   // مكسبك في الفاتورة دي (ليك انت بس، مش في ورقة الفاتورة): البنود اللي ليها تكلفة
+      const g = docMargin({kind, date: $('#dcDate').value || todayISO(), disc: ds, lines: readLines().map(l => ({name: l.name, unit: l.unit, qty: num(l.qty), price: toP(l.price)}))}, gmCb || (gmCb = costBook()));
+      $('#dcGm').innerHTML = g.cov ? `💰 مكسبك فيها تقريباً <b class="${g.m < 0 ? 'neg' : ''}">${fmtP(g.m)}</b> (${gmPct(g.m, g.cov)}%)${g.miss.length ? ` <small>· ${g.miss.length === 1 ? 'صنف' : g.miss.length + ' أصناف'} من غير تكلفة</small>` : ''}` : '';
+    }
     if (mkT !== null) $('#dcMk').innerHTML = t === mkT ? '<span style="color:var(--green)">✓ مطابق لإجمالي شريكك</span>' : `<span style="color:var(--red)">الفرق عن إجمالي شريكك: ${fmtP(t - mkT)}</span>`;
   };
   /* البنود جدول (بطلبه 17/10/2026): كل صنف سطر واحد، وآخر سطر فاضي دايماً وأول ما يتكتب فيه بيطلع تحته سطر فاضي جديد بوحدة السطر اللي قبله.
@@ -5489,6 +5503,125 @@ function stockDiff(f, t) {
   const L = jrdSaved().filter(x => !x.n.noStock), b = L.find(x => x.date === t), a = L.find(x => x.date === addDays(f, -1)) || L.find(x => x.date === f);
   return a && b && a !== b ? {a, b, d: b.stock - a.stock} : null;
 }
+/* ====================== تكلفة الأصناف ومكسب البضاعة (بطلبه 30/10/2026) ======================
+   التكلفة إعداد set اسمه itemCost: {k: {"الاسم|الوحدة": {n, u, h: [[من يوم, قرش للوحدة], ...]}}}. الفواتير القديمة بتاخد التكلفة اللي كانت وقتها
+   (وأقدم تكلفة للي قبلها). الصنف اللي مالوش تكلفة مكتوبة وبيتشرى بنفس الاسم والوحدة بياخد آخر سعر شراء قبل يوم البيع (تجارة).
+   عرض بس: مبيغيّرش أي حركة ولا رصيد ولا الربح (profitOf)، ومش بيظهر في ورقة الفاتورة أو الكشف اللي بتروح للعميل */
+const icKey = (name, unit) => norm(name) + '|' + (unit || '');
+const icAll = () => (getSet('itemCost', null) || {}).k || {};
+function costBook() {
+  const man = icAll(), pur = new Map();
+  for (const e of db.entries) {
+    if (e.del || e.kind !== 'pur' || e.mkNL) continue;
+    (e.lines || []).forEach(l => { const pr = +l.price || 0; if (pr <= 0 || !l.name) return; const k = icKey(l.name, l.unit); if (!pur.has(k)) pur.set(k, []); pur.get(k).push([e.date, pr]); });
+  }
+  pur.forEach(a => a.sort((x, y) => x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0));
+  const pick = (a, d) => { let r = a[0]; for (const x of a) { if (x[0] <= d) r = x; else break; } return r[1]; };
+  /* (اسم، وحدة، يوم) ← {c: قرش للوحدة، src: m مكتوبة / p آخر شراء} أو null */
+  return (name, unit, d) => {
+    const k = icKey(name, unit), m = man[k];
+    if (m && m.h && m.h.length) return {c: pick(m.h, d), src: 'm'};
+    const a = pur.get(k); return a ? {c: pick(a, d), src: 'p'} : null;
+  };
+}
+/* بنود فاتورة بيع (أو مرتجع بيع بالسالب) بعد نصيبها من الخصم، وتكلفة كل بند لو ليه */
+function docGmLines(e, cb) {
+  const sg = e.kind === 'rinv' ? -1 : 1, ls = (e.lines || []).filter(l => lineTot(l)), rev = ls.reduce((s, l) => s + lineTot(l), 0);
+  return ls.map(l => {
+    const v = lineTot(l), net = v - (rev && e.disc ? Math.round(e.disc * v / rev) : 0), c = l.name ? cb(l.name, l.unit, e.date) : null;
+    return {l, net: sg * net, cost: c ? sg * Math.round((+l.qty || 0) * c.c) : null};
+  });
+}
+/* مكسب فاتورة: البنود اللي ليها تكلفة بس. cov = بيعها، m = مكسبها، miss = أسامي البنود اللي مالهاش تكلفة */
+function docMargin(e, cb = costBook()) {
+  const r = {cov: 0, cost: 0, m: 0, miss: []};
+  docGmLines(e, cb).forEach(x => { if (x.cost === null) r.miss.push(x.l.name || '؟'); else { r.cov += x.net; r.cost += x.cost; } });
+  r.m = r.cov - r.cost; return r;
+}
+const gmPct = (m, v) => v ? Math.round(m * 1000 / v) / 10 : 0;
+/* مكسب البضاعة في فترة: بالصنف وبالعميل وبالشهر. B = بيع ليه تكلفة، A = مكسبه، C = باقي المبيعات (من غير تكلفة: بيع كاش،
+   فواتير بالإجمالي، خصومات وتسويات، أصناف مالهاش تكلفة) = profitOf().sales − B، وتقديره بنفس نسبة A/B */
+function gmData(f, t) {
+  const cb = costBook(), it = new Map(), cu = new Map(), mo = new Map();
+  let A = 0, B = 0;
+  for (const e of db.entries) {
+    if (e.del || (e.kind !== 'inv' && e.kind !== 'rinv') || e.date < f || e.date > t) continue;
+    const p = P.get(e.party); if (!p || p.noTot || p.sec === 'sup') continue;
+    docGmLines(e, cb).forEach(x => {
+      const k = icKey(x.l.name, x.l.unit), sg = e.kind === 'rinv' ? -1 : 1;
+      const o = it.get(k) || {name: x.l.name, unit: x.l.unit, q: 0, v: 0, cv: 0, c: 0, miss: false}; it.set(k, o);
+      o.q += sg * (+x.l.qty || 0); o.v += x.net;
+      if (x.cost === null) { o.miss = true; return; }
+      o.cv += x.net; o.c += x.cost; A += x.net - x.cost; B += x.net;
+      for (const [map, key, nm] of [[cu, p.id, p.name], [mo, e.date.slice(0, 7), '']]) { const y = map.get(key) || {name: nm, cv: 0, c: 0}; y.cv += x.net; y.c += x.cost; map.set(key, y); }
+    });
+  }
+  const S = profitOf(f, t).sales, C = S - B, est = B > 0 ? Math.round(C * A / B / 100) * 100 : 0;   // تقدير: بالجنيه من غير قروش
+  return {A, B, S, C, est, pct: gmPct(A, B), cov: S ? Math.round(B * 100 / S) : 0, it, cu, mo, missN: [...it.values()].filter(x => x.miss && x.v).length};
+}
+let repGmKind = 'item';
+function gmReport(f, t) {
+  const D = gmData(f, t), cell = (cv, c) => [fmtP(cv), fmtP(c), fmtP(cv - c), gmPct(cv - c, cv) + '%'];
+  let cols, rows;
+  if (repGmKind === 'cust') {
+    cols = [{h: 'العميل', w: 34, c: 'l'}, {h: 'البيع', w: 17, c: 'n'}, {h: 'التكلفة', w: 17, c: 'n'}, {h: 'المكسب', w: 17, c: 'b'}, {h: 'النسبة', w: 15, c: 'n'}];
+    rows = [...D.cu.entries()].map(([id, x]) => ({id, m: x.cv - x.c, cells: [x.name, ...cell(x.cv, x.c)], cls: x.cv - x.c < 0 ? 'ret' : ''})).sort((a, b) => b.m - a.m);
+  } else if (repGmKind === 'month') {
+    cols = [{h: 'الشهر', w: 22, c: 'l'}, {h: 'البيع', w: 20, c: 'n'}, {h: 'التكلفة', w: 20, c: 'n'}, {h: 'المكسب', w: 20, c: 'b'}, {h: 'النسبة', w: 18, c: 'n'}];
+    rows = [...D.mo.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([m, x]) => ({cells: [`${MONTHS[+m.slice(5) - 1]} ${m.slice(0, 4)}`, ...cell(x.cv, x.c)], cls: x.cv - x.c < 0 ? 'ret' : ''}));
+  } else {
+    cols = [{h: 'الصنف', w: 30, c: 'l'}, {h: 'الكمية', w: 14, c: 'q'}, {h: 'البيع', w: 14, c: 'n'}, {h: 'التكلفة', w: 14, c: 'n'}, {h: 'المكسب', w: 14, c: 'b'}, {h: 'النسبة', w: 14, c: 'n'}];
+    rows = [...D.it.values()].filter(x => x.v).sort((a, b) => (a.miss && !a.cv) - (b.miss && !b.cv) || (b.cv - b.c) - (a.cv - a.c))
+      .map(x => ({cells: [x.cv ? x.name : x.name + ' — مالوش تكلفة', x.unit ? `${fmtQ(x.q)} ${x.unit}` : '', fmtP(x.v), ...(x.cv ? [fmtP(x.c), fmtP(x.cv - x.c), gmPct(x.cv - x.c, x.cv) + '%'] : ['—', '—', '—'])], cls: x.cv - x.c < 0 ? 'ret' : x.cv ? '' : 'mute'}));
+  }
+  const sum = [['المبيعات كلها', fmtP(D.S)], ['منها ليه تكلفة', `${fmtP(D.B)} (${D.cov}%)`], ['مكسبه', `${fmtP(D.A)} (${D.pct}%)`],
+    ...(D.C && D.B ? [['من غير تكلفة', fmtP(D.C)], ['تقدير مكسبه بنفس النسبة', '~ ' + fmtP(D.est)]] : D.C ? [['من غير تكلفة', fmtP(D.C)]] : []),
+    ...(D.missN ? [['أصناف مالهاش تكلفة لسه', String(D.missN)]] : [])];
+  return {title: 'مكسب البضاعة ' + ({cust: 'بالعميل', month: 'بالشهر'}[repGmKind] || 'بالصنف'), period: rangeText(f, t), cols, rows, sum,
+    fin: [D.C && D.B ? 'المكسب كله تقريباً' : 'مكسب البضاعة', (D.C && D.B ? '~ ' : '') + fmtP(D.A + (D.B ? D.est : 0))],
+    note: 'المكسب = سعر البيع بعد الخصم − التكلفة اللي انت كاتبها للصنف (ولو مش كاتبها وبتشتريه بنفس الاسم: آخر سعر شراء). مش داخل فيه المصاريف اللي مش في التكلفة ولا الشركاء. '
+      + 'البيع اللي مالوش تكلفة (بيع كاش، فواتير بالإجمالي، خصومات وتسويات، أصناف لسه متكتبش تكلفتها) بيتقدّر بنفس نسبة المكسب. ده عرض بس، ومبيغيّرش تقرير الأرباح.'};
+}
+/* نافذة تكلفة الأصناف: كل صنف اتباع (الأكتر بيع في آخر سنة فوق)، وخانة تكلفة الوحدة زي ما بتتباع. الحفظ بيزوّد سطر "من النهارده" */
+function costModal(after) {
+  const cb = costBook(), t = todayISO(), y0 = addDays(t, -365), man = icAll(), m = new Map();
+  for (const e of db.entries) {
+    if (e.del || e.kind !== 'inv' || e.mkNL) continue;
+    (e.lines || []).forEach(l => {
+      if (!l.name || !lineTot(l)) return; const k = icKey(l.name, l.unit), o = m.get(k) || {k, name: l.name, unit: l.unit || '', v: 0, last: '', price: 0}; m.set(k, o);
+      if (e.date >= y0) o.v += lineTot(l); if (e.date >= o.last) { o.last = e.date; o.price = +l.price || 0; o.name = l.name; }
+    });
+  }
+  const L = [...m.values()].sort((a, b) => b.v - a.v || (a.name < b.name ? -1 : 1));
+  const row = (o, i) => { const c = man[o.k] && man[o.k].h.length ? man[o.k].h[man[o.k].h.length - 1][1] : 0, au = !c && cb(o.name, o.unit, t);
+    return `<div class="icr" data-i="${i}"><div class="icn"><b>${esc(o.name)}</b><small>${esc(o.unit || '')}${o.price ? ` · آخر بيع ${fmtP(o.price)}` : ''}${au ? ` · آخر شراء ${fmtP(au.c)}` : ''}</small></div>
+      <input class="inp num" inputmode="decimal" placeholder="${au ? fmtP(au.c) : 'التكلفة'}" value="${c ? fmtP(c) : ''}" aria-label="تكلفة ${esc(o.name)}"><span class="icp"></span></div>`; };
+  modal(`<h3>💰 تكلفة الأصناف</h3>
+    <p class="hint" style="margin:0 0 8px">اكتب تكلفة الوحدة زي ما بتبيعها (الكيلو أو اللفة أو الكرتونة). تقدر تكتب حسبة زي <b>95*2.5</b> (تكلفة الكيلو × وزن اللفة).
+      الصنف اللي بتشتريه وتبيعه زي ما هو بياخد آخر سعر شراء لوحده لو سبته فاضي. ولو غيّرت تكلفة بعدين، الفواتير القديمة بتفضل على التكلفة القديمة.</p>
+    ${L.length > 8 ? '<input class="inp" id="icQ" type="search" placeholder="دوّر على صنف" autocomplete="off" style="margin-bottom:8px">' : ''}
+    <div id="icL">${L.length ? L.map(row).join('') : '<p class="hint">مفيش فواتير بيع بأصناف لسه.</p>'}</div>
+    <div class="mfoot"><div class="mrow"><button class="btn gold" id="icOk" type="button">حفظ التكلفة</button><button class="btn line" id="icX" type="button">رجوع</button></div></div>`, true);
+  const pct = el => { const o = L[+el.dataset.i], c = toP(el.querySelector('input').value) || (cb(o.name, o.unit, t) || {}).c || 0;
+    el.querySelector('.icp').textContent = c && o.price ? gmPct(o.price - c, o.price) + '%' : ''; el.querySelector('.icp').className = 'icp' + (c > o.price ? ' neg' : ''); };
+  $$('#icL .icr').forEach(el => { pct(el); el.querySelector('input').addEventListener('input', () => pct(el)); bindMoney(el.querySelector('input')); });
+  if ($('#icQ')) $('#icQ').oninput = () => { const q = norm($('#icQ').value.trim()); $$('#icL .icr').forEach(el => { el.style.display = !q || norm(L[+el.dataset.i].name).includes(q) ? '' : 'none'; }); };
+  $('#icX').onclick = closeModal;
+  $('#icOk').onclick = () => {
+    const k0 = JSON.stringify(icAll()), K = JSON.parse(k0);
+    $$('#icL .icr').forEach(el => {
+      const o = L[+el.dataset.i], v = toP(el.querySelector('input').value), cur = K[o.k];
+      if (!v) { delete K[o.k]; return; }
+      if (v < 0) return;
+      const h = cur && cur.h ? cur.h.slice() : [];
+      if (h.length && h[h.length - 1][1] === v) return;
+      if (h.length && h[h.length - 1][0] === t) h.pop();
+      h.push([t, v]); K[o.k] = {n: o.name, u: o.unit, h};
+    });
+    if (JSON.stringify(K) !== k0) { putSet('itemCost', {k: K}); toast('اتحفظت التكلفة ✔'); }
+    closeModal(); if (after) after();
+  };
+}
 function profitReport(f, t) {
   const rows = [], tot = {sales: 0, cs: 0, purch: 0, exp: 0, inc: 0, part: 0, iv: 0, before: 0, after: 0}, cats = new Map();
   for (let m = f.slice(0, 7); m <= t.slice(0, 7);) {
@@ -5618,6 +5751,7 @@ function buildReport() {
   const ps = liveParties();
   if (repKind === 'profit' || repKind === 'home') { const [f, t] = repRange(); return profitReport(f, t); }
   if (repKind === 'col') return colReport();
+  if (repKind === 'gm') { const [f, t] = repRange(); return gmReport(f, t); }
   if (repKind === 'debt') {
     /* لكل حساب: إجمالي اللي اتسحب (فواتير ورصيد أول المدة) وإجمالي اللي اتدفع (دفعات ومرتجعات وخصومات) والرصيد، زي أعمدة الكشف بالظبط */
     const sup = repSide === 'sup';
@@ -5741,13 +5875,15 @@ function sumCmp(x, y, good, pn) {
 }
 function repCards() {
   const D = sumData(repSum), {R, a, b} = D, pn = R.pn;
-  const card = (go, label, v, sub, neg) => `<div class="rcd" data-go="${go}" role="button" tabindex="0"><span>${esc(label)}</span><b class="n${neg ? ' neg' : ''}">${v}</b>${sub}</div>`;
+  const card = (go, label, v, sub, neg, cls) => `<div class="rcd${cls ? ' ' + cls : ''}" data-go="${go}" role="button" tabindex="0"><span>${esc(label)}</span><b class="n${neg ? ' neg' : ''}">${v}</b>${sub}</div>`;
   const sec = (h, cs) => `<h3 class="rch3">${h}</h3><div class="rcg">${cs.join('')}</div>`;
   return `<div class="seg s4" id="rpS">${REP_SUM.map(([k, n]) => `<button type="button" data-v="${k}" class="${repSum === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="rcper">${esc(rangeText(R.f, R.to))}</div>
     ${sec('فلوسي', [
       card('profit', 'الربح قبل الشركاء', fmtP(a.before), sumCmp(a.before, b.before, 1, pn), a.before < 0),
-      card('cashp', D.hasM ? 'المصنع كله دلوقتي' : 'في الخزن دلوقتي', fmtP(D.me + D.mk), `<small>${D.hasM ? `معاك ${fmtP(D.me)} + مع ${esc(MK_PN)} ${fmtP(D.mk)}` : 'كل الخزن'}</small>`, D.me + D.mk < 0)])}
+      (G => G.B ? card('gm', 'مكسب البضاعة', (G.C ? '~ ' : '') + fmtP(G.A + G.est), `<small>${G.pct}% من البيع${G.cov < 100 ? ` · ${G.cov}% ليه تكلفة` : ''}</small>`, G.A < 0)
+        : card('gm', 'مكسب البضاعة', '—', '<small>اكتب تكلفة الأصناف</small>'))(gmData(R.f, R.to)),
+      card('cashp', D.hasM ? 'المصنع كله دلوقتي' : 'في الخزن دلوقتي', fmtP(D.me + D.mk), `<small>${D.hasM ? `معاك ${fmtP(D.me)} + مع ${esc(MK_PN)} ${fmtP(D.mk)}` : 'كل الخزن'}</small>`, D.me + D.mk < 0, 'w')])}
     ${sec('شغلي', [
       card('profit', 'المبيعات', fmtP(a.sales), sumCmp(a.sales, b.sales, 1, pn)),   // فيها البيع الكاش، فبتفتح الأرباح مش «بالصنف»
       card('itemp', 'المشتريات', fmtP(a.purch), sumCmp(a.purch, b.purch, -1, pn)),
@@ -5776,7 +5912,7 @@ function repOpen(go) {
 function renderReports() {
   loadPdfLibs().catch(() => {});   // نجهّز أداة الـ PDF من دلوقتي علشان تبقى جاهزة لما يدوس
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
-  const needRange = repKind === 'ah' || repKind === 'cash' || repKind === 'item' || repKind === 'profit';
+  const needRange = repKind === 'ah' || repKind === 'cash' || repKind === 'item' || repKind === 'profit' || repKind === 'gm';
   const jw = isWide() ? 0 : ivWaiting(), home = repKind === 'home';
   const head = (isWide() ? '' : `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b></div>`)
     + ((st => st ? `<div class="tstrip">${st}</div>` : '')((home ? '' : '<button class="btn line sm" id="rpHome" type="button">📊 الملخص</button>') + (isWide() ? '' : `<button class="btn line sm" id="rpJrd" type="button">📦 الجرد والمساهمون${jw ? ` (${jw})` : ''}</button>`)));
@@ -5789,22 +5925,24 @@ function renderReports() {
     return;
   }
   $('#p-rep').innerHTML = head + `
-    <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف'], ['ah', MK_PN]].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    <div class="seg s6" id="rpK">${[['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف'], ['gm', 'المكسب'], ['ah', MK_PN]].map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="card">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'col' ? `<div class="seg s2" id="rpCM">${[['week', 'أسبوعي'], ['month', 'شهري']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repColMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${repColMode === 'week' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">` : `<input class="inp num" id="rpYear" inputmode="numeric" value="${repYear || t.slice(0, 4)}">`}` : ''}
+      ${repKind === 'gm' ? `<div class="seg s3" id="rpGK">${[['item', 'بالصنف'], ['cust', 'بالعميل'], ['month', 'بالشهر']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repGmKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'item' ? `<div class="seg" id="rpIK">${[['inv', 'المبيعات'], ['pur', 'المشتريات']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repItemKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${needRange ? `<div class="seg s4" id="rpM">${(repKind === 'ah' ? [['week', 'أسبوع'], ['month', 'شهر'], ['range', 'من–إلى']] : [['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']]).map(([k, n]) => `<button type="button" data-m="${k}" class="${repMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${repMode === 'day' || repMode === 'week' ? `<input class="inp" type="date" id="rpDay" value="${repDay || t}">` : repMode === 'month' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">`
           : repMode === 'year' ? `<input class="inp num" id="rpYear" inputmode="numeric" value="${repYear || t.slice(0, 4)}">` : `<div class="g2"><input class="inp" type="date" id="rpFrom" value="${f}"><input class="inp" type="date" id="rpTo" value="${to}"></div>`}` : ''}
-      ${repKind === 'profit' ? qh(esc(R.note)) : ''}
+      ${repKind === 'profit' || repKind === 'gm' ? qh(esc(R.note)) : ''}
+      ${repKind === 'gm' ? '<button class="btn line" id="rpIC" type="button" style="margin-top:8px;width:100%">💰 تكلفة الأصناف</button>' : ''}
       ${repKind === 'cash' ? `<select class="inp" id="rpV" style="margin-top:8px"><option value="">كل الخزن</option>${vaultsL().map(v => `<option value="${esc(v.id)}" ${repVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>` : ''}
     </div>
     <h2 class="rph">${esc(R.title)}<small>${esc(R.period)}</small></h2>
     ${repKind === 'profit' ? profitChart(R.rows) : ''}
-    ${R.rows.some(r => !r.empty) ? `<div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''} ${repKind === 'profit' ? 'pft' : ''} ${repKind === 'cash' ? 'rpc' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
-      ${R.rows.filter(r => !r.empty).map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}${repKind === 'cash' && i === 1 && r.cells[2] ? `<small class="rpsub">${esc(r.cells[2])}</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
+    ${R.rows.some(r => !r.empty) ? `<div class="ldgw"><table class="ldg rp ${R.cols.length > 5 ? 'wide' : ''} ${repKind === 'profit' ? 'pft' : ''} ${repKind === 'cash' ? 'rpc' : ''} ${repKind === 'gm' && R.cols.length === 6 ? 'gmi' : ''}"><thead><tr>${R.cols.map(c => `<th>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>
+      ${R.rows.filter(r => !r.empty).map(r => `<tr class="${r.cls || ''}" ${r.id ? `data-p="${esc(r.id)}"` : ''}>${r.cells.map((x, i) => `<td class="${R.cols[i].c}">${esc(x)}${repKind === 'cash' && i === 1 && r.cells[2] ? `<small class="rpsub">${esc(r.cells[2])}</small>` : ''}${repKind === 'gm' && i === 0 && R.cols.length === 6 && r.cells[1] ? `<small class="rpsub">${esc(r.cells[1])}</small>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">مفيش حاجة في التقرير ده</div>'}
     ${R.warn ? `<a class="ldpend" href="#mkt">${esc(R.warn)}</a>` : ''}
     <div class="card" style="margin-top:10px">${R.sum.map(([a, b, st]) => `<div class="bl ${st || ''}"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
     <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>
@@ -5812,6 +5950,8 @@ function renderReports() {
   $$('#rpK button').forEach(b => b.onclick = () => { repKind = b.dataset.v; if (repKind === 'profit' && repMode === 'day') repMode = 'year'; if (repKind === 'ah' && (repMode === 'day' || repMode === 'year')) repMode = 'week'; if (repKind !== 'ah' && repMode === 'week') repMode = 'month'; renderReports(); });
   $$('#rpSide button').forEach(b => b.onclick = () => { repSide = b.dataset.v; renderReports(); });
   $$('#rpIK button').forEach(b => b.onclick = () => { repItemKind = b.dataset.v; renderReports(); });
+  $$('#rpGK button').forEach(b => b.onclick = () => { repGmKind = b.dataset.v; renderReports(); });
+  if ($('#rpIC')) $('#rpIC').onclick = () => costModal(renderReports);
   $$('#rpCM button').forEach(b => b.onclick = () => { repColMode = b.dataset.v; renderReports(); });
   $$('#rpM button').forEach(b => b.onclick = () => { repMode = b.dataset.m; renderReports(); });
   const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); renderReports(); }; };

@@ -2710,6 +2710,31 @@ function itemBook() {
   db.entries.filter(e => isDoc(e) && !e.del && !e.mkNL).sort(entCmp).forEach(e => (e.lines || []).forEach(l => m.set(norm(l.name), {name: l.name, unit: l.unit, price: l.price})));
   return m;
 }
+/* الوحدة لوحدها في الفاتورة (بطلبه 31/10/2026: "خرطوم 16 يفهم إنها لفة، وماجيك كرتونة، وفيه عملا قليلين بياخدوا الخرطوم بالكيلو"):
+   unit(اسم) = الوحدة الأكتر للصنف ده عند الحساب ده، وإلا أصناف شبهه عنده (نفس أول كلمة)، وإلا الخامة في الشرا كيلو، وإلا القاموس UNIT_KW،
+   وإلا الأكتر عند كل الحسابات. byPrice(اسم، سعر) = كيلو أو لفة حسب السعر أقرب لسعر الكيلو ولا اللفة في الأصناف اللي شبهه (لو الفرق بينهم واضح) */
+const UNIT_KW = [[/ماجيك|علبه/, 'كرتونة'], [/خرطوم|لفه|بيور|سلك|مواسير|سوست|وير|فلسكبل|فلكسبل/, 'لفة'], [/كابل|كبل|المونيوم/, 'متر']];
+const uGroup = n => n.split(' ').find(w => w && !/^(لفه|لفف|مم|م|ك|كيلو|[\d.]+)$/.test(w)) || '';
+function unitBook(pid, kind) {
+  const ex = new Map(), gr = new Map(), pex = new Map(), pgr = new Map(), pr = new Map();
+  const inc = (m, k, u) => { if (!k) return; const o = m.get(k) || {}; o[u] = (o[u] || 0) + 1; m.set(k, o); };
+  for (const e of db.entries) {
+    if (e.del || e.kind !== kind || e.mkNL) continue;
+    (e.lines || []).forEach(l => { if (!l.name || !l.unit) return; const n = norm(l.name), g = uGroup(n);
+      inc(ex, n, l.unit); inc(gr, g, l.unit); if (e.party === pid) { inc(pex, n, l.unit); inc(pgr, g, l.unit); }
+      if (g && +l.price > 0 && (l.unit === 'كيلو' || l.unit === 'لفة')) { const k = g + '|' + l.unit; if (!pr.has(k)) pr.set(k, []); pr.get(k).push(+l.price); } });
+  }
+  const top = o => { let b = '', bv = 0; for (const u in o || {}) if (o[u] > bv) { b = u; bv = o[u]; } return b; };
+  const med = a => { if (!a || !a.length) return 0; a = a.slice().sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; };
+  return {
+    /* "وحدة" أضعف اختيار (كراتين الماجيك كانت بتتكتب وحدة): بتتاخد بس لو مفيش غيرها */
+    unit: name => { const n = norm(name), g = uGroup(n);
+      const c = [top(pex.get(n)), top(pgr.get(g)), kind === 'pur' && matOf(name) ? 'كيلو' : '', (UNIT_KW.find(([r]) => r.test(n)) || [])[1], top(ex.get(n)), top(gr.get(g))];
+      return c.find(x => x && x !== 'وحدة') || c.find(x => x) || ''; },
+    byPrice: (name, price) => { const g = uGroup(norm(name)), k = med(pr.get(g + '|كيلو')), r = med(pr.get(g + '|لفة'));
+      return k && r && r >= 2 * k && price > 0 ? (price < Math.sqrt(k * r) ? 'كيلو' : 'لفة') : ''; }
+  };
+}
 /* آخر سعر الصنف ده اتباع/اتشرى بيه لنفس الحساب */
 function lastPrice(pid, kind, name) {
   const k = norm(name); let r = null;
@@ -2736,7 +2761,7 @@ function docModal(p, kind, e, opts = {}) {
   /* nl = فاتورة من السوق اتنقلت بالإجمالي وبنودها لسه: بتفتح فاضية، والإجمالي لازم يطابق، وأول حفظ بيشيل التنبيه */
   const nl = !!(e && e.mkNL), mkT = opts.mk ? opts.mk.amt : nl ? docTotal(e) : null, fill = isNew || nl;
   const lines = e && !nl ? e.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty), price: fmtP(l.price)})) : [{name: '', unit: 'كيلو', qty: '', price: ''}];
-  let bk = null; const book = {get: k => (bk = bk || itemBook()).get(k)}, mine = custItems(p.id, base);   // كل أصناف كل الفواتير بتتحسب بس لما تحتاجها (كانت بتهنّج فتح الفاتورة)
+  let bk = null, ub = null; const book = {get: k => (bk = bk || itemBook()).get(k)}, mine = custItems(p.id, base), uBook = () => ub || (ub = unitBook(p.id, base));   // كل أصناف كل الفواتير بتتحسب بس لما تحتاجها (كانت بتهنّج فتح الفاتورة)
   const lastDoc = fill ? db.entries.filter(x => x.party === p.id && x.kind === kind && !x.del && !x.mkNL && x.lines && x.lines.length).sort(entCmp).pop() : null;
   modal(`<h3>${isNew ? ttl : nl ? '📝 اكتب بنود الفاتورة' : 'تعديل ' + esc(docTitle(e))}<small class="mnm">${esc(p.name)}</small></h3>
     ${mkT !== null ? `<div class="sync" style="margin:0 0 10px;display:block">📥 فاتورة من شريكك في السوق${nl ? ' (اتنقلت بالإجمالي)' : ''} — إجمالي: <b class="money">${fmtP(mkT)}</b><br><small>اكتب البنود (كمية وسعر) والإجمالي لازم يطابق ده.</small><div id="dcMk" style="margin-top:4px;font-weight:800"></div></div>` : ''}
@@ -2781,7 +2806,7 @@ function docModal(p, kind, e, opts = {}) {
   /* البنود جدول (بطلبه 17/10/2026): كل صنف سطر واحد، وآخر سطر فاضي دايماً وأول ما يتكتب فيه بيطلع تحته سطر فاضي جديد بوحدة السطر اللي قبله.
      Enter أو "التالي" في كيبورد الموبايل بينقل: الاسم ← الكمية ← السعر ← اسم السطر اللي بعده (الوحدة بالإيد بس) */
   const isBlank = li => !li.querySelector('[data-f=name]').value.trim() && !li.querySelector('[data-f=qty]').value.trim() && !li.querySelector('[data-f=price]').value.trim();
-  const rowHtml = l => `<div class="li">
+  const rowHtml = l => `<div class="li"${l.name ? ' data-um="1"' : ''}>
       <span class="badge"></span><div class="lnm"><input class="inp" data-f="name" placeholder="اسم الصنف" value="${esc(l.name)}" autocomplete="off" enterkeyhint="next"><div class="sg"></div></div>
       <select class="inp" data-f="unit" tabindex="-1">${[...new Set(UNITS.concat(l.unit ? [l.unit] : []))].map(u => `<option ${u === l.unit ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select>
       <input class="inp num" data-f="qty" inputmode="decimal" placeholder="0" value="${esc(l.qty)}" enterkeyhint="next">
@@ -2801,14 +2826,21 @@ function docModal(p, kind, e, opts = {}) {
   };
   /* السطر الفاضي الأخير بياخد وحدة السطر اللي قبله لو اتغيرت */
   const syncBlank = li => { const nx = li.nextElementSibling; if (nx && nx.classList.contains('blank') && isBlank(nx)) setUnit(nx, li.querySelector('[data-f=unit]').value); };
-  const FLD = ['name', 'qty', 'price'];   // الوحدة بتتخطى (بطلبه): بتتغير بالإيد بس
+  const FLD = ['name', 'qty', 'price'];   // الوحدة بتتخطى (بطلبه): بتتحط لوحدها (uBook) أو بالإيد
+  /* السعر سعر كيلو والوحدة لفة (أو العكس): الوحدة بتتظبط لوحدها، إلا لو اتختارت بالإيد (um) أو السطر قديم */
+  const fixByPrice = li => {
+    if (li.dataset.um) return; const nm = li.querySelector('[data-f=name]').value.trim(), cur = li.querySelector('[data-f=unit]').value;
+    const u = nm && (cur === 'كيلو' || cur === 'لفة') ? uBook().byPrice(nm, toP(li.querySelector('[data-f=price]').value)) : '';
+    if (u && u !== cur) { setUnit(li, u); syncBlank(li); calc(); toast(`الوحدة بقت ${u} علشان السعر ده سعر ${u}`); }
+  };
   const bindRow = li => {
     const el = li.querySelector('[data-f=name]'), box = li.querySelector('.sg');
     bindMoney(li.querySelector('[data-f=price]'));
     const q = li.querySelector('[data-f=qty]');
     q.addEventListener('input', () => { q.value = normDigits(q.value).replace(/[^\d.]/g, ''); });
     li.querySelectorAll('input').forEach(x => x.addEventListener('input', () => { calc(); if (li.classList.contains('blank') && !isBlank(li)) tidy(); }));
-    li.querySelector('[data-f=unit]').addEventListener('change', () => syncBlank(li));
+    li.querySelector('[data-f=unit]').addEventListener('change', () => { li.dataset.um = '1'; syncBlank(li); });
+    li.querySelector('[data-f=price]').addEventListener('change', () => fixByPrice(li));
     li.querySelectorAll('[data-f]').forEach(x => x.addEventListener('keydown', ev => {
       if (ev.key !== 'Enter' || ev.isComposing) return;
       ev.preventDefault();
@@ -2842,11 +2874,12 @@ function docModal(p, kind, e, opts = {}) {
     el.addEventListener('blur', () => setTimeout(hide, 200));
     el.addEventListener('change', () => {
       const pr = li.querySelector('[data-f=price]');
-      if (!el.value.trim() || pr.value) return;
+      if (!el.value.trim()) return;
+      if (!li.dataset.um) { const u = uBook().unit(el.value); if (u) { setUnit(li, u); syncBlank(li); } }
+      if (pr.value) return;
       const x = lastPrice(p.id, base, el.value) || book.get(norm(el.value));
       if (!x) return;
-      if (x.unit) { setUnit(li, x.unit); syncBlank(li); }
-      if (x.price) pr.value = fmtP(x.price);
+      if (x.price && (!x.unit || x.unit === li.querySelector('[data-f=unit]').value)) pr.value = fmtP(x.price);   // سعر بوحدة تانية ميتكتبش (لفة بسعر كيلو)
       calc();
     });
     li.querySelector('[data-del]').onclick = () => { li.remove(); tidy(); calc(); };

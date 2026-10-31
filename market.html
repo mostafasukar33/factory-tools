@@ -110,7 +110,11 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:var(--ink)}
 .xb small{background:var(--red);color:var(--card);border-radius:9px;padding:0 7px;font-size:var(--f1);font-weight:800}
 /* أرقام التحويل (المحافظ وإنستا باي، بطلبه 31/10/2026) */
 .xb.wide{grid-column:1/-1}
-.wlg{margin:14px 2px 6px;font-size:var(--f2);font-weight:800;color:var(--sub)}
+.wlgp{border:2px solid var(--c);border-radius:16px;margin-top:14px;overflow:hidden}
+.wlg{background:var(--cl);color:var(--c);padding:10px 14px;font-size:var(--f3);font-weight:800;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--c)}
+.wlg small{font-size:var(--f1);color:var(--sub);font-weight:700}
+.wlgp .wlr{border:0;border-radius:0;margin:0;border-bottom:1.5px dashed var(--line)}
+.wlgp .wlr:last-child{border-bottom:0}
 .wlr{border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px;background:var(--card)}
 .wlt{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--f2);font-weight:700;color:var(--ink)}
 .wlt svg,.wlty svg{width:26px;height:26px;flex:none}
@@ -1601,8 +1605,10 @@ const WL_SVG = {
   wa: '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:1.25em;height:1.25em;vertical-align:-.25em"><path fill="#25d366" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z"/><path fill="#fff" d="M8.6 7.3c.2-.4.4-.4.7-.4h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .5l-.5.7c-.1.2-.2.3 0 .6.5.8 1.1 1.5 1.9 2 .3.2.6.4.9.5.2.1.4 0 .5-.1l.7-.8c.2-.2.3-.2.5-.1l1.8.9c.3.1.4.2.4.3.1.5-.1 1.2-.5 1.6-.5.5-1.3.8-2 .7-1-.1-2.4-.6-3.8-1.8-1.4-1.2-2.4-2.8-2.7-3.6-.3-.8-.3-1.8.2-2.4z"/></svg>',
   cp: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>'};
 const wlList = () => Array.isArray(S.wal) ? S.wal : WL_DEF;
-const wlNum = p => { const d = String(p || '').replace(/\s/g, ''); return /^\d{11}$/.test(d) ? d.slice(0, 3) + ' ' + d.slice(3, 7) + ' ' + d.slice(7) : d; };
-const wlMsg = w => `حوّل على ${w.t.map(k => WL_T[k]).join(' أو ')}\n${String(w.p).replace(/\s/g, '')}\nباسم: ${w.n || w.o}\nوابعت صورة التحويل بعد ما تحوّل 🙏`;
+/* الرقم من غير أي مسافة ولا علامة مخفية (فودافون مبيقبلش النسخ لو فيه مسافات)، والأرقام العربي بتتحول إنجليزي */
+const wlNum = p => { const d = String(p || '').replace(/[٠-٩]/g, c => c.charCodeAt(0) - 1632).replace(/[\s\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, ''); return /^[\d-]+$/.test(d) ? d.replace(/-/g, '') : d; };
+const WL_MO = ['ip', 'vf', 'et'], WL_C = {'أحمد': ['--ah', '--ah-l'], 'مصطفى': ['--tr', '--tr-l']};
+const wlMsg = w => `حوّل على ${WL_MO.filter(k => w.t.includes(k)).map(k => WL_T[k]).join(' أو ')}\n${wlNum(w.p)}\nباسم: ${w.n || w.o}\nوابعت صورة التحويل بعد ما تحوّل 🙏`;
 const wlTypes = w => w.t.map(k => WL_SVG[k]).join('') + `<span>${w.t.map(k => WL_T[k]).join(' <em>و</em> ')}</span>`;
 function wlCopy(txt) {
   const ok = () => toast('✔ الرقم اتنسخ'), old = () => { const a = document.createElement('textarea'); a.value = txt; a.setAttribute('readonly', ''); a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); ok(); } catch (e) { toast('مش قادر ينسخ، اكتبه بإيدك'); } a.remove(); };
@@ -1611,11 +1617,11 @@ function wlCopy(txt) {
 function wlOpen() {
   const L = wlList(), own = [...new Set(L.map(w => w.o))];
   modal(`<h3>أرقام التحويل <small>دوس واتساب واختار العميل</small></h3>
-    ${L.length ? own.map(o => `<div class="wlg">أرقام ${esc(o)}</div>` + L.map((w, i) => w.o !== o ? '' : `<div class="wlr" data-i="${i}"><div class="wlt">${wlTypes(w)}</div><div class="wln">${esc(wlNum(w.p))}</div>
-      <div class="wlb"><button type="button" class="wa" data-wa="${i}">${WL_SVG.wa} واتساب</button><button type="button" data-cp="${i}">${WL_SVG.cp} نسخ</button></div></div>`).join('')).join('') : '<p class="hint">مفيش أرقام. دوس "عدّل الأرقام" وضيف.</p>'}
+    ${L.length ? own.map(o => `<section class="wlgp" style="--c:var(${(WL_C[o] || ['--gold-d'])[0]});--cl:var(${(WL_C[o] || [, '--gold-l'])[1]})"><div class="wlg"><span>أرقام ${esc(o)}</span><small>${L.filter(w => w.o === o).length} أرقام</small></div>` + L.map((w, i) => w.o !== o ? '' : `<div class="wlr" data-i="${i}"><div class="wlt">${wlTypes(w)}</div><div class="wln">${esc(wlNum(w.p))}</div>
+      <div class="wlb"><button type="button" class="wa" data-wa="${i}">${WL_SVG.wa} واتساب</button><button type="button" data-cp="${i}">${WL_SVG.cp} نسخ</button></div></div>`).join('') + '</section>').join('') : '<p class="hint">مفيش أرقام. دوس "عدّل الأرقام" وضيف.</p>'}
     <button class="lnk" id="wlEd" type="button">✏️ عدّل الأرقام</button>`);
   $$('#modal [data-wa]').forEach(b => b.onclick = () => { location.href = 'whatsapp://send?text=' + encodeURIComponent(wlMsg(L[b.dataset.wa])); });
-  $$('#modal [data-cp]').forEach(b => b.onclick = () => wlCopy(String(L[b.dataset.cp].p).replace(/\s/g, '')));
+  $$('#modal [data-cp]').forEach(b => b.onclick = () => wlCopy(wlNum(L[b.dataset.cp].p)));
   $('#wlEd').onclick = () => wlEdit(L.map(w => ({...w, t: [...w.t]})));
 }
 function wlEdit(L) {
@@ -1628,7 +1634,7 @@ function wlEdit(L) {
     <button class="big b-home" id="wlAdd" type="button">＋ رقم جديد</button>
     <button class="big b-cash" id="wlSv" type="button">💾 احفظ</button>
     <button class="lnk" id="wlBack" type="button">رجوع من غير حفظ</button>`);
-  const read = () => $$('#modal .wlr').map(r => ({o: r.querySelector('.wlo').value, n: r.querySelector('.wln2').value.trim(), p: r.querySelector('.wlp').value.trim(), t: [...r.querySelectorAll('.wlty button.on')].map(b => b.dataset.k)}));
+  const read = () => $$('#modal .wlr').map(r => ({o: r.querySelector('.wlo').value, n: r.querySelector('.wln2').value.trim(), p: wlNum(r.querySelector('.wlp').value), t: [...r.querySelectorAll('.wlty button.on')].map(b => b.dataset.k)}));
   $$('#modal .wlty button').forEach(b => b.onclick = () => b.classList.toggle('on'));
   $$('#modal .wlr .rm').forEach(b => b.onclick = () => { const l = read(); l.splice(+b.closest('.wlr').dataset.i, 1); wlEdit(l); });
   $('#wlAdd').onclick = () => { const l = read(); l.push({o: 'أحمد', n: '', p: '', t: ['vf']}); wlEdit(l); const r = $$('#modal .wlp'); r[r.length - 1].focus(); };

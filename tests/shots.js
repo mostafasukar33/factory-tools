@@ -267,6 +267,7 @@ const SCREENS = [
   {name: 'mkt-edit-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); editSheet(S.ops.m_shot1); }); }},
   {name: 'mkt-hand-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); handModal(); document.activeElement && document.activeElement.blur(); }); }},
   {name: 'mkt-wal-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); wlOpen(); }); }},
+  {name: 'mkt-wal-m-end', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); wlOpen(); $('#modal').scrollTop = 1e5; }); }},
   {name: 'mkt-wal-m-dark', app: 'mkt', vp: MOB, dark: true, go: async M => { await M.evaluate(() => { nav(''); wlOpen(); }); }},
   {name: 'mkt-waled-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); wlEdit(wlList().map(w => ({...w, t: [...w.t]}))); document.activeElement && document.activeElement.blur(); }); }},
   {name: 'mkt-home-m-dark', app: 'mkt', vp: MOB, dark: true, full: true, go: mktGo('')},

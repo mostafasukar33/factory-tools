@@ -2879,8 +2879,8 @@ const T0 = Date.now();
       eq('الشريك: زرارين الطلبيات والتسعير في صف لوحده تحت زراير الفلوس', await M.evaluate(() => { const r = $('.xrow'), q = $('.qa2'); return [!!r && !!$('#qOrd') && !!$('#qPrc'), !!r && r.previousElementSibling === q, !q.contains($('#qOrd'))]; }), [true, true, true]);
       // أرقام التحويل: الأرقام الأصلية، الرسالة فيها "باسم"، والتعديل بيتحفظ على الموبايل بس
       await M.click('#qWal'); await M.waitForSelector('#modal .wlr');
-      eq('أرقام التحويل: 5 أرقام في مجموعتين', await M.evaluate(() => [$$('#modal .wlr').length, $$('#modal .wlg').map(g => g.textContent), $('#modal .wln').textContent]), [5, ['أرقام أحمد', 'أرقام مصطفى'], '010 0391 6681']);
-      eq('أرقام التحويل: نص الرسالة', await M.evaluate(() => [wlMsg(wlList()[3]), wlMsg(wlList()[2]).split('\n')[0]]), ['حوّل على فودافون كاش\n01031819017\nباسم: هالة\nوابعت صورة التحويل بعد ما تحوّل 🙏', 'حوّل على فودافون كاش أو إنستا باي']);
+      eq('أرقام التحويل: 5 أرقام في مجموعتين', await M.evaluate(() => [$$('#modal .wlr').length, $$('#modal .wlg span').map(g => g.textContent), $('#modal .wln').textContent, wlNum(' ٠١٠ 0391\u202d 6681 ')]), [5, ['أرقام أحمد', 'أرقام مصطفى'], '01003916681', '01003916681']);
+      eq('أرقام التحويل: نص الرسالة', await M.evaluate(() => [wlMsg(wlList()[3]), wlMsg(wlList()[2]).split('\n')[0]]), ['حوّل على فودافون كاش\n01031819017\nباسم: هالة\nوابعت صورة التحويل بعد ما تحوّل 🙏', 'حوّل على إنستا باي أو فودافون كاش']);
       await M.click('#wlEd'); await M.waitForSelector('#modal .wlp');
       await M.evaluate(() => { $$('#modal .wlr .rm')[4].click(); });
       await M.evaluate(() => { $('#wlAdd').click(); }); await M.fill('#modal .wlr:last-of-type .wlp', '01200000000');

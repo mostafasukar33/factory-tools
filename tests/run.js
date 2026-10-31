@@ -1074,7 +1074,7 @@ const T0 = Date.now();
     sec('١٢) الشركاء: مرتب كل خميس ومسحوبات');
     await bg(A, 'syncNow()');   // ياخد اللي اتسجل في الجهاز التاني الأول
     const vb0 = await A.evaluate(() => vaultBal(''));
-    eq('الموبايل: حركة السوق في الشريط اللي تحت مكان الشركاء، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ["home", "sup", "mkt", "cash"]);
+    eq('الموبايل: الشريط اللي تحت العملاء | الموردين | الوارد | التقارير | الخزنة (التقارير بطلبه 31/10/2026)، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ["home", "sup", "mkt", "rep", "cash"]);
     await A.evaluate(() => go('cash')); await A.click('#cMore'); await A.click('#modal [data-b=cPart]'); await A.waitForSelector('#ptBack', {timeout: 3000}).catch(() => {});   // الصفحة بتفتح بعد تغيير العنوان
     eq('الشركاء من الخزنة: الخزنة متعلّمة تحت وفيه رجوع', [await A.evaluate(() => $('nav button.on').dataset.go), !!await A.$('#ptBack')], ['cash', true]);
     await A.click('#psGo'); await A.fill('#psA', '10');
@@ -1345,6 +1345,20 @@ const T0 = Date.now();
       db.entries.splice(n0); db.parties.splice(np); for (let i = 1; i <= 10; i++) E.delete('e_mpy' + i); S.forEach(p => P.delete(p.id)); saveDB();
       return r; }), [true, true, true, true, true, 'سابك 222 2700|مسح 488 1000|سابك 218 300', 12500000, 14500000,
       '278,000', '100,000', '20,000', '—,,—,5,000', true, '125,000', '145,000', 100, 'سابك 222,مسح 488,سابك 218']);
+    eq('الخامات والمكسب بالنوع: البلاستيك فاضل ظاهر لما الفترة فيها نحاس بس (بطلبه 31/10/2026: "ساعات النحاس بس اللي يظهر")', await A.evaluate(() => {
+      const n0 = db.entries.length, np = db.parties.length, sp = {id: 'p_cuo', sec: 'sup', name: 'مورد نحاس تجربة', upd: 1, del: false, hist: []}, gf = GM_FROM; GM_FROM = ''; db.parties.push(sp); P.set(sp.id, sp);
+      const add = (id, date, lines) => { const e = {id, party: sp.id, kind: 'pur', date, lines, disc: 0, at: 1, upd: 1, del: false, hist: []}; e.cr = docTotal(e); e.dr = 0; db.entries.push(e); E.set(id, e); };
+      add('e_cu1', '1994-02-01', [{name: 'سابك تجربة قديم', unit: 'كيلو', qty: 100, price: 6000}]); add('e_cu2', '1994-02-10', [{name: 'نحاس تجربة', unit: 'كيلو', qty: 50, price: 70000}]);
+      repMatKind = 'name'; repMatG = 'copper'; const R = matReport('1994-02-10', '1994-02-10'); repMatG = 'plastic'; const R2 = matReport('1994-02-10', '1994-02-10');
+      repGmKind = 'type'; const G = gmReport('1994-02-10', '1994-02-10');
+      const r = [R.groups.join(), R.g, R.rows.length, R2.g, R2.rows.length, G.rows.map(x => x.cells[0]).join('|')];
+      db.entries.splice(n0); db.parties.splice(np); ['e_cu1', 'e_cu2'].forEach(id => E.delete(id)); P.delete(sp.id); GM_FROM = gf; saveDB(); return r; }),
+      ['plastic,copper', 'copper', 1, 'plastic', 0, 'البلاستيك (الخراطيم)|النحاس (السلك)']);
+    eq('التهنيجة: الشغل اللي في الخلفية بيستنى صباعك يسيب الشاشة والتمرير يقف، والفتح مبيشفّرش الحسابات تاني', await A.evaluate(async () => {
+      const r = []; let n = 0; touchN = 1; whenStill(() => n++); r.push(n); await new Promise(f => setTimeout(f, 600)); r.push(n); touchN = 0;
+      await new Promise(f => setTimeout(f, 400)); r.push(n); scrollAt = 0; whenStill(() => n++); r.push(n);
+      r.push(/route\(\); window\.scrollTo\(0, 0\)/.test(unlocked.toString()) && !/flushSave\(\)/.test(unlocked.toString()));
+      return r; }), [0, 0, 1, 2, true]);
     eq('الكرتونة: الصنف اللي ليه عدد في الكرتونة بيفهم البند المكتوب قطعة بسعر كرتونة، والكرتونة بوحدتها، والشراء بالكرتونة بسعر القطعة، والكمية في التقرير بالقطعة', await A.evaluate(() => {
       const n0 = db.entries.length, c = liveParties().find(p => p.sec === 'mkt' && !p.noTot), sp = liveParties().find(p => p.sec === 'sup'), MG = 'علبة تجربة ماجيك مفرد', gf = GM_FROM; GM_FROM = '';
       const add = (id, party, kind, date, lines) => { const e = {id, party, kind, date, lines, disc: 0, at: 1, upd: 1, del: false, hist: []}, v = docTotal(e); e.dr = kind === 'inv' ? v : 0; e.cr = kind === 'inv' ? 0 : v; db.entries.push(e); E.set(id, e); return e; };
@@ -1467,7 +1481,9 @@ const T0 = Date.now();
         pg.every(x => x.querySelector('.gen').textContent.startsWith('صدر هذا الكشف إلكترونياً')), !last.querySelector('.note'), pg[0].querySelector('thead').textContent.includes('المدفوع')];
       [c.coAddr, c.coCr, c.coTax] = old; $('#render').innerHTML = ''; return r; }), [true, true, true, true, true, true, true, true, true, true]);
     sec('١٣ب) الجرد والمساهمين');
-    eq('الموبايل: مفيش زرار جديد تحت، والجرد زرار جوه التقارير', await A.evaluate(() => { go('rep'); renderReports(); return [getComputedStyle($('nav button[data-go=jrd]')).display, !!$('#rpJrd')]; }), ['none', true]);
+    eq('الموبايل: الجرد مش تحت وزرار جوه التقارير، وزرار اختيار التقرير ظاهر في الملخص وبيفتح التقرير، وتبويب التقارير متعلّم', await A.evaluate(() => {
+      repKind = 'home'; go('rep'); renderReports(); const r = [getComputedStyle($('nav button[data-go=jrd]')).display, !!$('#rpJrd'), !!$('#rpPick') && $('#rpPick').offsetParent !== null, $('nav button.on').dataset.go];
+      $('#rpPick').click(); const b = $('#modal .rpkm [data-v=mat]'); r.push(!!b); b.click(); r.push(repKind, !!$('#rpXK')); repKind = 'home'; renderReports(); return r; }), ['none', true, true, 'rep', true, 'mat', true]);
     await A.click('#rpJrd'); await A.waitForSelector('#jrS', {timeout: 3000});
     /* الأرقام اللي جاية لوحدها = نفس اللي بيتحسب من الحسابات والخزنة بطريقة تانية */
     eq('الجرد: العملا والموردين والخزن من الحسابات (من غير الحساب الفرعي)', await A.evaluate(() => {
@@ -2142,7 +2158,7 @@ const T0 = Date.now();
     eq('اللاب: عداد حركة السوق على زرارها ومفيش جرس', await A.evaluate(() => [$('#nbMkt').textContent, !$('#bBell'), getComputedStyle($('nav button[data-go=mkt]')).display !== 'none']), ['3', true, true]);
     await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
     eq('الموبايل: زرار حركة السوق تحت مكان الشركاء (بطلب صاحب المشروع) ومفيش جرس', await A.evaluate(() => [getComputedStyle($('nav button[data-go=mkt]')).display, getComputedStyle($('nav button[data-go=part]')).display, !$('#bBell')]), ['flex', 'none', true]);
-    eq('الموبايل: الإعدادات ترس فوق (مش تحت) والتقارير والجرد زراير في العملاء', await A.evaluate(() => [getComputedStyle($('#bSet')).display !== 'none', getComputedStyle($('nav button[data-go=set]')).display, getComputedStyle($('nav')).gridTemplateColumns.split(' ').length]), [true, 'none', 4]);
+    eq('الموبايل: الإعدادات ترس فوق (مش تحت)، والشريط 5 خانات (التقارير اتضافت بطلبه 31/10/2026)', await A.evaluate(() => [getComputedStyle($('#bSet')).display !== 'none', getComputedStyle($('nav button[data-go=set]')).display, getComputedStyle($('nav')).gridTemplateColumns.split(' ').length]), [true, 'none', 5]);
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('الموبايل: زراير التقارير والجرد جنب بعض فوق في العملاء', await A.evaluate(() => { const r = $('#hRep').getBoundingClientRect(), j = $('#hJrd').getBoundingClientRect(); return [Math.abs(r.top - j.top) < 4, r.left !== j.left]; }), [true, true]);
     await A.click('#hJrd'); await A.settle(200);
@@ -2740,7 +2756,7 @@ const T0 = Date.now();
     await A.evaluate(() => closeModal()); await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
 
     /* الشريط اللي تحت على الموبايل: العملاء | الموردين | حركة السوق | التقارير | الإعدادات */
-    eq('الموبايل: ترتيب الشريط اللي تحت', await A.evaluate(() => $$('nav button[data-go]').filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => (+getComputedStyle(a).order) - (+getComputedStyle(b).order)).map(b => b.innerText.trim())), ['العملاء', 'الموردين', 'الوارد', 'الخزنة']);
+    eq('الموبايل: ترتيب الشريط اللي تحت', await A.evaluate(() => $$('nav button[data-go]').filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => (+getComputedStyle(a).order) - (+getComputedStyle(b).order)).map(b => b.innerText.trim())), ['العملاء', 'الموردين', 'الوارد', 'التقارير', 'الخزنة']);
     await A.click('nav button[data-go=home]'); await A.settle(150);
     eq('العملاء: عملاء السوق والمواقع بس + زرار الخزنة، والبحث مبيجيبش موردين', await A.evaluate(() => { const t = $$('#hTabs button[data-t]').map(b => b.dataset.t); $('#hSearch').value = 'مورد'; renderList(); const n = $$('#hList .pt.sup').length; $('#hSearch').value = ''; renderList(); return [t, !!$('#hRep'), n]; }), [['mkt', 'site'], true, 0]);
     await A.click('nav button[data-go=sup]'); await A.settle(150);
@@ -2760,7 +2776,7 @@ const T0 = Date.now();
       return [a, b, c, balance(p.id) === bal];
     }), [[30, 1, false, true, 'الرصيد السابق'], [60, true], [30, true], true]);
     await A.click('nav button[data-go=cash]'); await A.settle(150);
-    eq('الخزنة في التابات تحت، والتقارير مش فيها', [await A.evaluate(() => location.hash), await A.isVisible('nav button[data-go=cash]'), await A.isVisible('nav button[data-go=rep]')], ['#cash', true, false]);
+    eq('الخزنة والتقارير في التابات تحت (التقارير بطلبه 31/10/2026)', [await A.evaluate(() => location.hash), await A.isVisible('nav button[data-go=cash]'), await A.isVisible('nav button[data-go=rep]')], ['#cash', true, true]);
     /* المطلوب منك النهارده + الألوان */
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('الرئيسية: مفيش تنبيهات (لا الفواتير اللي بنودها لسه ولا وارد السوق ولا الحد الأحمر ولا النسخة)', await A.evaluate(() => [$('#nlRem').textContent.trim() === '', $('#mkRem').textContent.trim(), !!$('#bkRem'), !!$('#tkRows')]), [true, '', false, false]);
@@ -2770,6 +2786,12 @@ const T0 = Date.now();
     eq('الألوان واحدة في التطبيقين: الكاش أخضر والتحويل أزرق والمصروف أحمر', [await M.evaluate(() => { nav('', true); const c = k => { const r = document.querySelector('#main .mb.' + k + ' .mr>.n'); return r ? getComputedStyle(r).color : null; }; return [c('in'), c('out')]; }), await tokC(A)], [[mTok[0], mTok[2]], mTok]);
 
     sec('٢٢ب) حركة السوق: الموردين عند الشريك (نسخة من حساباتهم ودفعة بتنزل من الرصيد ومربوطة بالمورد)');
+    eq('كشف الموردين للشريك بيتحسب مرة ويفضل لحد ما سجل يتغير (التهنيجة 31/10/2026)، والنتيجة زي الحساب من الأول بالظبط', await A.evaluate(() => {
+      const d = mkDb(), ss0 = d.ss; d.ss = {}; mkSupMemo = null;
+      const a = JSON.stringify(mkSupRows()), m1 = mkSupMemo, b = JSON.stringify(mkSupRows()), r = [a === b, mkSupMemo === m1, a.length > 50];
+      const e = db.entries.find(x => !x.del && P.get(x.party) && P.get(x.party).sec === 'sup'), old = e.upd; e.upd = old + 5;
+      const c = JSON.stringify(mkSupRows()); r.push(mkSupMemo !== m1); mkSupMemo = null; r.push(c === JSON.stringify(mkSupRows()));
+      e.upd = old; mkSupMemo = null; d.ss = ss0; return r; }), [true, true, true, true, true]);
     {
       const VN = 'مورد تجربة', vid = await A.evaluate(n => liveParties().find(x => x.name === n).id, VN);
       /* فاتورة قديمة (قبل الـ 3 شهور) وفاتورة جديدة علشان نتأكد إن الرصيد صح من أول الحساب */

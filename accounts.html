@@ -48,6 +48,7 @@ button,input,select,textarea{font-family:inherit;font-size:var(--f3);color:inher
 main{padding:12px 12px 0;max-width:680px;margin:0 auto}
 .page{display:none}.page.on{display:block}
 @media (max-width:999.98px){
+  html,body{overscroll-behavior-y:none}   /* الآيفون: الصفحة متتمطش أول وآخر التمرير، فالشريط اللي تحت ميطلعش وينزل معاها (بطلبه 31/10/2026) */
   .page.under{display:block}
   #p-party.on{position:fixed;top:var(--hh,48px);bottom:0;inset-inline:0;margin:0!important;padding:10px 10px calc(160px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;z-index:26;background:var(--bg)}
   .page.under :is(.cbar,.fab2){display:none}
@@ -301,7 +302,7 @@ ol.steps li{margin-bottom:6px}
 .chkrow label{margin:0;font-size:var(--f3);color:#111}
 .hist{border-top:1px dashed var(--line);padding:6px 0;font-size:var(--f2)}
 /* التنقل */
-nav{position:fixed;bottom:0;inset-inline:0;background:var(--bar);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:30;border-top:3px solid var(--gold)}
+nav{position:fixed;bottom:0;inset-inline:0;background:var(--bar);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:30;border-top:3px solid var(--gold)}
 nav button{background:none;border:0;color:#bbb;padding:9px 2px 8px;font-weight:700;font-size:var(--f1);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-height:64px}
 nav button.on{color:var(--gold)}
 nav svg{width:26px;height:26px}
@@ -1114,9 +1115,9 @@ nav .nb:empty{display:none}
   nav button[data-go=mkt]{display:flex;order:1}
   nav button[data-go=part]{display:none}
   nav button[data-go=cash]{order:2}
-  /* بطلب صاحب المشروع: تحت أربعة بس من اليمين العملاء | الموردين | الوارد | الخزنة. الإعدادات ترس فوق (#bSet)، والتقارير والجرد زراير في صفحة العملاء (#hRep, #hJrd) */
+  /* بطلب صاحب المشروع: تحت من اليمين العملاء | الموردين | الوارد | التقارير | الخزنة (التقارير اتضافت بطلبه 31/10/2026). الإعدادات ترس فوق (#bSet)، والجرد زرار في التقارير وصفحة العملاء (#hJrd) */
   nav button[data-go=set]{display:none}
-  nav button[data-go=rep]{display:none}
+  nav button[data-go=rep]{order:1}
   nav .lbl-l{display:none}
 }
 nav button.mob{display:none}
@@ -2214,16 +2215,38 @@ function landingHash() {
   return lp && /^(cash|part|rep|set)$/.test(lp) ? '#' + lp : '';
 }
 function unlocked() {
+  kbClose();   // الآيفون: خانة كلمة السر كانت بتتشال والكيبورد عليها، فالشاشة تفضل مزحومة والشريط اللي تحت يقف في النص
   $('#lock').classList.remove('on'); $('#lockBox').innerHTML = '';
   lastAct = Date.now(); kashName(); forgetCashBook(); docSoon(); idbDel('askmiss').catch(() => {});   // بقايا الشات القديم اللي اتشال (قايمة "مفهمتهاش")
   if (db.vaults.length && ensurePayCats()) saveDB();   // بنود الخزنة الثابتة (تحصيل من عميل / دفعات للموردين) زي ما كانت بتتعمل وقت الفتح
   /* أول شاشة بعد القفل: الوارد لو فيه حاجة مستنية أو تعارض، وإلا العملاء (أو آخر صفحة كان فيها) */
   try { if (!location.hash) { const h = landingHash(); if (h) location.hash = h; } } catch (e) {}
-  route(); flushSave();
+  /* مفيش flushSave هنا (بطلبه 31/10/2026، التهنيجة وقت الفتح): كان بيشفّر الحسابات كلها تاني وهي لسه متفكة ومتغيرتش، في نفس اللحظة اللي القايمة بتظهر فيها.
+     أي حاجة بتتغير وقت الفتح (البنود الثابتة، اسم الكاش، الدفتر القديم، الشركاء) بتندَه saveDB لوحدها */
+  route(); window.scrollTo(0, 0); setTimeout(vvHeal, 450);
   if (pendingJoin) applyJoin(); else setTimeout(() => syncNow(), 600);
   setTimeout(() => mkSync(), 1800);
 }
 ['pointerdown', 'keydown', 'scroll'].forEach(ev => addEventListener(ev, () => lastAct = Date.now(), {passive: true, capture: true}));
+/* ============ الموبايل: الشريط اللي تحت والتهنيجة (بطلبه 31/10/2026) ============
+   "ساعات وانا بفتح البرنامج الشريط اللي تحت يطلع وينزل أو يعلق في النص في العملا والموردين، وبيرجع لما اقفل وافتح":
+   (1) الآيفون لما الخانة اللي عليها الكيبورد تتشال أو تستخبى من غير ما تفقد التركيز (شاشة القفل، البحث وانت بتفتح عميل)، الكيبورد بيقفل
+       بس الشاشة تفضل مزحومة فوق، فالشريط الثابت تحت يبان في النص لحد ما تحرك. kbClose بيقفله صح قبلها، وvvHeal بيرجّع الشاشة مكانها لما الكيبورد يقفل.
+   (2) الشغل اللي بيحصل لوحده في الخلفية (رسم القايمة بعد المزامنة، الوارد، فحص البيانات) بيستنى لحد ما صباعك يسيب الشاشة والتمرير يقف (whenStill)،
+       علشان ميترسمش حاجة أو تشتغل حسبة تقيلة وانت بتمرر */
+function kbClose() { const a = document.activeElement; if (a && a !== document.body && typeof a.blur === 'function') try { a.blur(); } catch (e) {} }
+function vvHeal() {
+  const a = document.activeElement; if (a && a.matches && a.matches('input:not([readonly]),textarea,select') && a.offsetParent) return;   // الكيبورد لسه مفتوح لخانة ظاهرة
+  const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+  window.scrollTo(window.scrollX, Math.min(window.scrollY, max));
+}
+if (window.visualViewport) { let vh = visualViewport.height; visualViewport.addEventListener('resize', () => { const h = visualViewport.height; if (h > vh + 60) setTimeout(vvHeal, 60); vh = h; }); }
+document.addEventListener('focusout', () => setTimeout(() => { const a = document.activeElement; if (!a || a === document.body) vvHeal(); }, 120));
+let touchN = 0, scrollAt = 0;
+addEventListener('touchstart', e => { touchN = e.touches ? e.touches.length : 1; }, {passive: true, capture: true});
+['touchend', 'touchcancel'].forEach(t => addEventListener(t, e => { touchN = e.touches ? e.touches.length : 0; }, {passive: true, capture: true}));
+addEventListener('scroll', () => { scrollAt = Date.now(); }, {passive: true, capture: true});
+function whenStill(fn, n = 0) { if ((touchN > 0 || Date.now() - scrollAt < 400) && n < 40) return void setTimeout(() => whenStill(fn, n + 1), 250); fn(); }
 setInterval(() => { if (db && Date.now() - lastAct > LOCK_IDLE) lockNow('اتقفل لوحده بعد 10 دقايق من غير استخدام'); }, 20000);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { hiddenAt = Date.now(); flushSave(); pushOnHide(); }
@@ -3806,7 +3829,7 @@ async function syncNow(manual) {
   } finally {
     syncing = false; syT = null;
     if (syncAgain && db === d0 && !syncErr) { syncAgain = false; setTimeout(() => syncNow(), 300); }
-    if (db === d0) { renderSyncBox(); if (got) { if (Object.entries(STORE).some(([k, a]) => IDX[k].size !== db[a].length)) reindex(); if (!$('#mask').classList.contains('on')) route(); } }
+    if (db === d0) { renderSyncBox(); if (got) { if (Object.entries(STORE).some(([k, a]) => IDX[k].size !== db[a].length)) reindex(); whenStill(() => { if (db === d0 && !$('#mask').classList.contains('on')) route(); }); } }
   }
 }
 /* تنبيه التعارض: بيتحفظ على الجهاز (آخر 30) ويفضل ظاهر فوق في الرئيسية لحد ما تشوفه */
@@ -5843,7 +5866,7 @@ function gmReport(f, t) {
   if (repGmKind === 'type') {   // بالنوع (الافتراضي): اللي اتباع − اللي دخل من الموردين لكل نوع
     cols = [{h: 'النوع', w: 30, c: 'l'}, {h: 'اتباع', w: 19, c: 'n'}, {h: 'اتشرى', w: 19, c: 'n'}, {h: 'الفرق', w: 18, c: 'b'}, {h: 'النسبة', w: 14, c: 'n'}];
     const T = gmTypes(D.f, t);
-    rows = GM_T.filter(([k]) => T[k].s || T[k].p).map(([k, n]) => ({cells: [n, fmtP(T[k].s), fmtP(T[k].p), fmtP(T[k].s - T[k].p), T[k].s > 0 ? gmPct(T[k].s - T[k].p, T[k].s) + '%' : '—'], cls: T[k].s - T[k].p < 0 ? 'ret' : ''}));
+    rows = GM_T.filter(([k]) => T[k].s || T[k].p || k === 'pl' || k === 'cu').map(([k, n]) => ({cells: [n, fmtP(T[k].s), fmtP(T[k].p), fmtP(T[k].s - T[k].p), T[k].s > 0 ? gmPct(T[k].s - T[k].p, T[k].s) + '%' : '—'], cls: T[k].s - T[k].p < 0 ? 'ret' : ''}));   // البلاستيك والنحاس ظاهرين دايماً حتى لو صفر في الفترة (بطلبه 31/10/2026)
   } else if (repGmKind === 'doc') {   // بالفاتورة (بطلبه 30/10/2026): الأقل مكسب (بالنسبة) فوق والمرتجعات تحت، والدوس بيفتح الفاتورة
     cols = [{h: 'الفاتورة', w: 34, c: 'l'}, {h: 'البيع', w: 17, c: 'n'}, {h: 'التكلفة', w: 17, c: 'n'}, {h: 'المكسب', w: 17, c: 'b'}, {h: 'النسبة', w: 15, c: 'n'}];
     const L = [...D.dc.values()].filter(x => x.cv).map(x => ({x, r: x.e.kind === 'rinv', pc: gmPct(x.cv - x.c, x.cv)})).sort((a, b) => a.r - b.r || a.pc - b.pc || (a.x.cv - a.x.c) - (b.x.cv - b.x.c));
@@ -5938,9 +5961,10 @@ function matPricer() {
 /* الدفعات (بطلبه 31/10/2026: "دفعتلهم كام، وكل واحد دخل بكام وخد دفعات كام"): كل دفعة لمورد في الفترة (والشيك المرتجع بيتخصم زي الكشف)،
    بتتحسب مرة واحدة في النوع اللي المورد بيورّد منه أكتر (من أول البرنامج)، فالمورد اللي اتدفعله ومجابش حاجة في الفترة بيظهر بدفعاته بس. payAll = كل الموردين حتى اللي مش خامات */
 function matData(f, t) {
-  const G = {}, unk = new Map(), M = getSet('matMap', null) || {}, main = new Map(), pay = new Map();
+  const G = {}, unk = new Map(), M = getSet('matMap', null) || {}, main = new Map(), pay = new Map(), ever = new Set();
   const mk = () => ({kg: 0, v: 0, nkV: 0, oddV: 0, odd: [], tonN: 0, nm: new Map(), sp: new Map(), mo: new Map(), pay: 0});
   matLines().forEach(x => {
+    ever.add(x.g);
     if (x.v > 0) { const m = main.get(x.e.party) || {}; m[x.g] = (m[x.g] || 0) + x.v; main.set(x.e.party, m); }
     if (x.e.date < f || x.e.date > t) return;
     const o = G[x.g] || (G[x.g] = mk());
@@ -5967,11 +5991,13 @@ function matData(f, t) {
     const g = Object.keys(m).sort((x, y) => m[y] - m[x])[0], o = G[g] || (G[g] = mk()), y = o.sp.get(id) || {name: (P.get(id) || {}).name || '؟', kg: 0, v: 0};
     y.pay = (y.pay || 0) + a; o.pay += a; o.sp.set(id, y);
   });
-  return {G, unk: [...unk.values()], payAll};
+  return {G, unk: [...unk.values()], payAll, ever};
 }
 let repMatKind = 'name', repMatG = 'plastic';
 function matReport(f, t) {
-  const D = matData(f, t), gs = Object.keys(D.G), g = D.G[repMatG] ? repMatG : gs[0] || 'plastic', G = D.G[g] || {kg: 0, v: 0, nkV: 0, oddV: 0, odd: [], tonN: 0, nm: new Map(), sp: new Map(), mo: new Map(), pay: 0};
+  /* التبويبات = كل نوع اتشرى ولو مرة (بطلبه 31/10/2026: "ساعات النحاس بس اللي يظهر والبلاستيك لا" لما الفترة يوم مفيهوش بلاستيك)،
+     والبلاستيك الأول دايماً، والنوع اللي مفيهوش حاجة في الفترة بيقول "مفيش حاجة" بدل ما يختفي */
+  const D = matData(f, t), gs = Object.keys(MAT_G).filter(k => D.G[k] || D.ever.has(k) || k === 'plastic'), g = gs.includes(repMatG) ? repMatG : gs[0], G = D.G[g] || {kg: 0, v: 0, nkV: 0, oddV: 0, odd: [], tonN: 0, nm: new Map(), sp: new Map(), mo: new Map(), pay: 0};
   /* الكمية رقم والوحدة عمود لوحدها (بطلبه 30/10/2026): طن من أول 1000 كيلو، وأقل من كده بالكيلو (800 كيلو) */
   const qu = kg => Math.abs(kg) >= 1000 ? [fmtQ(Math.round(kg) / 1000), 'طن'] : [fmtQ(Math.round(kg)), 'كيلو'], ton = kg => qu(kg).join(' '), avg = (v, kg) => kg ? fmtP(Math.round(v / kg)) : '—';
   let cols, rows;
@@ -6405,6 +6431,8 @@ function repOpen(go) {
   }
   renderReports(); window.scrollTo(0, 0);
 }
+/* اختيار تقرير: الفترة اللي مالهاش معنى فيه بتتظبط (الأرباح من غير يوم، وأحمد بالأسبوع) */
+function repPick(k) { repKind = k; if (repKind === 'profit' && repMode === 'day') repMode = 'year'; if (repKind === 'ah' && (repMode === 'day' || repMode === 'year')) repMode = 'week'; if (repKind !== 'ah' && repMode === 'week') repMode = 'month'; }
 function renderReports() {
   loadPdfLibs().catch(() => {});   // نجهّز أداة الـ PDF من دلوقتي علشان تبقى جاهزة لما يدوس
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
@@ -6414,15 +6442,25 @@ function renderReports() {
   const mob = !isWide();
   const head = (mob ? `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b><button class="btn line sm rpjb" id="rpJrd" type="button">📦 الجرد${jw ? ` (${jw})` : ''}</button></div>` : '')
     + ((st => st ? `<div class="tstrip">${st}</div>` : '')(home ? '' : '<button class="btn line sm" id="rpHome" type="button">📊 الملخص</button>'));
+  const KS = [['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف'], ['gm', 'المكسب'], ['mat', 'الخامات'], ['ah', MK_PN]];
+  /* زرار اختيار التقرير (الموبايل): ظاهر من أول ما تدخل التقارير وفي الملخص كمان (بطلبه 31/10/2026: كان مبيظهرش غير بعد ما تفتح تقرير) */
+  const bindPick = () => { if ($('#rpPick')) $('#rpPick').onclick = () => {
+    const IC = {home: '📊', profit: '💰', col: '💵', debt: '📤', tot: '👥', cash: '💸', item: '📦', gm: '🏷', mat: '🏭', ah: '🏪'};
+    modal(`<h3>اختار التقرير</h3><div class="rpkm">${[['home', 'الملخص'], ...KS].map(([k, n]) => `<button class="btn line ${repKind === k ? 'on' : ''}" type="button" data-v="${k}">${IC[k]} ${esc(n)}</button>`).join('')}</div>`);
+    $$('#modal .rpkm [data-v]').forEach(b => b.onclick = () => {
+      const k = b.dataset.v, x = $(`#rpK button[data-v=${k}]`); closeModal(); repPerOpen = false;
+      if (k === 'home') { repKind = 'home'; renderReports(); window.scrollTo(0, 0); } else if (x) x.click(); else { repPick(k); renderReports(); window.scrollTo(0, 0); }
+    });
+  }; };
   if (home) {
-    $('#p-rep').innerHTML = head + repCards();
+    $('#p-rep').innerHTML = head + (mob ? '<div class="rpbar2"><button class="k" id="rpPick" type="button">📊 الملخص <i>▾</i></button></div>' : '') + repCards();
+    bindPick();
     $$('#rpS button').forEach(b => b.onclick = () => { repSum = b.dataset.v; renderReports(); });
     $$('#p-rep .rcd').forEach(el => { el.onclick = () => repOpen(el.dataset.go); el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); repOpen(el.dataset.go); } }; });
     if ($('#rpJrd')) $('#rpJrd').onclick = () => go('jrd');
     if ($('#rpBack')) $('#rpBack').onclick = () => go('home');
     return;
   }
-  const KS = [['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف'], ['gm', 'المكسب'], ['mat', 'الخامات'], ['ah', MK_PN]];
   const perLabel = repMode === 'day' ? dispDate(f) : repMode === 'week' ? 'أسبوع ' + dispDate(f) : repMode === 'month' ? `${MONTHS[+f.slice(5, 7) - 1]} ${f.slice(0, 4)}` : repMode === 'year' ? 'سنة ' + f.slice(0, 4) : `${dispDate(f)} ← ${dispDate(to)}`;
   const yr1 = mob && R.cols[0] && R.cols[0].h === 'الشهر' && f.slice(0, 4) === to.slice(0, 4);   // الموبايل: اسم الشهر من غير السنة لو الفترة في سنة واحدة (الـ PDF زي ما هو)
   $('#p-rep').innerHTML = head + `
@@ -6453,7 +6491,7 @@ function renderReports() {
     <div class="card" style="margin-top:10px">${R.sum.map(([a, b, st]) => `<div class="bl ${st || ''}"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('')}</div>
     <div class="ldgf"><span>${esc(R.fin[0])}</span><b>${esc(R.fin[1])}</b></div>
     <div class="mrow3" style="margin-top:10px;grid-template-columns:1fr 1fr"><button class="btn green" id="rpShare" type="button">📲 ابعت PDF واتساب</button><button class="btn gold" id="rpPdf" type="button">معاينة / تنزيل PDF</button></div>`;
-  $$('#rpK button').forEach(b => b.onclick = () => { repKind = b.dataset.v; if (repKind === 'profit' && repMode === 'day') repMode = 'year'; if (repKind === 'ah' && (repMode === 'day' || repMode === 'year')) repMode = 'week'; if (repKind !== 'ah' && repMode === 'week') repMode = 'month'; renderReports(); });
+  $$('#rpK button').forEach(b => b.onclick = () => { repPick(b.dataset.v); renderReports(); });
   $$('#rpSide button').forEach(b => b.onclick = () => { repSide = b.dataset.v; renderReports(); });
   $$('#rpIK button').forEach(b => b.onclick = () => { repItemKind = b.dataset.v; renderReports(); });
   $$('#rpGK button').forEach(b => b.onclick = () => { repGmKind = b.dataset.v; renderReports(); });
@@ -6464,14 +6502,7 @@ function renderReports() {
   if ($('#rpXC')) $('#rpXC').onclick = () => matModal(renderReports);
   if ($('#rpXO')) $('#rpXO').onclick = () => matOddModal(R.odd);
   if ($('#rpPer')) $('#rpPer').onclick = () => { repPerOpen = !repPerOpen; renderReports(); };
-  if ($('#rpPick')) $('#rpPick').onclick = () => {
-    const IC = {home: '📊', profit: '💰', col: '💵', debt: '📤', tot: '👥', cash: '💸', item: '📦', gm: '🏷', mat: '🏭', ah: '🏪'};
-    modal(`<h3>اختار التقرير</h3><div class="rpkm">${[['home', 'الملخص'], ...KS].map(([k, n]) => `<button class="btn line ${repKind === k ? 'on' : ''}" type="button" data-v="${k}">${IC[k]} ${esc(n)}</button>`).join('')}</div>`);
-    $$('#modal .rpkm [data-v]').forEach(b => b.onclick = () => {
-      const k = b.dataset.v, x = $(`#rpK button[data-v=${k}]`); closeModal(); repPerOpen = false;
-      if (k === 'home') { repKind = 'home'; renderReports(); window.scrollTo(0, 0); } else if (x) x.click();
-    });
-  };
+  bindPick();
   $$('#rpCM button').forEach(b => b.onclick = () => { repColMode = b.dataset.v; renderReports(); });
   $$('#rpM button').forEach(b => b.onclick = () => { repMode = b.dataset.m; renderReports(); });
   const bindI = (id, set) => { const el = $(id); if (el) el.onchange = () => { set(el.value); repPerOpen = false; renderReports(); }; };
@@ -6571,7 +6602,7 @@ function drScript(n) {
 }
 const drLoad = () => drP = drP || drScript(4).catch(e => { drP = null; throw e; });
 const drHash = a => { let h = 5381; for (const ch of a.slice().sort().join('|')) h = (h * 33 + ch.charCodeAt(0)) >>> 0; return h.toString(36); };
-function docSoon() { clearTimeout(drT); drT = setTimeout(docNow, 5000); }
+function docSoon() { clearTimeout(drT); drT = setTimeout(() => whenStill(docNow), 5000); }   // بيستنى التمرير يقف (التهنيجة، 31/10/2026)
 /* نتيجة الفحص بتتحفظ في db.cfg.doc: seen (المشاكل اللي اتقالت) وlast (آخر نتيجة للإعدادات والرئيسية) */
 function docKeep(r) {
   const c = db.cfg.doc = db.cfg.doc || {}, all = r.bad.concat(r.warn);
@@ -7262,7 +7293,7 @@ function route() {
   $$('.page').forEach(x => x.classList.toggle('on', x.id === 'p-' + pg));
   document.body.dataset.pg = pg;   // زرار ＋ العايم بيظهر على الموبايل في الرئيسية ووارد السوق والتقارير بس
   const supOn = !isWide() && (pg === 'home' ? tab === 'sup' : pg === 'party' && (P.get(h.slice(2)) || {}).sec === 'sup');
-  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (supOn ? 'sup' : pg === 'party' ? 'home' : pg === 'part' && !isWide() ? 'cash' : pg === 'fac' ? 'rep' : pg)));   // على الموبايل الشركاء جوه الخزنة
+  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.go === (supOn ? 'sup' : pg === 'party' ? 'home' : pg === 'part' && !isWide() ? 'cash' : pg === 'fac' || (pg === 'jrd' && !isWide()) ? 'rep' : pg)));   // على الموبايل الشركاء جوه الخزنة، والجرد جوه التقارير
   if (CHECKS_ON) { const nd = chkDue().length; $('#nbChk').textContent = nd || ''; $('#nbChk').style.display = nd ? '' : 'none'; }
   /* على اللاب توب: قايمة الحسابات على جنب والحساب المفتوح جنبها */
   const split = isWide() && (pg === 'home' || pg === 'party');
@@ -7310,7 +7341,7 @@ function setOpenAll() { $('#p-set').classList.add('advon'); $$('#p-set > .card')
 initSetCards();
 let lastHash = '', wasWide = isWide();
 addEventListener('resize', () => { if (isWide() !== wasWide) { wasWide = isWide(); route(); } });
-if (!CHECKS_ON) { $('#sChkDays').closest('.card').style.display = 'none'; $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(4,1fr)'; }
+if (!CHECKS_ON) { $('#sChkDays').closest('.card').style.display = 'none'; $('nav button[data-go="chk"]').remove(); $('nav').style.gridTemplateColumns = 'repeat(5,1fr)'; }
 /* دوسة تانية على تبويب انت فيه = يطلعك أول الصفحة (بطلبه 21/10/2026) */
 $$('nav button[data-go]').forEach(b => b.onclick = () => {
   if (b.classList.contains('on') && (location.hash.slice(1) || 'home') === b.dataset.go && !$('#p-party.on') && !$('#mask.on')) return window.scrollTo({top: 0, behavior: 'smooth'});
@@ -7335,6 +7366,7 @@ addEventListener('hashchange', () => {
   const want = scrollMap[location.hash] || 0, back = popNav && !isWide();
   if (!popNav) document.documentElement.classList.remove('popnav');   // التنقل العادي بيرجّع الظهور التدريجي
   const newParty = location.hash.startsWith('#p/') && location.hash !== curH;
+  if (!isWide()) kbClose();   // الموبايل: الكيبورد يتقفل صح قبل ما الصفحة تتغير (البحث وانت بتفتح عميل)
   scrollHold = true; curH = location.hash; closeModal(); route();
   if (routeKeep) { if (newParty && $('#p-party')) $('#p-party').scrollTop = 0; }   // صفحة الحساب فوق القايمة: القايمة مكانها زي ما هو
   else if (location.hash !== lastHash) window.scrollTo(0, back ? want : 0);
@@ -8003,15 +8035,21 @@ function mkSupData(p, ents, from) {
   while (r.length && JSON.stringify(r).length > 40000) { const o = r.shift(); ob += o[3]; from = r.length ? r[0][0] : todayISO(); }
   return {name: p.name, bal, ob, from, r};
 }
+/* كشف الموردين بيتحسب مرة ويفضل لحد ما أي سجل يتغير (بطلبه 31/10/2026، "التهنيجة": كان بيتحسب كله ويتحول نص كل 8 ثواني وانت شغال).
+   البصمة = عدد السجلات ومجموع upd (أي تعديل أو سحب بيزوّد upd) وأول الكشف، والنتيجة زي ما هي بالظبط */
+let mkSupMemo = null;
 function mkSupRows() {
-  let ver = 0; for (const k of ['parties', 'entries', 'sets']) for (const x of db[k]) if (x.upd > ver) ver = x.upd;
+  let ver = 0, u1 = 0, u2 = 0; for (const k of ['parties', 'entries', 'sets']) for (const x of db[k]) { const u = +x.upd || 0; if (u > ver) ver = u; u1 += u % 1e7; u2 += Math.floor(u / 1e7); }
   const d = mkDb(), ss = d.ss = d.ss || {}, now = 1e13 + ver, from = supFrom(), out = [], seen = new Set(), by = new Map();
+  const key = [db.parties.length, db.entries.length, db.sets.length, u1, u2, from].join('|');
+  if (!mkSupMemo || mkSupMemo.db !== db || mkSupMemo.key !== key) mkSupMemo = {db, key, M: new Map()};
   const sups = liveParties().filter(p => p.sec === 'sup');
-  sups.forEach(p => by.set(p.id, []));
-  for (const e of db.entries) if (!e.del && by.has(e.party)) by.get(e.party).push(e);
+  if (sups.some(p => !mkSupMemo.M.has(p.id))) { sups.forEach(p => by.set(p.id, [])); for (const e of db.entries) if (!e.del && by.has(e.party)) by.get(e.party).push(e); }
   sups.forEach(p => {
     seen.add(p.id);
-    const data = mkSupData(p, by.get(p.id).sort(entCmp), from), sig = 's1|' + strHash(JSON.stringify(data));
+    let m = mkSupMemo.M.get(p.id);
+    if (!m) { const data = mkSupData(p, by.get(p.id).sort(entCmp), from); m = {data, sig: 's1|' + strHash(JSON.stringify(data))}; mkSupMemo.M.set(p.id, m); }
+    const {data, sig} = m;
     if (ss[p.id] !== sig) out.push({row: {id: p.id, kind: 'sup', upd: now, del: false, view: ['', cell(p.name), data.bal / 100, 'رصيد مورد', ''], data}, sig, box: 'ss'});
   });
   Object.keys(ss).forEach(id => { if (!seen.has(id) && ss[id] !== '-') out.push({row: {id, kind: 'sup', upd: now, del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-', box: 'ss'}); });
@@ -8079,7 +8117,7 @@ async function mkSyncOnce() {
       if (ch) flushSave();
       if (fresh.length) mkAlert(fresh);
       else if (edits.length) mkEditAlert(edits);
-      if (ch || fresh.length) mkRefresh();
+      if (ch || fresh.length) whenStill(mkRefresh);
       if (ordCh) { ordBadge(); if (window.ordRefresh) ordRefresh(); }
     }
   }

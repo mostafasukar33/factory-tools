@@ -1977,6 +1977,14 @@ const T0 = Date.now();
       await A.evaluate(() => { db.cfg.tg = {}; });   // جهاز تاني
       await bg(A, `tgAfterSync(new Date('${thu}T21:30:00'))`);
       eq('تليجرام: فحص البيانات الأسبوعي اتبعت مرة واحدة بالنتيجة', [dr.length, dr[0] && dr[0].startsWith('🩺 فحص البيانات الأسبوعي') && /حركة · .* حساب/.test(dr[0]), tgTexts().length - r0], [1, true, 1]);
+      eq('تليجرام: فحص البيانات الأسبوعي فيه وقت الحفظ على الجهاز', !!dr[0] && dr[0].includes('⏱ الحفظ على الجهاز ده'), true);
+      eq('وقت الحفظ: سليم = سطر عادي، أكتر من ثانية = تنبيه قفل السنة، أقل من 3 حفظات = مفيش سطر', await A.evaluate(() => {
+        const keep = saveMs.splice(0), out = [];
+        saveMs.push(200, 300); out.push(saveLine());
+        saveMs.push(250); out.push(saveLine().includes('0.25 ثانية (سليم'));
+        saveMs.splice(0, 3, 1500, 1800, 2100); out.push(saveLine().includes('⚠️') && saveLine().includes('1.8 ثانية') && saveLine().includes('قفل السنة'));
+        saveMs.splice(0, 3, ...keep); return out;
+      }), ['', true, true]);
       eq('تليجرام: الصبح مفيش فواتير ناقصة = مفيش رسالة', await A.evaluate(() => nlSum().empty || nlSum().text.startsWith('📥')), true);
     }
     {

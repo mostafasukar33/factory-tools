@@ -1956,6 +1956,15 @@ let IDX = {}, P = new Map(), E = new Map();          // فهارس سريعة ب
 function reindex() { for (const k in STORE) IDX[k] = new Map((db[STORE[k]] = db[STORE[k]] || []).map(r => [r.id, r])); P = IDX.party; E = IDX.entry; }
 
 let saveT = null, saveChain = Promise.resolve(), saveFailed = false, dataVer = 0;
+/* وقت الحفظ على الجهاز ده (التشفير والكتابة، ملّي ثانية، آخر 20 حفظة، في الذاكرة بس): بيتكتب في فحص البيانات الأسبوعي على تليجرام،
+   ولو بقى أكتر من ثانية بينبّه إن وقت "قفل السنة" قرّب (docs/ideas.md). قياس بس، مبيغيّرش أي حاجة في الحفظ */
+const saveMs = [], SAVE_SLOW = 1000;
+function saveLine() {
+  if (saveMs.length < 3) return '';
+  const a = saveMs.slice().sort((x, y) => x - y), m = a[a.length >> 1], sec = (m / 1000).toFixed(m < 1000 ? 2 : 1);
+  return m > SAVE_SLOW ? `\n⚠️ الحفظ على الجهاز ده بقى بياخد ${sec} ثانية. البرنامج لسه شغال، بس ده معناه إن وقت "قفل السنة" قرّب، قول لـ Claude.`
+    : `\n⏱ الحفظ على الجهاز ده بياخد ${sec} ثانية (سليم، التنبيه لو عدّى ثانية).`;
+}
 function saveDB(now) {
   dataVer++;
   clearTimeout(saveT);
@@ -1969,6 +1978,7 @@ function flushSave() {
   if (!db || !cryptoKey) return saveChain;
   const snap = db, key = cryptoKey, salt = saltU8;
   saveChain = saveChain.then(async () => {
+    const t0 = performance.now();
     const box = await seal(key, salt, snap).catch(e => e);
     /* الآيفون ساعات بيقطع الاتصال بالتخزين لما البرنامج يقعد في الخلفية، فالاتصال القديم يفضل بايظ وكل حفظ يفشل.
        لو فشل: نفتح اتصال جديد ونجرب تاني مرة واحدة قبل ما نقول إن الحفظ فشل */
@@ -1976,6 +1986,7 @@ function flushSave() {
       try {
         if (box instanceof Error) throw box;
         await idbPut('vault', box);
+        saveMs.push(performance.now() - t0); if (saveMs.length > 20) saveMs.shift();
         await idbPut('meta', {pending: pendingRecs().length, at: nowS()});
         saveFailed = false;
         return;
@@ -9050,7 +9061,7 @@ async function tgAfterSync(now = new Date(nowS())) {
     if (drq && db === d0) { const j = await tgCall('tgmsg', {text: drq.text, once: {k: 'drnew', v: drq.v}}); if (j && j.ok && db === d0) delete db.cfg.doc.drq; }
     if (needDr && db === d0) {
       let r = null; try { await drLoad(); r = await window.docRun(true); } catch (e) {}
-      if (r && db === d0) { docKeep(r); await one('dr', W.to, {text: window.docText(r, `🩺 فحص البيانات الأسبوعي (لحد ${dispDate(W.to)})`), empty: false}); }
+      if (r && db === d0) { docKeep(r); await one('dr', W.to, {text: window.docText(r, `🩺 فحص البيانات الأسبوعي (لحد ${dispDate(W.to)})`) + saveLine(), empty: false}); }
     }
   } finally { tgBusy = false; if (db === d0) flushSave(); }
 }

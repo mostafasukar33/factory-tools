@@ -5557,11 +5557,13 @@ function tradeSums(f, t) {
   return {sales, purch};
 }
 /* مصروفات وإيرادات الخزنة في الفترة (من غير التحويلات والدفعات والتحصيل القديم) */
+/* الجمعية (بطلبه 30/10/2026): أي حركة خزنة مكتوب في ملاحظتها "جمعية" فلوس هترجع، مش مصروف ولا إيراد (زي العهدة) */
+const isJm = x => !!x.note && /جمعي/.test(x.note);
 const NOT_PL = new Set(['c_inc0', 'c_payout', 'c_adj_in', 'c_adj_out', 'c_hsn']);   // + الفلوس اللي راحت لحسن: عهدة مش مصروف (اللي صرفه هو المصروف، lib/hsn.js)   // تسوية الجرد مش مصروف ولا إيراد (بطلب صاحب المشروع)
 function cashSums(f, t) {
   const r = {exp: 0, inc: 0, part: 0, cs: 0, byCat: new Map()};
   for (const x of db.txs) {
-    if (x.del || x.type === 'tr' || x.date < f || x.date > t || NOT_PL.has(x.cat)) continue;
+    if (x.del || x.type === 'tr' || x.date < f || x.date > t || NOT_PL.has(x.cat) || isJm(x)) continue;
     if (x.iv || x.cat === 'c_ivdraw' || x.cat === 'c_ivcap') continue;   // فلوس المساهمين (رأس مال وسحب) مش مصروف ولا إيراد
     if (x.pt || x.cat === 'c_psal' || x.cat === 'c_pdraw') { r.part += x.amt; continue; }
     if (x.type === 'exp') r.exp += x.amt; else r.inc += x.amt;
@@ -5603,7 +5605,7 @@ let GM_FROM = '2026-10-01';
 const gmFrom = f => GM_FROM && f < GM_FROM ? GM_FROM : f;
 /* نوع الصنف من اسمه (بطلبه): السلك (2 و3 و4 مم) نحاس وبرّه حسبة التكلفة بالصنف خالص، والكابلات تجارة، والباقي بلاستيك (الخراطيم) */
 const GM_CU = /سلك|نحاس|copper/, GM_CB = /كابل|كبل|كيبل|cable/;
-const kwExp = x => !x.del && x.type === 'exp' && !NOT_PL.has(x.cat) && !x.iv && x.cat !== 'c_ivdraw' && x.cat !== 'c_ivcap' && !x.pt && x.cat !== 'c_psal' && x.cat !== 'c_pdraw';   // زي cashSums
+const kwExp = x => !x.del && x.type === 'exp' && !NOT_PL.has(x.cat) && !isJm(x) && !x.iv && x.cat !== 'c_ivdraw' && x.cat !== 'c_ivcap' && !x.pt && x.cat !== 'c_psal' && x.cat !== 'c_pdraw';   // زي cashSums
 function costBook(kwH = (getSet('itemCost', null) || {}).kw) {
   const man = icAll(), pk = icPack(), pur = new Map(), mp = matPricer(), sst = new Map();
   if (Object.keys(pk).length) for (const e of db.entries) {   // أقل وأعلى سعر بيع للوحدة (مش كرتونة) للأصناف اللي ليها عدد في الكرتونة
@@ -5696,35 +5698,77 @@ const gmPct = (m, v) => v ? Math.round(m * 1000 / v) / 10 : 0;
    (± فرق المخزون لو الفترة من جرد لجرد، زي الأرباح) − المصاريف = الربح قبل الشركاء بالظبط، من GM_FROM. مفيش تخمين */
 function gmSum(f, t) {
   f = gmFrom(f); const A = profitOf(f, t), sd = f <= t ? stockDiff(f, t) : null, st = sd ? sd.d : 0;
-  return {f, S: A.sales, Pu: A.purch, sd, gm: A.sales - A.purch + st, exp: A.exp, inc: A.inc, net: A.before + st};
+  let jm = 0; for (const x of db.txs) if (!x.del && x.type === 'exp' && x.date >= f && x.date <= t && isJm(x)) jm += x.amt;
+  return {f, S: A.sales, Pu: A.purch, sd, jm, gm: A.sales - A.purch + st, exp: A.exp, inc: A.inc, net: A.before + st};
 }
-/* المكسب بالنوع: اللي اتباع واللي دخل من الموردين في الفترة متقسمين من أسامي الأصناف: السلك والنحاس = نحاس، الكابل أو الصنف اللي بيتشرى
-   ويتباع بنفس الاسم = تجارة، خامة البلاستيك والألوان (matOf) والصنف اللي بيتباع ومش بيتشرى = بلاستيك، وباقي المشتريات (كرتون وغيره) = تانية.
-   الفاتورة من غير بنود والتسوية والفرق بين الإجمالي والبنود بيروحوا للنوع اللي الحساب ده بيتعامل فيه أكتر، والبيع الكاش تانية.
-   المجموع = profitOf().sales و.purch بالقرش */
-const GM_T = [['pl', 'البلاستيك (الخراطيم)'], ['cu', 'النحاس (السلك)'], ['tr', 'التجارة (الكابلات وغيرها)'], ['ot', 'تانية']];
-function gmTypes(f, t) {
-  const MM = getSet('matMap', null) || {}, nm = new Map(), sold = new Set(), bought = new Set(), dom = new Map(), rest = new Map(), R = {};
-  GM_T.forEach(([k]) => R[k] = {s: 0, p: 0});
-  const meta = (name, unit) => { const key = name + '\u0001' + (unit || ''); let x = nm.get(key);
-    if (!x) { const n = norm(name); x = {k: n + '|' + (unit || ''), t: GM_CU.test(n) ? 'cu' : GM_CB.test(n) ? 'tr' : '', g: matOf(name, MM)}; nm.set(key, x); } return x; };
-  const side = e => { if (e.del) return ''; const p = P.get(e.party); if (!p || p.noTot) return ''; return p.sec === 'sup' ? (PUR_K.has(e.kind) ? 'p' : '') : SALE_K.has(e.kind) ? 's' : ''; };
-  const ok = l => l.name && lineTot(l);
-  for (const e of db.entries) { const sd = side(e); if (sd && e.lines) e.lines.forEach(l => { if (ok(l)) (sd === 's' ? sold : bought).add(meta(l.name, l.unit).k); }); }
-  const typ = (sd, x) => sd === 's' ? x.t || (bought.has(x.k) ? 'tr' : 'pl') : x.t === 'cu' || x.g === 'copper' ? 'cu' : x.t === 'tr' || sold.has(x.k) ? 'tr' : x.g ? 'pl' : 'ot';
+/* المكسب بالنوع (بطلبه 30/10/2026، بعد مراجعة أكتوبر من ملفه): المشتريات بالمورد (كل مورد نوع واحد)، والبيع باسم الصنف. التخمين لوحده،
+   واللي اتغيّر في نافذة "تصنيف الأنواع" (gmTypeModal) بيتحفظ في إعداد set اسمه gmMap {s: {مورد: نوع}, i: {اسم: نوع}} وبيكسب.
+   البيع: كابل/المونيوم/دش/نت/تليفون/سماعه/مواسير/ماجيك/أصلي تجارة، والسلك نحاس، والنحاس من غير سلك (كابل) تجارة، والباقي بلاستيك.
+   المورد: نوع أكتر بنود اشتراها منه بالفلوس. الفاتورة من غير بنود والتسوية والفرق بين الإجمالي والبنود بتروح للنوع الأكتر للعميل،
+   والبيع الكاش من المصنع بلاستيك. المجموع = profitOf().sales و.purch بالقرش */
+const GM_T = [['pl', 'البلاستيك (الخراطيم)'], ['cu', 'النحاس (السلك)'], ['tr', 'التجارة (كابلات وغيرها)'], ['ot', 'تانية']];
+const GM_TR = /كابل|كبل|كيبل|cable|المونيوم|المونيم|دش|cat|(^|\s)نت(\s|$)|تليفون|سماع|مواسير|ماجيك|اصلي/, GM_PLS = /سوست|صابغ|صبغ|حبر|مذيب|شكار|كرتون|كيس|بكر/;
+const gmSaleGuess = n => GM_TR.test(n) ? 'tr' : /سلك/.test(n) ? 'cu' : /نحاس/.test(n) ? 'tr' : 'pl';
+const gmBuyGuess = (n, name, MM) => { if (GM_TR.test(n)) return 'tr'; const g = matOf(name, MM); if (g === 'copper') return 'cu'; if (/سلك/.test(n)) return 'tr';
+  return g || GM_PLS.test(n) ? 'pl' : /لفه|خرطوم|علبه/.test(n) ? 'tr' : 'pl'; };
+const gmMax = m => { let b = 'pl', bv = 0; for (const k in m) if (m[k] > bv) { b = k; bv = m[k]; } return b; };
+/* تخمين نوع كل مورد من بنود فواتيره كلها: Map id → نوع، وv = مشترياته */
+function gmSupGuess(MM = getSet('matMap', null) || {}) {
+  const sc = new Map(), nm = new Map(), v = new Map();
   for (const e of db.entries) {
-    const sd = side(e); if (!sd) continue;
-    const inP = e.date >= f && e.date <= t, m = dom.get(e.party) || {}; dom.set(e.party, m);
-    let r = inP ? (sd === 's' ? (e.dr || 0) - (e.cr || 0) : (e.cr || 0) - (e.dr || 0)) : 0;
-    const sg = e.kind === 'rinv' || e.kind === 'rpur' ? -1 : 1, ls = (e.lines || []).filter(ok), rev = ls.reduce((a, l) => a + lineTot(l), 0);
-    ls.forEach(l => { const k = typ(sd, meta(l.name, l.unit)), v = lineTot(l) - (rev && e.disc ? Math.round(e.disc * lineTot(l) / rev) : 0);
-      if (k !== 'ot') m[k] = (m[k] || 0) + v;
-      if (inP) { R[k][sd] += sg * v; r -= sg * v; } });
-    if (r) rest.set(e.party + '\u0001' + sd, (rest.get(e.party + '\u0001' + sd) || 0) + r);
+    if (e.del || e.kind !== 'pur') continue; const p = P.get(e.party); if (!p || p.sec !== 'sup') continue;
+    const m = sc.get(e.party) || {}; sc.set(e.party, m); v.set(e.party, (v.get(e.party) || 0) + (e.cr || 0));
+    (e.lines || []).forEach(l => { if (!l.name || !lineTot(l)) return; let k = nm.get(l.name); if (!k) { k = gmBuyGuess(norm(l.name), l.name, MM); nm.set(l.name, k); } m[k] = (m[k] || 0) + lineTot(l); });
   }
-  rest.forEach((v, key) => { const [id, sd] = key.split('\u0001'), m = dom.get(id) || {}; let b = 'ot', bv = 0; for (const k in m) if (m[k] > bv) { b = k; bv = m[k]; } R[b][sd] += v; });
-  R.ot.s += cashSums(f, t).cs;
+  const g = new Map(); sc.forEach((m, id) => g.set(id, gmMax(m))); g.v = v; return g;
+}
+function gmTypes(f, t) {
+  const GM = getSet('gmMap', null) || {}, OS = GM.s || {}, OI = GM.i || {}, SG = gmSupGuess(), nm = new Map(), dom = new Map(), rest = new Map(), R = {};
+  GM_T.forEach(([k]) => R[k] = {s: 0, p: 0});
+  const it = name => { let x = nm.get(name); if (!x) { const n = norm(name); x = OI[n] || gmSaleGuess(n); nm.set(name, x); } return x; };
+  for (const e of db.entries) {
+    if (e.del) continue; const p = P.get(e.party); if (!p || p.noTot) continue;
+    const inP = e.date >= f && e.date <= t;
+    if (p.sec === 'sup') { if (inP && PUR_K.has(e.kind)) R[OS[e.party] || SG.get(e.party) || 'pl'].p += (e.cr || 0) - (e.dr || 0); continue; }
+    if (!SALE_K.has(e.kind)) continue;
+    const m = dom.get(e.party) || {}; dom.set(e.party, m);
+    let r = inP ? (e.dr || 0) - (e.cr || 0) : 0;
+    const sg = e.kind === 'rinv' ? -1 : 1, ls = (e.lines || []).filter(l => l.name && lineTot(l)), rev = ls.reduce((a, l) => a + lineTot(l), 0);
+    ls.forEach(l => { const k = it(l.name), v = lineTot(l) - (rev && e.disc ? Math.round(e.disc * lineTot(l) / rev) : 0);
+      m[k] = (m[k] || 0) + v; if (inP) { R[k].s += sg * v; r -= sg * v; } });
+    if (r) rest.set(e.party, (rest.get(e.party) || 0) + r);
+  }
+  rest.forEach((v, id) => { R[gmMax(dom.get(id) || {})].s += v; });
+  R.pl.s += cashSums(f, t).cs;
   return R;
+}
+/* نافذة "تصنيف الأنواع": كل مورد وكل صنف اتباع بنوعه (التخمين أو اللي اتغيّر)، والحفظ بيحفظ اللي مختلف عن التخمين بس */
+function gmTypeModal(after) {
+  const GM = getSet('gmMap', null) || {}, OS = Object.assign({}, GM.s), OI = Object.assign({}, GM.i), SG = gmSupGuess(), im = new Map();
+  const S = [...SG.keys()].map(id => P.get(id)).filter(p => p && !p.del && !p.noTot).map(p => ({id: p.id, name: p.name, v: SG.v.get(p.id) || 0, a: SG.get(p.id), cur: OS[p.id] || SG.get(p.id)})).sort((a, b) => b.v - a.v);
+  for (const e of db.entries) {
+    if (e.del || e.kind !== 'inv') continue; const p = P.get(e.party); if (!p || p.sec === 'sup') continue;
+    (e.lines || []).forEach(l => { if (!l.name || !lineTot(l)) return; const k = norm(l.name), o = im.get(k) || {k, name: l.name, v: 0}; o.v += lineTot(l); im.set(k, o); });
+  }
+  const I = [...im.values()].map(o => Object.assign(o, {a: gmSaleGuess(o.k), cur: OI[o.k] || gmSaleGuess(o.k)})).sort((a, b) => b.v - a.v);
+  const sel = (cur, d) => `<select class="inp" ${d}>${GM_T.map(([v, n]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${n.replace(/ \(.*\)/, '')}</option>`).join('')}</select>`;
+  modal(`<h3>🏷 تصنيف الأنواع</h3>
+    <p class="hint" style="margin:0 0 8px">البرنامج خمّن نوع كل مورد وكل صنف بتبيعه. لو فيه حاجة في نوع غلط (كابل متحسوب نحاس مثلاً) غيّرها مرة واحدة وبتتحفظ.</p>
+    <h4 class="rch3">الموردين (كل اللي بتشتريه منه)</h4>
+    <div id="gtS">${S.map((o, i) => `<div class="mtr"><b>${esc(o.name)}</b>${sel(o.cur, `data-i="${i}"`)}</div>`).join('') || '<p class="hint">مفيش موردين لسه.</p>'}</div>
+    <h4 class="rch3">الأصناف اللي بتبيعها</h4>
+    ${I.length > 8 ? '<input class="inp" id="gtQ" type="search" placeholder="دوّر على صنف" autocomplete="off" style="margin-bottom:8px">' : ''}
+    <div id="gtI">${I.map((o, i) => `<div class="mtr"><b>${esc(o.name)}</b>${sel(o.cur, `data-i="${i}"`)}</div>`).join('') || '<p class="hint">مفيش فواتير بيع بأصناف لسه.</p>'}</div>
+    <div class="mfoot"><div class="mrow"><button class="btn gold" id="gtOk" type="button">حفظ</button><button class="btn line" id="gtX" type="button">رجوع</button></div></div>`, true);
+  if ($('#gtQ')) $('#gtQ').oninput = () => { const q = norm($('#gtQ').value.trim()); $$('#gtI .mtr').forEach((el, i) => { el.style.display = !q || I[i].k.includes(q) ? '' : 'none'; }); };
+  $('#gtX').onclick = closeModal;
+  $('#gtOk').onclick = () => {
+    $$('#gtS select').forEach(sl => { const o = S[+sl.dataset.i]; if (sl.value === o.a) delete OS[o.id]; else OS[o.id] = sl.value; });
+    $$('#gtI select').forEach(sl => { const o = I[+sl.dataset.i]; if (sl.value === o.a) delete OI[o.k]; else OI[o.k] = sl.value; });
+    const N = {s: OS, i: OI};
+    if (JSON.stringify(N) !== JSON.stringify({s: GM.s || {}, i: GM.i || {}})) { putSet('gmMap', N); toast('اتحفظ التصنيف ✔'); }
+    closeModal(); if (after) after();
+  };
 }
 /* المكسب بالصنف وبالعميل وبالشهر وبالفاتورة: على البنود اللي ليها تكلفة بس (B = بيعها، A = مكسبها)، والنحاس مش منهم */
 function gmData(f, t) {
@@ -5774,14 +5818,14 @@ function gmReport(f, t) {
       .map(x => ({cells: [x.cv ? x.name : x.name + ' — مالوش تكلفة', x.unit ? `${fmtQ(x.q)} ${x.unit}` : '', fmtP(x.v), ...(x.cv ? [fmtP(x.c), fmtP(x.cv - x.c), gmPct(x.cv - x.c, x.cv) + '%'] : ['—', '—', '—'])], cls: x.cv - x.c < 0 ? 'ret' : x.cv ? '' : 'mute'}));
   }
   const sum = [['اتباع', fmtP(D.S)], ['دخل من الموردين', fmtP(D.Pu)], ...(D.sd ? [['فرق المخزون من الجرد', (D.sd.d > 0 ? '+' : '') + fmtP(D.sd.d)]] : []),
-    ['مكسب البضاعة', `${fmtP(D.gm)}${D.S > 0 ? ` (${gmPct(D.gm, D.S)}%)` : ''}`], ['المصاريف', fmtP(D.exp)], ...(D.inc ? [['إيرادات تانية', fmtP(D.inc)]] : []),
+    ['مكسب البضاعة', `${fmtP(D.gm)}${D.S > 0 ? ` (${gmPct(D.gm, D.S)}%)` : ''}`], ['المصاريف', fmtP(D.exp)], ...(D.jm ? [['الجمعية (مش محسوبة مصروف)', fmtP(D.jm)]] : []), ...(D.inc ? [['إيرادات تانية', fmtP(D.inc)]] : []),
     ...(repGmKind !== 'type' ? [['الأصناف اللي ليها تكلفة', D.B ? `بيعها ${fmtP(D.B)} (${D.cov}%) ومكسبها ${fmtP(D.A)} (${D.pct}%)` : '—'], ...(D.missN ? [['أصناف مالهاش تكلفة لسه', String(D.missN)]] : [])] : []),
     ...(repGmKind === 'doc' && dN ? [['الفواتير', dN > GM_DOCS ? `${dN} (ظاهر أقل ${GM_DOCS} في المكسب، اختار فترة أصغر تشوفهم كلهم)` : String(dN)]] : [])];
   return {title: 'المكسب ' + ({type: 'بالنوع', cust: 'بالعميل', month: 'بالشهر', doc: 'بالفاتورة'}[repGmKind] || 'بالصنف'), period: rangeText(D.f, t), cols, rows, sum,
     fin: ['المكسب بعد المصاريف', fmtP(D.net)],
     note: 'المكسب = كل اللي اتباع − كل اللي دخل من الموردين في نفس الفترة − المصاريف، وده نفس تقرير الأرباح. الحسبة بتبتدي من ' + dispDate(GM_FROM || D.f) + ' (أول ما البرنامج اشتغل). '
       + 'الخامة اللي دخلت ولسه متباعتش بتتحسب كأنها اتصرفت، فلو عامل جرد أول الفترة وآخرها فرق المخزون بيتظبط لوحده. '
-      + (repGmKind === 'type' ? '"بالنوع": السلك نحاس، والكابلات والأصناف اللي بتشتريها وتبيعها بنفس الاسم تجارة، والباقي بلاستيك، والفاتورة من غير أصناف بتتحسب على النوع اللي العميل أو المورد ده بيتعامل فيه أكتر، والبيع الكاش والمشتريات التانية (كرتون وغيره) "تانية".'
+      + (repGmKind === 'type' ? '"بالنوع": المشتريات بالمورد (كل مورد نوع واحد) والبيع باسم الصنف، والفاتورة من غير أصناف على النوع اللي العميل بيشتريه أكتر، والبيع الكاش من المصنع بلاستيك. لو حاجة في نوع غلط غيّرها من "تصنيف الأنواع". والجمعية مش محسوبة مصروف.'
         : 'الجدول على الأصناف اللي ليها تكلفة بس: اللي انت كاتبها، أو خامة البلاستيك بآخر سعر + مصنعية الكيلو، أو آخر سعر شراء للتجارة. النحاس مش داخل فيه. ' + (repGmKind === 'doc' ? 'الفاتورة اللي جنبها * فيها أصناف مالهاش تكلفة، ومكسبها على الباقي بس.' : ''))};
 }
 /* ====================== الخامات (بطلبه 30/10/2026) ======================
@@ -6322,7 +6366,7 @@ function renderReports() {
         ${repMode === 'day' || repMode === 'week' ? `<input class="inp" type="date" id="rpDay" value="${repDay || t}">` : repMode === 'month' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">`
           : repMode === 'year' ? `<input class="inp num" id="rpYear" inputmode="numeric" value="${repYear || t.slice(0, 4)}">` : `<div class="g2"><input class="inp" type="date" id="rpFrom" value="${f}"><input class="inp" type="date" id="rpTo" value="${to}"></div>`}</div>` : ''}
       ${(repKind === 'profit' || repKind === 'gm' || repKind === 'mat') && !mob ? qh(esc(R.note)) : ''}
-      ${repKind === 'gm' ? '<button class="btn line" id="rpIC" type="button" style="margin-top:8px;width:100%">💰 تكلفة الأصناف</button>' : ''}
+      ${repKind === 'gm' ? (repGmKind === 'type' ? '<button class="btn line" id="rpGT" type="button" style="margin-top:8px;width:100%">🏷 تصنيف الأنواع</button>' : '<button class="btn line" id="rpIC" type="button" style="margin-top:8px;width:100%">💰 تكلفة الأصناف</button>') : ''}
       ${repKind === 'mat' ? `<button class="btn line" id="rpXC" type="button" style="margin-top:8px;width:100%">🏷 تصنيف الخامات${R.unk.length ? ` (${R.unk.length} مش متصنفة)` : ''}</button>` : ''}
       ${repKind === 'mat' && R.odd.length ? `<button class="btn line" id="rpXO" type="button" style="margin-top:8px;width:100%;color:var(--red)">⚠ ${R.odd.length === 1 ? 'بند سعره غريب' : R.odd.length + ' بنود سعرها غريب'} (غالباً الوحدة غلط)</button>` : ''}
       ${repKind === 'cash' ? `<select class="inp" id="rpV" style="margin-top:8px"><option value="">كل الخزن</option>${vaultsL().map(v => `<option value="${esc(v.id)}" ${repVault === v.id ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>` : ''}
@@ -6340,6 +6384,7 @@ function renderReports() {
   $$('#rpIK button').forEach(b => b.onclick = () => { repItemKind = b.dataset.v; renderReports(); });
   $$('#rpGK button').forEach(b => b.onclick = () => { repGmKind = b.dataset.v; renderReports(); });
   if ($('#rpIC')) $('#rpIC').onclick = () => costModal(renderReports);
+  if ($('#rpGT')) $('#rpGT').onclick = () => gmTypeModal(renderReports);
   $$('#rpXK button').forEach(b => b.onclick = () => { repMatKind = b.dataset.v; renderReports(); });
   $$('#rpXG button').forEach(b => b.onclick = () => { repMatG = b.dataset.v; renderReports(); });
   if ($('#rpXC')) $('#rpXC').onclick = () => matModal(renderReports);

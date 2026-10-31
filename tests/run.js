@@ -521,10 +521,10 @@ const T0 = Date.now();
       eq('المصنع والتجارة: القاموس بيفهم المصاريف (حسن عيسى عهدة، أبو شوشه لأ) والأصناف (العميل إنتاج إلا المواسير تجارة)', await A.evaluate(() => {
         const C = facCalc('2001-05-01', '2001-05-31'), g = k => (C.R[k] || {amt: 0}).amt;
         return [g('e:power'), g('e:run'), g('e:gen'), g('e:hassan'), g('e:raw'), g('e:out'), g('e:unk'), g('s:prod'), g('s:trade'), g('s:unk'), g('p:prod'), g('p:trade')]; }),
-        [100000, 20000, 5000, 300000, 40000, 50000, 10000, 409000, 100000, 0, 300000, 75000]);
+        [100000, 20000, 5000, 300000, 40000, 0, 10000, 409000, 100000, 0, 300000, 75000]);   // الجمعية مبقتش مصروف في الأرباح نفسها (isJm، بطلبه 30/10/2026) فمبتوصلش لـ "برّه الحسبة"
       eq('المصنع والتجارة: الصافي = تقرير الأرباح "قبل الشركاء" + برّه الحسبة (بالقرش)، وعرض بس', await A.evaluate(() => {
         const C = facCalc('2001-05-01', '2001-05-31'), n0 = db.txs.length + db.entries.length;
-        return [C.total === profitOf('2001-05-01', '2001-05-31').before + C.out, C.out, db.txs.length + db.entries.length === n0]; }), [true, 50000, true]);
+        return [C.total === profitOf('2001-05-01', '2001-05-31').before + C.out, C.out, db.txs.length + db.entries.length === n0]; }), [true, 0, true]);
       eq('المصنع والتجارة: الاختيار من "مش فاهم دول" بيتحفظ على الكلمة ويتطبق على أي حركة بنفس الملاحظة', await A.evaluate(() => {
         const L = () => facCalc('2001-05-01', '2001-05-31');
         const m = getSet('facMap', null) || {}; putSet('facMap', Object.assign({w: {}, d: {}, s: {}, j: []}, m, {w: Object.assign({}, m.w, {['x:' + norm('حاجه غريبه خالص')]: 'run', ['i:' + norm('صنف تجربة مجهول')]: 'trade'})}));
@@ -1345,17 +1345,21 @@ const T0 = Date.now();
       add('e_ty8', c.id, 'rinv', '1995-03-15', [L(HO, 'كيلو', 10, 9000)]);
       const ex = db.cats.find(x => !x.del && x.type === 'exp' && !NOT_PL.has(x.id) && !ADJ_CATS.has(x.id)).id;
       tx('t_ty1', 'inc', 'c_inc1', 20000, '1995-03-11'); tx('t_ty2', 'exp', ex, 50000, '1995-03-05');
+      const pj = profitOf('1995-03-01', '1995-12-31').exp; tx('t_ty3', 'exp', 'c_mkexp', 30000, '1995-03-06'); db.txs[db.txs.length - 1].note = 'جمعية يوم ١٠ تجربة';
       putSet('itemCost', {k: {[icKey(CU, 'لفة')]: {n: CU, u: 'لفة', h: [['1995-01-01', 30000]]}, [icKey(HO + ' مسلح', 'كيلو')]: {n: HO + ' مسلح', u: 'كيلو', g: 'copper', r: [['1995-01-01', 1000, 0]]}}});
       const D = gmData('1995-01-01', '1995-12-31'), PF = profitOf('1995-03-01', '1995-12-31'), T = gmTypes('1995-03-01', '1995-12-31'), cb = costBook(), m1 = docMargin(i1);
-      const r = [D.f, D.S === PF.sales, D.Pu === PF.purch, D.S, D.Pu, D.net === PF.before, ...GM_T.map(([k]) => [T[k].s, T[k].p].join('/')),
+      const r = [D.f, D.S === PF.sales, D.Pu === PF.purch, D.S, D.Pu, D.net === PF.before, PF.exp === pj, D.jm, ...GM_T.map(([k]) => [T[k].s, T[k].p].join('/')),
         cb(CU, 'لفة', '1995-03-10'), (cb(HO + ' مسلح', 'كيلو', '1995-03-10') || {}).src, Math.round(cb.kwInfo('1995-03-10').sh * 1000), cb(HO, 'كيلو', '1995-03-10').c, [m1.cov, m1.cost, m1.miss.join()].join('/')];
       repGmKind = 'type'; const R = gmReport('1995-01-01', '1995-12-31'); r.push(R.rows.length, R.rows[1].cells.join('|'), R.fin[1] === fmtP(PF.before), R.period.includes(dispDate('1995-03-01')));
       costModal(); r.push($$('#icL .icn b').some(x => x.textContent === CU), $$('#icL .icg option[value=copper]').length, /نحاس/.test($('#modal').textContent)); closeModal();
-      db.entries.splice(n0); ['e_ty1', 'e_ty2', 'e_ty3', 'e_ty4', 'e_ty5', 'e_ty6', 'e_ty7', 'e_ty8'].forEach(id => E.delete(id)); db.txs.splice(nt); ['t_ty1', 't_ty2'].forEach(id => IDX.tx.delete(id));
+      gmTypeModal(); const gs = $$('#gtS .mtr').find(x => x.querySelector('b').textContent === s2.name).querySelector('select'), gi = $$('#gtI .mtr').find(x => x.querySelector('b').textContent === HO).querySelector('select');
+      r.push(gs.value, gi.value); gs.value = 'tr'; gi.value = 'tr'; $('#gtOk').click(); const T2 = gmTypes('1995-03-01', '1995-12-31');
+      r.push(JSON.stringify(getSet('gmMap', null)) === JSON.stringify({s: {p_ty2: 'tr'}, i: {[norm(HO)]: 'tr'}}), [T2.pl.s, T2.pl.p, T2.tr.s, T2.tr.p].join('/'));
+      db.entries.splice(n0); ['e_ty1', 'e_ty2', 'e_ty3', 'e_ty4', 'e_ty5', 'e_ty6', 'e_ty7', 'e_ty8'].forEach(id => E.delete(id)); db.txs.splice(nt); ['t_ty1', 't_ty2', 't_ty3'].forEach(id => IDX.tx.delete(id));
       db.parties.splice(np); ['p_ty1', 'p_ty2', 'p_ty3'].forEach(id => P.delete(id));
-      const sr = IDX.set.get('itemCost'); if (sr) { db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('itemCost'); } GM_FROM = gf; saveDB();
-      return r; }), ['1995-03-01', true, true, 1705000, 11110000, true, '1110000/6000000', '500000/5000000', '75000/100000', '20000/10000',
-      null, 'k', 610, 6305, '975000/680500/' + 'سلك 2 مم تجربة', 4, 'النحاس (السلك)|5,000|50,000|-45,000|-900%', true, true, false, 0, false]);
+      ['itemCost', 'gmMap'].forEach(k => { const sr = IDX.set.get(k); if (sr) { db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete(k); } }); GM_FROM = gf; saveDB();
+      return r; }), ['1995-03-01', true, true, 1705000, 11110000, true, true, 30000, '1130000/6110000', '500000/5000000', '75000/0', '0/0',
+      null, 'k', 610, 6305, '975000/680500/' + 'سلك 2 مم تجربة', 3, 'النحاس (السلك)|5,000|50,000|-45,000|-900%', true, true, false, 0, false, 'pl', 'pl', true, '20000/0/1185000/6110000']);
     eq('سطر الفاتورة بيتقرّب لأقرب قرش (1.5 × 3.33 = 5)', await A.evaluate(() => [lineTot({qty: 1.5, price: 333}), docTotal({lines: [{qty: 1.5, price: 333}, {qty: 0.333, price: 1000}], disc: 0})]), [500, 833]);
 
     eq('مفيش أرقام فواتير: لا خانة ولا عرض في الكشف ولا العنوان', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv'); const f = !!$('#dcNo'); closeModal();

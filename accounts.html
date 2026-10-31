@@ -1556,7 +1556,7 @@ body{font-size:var(--f3);line-height:1.6}
   html body main .srow #bSearch{display:none}
   html body main .srow #hSearch{display:block;order:-2;flex:1 1 calc(100% - 128px);height:48px;min-height:48px;font-size:var(--f3)}
   html body main .srow #bSearchAll{display:flex;order:-1;flex:0 0 118px;width:auto;min-height:48px;height:48px;margin:0!important;padding:4px 6px;font-size:var(--f1);border-radius:10px;align-items:center;justify-content:center}
-  html body main .srow #hRep,html body main .srow #hJrd,html body main .srow #bNewParty{min-height:50px;flex-direction:row;gap:6px}
+  html body main .srow #hJrd,html body main .srow #bNewParty{min-height:50px;flex-direction:row;gap:6px}
   #hList .pt{padding:6px 14px;min-height:50px}
   #hList .pt .a b{line-height:1.15}
   #hList .pt.lim-y,#hList .pt.lim-r{box-shadow:none}
@@ -1590,7 +1590,7 @@ body{font-size:var(--f3);line-height:1.6}
   /* العملا: البحث والتقارير والجرد وجديد في سطر واحد، و"في الحركات" تحته لما تكتب، والترتيب جنب التبويبات */
   html body main .srow{flex-wrap:wrap;gap:7px}
   html body main .srow #hSearch{order:-2;flex:1 1 0;min-width:0}
-  html body main .srow #hRep,html body main .srow #hJrd,html body main .srow #bNewParty{order:-1;flex:0 0 54px;min-height:48px;height:48px;flex-direction:column;gap:2px;padding:3px 2px;border-radius:12px}
+  html body main .srow #hJrd,html body main .srow #bNewParty{order:-1;flex:0 0 54px;min-height:48px;height:48px;flex-direction:column;gap:2px;padding:3px 2px;border-radius:12px}
   html body main .srow .lb{font-size:var(--f1)}
   html body main .srow .lbw{display:none}html body main .srow .lbm{display:block}
   html body main .srow #bSearchAll{display:none}
@@ -2288,10 +2288,10 @@ function renderHome() {
   const wide = isWide(), tabs = wide ? [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']] : tab === 'sup' ? [] : [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع']];
   $('#hTabs').innerHTML = (!wide && tab === 'sup' ? `<div class="supt">🏭 الموردين <small>${cnt('sup')}</small></div>` : tabs.map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small></button>`).join(''))
     ;
-  $('#hTools').innerHTML = !wide && tab !== 'sup' ? '<button class="hcash" id="hRep" type="button">📊<span class="lb">التقارير</span></button>' + (() => { const w = ivWaiting(); return `<button class="hcash" id="hJrd" type="button">📦<span class="lb">الجرد</span>${w ? `<small>${w}</small>` : ''}</button>`; })() : '';
+  /* زرار التقارير اتشال من هنا بطلبه 31/10/2026 (بقى تبويب تحت)، والجرد وجديد جنب البحث */
+  $('#hTools').innerHTML = !wide && tab !== 'sup' ? (() => { const w = ivWaiting(); return `<button class="hcash" id="hJrd" type="button">📦<span class="lb">الجرد</span>${w ? `<small>${w}</small>` : ''}</button>`; })() : '';
   $('#hTabs').classList.remove('t3');
   $$('#hTabs button[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
-  if ($('#hRep')) $('#hRep').onclick = () => go('rep');
   if ($('#hJrd')) $('#hJrd').onclick = () => go('jrd');
   renderMkHome(); renderList(bal); qkMark(); runCounters($('#hTots'));
 }

@@ -1743,8 +1743,8 @@ const T0 = Date.now();
     await A.evaluate(() => { tab = 'mkt'; go('home'); }); await A.settle(200);
     eq('الموبايل: مفيش زرار الليلي فوق، وزرار الحساب الجديد مش نفس ＋ بتاع التسجيل السريع، وسطر "آخر دفعة" تحت الاسم', await A.evaluate(() => [!!$('#bTheme').offsetParent, $('#bNewParty').textContent.includes('＋'), !!$('#bNewParty svg'),
       [...$$('#hList .lpy')].some(x => x.offsetParent && x.textContent.startsWith('آخر دفعة'))]), [false, false, true, true]);
-    eq('الموبايل (بطلبه 30/10/2026): البحث والتقارير والجرد وجديد في سطر واحد، و"في الحركات" مستخبي لحد ما تكتب، والترتيب جنب التبويبات من غير سطر "الاسم/عليه"', await A.evaluate(() => {
-      const bs = ['#hRep', '#hJrd', '#bNewParty'].map(x => $(x).getBoundingClientRect()), q = $('#hSearch').getBoundingClientRect(), tb = $('#hTabs').getBoundingClientRect(), so = $('#hSortB').getBoundingClientRect();
+    eq('الموبايل (بطلبه 30/10/2026): البحث والجرد وجديد في سطر واحد (التقارير اتشالت من هنا 31/10/2026، بقت تحت)، و"في الحركات" مستخبي لحد ما تكتب، والترتيب جنب التبويبات من غير سطر "الاسم/عليه"', await A.evaluate(() => {
+      const bs = ['#hJrd', '#bNewParty'].map(x => $(x).getBoundingClientRect()), q = $('#hSearch').getBoundingClientRect(), tb = $('#hTabs').getBoundingClientRect(), so = $('#hSortB').getBoundingClientRect();
       return [!!$('#hSearch').offsetParent, !!$('#bSearch').offsetParent, q.bottom <= $('#hList').getBoundingClientRect().top + 1, bs.every(r => Math.abs(r.top - q.top) < 3 && r.height >= 44 && r.width >= 44 && r.left >= 0),
         bs.slice(1).every((r, i) => Math.abs(r.right - bs[i].left) >= 6 || Math.abs(bs[i].right - r.left) >= 6), !!$('#bSearchAll').offsetParent, !!$('#hTabs #hSortB') && so.top >= tb.top - 1 && so.bottom <= tb.bottom + 1, !$('#hList .pth').offsetParent]; }), [true, false, true, true, true, false, true, true]);
     await A.fill('#hSearch', 'تجربة واحد'); await A.settle(200);
@@ -2160,7 +2160,7 @@ const T0 = Date.now();
     eq('الموبايل: زرار حركة السوق تحت مكان الشركاء (بطلب صاحب المشروع) ومفيش جرس', await A.evaluate(() => [getComputedStyle($('nav button[data-go=mkt]')).display, getComputedStyle($('nav button[data-go=part]')).display, !$('#bBell')]), ['flex', 'none', true]);
     eq('الموبايل: الإعدادات ترس فوق (مش تحت)، والشريط 5 خانات (التقارير اتضافت بطلبه 31/10/2026)', await A.evaluate(() => [getComputedStyle($('#bSet')).display !== 'none', getComputedStyle($('nav button[data-go=set]')).display, getComputedStyle($('nav')).gridTemplateColumns.split(' ').length]), [true, 'none', 5]);
     await A.click('nav button[data-go=home]'); await A.settle(200);
-    eq('الموبايل: زراير التقارير والجرد جنب بعض فوق في العملاء', await A.evaluate(() => { const r = $('#hRep').getBoundingClientRect(), j = $('#hJrd').getBoundingClientRect(); return [Math.abs(r.top - j.top) < 4, r.left !== j.left]; }), [true, true]);
+    eq('الموبايل: مفيش زرار تقارير في العملاء (بقى تحت)، والجرد وجديد جنب البحث في سطر واحد', await A.evaluate(() => { const q = $('#hSearch').getBoundingClientRect(), j = $('#hJrd').getBoundingClientRect(), n = $('#bNewParty').getBoundingClientRect(); return [!$('#hRep'), Math.abs(q.top - j.top) < 4 && Math.abs(j.top - n.top) < 4, j.left !== n.left]; }), [true, true, true]);
     await A.click('#hJrd'); await A.settle(200);
     eq('زرار الجرد فوق بيفتح الجرد', await A.evaluate(() => location.hash), '#jrd');
     eq('الوقت المتسجل من ساعة الموبايل (حتى لو الشيت رد بوقت مختلف)', await A.evaluate(() => { const t0 = Date.now(); srvClock({t: t0 + 5 * 36e5}, t0); const r = {}; touch(r); return [Math.abs(r.upd - Date.now()) < 3000, Math.abs(nowS() - Date.now()) < 3000]; }), [true, true]);
@@ -2758,13 +2758,13 @@ const T0 = Date.now();
     /* الشريط اللي تحت على الموبايل: العملاء | الموردين | حركة السوق | التقارير | الإعدادات */
     eq('الموبايل: ترتيب الشريط اللي تحت', await A.evaluate(() => $$('nav button[data-go]').filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => (+getComputedStyle(a).order) - (+getComputedStyle(b).order)).map(b => b.innerText.trim())), ['العملاء', 'الموردين', 'الوارد', 'التقارير', 'الخزنة']);
     await A.click('nav button[data-go=home]'); await A.settle(150);
-    eq('العملاء: عملاء السوق والمواقع بس + زرار الخزنة، والبحث مبيجيبش موردين', await A.evaluate(() => { const t = $$('#hTabs button[data-t]').map(b => b.dataset.t); $('#hSearch').value = 'مورد'; renderList(); const n = $$('#hList .pt.sup').length; $('#hSearch').value = ''; renderList(); return [t, !!$('#hRep'), n]; }), [['mkt', 'site'], true, 0]);
+    eq('العملاء: عملاء السوق والمواقع بس + زرار الخزنة، والبحث مبيجيبش موردين', await A.evaluate(() => { const t = $$('#hTabs button[data-t]').map(b => b.dataset.t); $('#hSearch').value = 'مورد'; renderList(); const n = $$('#hList .pt.sup').length; $('#hSearch').value = ''; renderList(); return [t, !!$('#hJrd'), n]; }), [['mkt', 'site'], true, 0]);
     await A.click('nav button[data-go=sup]'); await A.settle(150);
     eq('الموردين تبويب لوحده تحت وفيه موردين بس', await A.evaluate(() => [$('nav button.on').dataset.go, $$('#hList .pt').length > 0 && $$('#hList .pt').every(x => x.classList.contains('sup')), $$('#hTabs button[data-t]').length]), ['sup', true, 0]);
     await A.click('#hList .pt'); await A.settle(150);
     eq('صفحة المورد: الموردين هو المتعلّم والرجوع بيرجع للموردين', [await A.evaluate(() => $('nav button.on').dataset.go), (await A.click('#ppBack2'), await A.settle(150), await A.evaluate(() => location.hash))], ['sup', '#sup']);
-    await A.click('nav button[data-go=home]'); await A.click('#hRep'); await A.settle(150);
-    eq('زرار التقارير في العملاء بيفتح التقارير', await A.evaluate(() => location.hash), '#rep');
+    await A.click('nav button[data-go=home]'); await A.click('nav button[data-go=rep]'); await A.settle(150);
+    eq('تبويب التقارير تحت بيفتح التقارير', await A.evaluate(() => location.hash), '#rep');
     eq('حساب طويل: آخر 30 سطر بس وزرار واحد للأقدم، والرصيد السابق في عمود الرصيد، وكل دوسة بتفرد 30 وفيه طي', await A.evaluate(async () => {
       const p = liveParties()[0], bal = balance(p.id), made = [];
       for (let i = 0; i < 60; i++) made.push(addEntry({party: p.id, kind: 'man', date: '2019-01-' + pad2(1 + i % 28), desc: 'حركة طويلة ' + i, dr: 100, cr: 0}));

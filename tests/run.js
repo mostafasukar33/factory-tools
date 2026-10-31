@@ -2877,6 +2877,16 @@ const T0 = Date.now();
       const m0 = await money(), tg0 = tgTexts().length;
       await M.evaluate(() => { closeModal(); nav('', true); }); await M.settle(200);
       eq('الشريك: زرارين الطلبيات والتسعير في صف لوحده تحت زراير الفلوس', await M.evaluate(() => { const r = $('.xrow'), q = $('.qa2'); return [!!r && !!$('#qOrd') && !!$('#qPrc'), !!r && r.previousElementSibling === q, !q.contains($('#qOrd'))]; }), [true, true, true]);
+      // أرقام التحويل: الأرقام الأصلية، الرسالة فيها "باسم"، والتعديل بيتحفظ على الموبايل بس
+      await M.click('#qWal'); await M.waitForSelector('#modal .wlr');
+      eq('أرقام التحويل: 5 أرقام في مجموعتين', await M.evaluate(() => [$$('#modal .wlr').length, $$('#modal .wlg').map(g => g.textContent), $('#modal .wln').textContent]), [5, ['أرقام أحمد', 'أرقام مصطفى'], '010 0391 6681']);
+      eq('أرقام التحويل: نص الرسالة', await M.evaluate(() => [wlMsg(wlList()[3]), wlMsg(wlList()[2]).split('\n')[0]]), ['حوّل على فودافون كاش\n01031819017\nباسم: هالة\nوابعت صورة التحويل بعد ما تحوّل 🙏', 'حوّل على فودافون كاش أو إنستا باي']);
+      await M.click('#wlEd'); await M.waitForSelector('#modal .wlp');
+      await M.evaluate(() => { $$('#modal .wlr .rm')[4].click(); });
+      await M.evaluate(() => { $('#wlAdd').click(); }); await M.fill('#modal .wlr:last-of-type .wlp', '01200000000');
+      await M.click('#wlSv'); await M.waitForSelector('#wlEd');
+      eq('أرقام التحويل: التعديل اتحفظ (مسح وإضافة)', await M.evaluate(() => [S.wal.length, S.wal[4].p, S.wal[4].o, $$('#modal .wlr').length]), [5, '01200000000', 'أحمد', 5]);
+      await M.evaluate(() => { delete S.wal; save(); closeModal(); }); await M.settle(200);
       await M.click('#qOrd'); await M.waitForSelector('#ordL');
       eq('الطلبيات: تبويبين بس وفاضية', await M.evaluate(() => [$$('#oTabs button').map(b => b.textContent), !!$('#ordL .oempty')]), [['لسه متسلمتش (0)', 'اتسلمت'], true]);
       await M.click('#oNew'); await M.waitForSelector('#ordF');

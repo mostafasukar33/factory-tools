@@ -108,6 +108,23 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:var(--ink)}
 .fbd .meq span{display:block;white-space:nowrap;font-weight:800;font-size:var(--f3)}.fbd .meq span .n{font-size:var(--f3)}.fbd .meq .n{font-size:var(--f2)}
 .fbt tr.fbx td>small{display:block;font-size:var(--f1);font-weight:600;line-height:1.5}
 .xb small{background:var(--red);color:var(--card);border-radius:9px;padding:0 7px;font-size:var(--f1);font-weight:800}
+/* أرقام التحويل (المحافظ وإنستا باي، بطلبه 31/10/2026) */
+.xb.wide{grid-column:1/-1}
+.wlg{margin:14px 2px 6px;font-size:var(--f2);font-weight:800;color:var(--sub)}
+.wlr{border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px;background:var(--card)}
+.wlt{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--f2);font-weight:700;color:var(--ink)}
+.wlt svg,.wlty svg{width:26px;height:26px;flex:none}
+.wlt em{font-style:normal;color:var(--sub)}
+.wln{direction:ltr;text-align:right;font-size:var(--f5);font-weight:800;margin:6px 0 8px;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.wlb{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wlb button,.wlty button{height:46px;border-radius:11px;font:inherit;font-weight:800;font-size:var(--f2);display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:1.5px solid var(--line);background:var(--card);color:var(--ink)}
+.wlb svg{width:24px;height:24px;flex:none}
+.wlb .wa{border-color:var(--green);color:var(--green)}
+.wlty{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.wlty button{height:42px;font-size:var(--f1);gap:4px;padding:0 4px;opacity:.45}
+.wlty button svg{width:20px;height:20px}
+.wlty button.on{opacity:1;border-color:var(--ink)}
+.wlr .rm{width:100%;height:38px;border:0;background:none;color:var(--red);font:inherit;font-weight:700;font-size:var(--f2);cursor:pointer}
 .qb.qs{border-color:var(--gold);background:var(--gold-l);color:var(--gold-d)}
 .list{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 12px;min-height:48px;border-bottom:1px solid var(--row);cursor:pointer}
@@ -979,7 +996,7 @@ function drawHome() {
       ${k ? `<button class="kline ${k.amt === k.sys ? 'ok' : 'bad'}" id="kBtn" type="button">🔒 قفلت يومك ${timeOf(k.ts)}: ${k.amt === k.sys ? 'مظبوط ✓' : `${k.amt < k.sys ? 'ناقص' : 'زيادة'} <span class="money">${fmt(k.amt - k.sys)}</span>`}${k.sys !== cn ? ' <em>· فيه حركات بعد القفل، قفّل تاني</em>' : ''}</button>`
         : `<button class="kline" id="kBtn" type="button">🔒 قفّل يومك (عِد الفلوس اللي معاك)</button>`}</section>
     <div class="qa2"><button class="qb g" id="qPay" type="button"><i>💵</i>دفعة أو فاتورة</button><button class="qb qs" id="qSale" type="button"><i>🏭</i>بيع كاش من المصنع</button><button class="qb" id="qSp" type="button"><i>⛽</i>صرفت</button><button class="qb" id="qHand" type="button"><i>🤝</i>سلمت لمصطفى</button></div>
-    <div class="xrow"><button class="xb" id="qOrd" type="button">📋 الطلبيات${on ? ` <small>${on}</small>` : ''}</button><button class="xb" id="qPrc" type="button">🏷️ التسعير</button></div>
+    <div class="xrow"><button class="xb" id="qOrd" type="button">📋 الطلبيات${on ? ` <small>${on}</small>` : ''}</button><button class="xb" id="qPrc" type="button">🏷️ التسعير</button><button class="xb wide" id="qWal" type="button">${WL_SVG.wa} أرقام التحويل (المحافظ وإنستا باي)</button></div>
     ${pnShow() ? '<button class="pnl" id="qPn" type="button">🔔 دوس هنا علشان يجيلك إشعار لما مصطفى يكتب طلبية</button>' : ''}
     <div class="lbl"><span>حركات النهارده</span><span>دوس على أي حركة تعدّلها</span></div>
     ${ldTabs()}
@@ -990,6 +1007,7 @@ function drawHome() {
   if ($('#bk')) $('#bk').onclick = () => editSheet(bk[0]);
   $('#qOrd').onclick = () => ordLoad('ordOpen');
   $('#qPrc').onclick = () => ordLoad('prcOpen');
+  $('#qWal').onclick = () => wlOpen();
   if ($('#qPn')) $('#qPn').onclick = () => pnTap($('#qPn'));
   $('#kBtn').onclick = closeDay;
   $('#qPay').onclick = () => { nav('c'); setTimeout(() => $('#q') && $('#q').focus(), 120); };
@@ -1566,6 +1584,61 @@ function drawDay() {
 }
 
 /* ---------- الإعدادات: المظهر وحجم الخط وحالة الاتصال ---------- */
+/* ---------- أرقام التحويل (بطلب مصطفى 31/10/2026) ----------
+   أرقام المحافظ وإنستا باي، وأحمد يبعت أي رقم للعميل على الواتساب في رسالة جاهزة (الواتس بيفتح على قايمة الأسامي).
+   الأرقام الأصلية من مصطفى (WL_DEF)، ولو أحمد عدّل بتتحفظ في S.wal على موبايله بس. "باسم" بيظهر في الرسالة بس */
+const WL_DEF = [
+  {o: 'أحمد', n: 'أحمد', p: '01003916681', t: ['vf']},
+  {o: 'أحمد', n: 'أحمد', p: '01157070087', t: ['et']},
+  {o: 'مصطفى', n: 'مصطفى', p: '01005174644', t: ['vf', 'ip']},
+  {o: 'مصطفى', n: 'هالة', p: '01031819017', t: ['vf']},
+  {o: 'مصطفى', n: 'مسعد', p: '01064063446', t: ['vf']}];
+const WL_T = {vf: 'فودافون كاش', et: 'اتصالات كاش', ip: 'إنستا باي'};
+const WL_SVG = {
+  vf: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#e60000"/><path d="M14.6 6.3c-3.7.4-6.6 3.1-6.6 6.7 0 2.7 1.9 4.7 4.4 4.7 2.3 0 4-1.7 4-4 0-2.3-1.6-3.4-3-3.9-.1-1.4.4-2.7 1.2-3.5z" fill="#fff"/></svg>',
+  et: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#00a651"/><path d="M7.4 12.4h9.2a4.6 4.6 0 1 0-1.4 3.4" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  ip: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#5b2d8e"/><path d="M13.6 3.8 6.8 13.4h4.6l-1 6.8 6.8-9.6h-4.6z" fill="#ff8a00"/></svg>',
+  wa: '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:1.25em;height:1.25em;vertical-align:-.25em"><path fill="#25d366" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z"/><path fill="#fff" d="M8.6 7.3c.2-.4.4-.4.7-.4h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .5l-.5.7c-.1.2-.2.3 0 .6.5.8 1.1 1.5 1.9 2 .3.2.6.4.9.5.2.1.4 0 .5-.1l.7-.8c.2-.2.3-.2.5-.1l1.8.9c.3.1.4.2.4.3.1.5-.1 1.2-.5 1.6-.5.5-1.3.8-2 .7-1-.1-2.4-.6-3.8-1.8-1.4-1.2-2.4-2.8-2.7-3.6-.3-.8-.3-1.8.2-2.4z"/></svg>',
+  cp: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>'};
+const wlList = () => Array.isArray(S.wal) ? S.wal : WL_DEF;
+const wlNum = p => { const d = String(p || '').replace(/\s/g, ''); return /^\d{11}$/.test(d) ? d.slice(0, 3) + ' ' + d.slice(3, 7) + ' ' + d.slice(7) : d; };
+const wlMsg = w => `حوّل على ${w.t.map(k => WL_T[k]).join(' أو ')}\n${String(w.p).replace(/\s/g, '')}\nباسم: ${w.n || w.o}\nوابعت صورة التحويل بعد ما تحوّل 🙏`;
+const wlTypes = w => w.t.map(k => WL_SVG[k]).join('') + `<span>${w.t.map(k => WL_T[k]).join(' <em>و</em> ')}</span>`;
+function wlCopy(txt) {
+  const ok = () => toast('✔ الرقم اتنسخ'), old = () => { const a = document.createElement('textarea'); a.value = txt; a.setAttribute('readonly', ''); a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); ok(); } catch (e) { toast('مش قادر ينسخ، اكتبه بإيدك'); } a.remove(); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, old); else old();
+}
+function wlOpen() {
+  const L = wlList(), own = [...new Set(L.map(w => w.o))];
+  modal(`<h3>أرقام التحويل <small>دوس واتساب واختار العميل</small></h3>
+    ${L.length ? own.map(o => `<div class="wlg">أرقام ${esc(o)}</div>` + L.map((w, i) => w.o !== o ? '' : `<div class="wlr" data-i="${i}"><div class="wlt">${wlTypes(w)}</div><div class="wln">${esc(wlNum(w.p))}</div>
+      <div class="wlb"><button type="button" class="wa" data-wa="${i}">${WL_SVG.wa} واتساب</button><button type="button" data-cp="${i}">${WL_SVG.cp} نسخ</button></div></div>`).join('')).join('') : '<p class="hint">مفيش أرقام. دوس "عدّل الأرقام" وضيف.</p>'}
+    <button class="lnk" id="wlEd" type="button">✏️ عدّل الأرقام</button>`);
+  $$('#modal [data-wa]').forEach(b => b.onclick = () => { location.href = 'whatsapp://send?text=' + encodeURIComponent(wlMsg(L[b.dataset.wa])); });
+  $$('#modal [data-cp]').forEach(b => b.onclick = () => wlCopy(String(L[b.dataset.cp].p).replace(/\s/g, '')));
+  $('#wlEd').onclick = () => wlEdit(L.map(w => ({...w, t: [...w.t]})));
+}
+function wlEdit(L) {
+  const own = [...new Set(['أحمد', 'مصطفى', ...L.map(w => w.o)])];
+  modal(`<h3>عدّل الأرقام <small>على الموبايل ده بس</small></h3>
+    ${L.map((w, i) => `<div class="wlr" data-i="${i}"><div class="wlty">${Object.keys(WL_T).map(k => `<button type="button" data-k="${k}" class="${w.t.includes(k) ? 'on' : ''}">${WL_SVG[k]}${WL_T[k].split(' ')[0]}</button>`).join('')}</div>
+      <input class="inp wlp" inputmode="tel" dir="ltr" placeholder="الرقم" value="${esc(w.p)}">
+      <div class="row2"><input class="inp wln2" placeholder="باسم (في الرسالة)" value="${esc(w.n)}"><select class="inp wlo">${own.map(o => `<option${o === w.o ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></div>
+      <button type="button" class="rm">🗑 امسح الرقم ده</button></div>`).join('')}
+    <button class="big b-home" id="wlAdd" type="button">＋ رقم جديد</button>
+    <button class="big b-cash" id="wlSv" type="button">💾 احفظ</button>
+    <button class="lnk" id="wlBack" type="button">رجوع من غير حفظ</button>`);
+  const read = () => $$('#modal .wlr').map(r => ({o: r.querySelector('.wlo').value, n: r.querySelector('.wln2').value.trim(), p: r.querySelector('.wlp').value.trim(), t: [...r.querySelectorAll('.wlty button.on')].map(b => b.dataset.k)}));
+  $$('#modal .wlty button').forEach(b => b.onclick = () => b.classList.toggle('on'));
+  $$('#modal .wlr .rm').forEach(b => b.onclick = () => { const l = read(); l.splice(+b.closest('.wlr').dataset.i, 1); wlEdit(l); });
+  $('#wlAdd').onclick = () => { const l = read(); l.push({o: 'أحمد', n: '', p: '', t: ['vf']}); wlEdit(l); const r = $$('#modal .wlp'); r[r.length - 1].focus(); };
+  $('#wlBack').onclick = () => wlOpen();
+  $('#wlSv').onclick = () => {
+    const l = read(), bad = l.findIndex(w => !w.p || !w.t.length);
+    if (bad >= 0) { toast(!l[bad].p ? 'اكتب الرقم أو امسح السطر' : 'اختار نوع الرقم (فودافون، اتصالات، إنستا)'); return; }
+    S.wal = l; save(); toast('✔ اتحفظ'); wlOpen();
+  };
+}
 function drawSettings() {
   const u = uiGet(), n = pending().length;
   $('#main').innerHTML = `<div class="card"><h2>المظهر</h2>

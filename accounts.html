@@ -260,9 +260,9 @@ table.ldg.rp tr.mute td{color:var(--sub)}
 .rcd small.up{color:var(--green)}.rcd small.dn{color:var(--red)}
 @media (min-width:1000px){.rcg{grid-template-columns:repeat(4,1fr)}}
 /* تقرير الخزنة على الموبايل (بطلبه 24/10/2026): التفاصيل تحت اسم الحركة بدل عمود لوحده، علشان داخل/خارج/الرصيد يبانوا من غير سحب */
-.rpsub{display:none}table.gmi td.l small.rpsub{display:none}
+.rpsub{display:none}table.gmi td.l small.rpsub,table.mts td.l small.rpsub{display:none}
 table.ldg.rp.mtt th{white-space:normal;line-height:1.15}table.ldg.rp.mtt td:nth-child(3){text-align:center;color:var(--sub)}
-@media (max-width:640px){table.mtt{min-width:0!important;width:100%}table.mtt td.l{min-width:0}table.mts :is(th,td):nth-child(4){display:none}
+@media (max-width:640px){table.mtt{min-width:0!important;width:100%}table.mtt td.l{min-width:0}table.mts :is(th,td):is(:nth-child(6),:nth-child(7)){display:none}table.mts td.l small.rpsub{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}
   table.gmi{min-width:0!important;width:100%}table.gmi :is(th,td):nth-child(2){display:none}table.gmi td.l small.rpsub{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}table.gmi td.l{min-width:0}
   table.rpc{min-width:0!important;width:100%}table.rpc :is(th,td):nth-child(3){display:none}table.rpc .rpsub{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}}.rph small{display:block;font-size:var(--f1);color:var(--sub);font-weight:700}
 .ldg.rp tr[data-p],.ldg.rp tr[data-k],.ldg.rp tr[data-e]{cursor:pointer}
@@ -5885,6 +5885,15 @@ function matOf(name, M = getSet('matMap', null) || {}) {
   for (const g of Object.keys(MAT_W)) if (MAT_W[g].test(k)) return g;
   return null;
 }
+/* الخامة الواحدة بأسامي مختلفة (بطلبه 31/10/2026): "سابك 222" و"طن سابك 222" و"خامه 222" و"خامه سابك 222" = سطر واحد في التقرير.
+   بنشيل الكلام اللي مبيفرّقش بين نوع ونوع (طن، خامه، كيلو...)، ولو في الاسم رقم درجة واحد (3 أو 4 أرقام زي 222 و218 و488) هو اللي بيجمع،
+   وإلا نفس الكلمات بأي ترتيب. عرض بس: مبيغيّرش الأسامي في الفواتير ولا التصنيف (matMap) */
+const MAT_FILL = /^(طن|خامه|خامات|خام|كيلو|كجم|ك|و)$/;
+const matWords = s => normDigits(s || '').replace(/([؀-ۿ])(\d)/g, '$1 $2').replace(/(\d)([؀-ۿ])/g, '$1 $2').split(/\s+/).filter(w => w && !MAT_FILL.test(norm(w)));
+function matKey(name) {
+  const w = matWords(name).map(norm), n = w.filter(x => /^\d{3,4}$/.test(x));
+  return n.length === 1 ? '#' + n[0] : w.sort().join(' ') || norm(name || '');
+}
 /* كل بند خامة في فواتير الشراء (والمرتجع بالسالب) بعد نصيبه من الخصم: {e, l, g, kg, v} */
 /* الوحدة الغلط (بطلبه 30/10/2026: "الأرقام شكلها مش مظبوط"): الكيلو اللي سعره 5000 جنيه أو أكتر مستحيل يبقى كيلو خامة، فده سعر طن
    والكمية بالطن (ton). وبعد كده أي بند سعر الكيلو فيه أكتر من 6 أضعاف أو أقل من سدس السعر المعتاد للخامة دي (الوسيط) = غالباً الوحدة غلط
@@ -5926,32 +5935,50 @@ function matPricer() {
     memo.set(key, r); return r;
   };
 }
+/* الدفعات (بطلبه 31/10/2026: "دفعتلهم كام، وكل واحد دخل بكام وخد دفعات كام"): كل دفعة لمورد في الفترة (والشيك المرتجع بيتخصم زي الكشف)،
+   بتتحسب مرة واحدة في النوع اللي المورد بيورّد منه أكتر (من أول البرنامج)، فالمورد اللي اتدفعله ومجابش حاجة في الفترة بيظهر بدفعاته بس. payAll = كل الموردين حتى اللي مش خامات */
 function matData(f, t) {
-  const G = {}, unk = new Map(), M = getSet('matMap', null) || {};
-  matLines(f, t).forEach(x => {
-    const o = G[x.g] || (G[x.g] = {kg: 0, v: 0, nkV: 0, oddV: 0, odd: [], tonN: 0, nm: new Map(), sp: new Map(), mo: new Map()});
+  const G = {}, unk = new Map(), M = getSet('matMap', null) || {}, main = new Map(), pay = new Map();
+  const mk = () => ({kg: 0, v: 0, nkV: 0, oddV: 0, odd: [], tonN: 0, nm: new Map(), sp: new Map(), mo: new Map(), pay: 0});
+  matLines().forEach(x => {
+    if (x.v > 0) { const m = main.get(x.e.party) || {}; m[x.g] = (m[x.g] || 0) + x.v; main.set(x.e.party, m); }
+    if (x.e.date < f || x.e.date > t) return;
+    const o = G[x.g] || (G[x.g] = mk());
     if (x.odd) { o.oddV += x.v; o.odd.push(x); return; }
     if (!x.kg) { o.nkV += x.v; return; }
     if (x.ton) o.tonN++;
     o.kg += x.kg; o.v += x.v;
-    const add = (map, key, name) => { const y = map.get(key) || {name, kg: 0, v: 0}; y.kg += x.kg; y.v += x.v; if (name) y.name = name; map.set(key, y); };
-    add(o.nm, norm(x.l.name), x.l.name); add(o.sp, x.e.party, (P.get(x.e.party) || {}).name || '؟'); add(o.mo, x.e.date.slice(0, 7), '');
+    const add = (map, key, name) => { const y = map.get(key) || {name, kg: 0, v: 0}; y.kg += x.kg; y.v += x.v; if (name) y.name = name; map.set(key, y); return y; };
+    const mk1 = matKey(x.l.name), y = add(o.nm, mk1, ''), c = mk1[0] === '#' && matWords(x.l.name).join(' ') || x.l.name; (y.vs = y.vs || new Map()).set(c, (y.vs.get(c) || 0) + Math.abs(x.kg));
+    add(o.sp, x.e.party, (P.get(x.e.party) || {}).name || '؟'); add(o.mo, x.e.date.slice(0, 7), '');
   });
-  for (const e of db.entries) {   // بنود بالكيلو عند الموردين مفهمتهاش (مش في القاموس ولا اتقال عليها)
-    if (e.del || e.kind !== 'pur' || e.date < f || e.date > t) continue;
-    (e.lines || []).forEach(l => { const k = norm(l.name || ''); if (k && matKg(l.unit) && !M[k] && !matOf(l.name, M)) unk.set(k, l.name); });
+  /* اسم السطر = أكتر اسم اتشرى بيه (واللي برقم درجة من غير "طن" و"خامه")، والاسم اللي فيه كلام يكسب الرقم لوحده ("سابك 222" مش "222") */
+  for (const g in G) G[g].nm.forEach(y => { y.name = [...y.vs.entries()].sort((a, b) => /\D/.test(b[0].replace(/\s/g, '')) - /\D/.test(a[0].replace(/\s/g, '')) || b[1] - a[1])[0][0]; });
+  let payAll = 0;
+  for (const e of db.entries) {
+    if (e.del || e.date < f || e.date > t) continue;
+    if (e.kind === 'pur') (e.lines || []).forEach(l => { const k = norm(l.name || ''); if (k && matKg(l.unit) && !M[k] && !matOf(l.name, M)) unk.set(k, l.name); });   // بنود بالكيلو عند الموردين مفهمتهاش (مش في القاموس ولا اتقال عليها)
+    if (e.kind !== 'ppay' && e.kind !== 'bnc') continue;
+    const p = P.get(e.party); if (!p || p.sec !== 'sup' || p.noTot) continue;
+    const a = (e.kind === 'bnc' ? -1 : 1) * (e.amt || 0); payAll += a; pay.set(p.id, (pay.get(p.id) || 0) + a);
   }
-  return {G, unk: [...unk.values()]};
+  pay.forEach((a, id) => {
+    const m = main.get(id); if (!m || !a) return;
+    const g = Object.keys(m).sort((x, y) => m[y] - m[x])[0], o = G[g] || (G[g] = mk()), y = o.sp.get(id) || {name: (P.get(id) || {}).name || '؟', kg: 0, v: 0};
+    y.pay = (y.pay || 0) + a; o.pay += a; o.sp.set(id, y);
+  });
+  return {G, unk: [...unk.values()], payAll};
 }
 let repMatKind = 'name', repMatG = 'plastic';
 function matReport(f, t) {
-  const D = matData(f, t), gs = Object.keys(D.G), g = D.G[repMatG] ? repMatG : gs[0] || 'plastic', G = D.G[g] || {kg: 0, v: 0, nkV: 0, oddV: 0, odd: [], tonN: 0, nm: new Map(), sp: new Map(), mo: new Map()};
+  const D = matData(f, t), gs = Object.keys(D.G), g = D.G[repMatG] ? repMatG : gs[0] || 'plastic', G = D.G[g] || {kg: 0, v: 0, nkV: 0, oddV: 0, odd: [], tonN: 0, nm: new Map(), sp: new Map(), mo: new Map(), pay: 0};
   /* الكمية رقم والوحدة عمود لوحدها (بطلبه 30/10/2026): طن من أول 1000 كيلو، وأقل من كده بالكيلو (800 كيلو) */
   const qu = kg => Math.abs(kg) >= 1000 ? [fmtQ(Math.round(kg) / 1000), 'طن'] : [fmtQ(Math.round(kg)), 'كيلو'], ton = kg => qu(kg).join(' '), avg = (v, kg) => kg ? fmtP(Math.round(v / kg)) : '—';
   let cols, rows;
-  if (repMatKind === 'sup') {
-    cols = [{h: 'المورد', w: 30, c: 'l'}, {h: 'الكمية', w: 12, c: 'n'}, {h: 'الوحدة', w: 9, c: ''}, {h: 'القيمة', w: 17, c: 'n'}, {h: 'متوسط الكيلو', w: 16, c: 'b'}, {h: 'النسبة', w: 16, c: 'n'}];
-    rows = [...G.sp.entries()].sort((a, b) => b[1].kg - a[1].kg).map(([id, x]) => ({id, cells: [x.name, ...qu(x.kg), fmtP(x.v), avg(x.v, x.kg), (G.kg ? Math.round(x.kg * 1000 / G.kg) / 10 : 0) + '%']}));
+  if (repMatKind === 'sup') {   // دخل بكام وخد دفعات كام جنب بعض (بطلبه 31/10/2026)، والموبايل بيكتب متوسط الكيلو تحت الاسم
+    cols = [{h: 'المورد', w: 24, c: 'l'}, {h: 'الكمية', w: 11, c: 'n'}, {h: 'الوحدة', w: 8, c: ''}, {h: 'دخل بكام', w: 16, c: 'n'}, {h: 'خد دفعات', w: 16, c: 'n'}, {h: 'متوسط الكيلو', w: 14, c: 'b'}, {h: 'النسبة', w: 11, c: 'n'}];
+    rows = [...G.sp.entries()].sort((a, b) => b[1].kg - a[1].kg || (b[1].pay || 0) - (a[1].pay || 0)).map(([id, x]) => ({id, sub: x.kg ? 'الكيلو بـ ' + avg(x.v, x.kg) : '',
+      cells: [x.name, ...(x.kg ? qu(x.kg) : ['—', '']), x.kg ? fmtP(x.v) : '—', x.pay ? fmtP(x.pay) : '—', avg(x.v, x.kg), (G.kg ? Math.round(x.kg * 1000 / G.kg) / 10 : 0) + '%']}));
   } else if (repMatKind === 'month') {
     cols = [{h: 'الشهر', w: 24, c: 'l'}, {h: 'الكمية', w: 16, c: 'n'}, {h: 'الوحدة', w: 12, c: ''}, {h: 'القيمة', w: 24, c: 'n'}, {h: 'متوسط الكيلو', w: 24, c: 'b'}];
     rows = [...G.mo.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([m, x]) => ({cells: [`${MONTHS[+m.slice(5) - 1]} ${m.slice(0, 4)}`, ...qu(x.kg), fmtP(x.v), avg(x.v, x.kg)]}));
@@ -5959,14 +5986,17 @@ function matReport(f, t) {
     cols = [{h: 'الخامة', w: 32, c: 'l'}, {h: 'الكمية', w: 14, c: 'n'}, {h: 'الوحدة', w: 10, c: ''}, {h: 'القيمة', w: 22, c: 'n'}, {h: 'متوسط الكيلو', w: 22, c: 'b'}];
     rows = [...G.nm.values()].sort((a, b) => b.kg - a.kg).map(x => ({cells: [x.name, ...qu(x.kg), fmtP(x.v), avg(x.v, x.kg)]}));
   }
-  const sum = [['الكمية', ton(G.kg)], ['القيمة', fmtP(G.v)], ['متوسط الكيلو', avg(G.v, G.kg)],
+  const sup = repMatKind === 'sup';
+  const sum = [['الكمية', ton(G.kg)], ['القيمة', fmtP(G.v)], ...(sup ? [['خد دفعات (الموردين دول)', fmtP(G.pay)], ...(D.payAll !== G.pay ? [['دفعت لكل الموردين (حتى اللي مش خامات)', fmtP(D.payAll)]] : [])] : []), ['متوسط الكيلو', avg(G.v, G.kg)],
     ...(G.tonN ? [['بنود الوحدة فيها كيلو والسعر سعر طن (اتحسبت بالطن)', String(G.tonN)]] : []),
     ...(G.odd.length ? [[`بنود سعرها غريب، مش محسوبة (${G.odd.length})`, fmtP(G.oddV)]] : []),
     ...(G.nkV ? [['بنود مش بالكيلو (مش في الأطنان)', fmtP(G.nkV)]] : []), ...(D.unk.length ? [['أسامي بالكيلو مش متصنفة لسه', String(D.unk.length)]] : [])];
   return {title: `خامات ${MAT_G[g] || ''} ${({sup: 'بالمورد', month: 'بالشهر'})[repMatKind] || 'بالخامة'}`, period: rangeText(f, t), cols, rows, sum, groups: gs, g, unk: D.unk, odd: G.odd,
     fin: [`${MAT_G[g] || 'الخامات'} اللي اتشرى`, ton(G.kg)],
     note: 'من فواتير الشراء عند الموردين اللي بالكيلو أو الطن، والمرتجع بيتخصم. البرنامج بيعرف الخامة من اسمها (سابك، لينير، خامة، مسح، مبلور، كسر، ماستر...)، واللي مش فاهمه بتظبطه مرة واحدة من "تصنيف الخامات". '
-      + 'الكمية هنا = اللي اتشرى في الفترة، وده استهلاك المصنع تقريباً (من غير جرد خامات).'};
+      + 'الخامة الواحدة المكتوبة بأكتر من شكل (سابك 222 وطن سابك 222 وخامه 222) بتتجمع في سطر واحد. '
+      + 'الكمية هنا = اللي اتشرى في الفترة، وده استهلاك المصنع تقريباً (من غير جرد خامات).'
+      + (sup ? ' "خد دفعات" = كل اللي دفعته للمورد في الفترة (حتى لو عن فواتير قديمة)، والمورد اللي بيجيب كذا نوع دفعاته في النوع اللي بيجيب منه أكتر.' : '')};
 }
 /* البنود اللي سعرها غريب: كل سطر بيفتح الفاتورة علشان تتصلح الوحدة أو الكمية */
 function matOddModal(L) {

@@ -157,8 +157,9 @@ const GMSHOT = `if (!getSet('itemCost', null)) putSet('itemCost', {k: Object.fro
   .map(([n, c]) => [icKey(n, 'لفة'), {n, u: 'لفة', h: [[addDays(todayISO(), -400), c]]}]))});`;
 /* مشتريات خامات تجريبية من موردين تجربة (بلاستيك بأسامي مختلفة) علشان تقرير الخامات وتكلفة "خامة + مصنعية" */
 const MATSHOT = `if (!E.get('e_matshot0')) { const sp = liveParties().filter(p => p.sec === 'sup'), t = todayISO(), d = n => addDays(t, -n);
-  [[0, 40, [['سابك تجربة', 'طن', 2, 6200000]]], [1, 25, [['لينير تجربة', 'كيلو', 1500, 5400], ['ماستر تجربة', 'كيلو', 50, 14000]]], [0, 12, [['مبلور تجربة', 'كيلو', 2500, 3100]]], [1, 4, [['كسر تجربة', 'كيلو', 1200, 2600], ['حاجة تجربة غريبة', 'كيلو', 100, 1500], ['مخرز تجربة', 'كيلو', 30, 80000]]]]
+  [[0, 40, [['سابك تجربة', 'طن', 2, 6200000]]], [1, 25, [['لينير تجربة', 'كيلو', 1500, 5400], ['ماستر تجربة', 'كيلو', 50, 14000]]], [0, 12, [['مبلور تجربة', 'كيلو', 2500, 3100]]], [1, 4, [['كسر تجربة', 'كيلو', 1200, 2600], ['حاجة تجربة غريبة', 'كيلو', 100, 1500], ['مخرز تجربة', 'كيلو', 30, 80000]]], [0, 8, [['خامه سابك تجربة 222', 'كيلو', 1000, 6100]]], [1, 3, [['طن سابك تجربة 222', 'كيلو', 800, 6150], ['خامه 222', 'كيلو', 300, 6000]]]]
     .forEach(([si, n, ls], i) => { const e = {id: 'e_matshot' + i, party: sp[si % sp.length].id, kind: 'pur', date: d(n), lines: ls.map(([name, unit, qty, price]) => ({name, unit, qty, price})), disc: 0, at: Date.now(), upd: Date.now(), del: false, hist: []}; e.cr = docTotal(e); e.dr = 0; db.entries.push(e); E.set(e.id, e); });
+  [[0, 10, 9000000], [1, 2, 4500000]].forEach(([si, n, amt], i) => { const e = {id: 'e_matpay' + i, party: sp[si % sp.length].id, kind: 'ppay', date: d(n), amt, dr: amt, cr: 0, at: Date.now(), upd: Date.now(), del: false, hist: []}; db.entries.push(e); E.set(e.id, e); });
   reindex(); saveDB(); }`;
 const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-list-' + sfx, go: accEval("tab = 'mkt'; go('home'); renderHome()"), full: true},

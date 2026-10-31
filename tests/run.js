@@ -1325,6 +1325,26 @@ const T0 = Date.now();
       db.entries.splice(n0); db.parties.splice(np); ['e_mo1', 'e_mo2', 'e_mo3'].forEach(id => E.delete(id)); P.delete(sub.id);
       const sr = IDX.set.get('matMap'); if (sr) { db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('matMap'); } repKind = 'home'; repMode = 'year'; saveDB();
       return r; }), [5000, 28100000, 1, 1, 5000000, false, 25, true, 'no', 'no', false, true, 1]);
+    eq('الخامات: الخامة بأكتر من اسم سطر واحد (سابك 222 = طن سابك 222 = خامه 222)، و"بالمورد" فيه دخل بكام وخد دفعات كام (والشيك المرتجع بيتخصم) وإجمالي الدفعات، واللي اتدفعله من غير شراء في الفترة', await A.evaluate(() => {
+      const n0 = db.entries.length, np = db.parties.length, S = [1, 2, 3, 4].map(i => { const p = {id: 'p_mpy' + i, sec: 'sup', name: 'مورد دفعات تجربة ' + i, upd: 1, del: false, hist: []}; db.parties.push(p); P.set(p.id, p); return p; });
+      const add = (id, party, kind, date, o) => { const e = Object.assign({id, party, kind, date, disc: 0, at: 1, upd: 1, del: false, hist: []}, o); if (e.lines) { e.cr = docTotal(e); e.dr = 0; } else { e.dr = kind === 'ppay' ? e.amt : 0; e.cr = kind === 'ppay' ? 0 : e.amt; } db.entries.push(e); E.set(id, e); return e; };
+      const L = (name, qty, price) => ({name, unit: 'كيلو', qty, price});
+      add('e_mpy1', S[0].id, 'pur', '1995-04-01', {lines: [L('خامه سابك 222', 1000, 9000), L('مسح 488', 500, 9500)]});
+      add('e_mpy2', S[0].id, 'pur', '1995-04-03', {lines: [L('طن سابك 222', 1000, 9200), L('خامه 488 مسح', 500, 9700)]});
+      add('e_mpy3', S[1].id, 'pur', '1995-04-05', {lines: [L('سابك٢٢٢', 500, 9100), L('خامه 222', 200, 9000), L('سابك 218', 300, 9800)]});
+      add('e_mpy4', S[2].id, 'pur', '1995-01-01', {lines: [L('مبلور تجربة دفعات', 100, 5000)]});   // اشترى قبل الفترة واتدفعله فيها
+      add('e_mpy5', S[0].id, 'ppay', '1995-04-10', {amt: 10000000}); add('e_mpy6', S[1].id, 'ppay', '1995-04-11', {amt: 3000000}); add('e_mpy7', S[1].id, 'bnc', '1995-04-12', {amt: 1000000});
+      add('e_mpy8', S[2].id, 'ppay', '1995-04-12', {amt: 500000}); add('e_mpy9', S[3].id, 'ppay', '1995-04-13', {amt: 2000000}); add('e_mpy10', S[0].id, 'ppay', '1995-05-02', {amt: 7700000});
+      const k = matKey, r = [k('خامه سابك 222') === k('طن سابك 222') && k('خامه 222') === k('سابك 222') && k('سابك٢٢٢') === k('سابك 222'), k('مسح 488') === k('خامه 488 مسح'), k('سابك 218') !== k('سابك 222'),
+        k('خامه لوبان و مسح') === k('مسح لوبان'), k('مقاس 0.72 نحاس') !== k('مقاس 0.82 نحاس')];
+      const f = '1995-04-01', t = '1995-04-30', D = matData(f, t);
+      r.push([...D.G.plastic.nm.values()].map(x => x.name + ' ' + x.kg).join('|'), D.G.plastic.pay, D.payAll);
+      repMatKind = 'sup'; const R = matReport(f, t), row = id => (R.rows.find(x => x.id === id) || {}).cells;
+      r.push(row(S[0].id)[3], row(S[0].id)[4], row(S[1].id)[4], row(S[2].id).slice(1, 5).join(), !row(S[3].id), R.sum.find(x => x[0].startsWith('خد دفعات'))[1], R.sum.find(x => x[0].startsWith('دفعت لكل'))[1], R.cols.map(c => c.w).reduce((a, b) => a + b, 0));
+      repMatKind = 'name'; r.push(matReport(f, t).rows.map(x => x.cells[0]).join());
+      db.entries.splice(n0); db.parties.splice(np); for (let i = 1; i <= 10; i++) E.delete('e_mpy' + i); S.forEach(p => P.delete(p.id)); saveDB();
+      return r; }), [true, true, true, true, true, 'سابك 222 2700|مسح 488 1000|سابك 218 300', 12500000, 14500000,
+      '278,000', '100,000', '20,000', '—,,—,5,000', true, '125,000', '145,000', 100, 'سابك 222,مسح 488,سابك 218']);
     eq('الكرتونة: الصنف اللي ليه عدد في الكرتونة بيفهم البند المكتوب قطعة بسعر كرتونة، والكرتونة بوحدتها، والشراء بالكرتونة بسعر القطعة، والكمية في التقرير بالقطعة', await A.evaluate(() => {
       const n0 = db.entries.length, c = liveParties().find(p => p.sec === 'mkt' && !p.noTot), sp = liveParties().find(p => p.sec === 'sup'), MG = 'علبة تجربة ماجيك مفرد', gf = GM_FROM; GM_FROM = '';
       const add = (id, party, kind, date, lines) => { const e = {id, party, kind, date, lines, disc: 0, at: 1, upd: 1, del: false, hist: []}, v = docTotal(e); e.dr = kind === 'inv' ? v : 0; e.cr = kind === 'inv' ? 0 : v; db.entries.push(e); E.set(id, e); return e; };

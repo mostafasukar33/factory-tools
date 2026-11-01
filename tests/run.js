@@ -415,6 +415,39 @@ const T0 = Date.now();
     await A.click('#fbPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await closed(A);
     await A.click('#fbPay'); await A.fill('#pyAmt', '100'); await A.click('#pyOk'); await A.settle(150);
     eq('تنبيه الدفعة المكررة', (await A.textContent('#pyWarn')).includes('بنفس المبلغ'), true); await A.click('#pyX');
+    /* صفر زيادة (بطلبه 1/11/2026): دفعة أكبر بكتير من اللي على العميل، وسعر صنف بعيد أوي عن آخر سعر ليه. تنبيه بس، والدوسة التانية بتحفظ */
+    {
+      const b0 = await bal(A, 'عميل تجربة واحد');
+      await A.click('#fbPay'); await A.fill('#pyAmt', '50000'); await A.click('#pyOk'); await A.settle(150);
+      eq('صفر زيادة: دفعة أكبر بكتير من اللي على العميل بتنبّه ومبتتحفظش من أول دوسة', [(await A.textContent('#pyWarn')).includes('صفر زيادة'), await A.textContent('#pyOk'), await bal(A, 'عميل تجربة واحد')], [true, 'متأكد، احفظ برضه', b0]);
+      await A.click('#pyX'); await closed(A);
+      await A.click('#fbDoc'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.dispatchEvent('.li [data-f=name]', 'change');
+      await A.fill('.li [data-f=qty]', '1'); await A.fill('.li [data-f=price]', '3500'); await A.click('#dcOk'); await A.settle(150);
+      eq('صفر زيادة: سعر الصنف 10 أضعاف آخر سعر للعميل بيتنبّه عليه ومبيتحفظش', [(await A.textContent('#dcWarn')).includes('بعيد أوي عن آخر سعر'), await bal(A, 'عميل تجربة واحد')], [true, b0]);
+      await A.click('#dcX'); await closed(A);
+    }
+    /* الفاتورة اللي بتتكتب والبرنامج اتقفل لوحده (بطلبه 1/11/2026): بتتحفظ جوه الحسابات المتشفرة، وبعد الفتح "تكمّلها؟" */
+    {
+      await A.click('#fbDoc'); await A.fill('.li [data-f=name]', 'صنف مسودة تجربة'); await A.fill('.li [data-f=qty]', '3'); await A.fill('.li [data-f=price]', '12'); await A.click('.mmore summary'); await A.fill('#dcNote', 'ملاحظة مسودة');
+      await A.evaluate(() => lockNow()); await A.waitForSelector('#lock.on #lkP');
+      eq('المسودة متشفرة: مش مكشوفة في التخزين ولا في localStorage', await A.evaluate(async () => { const v = await idbGet('vault'); return [!!v.ct, JSON.stringify(v).includes('مسودة'), Object.keys(localStorage).some(k => (localStorage.getItem(k) || '').includes('مسودة'))]; }), [true, false, false]);
+      await unlock(A); await A.waitForSelector('#drGo');
+      eq('بعد الفتح: "تكمّلها؟" فيها اسم العميل', (await A.textContent('#modal')).includes('عميل تجربة واحد'), true);
+      await A.click('#drGo'); await A.waitForSelector('#dcOk');
+      eq('كمّلها: الصنف والكمية والسعر والملاحظة رجعوا، والمسودة اتشالت', await A.evaluate(() => [$('#dcLines .li [data-f=name]').value, $('#dcLines .li [data-f=qty]').value, $('#dcLines .li [data-f=price]').value, $('#dcNote').value, location.hash.startsWith('#p/'), !db.cfg.draft]), ['صنف مسودة تجربة', '3', '12', 'ملاحظة مسودة', true, true]);
+      await A.click('#dcX'); await closed(A);
+      await A.click('#fbDoc'); await A.fill('.li [data-f=name]', 'صنف مسودة تانية'); await A.evaluate(() => lockNow()); await A.waitForSelector('#lock.on #lkP');
+      await unlock(A); await A.waitForSelector('#drNo'); await A.click('#drNo'); await closed(A);
+      eq('"لأ، امسحها": المسودة اتشالت ومفيش نافذة', await A.evaluate(() => [!db.cfg.draft, !$('#mask').classList.contains('on')]), [true, true]);
+      await A.click('#fbDoc'); await A.evaluate(() => lockNow()); await A.waitForSelector('#lock.on #lkP'); await unlock(A); await A.settle(1200);
+      eq('فاتورة فاضية اتقفلت: مفيش مسودة ولا سؤال', await A.evaluate(() => [!db.cfg.draft, !$('#drGo')]), [true, true]);
+      eq('المسودة بتتحفظ والنافذة مفتوحة، وبتتشال لو النافذة اتقفلت عادي أو الفاتورة اتحفظت', await A.evaluate(() => {
+        const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), r = [];
+        docModal(p, 'inv'); const n = $('#dcLines .li [data-f=name]'); n.value = 'صنف مسودة تالتة'; draftKeep(); r.push(!!db.cfg.draft && db.cfg.draft.lines[0].name);
+        closeModal(); draftKeep(); r.push(!db.cfg.draft);
+        const e = partyEntries(p.id).filter(x => x.kind === 'inv').pop(); docModal(p, 'inv', e); draftKeep(); r.push(!db.cfg.draft); closeModal();
+        return r; }), ['صنف مسودة تالتة', true, true]);
+    }
 
     sec('٤) الشيكات مقفولة واختيارات كشف الحساب');
     eq('مفيش زرار شيكات ولا طريقة دفع شيك', [!!(await A.$('nav button[data-go=chk]')), (await A.click('#fbPay'), !!(await A.$('#pyM button[data-v=شيك]')))], [false, false]); await A.click('#pyX');
@@ -445,6 +478,22 @@ const T0 = Date.now();
     await A.click('#cPayS'); await A.click('#pkList .pt'); await A.fill('#pyAmt', '500'); await A.click('#pyOk'); await closed(A);
     eq('مصروف 30 ودفعة مورد 500', await vbal(A, 'v_main'), 150000 - 3000 - 50000);
     eq('رصيد المورد نزل', await bal(A, 'مورد تجربة'), -2950000 + 50000);
+    /* المصروف (بطلبه 1/11/2026، زي الفاتورة والدفعة): نفس المصروف النهارده، أو الخزنة هتقلب بالسالب بسببه = تنبيه، والدوسة التانية بتحفظ */
+    {
+      const n0 = await A.evaluate(() => db.txs.length);
+      await A.click('#cExp'); await A.fill('#txA', '30'); await A.fill('#txN', 'كهربا'); await A.click('#txOk'); await A.settle(150);
+      eq('مصروف متكرر النهارده: تنبيه ومبيتحفظش من أول دوسة', [(await A.textContent('#txWarn')).includes('مش متكرر'), await A.textContent('#txOk'), await A.evaluate(() => db.txs.length)], [true, 'متأكد، احفظ برضه', n0]);
+      await A.click('#txOk'); await closed(A);
+      eq('مصروف متكرر: الدوسة التانية بتحفظ', await A.evaluate(() => db.txs.length), n0 + 1);
+      await A.evaluate(() => { const t = db.txs.pop(); IDX.tx.delete(t.id); saveDB(); });   // نرجّع الخزنة زي ما كانت للاختبارات اللي بعد كده
+      await A.click('#cExp'); await A.fill('#txA', '5000'); await A.fill('#txN', 'صيانة'); await A.click('#txOk'); await A.settle(150);
+      eq('مصروف هيقلب الخزنة بالسالب: تنبيه فيه رصيدها', [(await A.textContent('#txWarn')).includes('بالسالب'), (await A.textContent('#txWarn')).includes(await A.evaluate(() => fmtP(vaultBal('v_main'))))], [true, true]);
+      await A.click('#txX'); await closed(A);
+      await A.click('#cExp'); await A.fill('#txA', '20'); await A.fill('#txN', 'نقل'); await A.click('#txOk'); await closed(A);
+      eq('المصروف العادي بيتحفظ من غير تنبيه', await A.evaluate(() => db.txs.length), n0 + 1);
+      await A.evaluate(() => { const t = db.txs.pop(); IDX.tx.delete(t.id); saveDB(); });
+      eq('الخزنة رجعت زي ما كانت', await vbal(A, 'v_main'), 150000 - 3000 - 50000);
+    }
     await A.click('#cMore'); await A.click('#modal [data-b=cOpen2]'); await A.fill('#modal [data-v]', '960'); await A.click('#opOk'); await A.settle(200);
     eq('الجرد سجّل الفرق تسوية', await vbal(A, 'v_main'), 96000);
 
@@ -1729,8 +1778,27 @@ const T0 = Date.now();
     eq('الموبايل (بطلبه 30/10/2026): صفحة الحساب ⋯ فيها تعديل ومرتجع وخصم، و📞 بيتصل، والشريط الرفيع بالاسم والرصيد بيظهر لما تنزل', await A.evaluate(() => {
       const p = liveParties().find(x => x.sec === 'mkt'), ph0 = p.phone; p.phone = '0100 000 0009'; go('p/' + p.id); renderParty(p.id); const box = $('#p-party'), r = [!!$('#ppMore').offsetParent, $('#ppCall').getAttribute('href').startsWith('tel:'), !$('#ppRet').offsetParent];
       $('#ppMore').click(); r.push($$('#modal .kmenu [data-b]').map(b => b.dataset.b).join(',').startsWith('ppEdit2,ppRet,ppAdj')); closeModal();
-      r.push($('#ppStk').classList.contains('on')); box.scrollTop = box.scrollHeight; box.dispatchEvent(new Event('scroll')); r.push(!box.scrollTop || $('#ppStk').classList.contains('on')); box.scrollTop = 0; box.dispatchEvent(new Event('scroll'));
+      box.scrollTop = 0; ppStkWatch(); /* من فوق (الطويل بقى بيفتح على آخر حركة، بطلبه 1/11/2026) */ r.push($('#ppStk').classList.contains('on')); box.scrollTop = box.scrollHeight; box.dispatchEvent(new Event('scroll')); r.push(!box.scrollTop || $('#ppStk').classList.contains('on')); box.scrollTop = 0; box.dispatchEvent(new Event('scroll'));
       r.push($('#ppCall').getAttribute('href')); p.phone = ph0; renderParty(p.id); return r; }), [true, true, true, true, false, true, 'tel:01000000009']);
+    {   // بطلبه 1/11/2026: الحساب الطويل بيفتح على آخر حركة (والشريط الرفيع بالاسم والرصيد ظاهر)، والقصير بيفضل من فوق، والرجوع للقايمة مكانها زي ما هو
+      await A.evaluate(() => go('')); await A.settle(150);
+      const y0 = await A.evaluate(() => { window.scrollTo(0, 120); return scrollY; });
+      await A.evaluate(() => {
+        const now = nowS(), mk = name => { const p = {id: newId('p_'), sec: 'mkt', name, phone: '', note: '', noTot: true, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p); return p.id; };
+        window.__pl = {n0: db.entries.length, np0: db.parties.length}; const lg = mk('عميل طويل تجربة'), sh = mk('عميل قصير تجربة');
+        for (let i = 0; i < 25; i++) addEntry({party: lg, kind: 'man', date: '2001-01-' + String(i + 1).padStart(2, '0'), desc: 'سطر تجربة ' + (i + 1), dr: 10000, cr: 0});
+        addEntry({party: sh, kind: 'man', date: '2001-01-01', desc: 'سطر تجربة', dr: 10000, cr: 0});
+      });
+      await openParty(A, 'عميل طويل تجربة'); await A.settle(200);
+      const lg = await A.evaluate(() => { const box = $('#p-party'), end = $('#ldgEnd').getBoundingClientRect(), fb = $('#p-party .fab2').getBoundingClientRect();
+        return [box.scrollTop > 0, end.bottom <= fb.top + 1, $('#ppStk').classList.contains('on'), $$('#p-party .ldg tbody tr[data-id]').pop().textContent.includes('سطر تجربة 25')]; });
+      eq('الموبايل: الحساب الطويل بيفتح على آخر حركة، والرصيد اللي تحت باين، والشريط الرفيع بالاسم والرصيد ظاهر', lg, [true, true, true, true]);
+      await openParty(A, 'عميل قصير تجربة'); await A.settle(200);
+      eq('الموبايل: الحساب القصير (آخر الكشف باين) بيفضل من فوق', await A.evaluate(() => [$('#p-party').scrollTop, $('#ppStk').classList.contains('on')]), [0, false]);
+      await A.evaluate(() => go('')); await A.settle(200);
+      eq('الرجوع للقايمة: مكانها زي ما هو (الصفحة اللي تحت متحركتش)', await A.evaluate(() => scrollY), y0);
+      await A.evaluate(() => { const {n0, np0} = window.__pl; db.entries.splice(n0).forEach(e => E.delete(e.id)); db.parties.splice(np0).forEach(p => P.delete(p.id)); window.scrollTo(0, 0); renderHome(); });
+    }
     eq('الموبايل (بطلبه 30/10/2026): التقارير زرار تقرير وزرار فترة، والفترة بتفتح وتقفل، واسم الشهر من غير السنة على الشاشة بس', await A.evaluate(() => {
       go('rep'); route(); repKind = 'profit'; repMode = 'year'; repPerOpen = false; renderReports();
       const r = [!$('#rpK').offsetParent, !!$('#rpPick').offsetParent && $('#rpPick').textContent.includes('الأرباح'), $('#rpPer').textContent.includes('سنة ' + todayISO().slice(0, 4)), !$('#rpM').offsetParent];

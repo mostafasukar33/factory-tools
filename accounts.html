@@ -2204,9 +2204,37 @@ async function forgotFlow() {
     await idbDel('vault'); await idbDel('meta'); try { await idbDel('bio'); } catch (e) {} closeModal(); renderSetup();
   };
 }
+/* الفاتورة اللي بتتكتب والبرنامج بيستخبى أو بيتقفل لوحده (بطلبه 1/11/2026: "الفاتورة بتضيع لو قعدت في الواتساب"):
+   اللي اتكتب بيتحفظ جوه الحسابات المتشفرة على الجهاز ده بس (db.cfg.draft، مش بيروح الشيت ولا النسخة)، وبعد الفتح بكلمة السر بيسأل "تكمّلها؟".
+   بيتحفظ بس لو فيه حاجة اتكتبت فعلاً (docDraftFn في docModal)، وبيتشال لو النافذة اتقفلت عادي أو اتحفظت */
+let docDraftFn = null, draftAsk = false;
+function draftKeep() {
+  if (!db) return;
+  const d = $('#mask').classList.contains('on') && $('#dcOk') && docDraftFn ? docDraftFn() : null;
+  if (d) db.cfg.draft = d; else if (!draftAsk) delete db.cfg.draft;
+}
+function draftOffer(n = 0) {
+  const d = db && db.cfg.draft; if (!d) return;
+  if ($('#mask').classList.contains('on') || $('#lock').classList.contains('on')) { if (n < 30) setTimeout(() => draftOffer(n + 1), 1000); return; }
+  const p = P.get(d.pid), e = d.eid ? E.get(d.eid) : null;
+  if (!p || p.del || (d.eid && (!e || e.del)) || isLocked(d.date) || (e && isLocked(e.date))) { delete db.cfg.draft; flushSave(); return; }
+  const ttl = {inv: 'فاتورة بيع', pur: 'فاتورة شراء', rinv: 'مرتجع بيع', rpur: 'مرتجع شراء'}[d.kind] || 'فاتورة', k = (d.lines || []).filter(l => l.name).length;
+  draftAsk = true;
+  modal(`<h3>📝 ${esc(ttl)} مكملتش</h3><p style="font-size:var(--f3)">كنت بتكتب ${e ? 'تعديل في ' : ''}${esc(ttl)} لـ <b>${esc(p.name)}</b>${k ? ` (${k === 1 ? 'صنف واحد' : k + ' أصناف'})` : ''}، والبرنامج اتقفل قبل ما تحفظ. تكمّلها؟</p>
+    <div class="stack"><button class="btn gold" id="drGo" type="button">كمّلها</button><button class="btn line" id="drNo" type="button">لأ، امسحها</button></div>`);
+  const done = () => { draftAsk = false; delete db.cfg.draft; flushSave(); closeModal(); };
+  $('#drNo').onclick = done;
+  $('#drGo').onclick = () => {
+    done();
+    const open = () => { if (db) docModal(p, d.kind, e, {draft: d}); };
+    if (location.hash === '#p/' + p.id) open(); else { addEventListener('hashchange', () => setTimeout(open, 0), {once: true}); go('p/' + p.id); }
+  };
+}
 function lockNow(msg) {
   if (!db || locking) return;   // الرجوع من الخلفية كان بيقفل مرتين (الخلفية + 10 دقايق من غير لمس) فالبصمة تطلع مرتين
   locking = true;
+  kbClose();   // الخانة اللي عليها المؤشر بتخلص شغلها (اسم الصنف ← الوحدة والسعر) والحسابات لسه مفتوحة، مش بعد ما تتقفل
+  draftKeep();
   flushSave().finally(() => { locking = false; }).then(() => { db = null; cryptoKey = null; P = new Map(); E = new Map(); $('#p-party').innerHTML = ''; $('#hList').innerHTML = ''; homeVer = ''; showLock(msg); });   // homeVer فاضي = القايمة اللي اتمسحت لازم تترسم تاني بعد الفتح حتى في الرجوع من حساب
 }
 function landingHash() {
@@ -2224,6 +2252,7 @@ function unlocked() {
   /* مفيش flushSave هنا (بطلبه 31/10/2026، التهنيجة وقت الفتح): كان بيشفّر الحسابات كلها تاني وهي لسه متفكة ومتغيرتش، في نفس اللحظة اللي القايمة بتظهر فيها.
      أي حاجة بتتغير وقت الفتح (البنود الثابتة، اسم الكاش، الدفتر القديم، الشركاء) بتندَه saveDB لوحدها */
   route(); window.scrollTo(0, 0); setTimeout(vvHeal, 450);
+  if (db.cfg.draft) setTimeout(draftOffer, 900);   // فاتورة كانت بتتكتب قبل ما يتقفل
   if (pendingJoin) applyJoin(); else setTimeout(() => syncNow(), 600);
   setTimeout(() => mkSync(), 1800);
 }
@@ -2249,11 +2278,11 @@ addEventListener('scroll', () => { scrollAt = Date.now(); }, {passive: true, cap
 function whenStill(fn, n = 0) { if ((touchN > 0 || Date.now() - scrollAt < 400) && n < 40) return void setTimeout(() => whenStill(fn, n + 1), 250); fn(); }
 setInterval(() => { if (db && Date.now() - lastAct > LOCK_IDLE) lockNow('اتقفل لوحده بعد 10 دقايق من غير استخدام'); }, 20000);
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { hiddenAt = Date.now(); flushSave(); pushOnHide(); }
+  if (document.hidden) { hiddenAt = Date.now(); draftKeep(); flushSave(); pushOnHide(); }
   else if (db && hiddenAt && Date.now() - hiddenAt > LOCK_HIDDEN) lockNow();
   else if (db) { lastAct = Date.now(); syncNow(); }
 });
-addEventListener('pagehide', () => flushSave());
+addEventListener('pagehide', () => { draftKeep(); flushSave(); });
 $('#bLock').onclick = () => lockNow();
 </script>
 <script>
@@ -2625,6 +2654,15 @@ function renderParty(id) {
   $$('#p-party [data-nl]').forEach(el => el.onclick = nlModal);
   runCounters($('#p-party'));
 }
+/* الموبايل (بطلبه 1/11/2026): الحساب بيفتح على آخر حركة في الكشف، والأقدم بالتمرير لفوق، والشريط الرفيع بالاسم والرصيد بيبان لوحده.
+   لو آخر الكشف باين من غير تمرير بيفضل من فوق. اللي بيتحرك عمود الحساب بس (#p-party)، والصفحة اللي تحته مبتتلمسش. اللاب زي ما هو */
+function ppLand() {
+  const box = $('#p-party'); if (!box) return;
+  box.scrollTop = 0;
+  const end = $('#ldgEnd'); if (isWide() || !end) return;
+  const fb = $('#p-party .fab2'), r = fb && fb.getBoundingClientRect(), lim = r && r.height ? r.top : innerHeight;
+  if (end.getBoundingClientRect().bottom > lim) box.scrollTop = box.scrollHeight;
+}
 function ppStkWatch() {
   const box = $('#p-party');
   const f = () => { const k = $('#ppStk'), h = $('#p-party .phd'); if (!k || !h) return; k.classList.toggle('on', !isWide() && box.scrollTop > h.offsetTop + h.offsetHeight - 8); };
@@ -2795,13 +2833,14 @@ function docModal(p, kind, e, opts = {}) {
   /* nl = فاتورة من السوق اتنقلت بالإجمالي وبنودها لسه: بتفتح فاضية، والإجمالي لازم يطابق، وأول حفظ بيشيل التنبيه */
   const nl = !!(e && e.mkNL), mkT = opts.mk ? opts.mk.amt : nl ? docTotal(e) : null, fill = isNew || nl;
   const lines = e && !nl ? e.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty), price: fmtP(l.price)})) : [{name: '', unit: 'كيلو', qty: '', price: ''}];
+  const dr = opts.draft || null, init = e && !nl ? JSON.stringify([e.date, lines.map(l => ({name: String(l.name || '').trim().replace(/\s+/g, ' '), unit: l.unit, qty: l.qty, price: l.price})), e.disc ? fmtP(e.disc) : '', e.note || '']) : '';   // dr = فاتورة مكملتش قبل ما البرنامج يتقفل (draftOffer)
   let bk = null, ub = null; const book = {get: k => (bk = bk || itemBook()).get(k)}, mine = custItems(p.id, base), uBook = () => ub || (ub = unitBook(p.id, base));   // كل أصناف كل الفواتير بتتحسب بس لما تحتاجها (كانت بتهنّج فتح الفاتورة)
   const lastDoc = fill ? db.entries.filter(x => x.party === p.id && x.kind === kind && !x.del && !x.mkNL && x.lines && x.lines.length).sort(entCmp).pop() : null;
   modal(`<h3>${isNew ? ttl : nl ? '📝 اكتب بنود الفاتورة' : 'تعديل ' + esc(docTitle(e))}<small class="mnm">${esc(p.name)}</small></h3>
     ${mkT !== null ? `<div class="sync" style="margin:0 0 10px;display:block">📥 فاتورة من شريكك في السوق${nl ? ' (اتنقلت بالإجمالي)' : ''} — إجمالي: <b class="money">${fmtP(mkT)}</b><br><small>اكتب البنود (كمية وسعر) والإجمالي لازم يطابق ده.</small><div id="dcMk" style="margin-top:4px;font-weight:800"></div></div>` : ''}
     ${e && kind === 'inv' && isFwdSrc(p) ? `<div class="fwbox ${fwState(e)}"><span>${FW_TAG[fwState(e)]}${fwState(e) !== 'no' && fwdMain(p) ? ` <small>(في حساب ${esc(fwdMain(p).name)})</small>` : ''}</span>${fwState(e) !== 'ok' && fwdMain(p) ? `<button class="btn gold sm" id="fwOne" type="button">📤 ${fwState(e) === 'chg' ? 'انقل التعديل' : 'انقلها للحساب الأساسي'}</button>` : ''}${fwState(e) === 'no' ? '<button class="btn line sm" id="fwMk" type="button">✓ دي متنقلة بالفعل</button>' : ''}${e.fwMan && !fwCopyOf(e) ? '<button class="btn line sm" id="fwUn" type="button">↩ رجّعها متنقلتش</button>' : ''}</div>` : ''}
     ${e && e.fwFrom ? `<div class="fwbox from"><span>↩ الفاتورة دي منقولة من حساب ${esc((P.get((E.get(e.fwFrom) || {}).party) || {}).name || 'فرعي')}. التعديل يكون هناك وبعدين "انقل التعديل".</span></div>` : ''}
-    <div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${e ? e.date : opts.mk ? isoOf(opts.mk.ts) : todayISO()}"></div>
+    <div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${dr ? esc(dr.date) : e ? e.date : opts.mk ? isoOf(opts.mk.ts) : todayISO()}"></div>
     <div class="lhd"><span>#</span><span>الصنف</span><span>الوحدة</span><span>الكمية</span><span>السعر</span><span>الإجمالي</span><span></span></div>
     <div id="dcLines"></div>
     <div class="mtools">${lastDoc ? `<button class="btn line sm" id="dcLast" type="button">↻ زي آخر ${ret ? 'مرتجع' : 'فاتورة'} (${dispDate(lastDoc.date)})</button>` : ''}
@@ -2923,8 +2962,16 @@ function docModal(p, kind, e, opts = {}) {
     $$('#dcLines .li').forEach(bindRow);
     tidy(); calc();
   };
-  draw(lines);
+  draw(dr && dr.lines && dr.lines.length ? dr.lines.map(l => ({name: l.name || '', unit: l.unit || 'كيلو', qty: l.qty || '', price: l.price || ''})) : lines);
   bindMoney($('#dcDisc')); $('#dcDisc').addEventListener('input', calc);
+  if (dr) { $('#dcDisc').value = dr.disc || ''; $('#dcNote').value = dr.note || ''; if (dr.disc || dr.note) $('#modal details.mmore').open = true; calc(); toast('رجعتلك اللي كنت كاتبه. راجعه واحفظ.', 4000); }
+  /* اللي اتكتب لحد دلوقتي (draftKeep): null لو مفيش حاجة اتكتبت أو التعديل زي ما هو. فاتورة الوارد (opts.mk) مبتتحفظش، الوارد نفسه لسه فيه */
+  docDraftFn = opts.mk ? null : () => {
+    const ls = readLines().filter(l => l.name || String(l.qty).trim() || String(l.price).trim()), disc = $('#dcDisc').value.trim(), note = $('#dcNote').value.trim(), date = $('#dcDate').value;
+    if (!ls.length && !disc && !note) return null;
+    if (init && JSON.stringify([date, ls, disc, note]) === init) return null;
+    return {pid: p.id, kind, eid: e ? e.id : '', date, lines: ls, disc, note, at: nowS()};
+  };
   $('#dcX').onclick = closeModal;
   if ($('#dcLast')) $('#dcLast').onclick = () => { draw(lastDoc.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty), price: fmtP(l.price)}))); toast('اتنسخت أصناف آخر ' + (ret ? 'مرتجع' : 'فاتورة') + '. راجع الكميات والأسعار.', 3000); };
   let warned = false, fromQuote = '';
@@ -2972,6 +3019,9 @@ function docModal(p, kind, e, opts = {}) {
       if (isNew && db.entries.some(x => !x.del && x.party === p.id && x.kind === kind && x.date === date && docTotal(x) === docTotal(doc))) w.push(`فيه ${KIND[kind]} بنفس المبلغ (${fmtP(docTotal(doc))}) لنفس الحساب في نفس اليوم. متأكد إنها مش متكررة؟`);
       if (mkT !== null && docTotal(doc) !== mkT) w.push(`إجمالي البنود (${fmtP(docTotal(doc))}) مش مساوي لإجمالي شريكك (${fmtP(mkT)}). متأكد؟`);
       if (isNew && kind === 'inv') { const nb = balance(p.id) + docTotal(doc), lim = limitsOf(p); if (nb >= lim.r) w.push(`رصيد العميل هيبقى ${fmtP(nb)}، وده فوق الحد الأحمر (${fmtP(lim.r)}).`); }
+      /* صفر زيادة أو ناقص في السعر (بطلبه 1/11/2026): سعر الصنف 5 أضعاف آخر سعر اتباع بيه للحساب ده أو أقل من خُمسه، بنفس الوحدة. تنبيه بس */
+      if (kind === 'inv') { const seen = new Set(); ls.forEach(l => { const k = norm(l.name); if (seen.has(k)) return; seen.add(k); const x = lastPrice(p.id, 'inv', l.name);
+        if (x && x.price > 0 && x.unit === l.unit && (l.price >= x.price * 5 || l.price * 5 <= x.price)) w.push(`سعر "${l.name}" (${fmtP(l.price)}) بعيد أوي عن آخر سعر بعته بيه للحساب ده (${fmtP(x.price)}). اتأكد إن مفيش صفر زيادة أو ناقص.`); }); }
       if (w.length) { warned = true; $('#dcWarn').innerHTML = `<div class="sync warn">${w.map(esc).join('<br>')}</div>`; $('#dcOk').textContent = 'متأكد، احفظ برضه'; return; }
     }
     doc.desc = docDesc(doc);
@@ -2987,6 +3037,7 @@ function docModal(p, kind, e, opts = {}) {
       Object.assign(e, doc); delete e.mkNL; applyAmounts(e); touch(e); toast(nl ? 'اتكتبت البنود ✔' : 'اتعدّلت ✔ (والنسخة القديمة محفوظة)');
       if (opts.mk) mkSetSt(opts.mk.id, {done: true, dv: opts.mk.upd, back: '', bv: 0, pid: p.id});
     }
+    delete db.cfg.draft;   // اتحفظت: مفيش "تكمّلها؟" بعد كده
     saveDB(); closeModal(); route();
     if (opts.mk) { renderMkHome(); mkSync(); }
   };
@@ -3050,8 +3101,14 @@ function payModal(p, kind, e, opts = {}) {
       if (e.chk.st === 'b') return toast('الشيك ده رجع. الغي "الشيك المرتجع" الأول لو عايز تغيّره.', 5000);
       o.chk = undefined;
     }
-    if (isNew && !warned && db.entries.some(x => !x.del && x.party === p.id && x.kind === kind && x.date === date && x.amt === amt)) {
-      warned = true; $('#pyWarn').innerHTML = `<div class="sync warn">فيه دفعة بنفس المبلغ (${fmtP(amt)}) لنفس الحساب في نفس اليوم. متأكد إنها مش متكررة؟</div>`; $('#pyOk').textContent = 'متأكد، احفظ برضه'; return;
+    if (isNew && !warned) {
+      const w = [];
+      if (db.entries.some(x => !x.del && x.party === p.id && x.kind === kind && x.date === date && x.amt === amt)) w.push(`فيه دفعة بنفس المبلغ (${fmtP(amt)}) لنفس الحساب في نفس اليوم. متأكد إنها مش متكررة؟`);
+      /* صفر زيادة (بطلبه 1/11/2026): الدفعة أكبر من ضعف اللي على الحساب + 1000 جنيه، فالحساب هيقلب للناحية التانية بمبلغ كبير. تنبيه بس */
+      const b0 = balance(p.id), owe = Math.max(rec ? b0 : -b0, 0);
+      if (amt > owe * 2 + 100000) w.push(owe ? `المبلغ ده (${fmtP(amt)}) أكبر بكتير من ${rec ? 'اللي عليه' : 'اللي ليه'} (${fmtP(owe)})، وبعده هيبقى ${rec ? 'ليه عندك' : 'عليه ليك'} ${fmtP(amt - owe)}. اتأكد إن مفيش صفر زيادة.`
+        : `${rec ? 'الحساب ده مش عليه حاجة دلوقتي' : 'انت مش مديون للحساب ده بحاجة دلوقتي'}، فبعد الدفعة دي هيبقى ${rec ? 'ليه عندك' : 'عليه ليك'} ${fmtP(amt)}. اتأكد من المبلغ.`);
+      if (w.length) { warned = true; $('#pyWarn').innerHTML = `<div class="sync warn">${w.map(esc).join('<br>')}</div>`; $('#pyOk').textContent = 'متأكد، احفظ برضه'; return; }
     }
     const effOf = (x, v) => x.chk && !v ? [] : [{v, d: kind === 'ppay' ? -x.amt : x.amt}];
     const hits = isNew || !cntHits(effOf(e, e.vault), e.date, e.at || 0).length ? cntHits(effOf(o, o.vault), date, isNew ? nowS() : e.at || 0) : [];
@@ -5098,6 +5155,7 @@ function txModal(type, t, opts = {}) {
     <div class="fld"><label>التاريخ</label><input class="inp" id="txD" type="date" value="${t ? t.date : opts.date || todayISO()}"></div>
     ${isNew && type !== 'tr' ? '' : `<div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="txN" value="${esc(t ? t.note || '' : '')}" autocomplete="off"></div>`}
     ${t ? histHtml(t) : ''}
+    <div id="txWarn"></div>
     <div class="stack" style="margin-top:8px"><button class="btn ${type === 'exp' ? 'redf' : type === 'inc' ? 'green' : 'gold'}" id="txOk" type="button">${isNew ? 'حفظ' : 'حفظ التعديل'}</button>
     ${isNew && type !== 'tr' ? '<button class="btn line sm again" id="txAgain" type="button">حفظ وسجّل تاني ↻</button>' : ''}
     ${isNew ? '' : '<button class="btn red sm" id="txDel" type="button">إلغاء الحركة</button>'}
@@ -5106,7 +5164,7 @@ function txModal(type, t, opts = {}) {
   $('#txX').onclick = closeModal;
   if (isNew) focusSoon('#txA', 50);
   const cnSt = {a: null};
-  let again = false;   // "حفظ وسجّل تاني" (بطلبه 17/10/2026): النافذة بتتفتح تاني فاضية بنفس التاريخ والخزنة
+  let again = false, warned = false;   // "حفظ وسجّل تاني" (بطلبه 17/10/2026): النافذة بتتفتح تاني فاضية بنفس التاريخ والخزنة
   /* البند بيتفهم من الكلام (بطلبه): الكلام بيكسب حتى لو البند كان مختار قبل ما يكتب. لو غيّر البند بإيده بعد الكلام، اختياره بيفضل لحد ما يغيّر الكلام */
   if (isNew && type !== 'tr') {
     const sel = $('#txC'), note = $('#txN');
@@ -5127,10 +5185,17 @@ function txModal(type, t, opts = {}) {
     if (amt <= 0) return toast('اكتب المبلغ');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('اختار التاريخ');
     const o = {type, amt, date, note, vault, to: type === 'tr' ? $('#txTo').value : '', cat: type === 'tr' ? '' : $('#txC').value};
-    if (o.cat.startsWith('new:')) o.cat = catMake(type, o.cat.slice(4));
     if (type === 'tr' && o.to === vault) return toast('اختار خزنتين مختلفتين');
     if (type !== 'tr' && !o.cat) { if ($('#txC')) $('#txC').focus(); return toast('مفهمتش البند: اختاره من القايمة'); }
     if (isLocked(date)) return lockToast();
+    /* تنبيهات قبل حفظ المصروف (بطلبه 1/11/2026، زي الفاتورة والدفعة): نفس المصروف اتسجل النهارده، أو الخزنة هتقلب بالسالب بسببه. تنبيه بس، ودوسة تانية بتحفظ */
+    if (isNew && type === 'exp' && !warned) {
+      const w = [], vb = vault ? vaultBal(vault) : 0;
+      if (db.txs.some(x => !x.del && x.type === 'exp' && x.vault === vault && x.cat === o.cat && x.amt === amt && x.date === date && (x.note || '').trim() === note)) w.push(`فيه مصروف بنفس المبلغ (${fmtP(amt)}) ونفس البند والكلام في نفس اليوم. متأكد إنه مش متكرر؟`);
+      if (vault && vb >= 0 && vb - amt < 0) w.push(`خزنة "${vName(vault)}" فيها ${fmtP(vb)} بس، وبعد المصروف ده هتبقى بالسالب (${fmtP(vb - amt)}). يمكن المبلغ غلط، أو فيه فلوس دخلت الخزنة ومتسجلتش. متأكد؟`);
+      if (w.length) { warned = true; $('#txWarn').innerHTML = `<div class="sync warn">${w.map(esc).join('<br>')}</div>`; $('#txOk').textContent = 'متأكد، احفظ برضه'; $('#txWarn').scrollIntoView({block: 'nearest'}); return; }
+    }
+    if (o.cat.startsWith('new:')) o.cat = catMake(type, o.cat.slice(4));
     const effOf = x => x.type === 'tr' ? [{v: x.vault, d: -x.amt}, {v: x.to, d: x.amt}] : [{v: x.vault, d: x.type === 'inc' ? x.amt : -x.amt}];
     const hits = isNew || !cntHits(effOf(t), t.date, t.at || 0).length ? cntHits(effOf(o), date, isNew ? nowS() : t.at || 0) : [];
     if (cntGate($('#txOk'), hits, cnSt)) return;
@@ -7368,12 +7433,12 @@ addEventListener('hashchange', () => {
   const newParty = location.hash.startsWith('#p/') && location.hash !== curH;
   if (!isWide()) kbClose();   // الموبايل: الكيبورد يتقفل صح قبل ما الصفحة تتغير (البحث وانت بتفتح عميل)
   scrollHold = true; curH = location.hash; closeModal(); route();
-  if (routeKeep) { if (newParty && $('#p-party')) $('#p-party').scrollTop = 0; }   // صفحة الحساب فوق القايمة: القايمة مكانها زي ما هو
+  if (routeKeep) { if (newParty && $('#p-party')) ppLand(); }   // صفحة الحساب فوق القايمة: القايمة مكانها زي ما هو
   else if (location.hash !== lastHash) window.scrollTo(0, back ? want : 0);
   popNav = false; lastHash = location.hash;
   requestAnimationFrame(() => requestAnimationFrame(() => { scrollHold = false; }));
 });
-$('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk,#dcOk,#pyOk,#txOk,#evOk,#ecOk,#opOk,#adOk,#ccOk,#bcOk,#apOk,#mvOk,#rtOk')) closeModal(); });
+$('#mask').addEventListener('click', e => { if (e.target.id === 'mask' && !$('#modal').querySelector('#emOk,#pmOk,#cpOk,#fgGo,#rpOk,#dcOk,#pyOk,#txOk,#evOk,#ecOk,#opOk,#adOk,#ccOk,#bcOk,#apOk,#mvOk,#rtOk,#drGo')) closeModal(); });
 
 showLock();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});

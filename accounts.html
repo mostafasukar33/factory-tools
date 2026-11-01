@@ -3260,14 +3260,20 @@ function stmtModal(p) {
   let mode = lastInv ? 'last' : 'all';
   /* آخر شهر = من نفس اليوم الشهر اللي فات لحد آخر حركة النهارده (من غير ما يسيب حاجة) */
   const pm0 = new Date(+y, +t.slice(5, 7) - 2, 1), pmS = isoOf(new Date(pm0.getFullYear(), pm0.getMonth(), Math.min(+t.slice(8), new Date(pm0.getFullYear(), pm0.getMonth() + 1, 0).getDate())).getTime());
+  /* آخر أسبوع/أسبوعين/3 أسابيع/شهر (بطلبه 1/11/2026): نفس زرار "آخر شهر" بسهم، والاختيار سطر تحته */
+  let per = 'm';
+  const PERS = [['1', 'أسبوع'], ['2', 'أسبوعين'], ['3', '3 أسابيع'], ['m', 'شهر']];
+  const perS = () => per === 'm' ? pmS : isoOf(new Date(+y, +t.slice(5, 7) - 1, +t.slice(8) - 7 * per).getTime());
+  const perL = () => (per === 'm' ? 'آخر شهر' : PERS.find(x => x[0] === per)[1]) + ' ▾';
   modal(`<h3>كشف حساب<small class="mnm">${esc(p.name)}</small></h3>
-    <div class="seg s4" id="smMode">${[['last', 'آخر فاتورة'], ['prev', 'آخر شهر'], ['all', 'الحساب كله'], ['range', 'من – إلى']].map(([k, l]) => `<button type="button" data-m="${k}" class="${k === mode ? 'on' : ''}"${k === 'last' && !lastInv ? ' disabled' : ''}>${l}</button>`).join('')}</div>
+    <div class="seg s4" id="smMode">${[['last', 'آخر فاتورة'], ['prev', perL()], ['all', 'الحساب كله'], ['range', 'من – إلى']].map(([k, l]) => `<button type="button" data-m="${k}" class="${k === mode ? 'on' : ''}"${k === 'last' && !lastInv ? ' disabled' : ''}>${l}</button>`).join('')}</div>
+    <div class="seg s4" id="smPer" style="display:none">${PERS.map(([k, l]) => `<button type="button" data-p="${k}" class="${k === per ? 'on' : ''}">${l}</button>`).join('')}</div>
     ${lastInv ? `<button type="button" class="btn line" id="smInv" style="min-height:40px;font-size:var(--f2);margin:-2px 0 10px">🧾 ابعت آخر فاتورة بس (من غير الرصيد اللي قبلها)</button>` : ''}
     <div class="g2" id="smRange" style="display:none;margin-bottom:6px"><div><label>من</label><input class="inp" type="date" id="smFrom" value="${y}-01-01"></div><div><label>إلى</label><input class="inp" type="date" id="smTo" value="${t}"></div></div>
     <div id="smOut"></div>
     <div class="mfoot"><div class="mrow3"><button class="btn green" id="smShare" type="button">📲 واتساب</button>
       <button class="btn gold" id="smPdf" type="button">📄 معاينة PDF</button><button class="btn line" id="smX" type="button">إغلاق</button></div></div>`, true);
-  const range = () => mode === 'all' || mode === 'last' ? ['', ''] : mode === 'prev' ? [pmS, t] : [$('#smFrom').value, $('#smTo').value];
+  const range = () => mode === 'all' || mode === 'last' ? ['', ''] : mode === 'prev' ? [perS(), t] : [$('#smFrom').value, $('#smTo').value];
   const upd = () => {
     const [f, to] = range();
     if (mode === 'range' && (!f || !to || f > to)) { $('#smOut').innerHTML = '<div class="empty">اختار تاريخ البداية قبل تاريخ النهاية</div>'; return null; }
@@ -3277,7 +3283,8 @@ function stmtModal(p) {
       <div class="k"><span>الرصيد النهائي (${balWord(s.close)})</span><b>${fmtP(Math.abs(s.close))}</b></div></div>`;
     return s;
   };
-  $$('#smMode button').forEach(b => b.onclick = () => { mode = b.dataset.m; $$('#smMode button').forEach(x => x.classList.toggle('on', x === b)); $('#smRange').style.display = mode === 'range' ? 'grid' : 'none'; upd(); });
+  $$('#smMode button').forEach(b => b.onclick = () => { mode = b.dataset.m; $$('#smMode button').forEach(x => x.classList.toggle('on', x === b)); $('#smRange').style.display = mode === 'range' ? 'grid' : 'none'; $('#smPer').style.display = mode === 'prev' ? 'grid' : 'none'; upd(); });
+  $$('#smPer button').forEach(b => b.onclick = () => { per = b.dataset.p; $$('#smPer button').forEach(x => x.classList.toggle('on', x === b)); $('#smMode [data-m=prev]').textContent = perL(); upd(); });
   $('#smFrom').onchange = $('#smTo').onchange = upd;
   upd();
   $('#smX').onclick = closeModal;

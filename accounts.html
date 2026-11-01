@@ -5815,6 +5815,7 @@ function costBook(kwH = (getSet('itemCost', null) || {}).kw) {
     const u = x.t ? 0 : x.u, kw = u ? kwAt(d) : null, pr = kw === null ? null : mp('plastic', d);
     return pr === null ? null : {c: Math.round(u * (pr + kw)), src: 'k', kp: pr, kw};
   };
+  cb.kgU = kgU; cb.meta = meta; cb.isPur = k => pur.has(k); cb.pk = pk;   // لتوقع الخامات في الجرد (matGuess)
   cb.kwAt = kwAt; cb.kwInfo = kwInfo; cb.kwCats = (f, t) => { const m = new Map(); auto().cs.forEach(x => { if (x.date >= f && x.date <= t) m.set(x.cat, (m.get(x.cat) || 0) + x.amt); }); return [...m].sort((a, b) => b[1] - a[1]); };
   return cb;
 }
@@ -6128,7 +6129,7 @@ function matModal(after) {
   };
 }
 /* نافذة تكلفة الأصناف: كل صنف اتباع (الأكتر بيع في آخر سنة فوق)، وخانة تكلفة الوحدة زي ما بتتباع. الحفظ بيزوّد سطر "من النهارده" */
-function costModal(after) {
+function costModal(after, only) {   // only = مفاتيح أصناف بعينها (الأوزان الناقصة من الجرد)، و"خامة + مصنعية" مفتوحة فيهم
   let cb = costBook(); const mp = matPricer(), t = todayISO(), y0 = addDays(t, -365), man = icAll(), m = new Map();
   for (const e of db.entries) {
     if (e.del || e.kind !== 'inv' || e.mkNL) continue;
@@ -6137,7 +6138,7 @@ function costModal(after) {
       if (e.date >= y0) o.v += lineTot(l); if (e.date >= o.last) { o.last = e.date; o.price = +l.price || 0; o.name = l.name; }
     });
   }
-  const L = [...m.values()].filter(o => !GM_CU.test(norm(o.name))).sort((a, b) => b.v - a.v || (a.name < b.name ? -1 : 1));   // النحاس (السلك) برّه حسبة التكلفة خالص
+  const L = [...m.values()].filter(o => !GM_CU.test(norm(o.name)) && (!only || only.includes(o.k))).sort((a, b) => b.v - a.v || (a.name < b.name ? -1 : 1));   // النحاس (السلك) برّه حسبة التكلفة خالص
   const COST_G = ['plastic', 'color'], kp = Object.fromEntries(COST_G.map(g => [g, mp(g, t)]));   // سعر كيلو الخامة النهارده (آخر شراء)، البلاستيك والألوان بس
   const last = a => a && a.length ? a[a.length - 1] : null;
   /* مصنعية ومصاريف الكيلو (costBook): لوحدها / رقم ثابت / من غير، والحفظ بيزوّد سطر "من النهارده" في itemCost.kw */
@@ -6152,7 +6153,7 @@ function costModal(after) {
       <input class="inp num icm" inputmode="decimal" placeholder="${au ? fmtP(au.c) : 'التكلفة'}" value="${hc ? fmtP(hc[1]) : ''}" aria-label="تكلفة ${esc(o.name)}"><span class="icp"></span>
       <div class="icl"><button class="lnk icb" type="button">🏭 خامة + مصنعية</button><button class="lnk icb2" type="button">📦 كرتونة</button></div>
       <div class="icpk" ${N ? '' : 'hidden'}><label>الكرتونة فيها كام قطعة؟<input class="inp num ipk" inputmode="numeric" placeholder="0" value="${N || ''}"></label><small>التكلفة اللي فوق تبقى للقطعة، والفاتورة اللي سعرها سعر كرتونة بتتحسب كرتونة لوحدها</small></div>
-      <div class="icrr" ${rc ? '' : 'hidden'}><label>كيلو خامة في ${o.unit === 'كيلو' ? 'الكيلو' : 'ال' + esc(o.unit || 'وحدة')}<input class="inp num ick" inputmode="decimal" placeholder="${kg1 ? '1' : '0'}" value="${rc ? fmtQ(rc[1] / 1000) : kg1 ? '1' : ''}"></label>
+      <div class="icrr" ${rc || only ? '' : 'hidden'}><label>كيلو خامة في ${o.unit === 'كيلو' ? 'الكيلو' : 'ال' + esc(o.unit || 'وحدة')}<input class="inp num ick" inputmode="decimal" placeholder="${kg1 ? '1' : '0'}" value="${rc ? fmtQ(rc[1] / 1000) : kg1 ? '1' : ''}"></label>
         <label>المصنعية<input class="inp num icw" inputmode="decimal" placeholder="${kwOn ? 'تلقائي' : '0'}" value="${rc && rc[2] ? fmtP(rc[2]) : ''}"></label>
         <label>الخامة<select class="inp icg">${COST_G.map(g => [g, MAT_G[g]]).map(([g, n]) => `<option value="${g}" ${(M.g || 'plastic') === g ? 'selected' : ''}>${n}</option>`).join('')}</select></label><small class="icq"></small></div></div>`; };
   modal(`<h3>💰 تكلفة الأصناف</h3>
@@ -6849,9 +6850,54 @@ function jrdTot(n, stock) {
   const iv = n.ivs.reduce((s, x) => s + x.amt, 0), own = n.mkt + n.site + n.vault + stock + (n.rest || 0);
   return {iv, own, owe: n.sup + iv, work: own - n.sup, net: own - n.sup - iv};
 }
+/* ---------- توقع الخامات في الجرد (بطلبه 1/11/2026) ----------
+   آخر عدّ بالإيد (كيلو) + كيلو البلاستيك والألوان من فواتير الموردين (matLines) − كيلو الخراطيم اللي اتباعت (وزن الوحدة من costBook: الوحدة بالكيلو
+   أو "كيلو خامة في الوحدة" في تكلفة الأصناف) − الهالك = المفروض موجود، × آخر سعر كيلو بلاستيك. عرض واقتراح بس: مبيتحفظش في الجرد غير لما يدوس
+   "استخدم الرقم ده" أو يكتب رقمه. العدّ بالإيد بيتحفظ في إعداد set اسمه matCnt [[يوم, كيلو]] مع حفظ الجرد، والأول (8 طن يوم 1/11/2026) قاله بنفسه.
+   الهالك = 3% لحد ما يبقى فيه عدّين: الفرق بينهم وبين الحسبة ÷ اللي اتباع (من 0 لـ 30%) */
+const MAT_CNT0 = [['2026-11-01', 8000]], MAT_WASTE = 0.03, MAT_GS = ['plastic', 'color'];
+const matCnts = () => { const a = getSet('matCnt', null); return (a && a.length ? a : MAT_CNT0).slice().sort((x, y) => x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0); };
+/* اللي دخل وخرج بعد يوم f لحد يوم t (كيلو)، والأصناف اللي اتباعت باللفة ومالهاش وزن (miss) والفواتير اللي من غير بنود (nl) */
+function matFlow(f, t, cb) {
+  const a = addDays(f, 1), R = {inn: 0, out: 0, miss: new Map(), nl: 0};
+  if (a > t) return R;
+  matLines(a, t).forEach(x => { if (MAT_GS.includes(x.g)) R.inn += x.kg; });
+  for (const e of db.entries) {
+    if (e.del || (e.kind !== 'inv' && e.kind !== 'rinv') || e.date < a || e.date > t) continue;
+    const p = P.get(e.party); if (!p || p.noTot || p.sec === 'sup') continue; const sg = e.kind === 'rinv' ? -1 : 1;
+    const ls = (e.lines || []).filter(l => l.name && lineTot(l)); if (!ls.length) { if (e.kind === 'inv') R.nl++; continue; }
+    ls.forEach(l => { const q = +l.qty || 0, kg = cb.kgU(l.name, l.unit, e.date) * q; if (kg) { R.out += sg * kg; return; }
+      const x = cb.meta(l.name, l.unit); if (x.t || cb.pk[x.n] > 1 || cb.isPur(x.k) || gmSaleGuess(x.n) !== 'pl' || !/خرطوم|لف|رول/.test(x.n + ' ' + norm(l.unit || ''))) return;
+      const m = R.miss.get(x.k) || {k: x.k, name: l.name, unit: l.unit || '', q: 0}; m.q += sg * q; R.miss.set(x.k, m); });
+  }
+  return R;
+}
+/* التوقع يوم d: null لو مفيش عدّ لحد يومها */
+function matGuess(d) {
+  const C = matCnts().filter(x => x[0] <= d); if (!C.length) return null;
+  const cb = costBook(), s = C[C.length - 1], pv = C.length > 1 ? C[C.length - 2] : null;
+  let w = MAT_WASTE, real = false;
+  if (pv) { const F0 = matFlow(pv[0], s[0], cb); if (F0.out >= 500) { w = Math.min(0.3, Math.max(0, (pv[1] + F0.inn - s[1] - F0.out) / F0.out)); real = true; } }
+  const F = matFlow(s[0], d, cb), waste = Math.round(Math.max(0, F.out) * w), kg = Math.max(0, Math.round(s[1] + F.inn - F.out - waste)), pr = matPricer()('plastic', d);
+  return {s, F, w, real, waste, kg, pr, miss: [...F.miss.values()].filter(m => m.q > 0).sort((a, b) => b.q - a.q)};
+}
+const kgTxt = kg => fmtQ(Math.round(kg)) + ' ك';
+function matGuessHtml(G, cnt) {
+  const r = (n, s, a) => `<tr class="nohov"><td class="w"><b>${n}</b>${s ? `<small>${s}</small>` : ''}</td><td class="am">${a}</td></tr>`, mq = G.miss.reduce((a, m) => a + m.q, 0);
+  const v = G.pr === null ? '' : `بآخر سعر كيلو ${fmtP(Math.round(G.pr))} = ${fmtP(Math.round(G.kg * G.pr))}`, df = cnt > 0 ? cnt - G.kg : null;
+  return `<section class="ctab"><div class="cth"><span>🧮 توقع البرنامج للخامات بالمصنع</span><span></span></div><table class="cmt"><tbody>
+    ${r(`في العدّ يوم ${dispDate(G.s[0])}`, 'آخر مرة اتعدّت', kgTxt(G.s[1]))}
+    ${r('+ دخل من الموردين', 'بلاستيك وألوان، من الفواتير', kgTxt(G.F.inn))}
+    ${r('− خرج في الشغل اللي اتباع', 'من الفواتير، بوزن كل صنف', kgTxt(G.F.out))}
+    ${r(`− هالك ${Math.round(G.w * 1000) / 10}%`, G.real ? 'من الفرق في آخر عدّين' : 'تقريبي لحد ما تعدّ بالإيد', kgTxt(G.waste))}
+    <tr class="nohov jsub"><td class="w"><b>= المفروض موجود</b>${v ? `<small>${v}</small>` : ''}</td><td class="am"><b>${kgTxt(G.kg)}</b></td></tr>
+    ${df === null ? '' : r(`لقيت بالعدّ ${kgTxt(cnt)}`, df ? (df < 0 ? 'نقص عن المفروض' : 'زيادة عن المفروض') : 'زي المفروض بالظبط', kgTxt(Math.abs(df)))}
+  </tbody></table></section>
+  ${G.miss.length || G.F.nl ? `<div class="sync warn" id="jgW" style="margin-top:8px">⚠️ ${G.miss.length ? `${G.miss.length} ${G.miss.length > 2 && G.miss.length < 11 ? 'أصناف' : 'صنف'} اتباعوا من غير وزن معروف (${fmtQ(mq)} ${esc(G.miss[0].unit || 'وحدة')}) فمش داخلين في الحسبة. اكتب كيلو الخامة في الوحدة مرة واحدة.` : ''}${G.F.nl ? ` و${G.F.nl} فاتورة من غير بنود مش داخلة.` : ''}</div>` : ''}`;
+}
 const jrdSaved = () => db.stks.filter(s => !s.del).sort((a, b) => b.date.localeCompare(a.date) || (b.at || 0) - (a.at || 0));
 const jrdBefore = d => jrdSaved().find(s => s.date < d) || null;
-let jrDate = '', jrStock = null;
+let jrDate = '', jrStock = null, jgKg = null;
 /* الجرد بالترتيب اللي بيتحسب بيه: اللي ليك ← − الموردين = قيمة الشغل ← − المساهمين = صافي حقك. نفس السطور في الشاشة والـ PDF */
 function jrdLines(n, stock) {
   if (n.old) return [...(n.mkt ? [{t: 'r', n: 'أرصدة العملاء', s: 'من ورقة الجرد', a: n.mkt}] : []), ...(n.noStock ? [] : [{t: 'r', n: 'قيمة المخزون', s: 'من ورقة الجرد', a: stock}]),
@@ -6898,13 +6944,18 @@ function renderJrd() {
   if (parts[1] === 's' && parts[2]) return renderJrdSaved(parts[2]);
   if (parts[1] === 'iv') return renderIvList();
   const pg = $('#p-jrd'), t = todayISO(), d = jrDate || t, n = jrdCalc(d), same = jrdSaved().find(s => s.date === d), prev = jrdBefore(d);
-  const last = same || jrdSaved().find(s => s.date < d && !s.n.old), stock = jrStock !== null ? jrStock : last ? last.stock : 0, saved = jrdSaved();   // الجرد القديم (بالإيد) مبيتملاش منه المخزون
+  const last = same || jrdSaved().find(s => s.date < d && !s.n.old), stock = jrStock !== null ? jrStock : last ? last.stock : 0, saved = jrdSaved();
+  const G = matGuess(d), c0 = matCnts().find(x => x[0] === d); if (jgKg === null) jgKg = c0 ? c0[1] : 0;   // الجرد القديم (بالإيد) مبيتملاش منه المخزون
   pg.innerHTML = jrdHead('jrd') + `
     <div class="card">
       <div class="g2"><div class="fld"><label>تاريخ الجرد</label><input class="inp" type="date" id="jrD" value="${d}"></div>
       <div class="fld"><label>قيمة المخزون بالمصنع</label><input class="inp num amt" id="jrS" placeholder="0" value="${stock ? fmtP(stock) : ''}"></div></div>
       ${qh(`أدخل قيمة المخزون فقط، أما أرصدة العملاء والموردين والخزن والمساهمين فتُحتسب تلقائياً حتى نهاية التاريخ المحدد.${last ? ` آخر جرد بتاريخ ${dispDate(last.date)} وقيمة المخزون فيه ${fmtP(last.stock)}.` : ''}`)}
     </div>
+    ${G ? `<div id="jgBox">${matGuessHtml(G, jgKg)}</div>
+    <div class="card"><div class="fld"><label>الخامات اللي عدّيتها بإيدك (كيلو)، لو عدّيت</label><input class="inp num" id="jgK" inputmode="decimal" placeholder="اختياري" value="${jgKg > 0 ? jgKg : ''}"></div>
+      <div class="mrow3" style="grid-template-columns:1fr${G.miss.length ? ' 1fr' : ''}"><button class="btn gold" id="jgUse" type="button" ${G.pr === null ? 'disabled' : ''}>استخدم الرقم ده</button>${G.miss.length ? '<button class="btn line" id="jgMiss" type="button">اكتب الأوزان الناقصة</button>' : ''}</div></div>
+    <div style="height:10px"></div>` : ''}
     <div id="jrBlk">${jrdBlock(n, stock, prev, true)}</div>
     <div class="mrow3" style="grid-template-columns:1fr 1fr"><button class="btn gold" id="jrSave" type="button">💾 ${same ? 'تحديث جرد هذا التاريخ' : 'حفظ الجرد'}</button><button class="btn line" id="jrPdf" type="button">📄 PDF</button></div>
     <div style="height:12px"></div>
@@ -6918,7 +6969,12 @@ function renderJrd() {
   const sIn = $('#jrS'); bindMoney(sIn);
   const bindBlk = () => $$('#p-jrd tr[data-iv]').forEach(el => el.onclick = () => go('jrd/iv/' + el.dataset.iv));
   sIn.addEventListener('input', () => { jrStock = toP(sIn.value); $('#jrBlk').innerHTML = jrdBlock(n, jrStock, prev, true); bindBlk(); });
-  $('#jrD').onchange = () => { const v = $('#jrD').value; if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { jrDate = v > t ? t : v; jrStock = null; renderJrd(); } };
+  $('#jrD').onchange = () => { const v = $('#jrD').value; if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { jrDate = v > t ? t : v; jrStock = null; jgKg = null; renderJrd(); } };
+  if (G) {
+    $('#jgK').addEventListener('input', () => { jgKg = Math.max(0, num($('#jgK').value)); $('#jgBox').innerHTML = matGuessHtml(G, jgKg); });
+    $('#jgUse').onclick = () => { if (G.pr === null) return; jrStock = Math.round((jgKg > 0 ? jgKg : G.kg) * G.pr); sIn.value = fmtP(jrStock); $('#jrBlk').innerHTML = jrdBlock(n, jrStock, prev, true); bindBlk(); toast('اتحطت قيمة الخامات في المخزون، زود عليها أي حاجة تانية لو فيه'); };
+    if ($('#jgMiss')) $('#jgMiss').onclick = () => costModal(renderJrd, G.miss.map(m => m.k));
+  }
   bindBlk();
   $$('#p-jrd tr[data-s]').forEach(el => el.onclick = () => go('jrd/s/' + el.dataset.s));
   $('#jrPdf').onclick = () => exportReport(jrdReport(d, n, toP(sIn.value), prev), 'preview', `الجرد ${d.split('-').reverse().join('-')}`);
@@ -6929,7 +6985,8 @@ function renderJrd() {
     const now = nowS(), cur = jrdSaved().find(s => s.date === d), o = {date: d, stock: st, n: JSON.parse(JSON.stringify(n))};
     if (cur) { (cur.hist = cur.hist || []).push({t: now, date: cur.date, desc: `جرد — المخزون ${fmtP(cur.stock)}، صافي ${fmtP(jrdTot(cur.n, cur.stock).net)}`, dr: 0, cr: 0}); Object.assign(cur, o); touch(cur); }
     else { const r = Object.assign({id: newId('jr_'), at: now, upd: now, del: false, hist: []}, o); db.stks.push(r); IDX.stk.set(r.id, r); }
-    jrStock = null; saveDB(); renderJrd(); toast('تم حفظ الجرد ✔');
+    if (jgKg > 0) { const C = matCnts().filter(x => x[0] !== d); C.push([d, Math.round(jgKg * 1000) / 1000]); putSet('matCnt', C); }   // العدّ بالإيد بقى نقطة البداية
+    jrStock = null; jgKg = null; saveDB(); renderJrd(); toast('تم حفظ الجرد ✔');
   };
 }
 /* جرد قديم (بطلبه 17/10/2026): جرود اتعملت قبل البرنامج بتتكتب أرقام بس (التاريخ والصافي، والعملا والمخزن لو موجودين)
@@ -6973,7 +7030,9 @@ function renderJrdSaved(id) {
   $$('#p-jrd tr[data-iv]').forEach(el => el.onclick = () => go('jrd/iv/' + el.dataset.iv));
   $('#jsDel').onclick = async () => {
     if (!(await confirmBox(`هل تريد إلغاء جرد ${dispDate(s.date)}؟ سيبقى محفوظاً بحالة «ملغي».`, 'إلغاء', true))) return;
-    s.del = true; s.delAt = nowS(); touch(s); saveDB(); go('jrd'); toast('تم الإلغاء');
+    s.del = true; s.delAt = nowS(); touch(s);
+    const C = getSet('matCnt', null); if (C && C.some(x => x[0] === s.date)) putSet('matCnt', C.filter(x => x[0] !== s.date));   // عدّ الخامات بتاع الجرد ده بيتشال معاه
+    saveDB(); go('jrd'); toast('تم الإلغاء');
   };
 }
 function renderIvList() {

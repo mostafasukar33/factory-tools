@@ -1685,6 +1685,37 @@ const T0 = Date.now();
       const n = jrdCalc(todayISO()), s = jrdSaved()[0], iv = ivList().reduce((a, v) => a + ivSums(v.id).bal, 0);
       return [n.ivs.length, n.ivs.reduce((a, x) => a + x.amt, 0) === iv, s.n.ivs.length, jrdTot(n, 0).owe === n.sup + iv]; }), [3, true, 0, true]);
 
+    /* توقع الخامات في الجرد (بطلبه 1/11/2026): آخر عدّ + الموردين − البيع بوزن الصنف − الهالك، والعدّ بالإيد بيتحفظ مع الجرد */
+    eq('توقع الخامات: العدّ + الموردين − المباع بالوزن − هالك 3%، واللفة من غير وزن بتتقال، ووزنها من تكلفة الأصناف بيدخلها، وعدّين بيحسبوا الهالك الحقيقي', await A.evaluate(() => {
+      const t = todayISO(), D0 = addDays(t, -10), n0 = db.entries.length, sp = liveParties().find(p => p.sec === 'sup' && !p.noTot), c = liveParties().find(p => p.sec === 'mkt' && !p.noTot);
+      const add = (id, party, kind, date, lines) => { const e = {id, party, kind, date, lines, disc: 0, at: 1, upd: 1, del: false, hist: []}, v = docTotal(e); e.dr = kind === 'inv' ? v : 0; e.cr = kind === 'inv' ? 0 : v; db.entries.push(e); E.set(id, e); return e; };
+      const L = (name, unit, qty, price) => ({name, unit, qty, price}), HR = 'خرطوم تجربة توقع 16 مم';
+      putSet('matCnt', [[D0, 1000]]);
+      const F0 = matFlow(D0, t, costBook());
+      add('e_mg1', sp.id, 'pur', addDays(t, -5), [L('سابك تجربة توقع', 'كيلو', 500, 5000)]);
+      add('e_mg2', c.id, 'inv', addDays(t, -4), [L('خرطوم تجربة توقع بالكيلو', 'كيلو', 200, 7000), L(HR, 'لفة', 10, 40000)]);
+      const G1 = matGuess(t), di = G1.F.inn - F0.inn, dO = G1.F.out - F0.out, ok1 = G1.kg === Math.round(1000 + G1.F.inn - G1.F.out - Math.round(Math.max(0, G1.F.out) * 0.03));
+      const ms = G1.miss.find(m => m.name === HR);
+      putSet('itemCost', {k: {[icKey(HR, 'لفة')]: {n: HR, u: 'لفة', g: 'plastic', r: [[D0, 5000, 0]]}}});
+      const G2 = matGuess(t), dO2 = G2.F.out - F0.out, gone = !G2.miss.some(m => m.name === HR);
+      /* عدّ تاني بعد البيع: الهالك الحقيقي = (1000 + اللي دخل − العدّ − اللي خرج) ÷ اللي خرج */
+      const D1 = addDays(t, -2), F1 = matFlow(D0, D1, costBook()), cnt = Math.round(1000 + F1.inn - F1.out - F1.out * 0.05);
+      putSet('matCnt', [[D0, 1000], [D1, cnt]]); const G3 = matGuess(t), w3 = F1.out >= 500 ? G3.real && Math.abs(G3.w - 0.05) < 0.001 : !G3.real;
+      const pre = matGuess(addDays(D0, -1)), prOk = G1.pr === matPricer()('plastic', t);
+      db.entries.splice(n0); ['e_mg1', 'e_mg2'].forEach(id => E.delete(id));
+      const sr = IDX.set.get('itemCost'); db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('itemCost'); saveDB();
+      return [di, dO, ok1, !!ms && ms.q, dO2, gone, G3.s[0] === D1, w3, prOk, pre]; }), [500, 200, true, 10, 250, true, true, true, true, null]);
+    eq('توقع الخامات في شاشة الجرد: العدّ بالإيد بيبيّن الفرق، و"استخدم الرقم ده" بيحط القيمة في المخزون، والحفظ بيخلي العدّ نقطة البداية', await A.evaluate(async () => {
+      const t = todayISO(); putSet('matCnt', [[addDays(t, -3), 2000]]); jrDate = ''; jrStock = null; jgKg = null; go('jrd'); renderJrd();
+      const G = matGuess(t), r = [!!$('#jgBox'), $('#jgBox').textContent.includes(kgTxt(G.kg))];
+      const k = $('#jgK'); k.value = String(G.kg - 50); k.dispatchEvent(new Event('input')); r.push($('#jgBox').textContent.includes('نقص عن المفروض'));
+      if (G.pr !== null) { $('#jgUse').click(); r.push(toP($('#jrS').value) === Math.round((G.kg - 50) * G.pr)); } else r.push(true);
+      $('#jrSave').click(); await new Promise(z => setTimeout(z, 50)); if ($('#cOk')) $('#cOk').click(); await new Promise(z => setTimeout(z, 50));
+      const C = getSet('matCnt', []); r.push(C.some(x => x[0] === t && x[1] === G.kg - 50), matGuess(t).s[1] === G.kg - 50);
+      const s0 = jrdSaved().find(x => x.date === t); r.push(!!s0);
+      putSet('matCnt', C.filter(x => x[0] !== t)); const sr = IDX.set.get('matCnt'); db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('matCnt'); saveDB();
+      return r; }), [true, true, true, true, true, true, true]);
+
     /* الشكل: التبويبات والأرقام تحت بعض والخط */
     await A.evaluate(() => { jrDate = ''; go('jrd'); }); await A.settle(300);
     await segOk(A, 'الحسابات — الجرد'); await colOk('الحسابات — الجرد', A, '#p-jrd', '.cmt td.am,.cth b');

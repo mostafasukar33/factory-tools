@@ -571,7 +571,7 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await A.waitForSelector('.cut');
     eq('المقاسات من 1 لـ 35 من غير 2.5', await A.$$eval('.cut [data-rm]', b => b.map(x => x.dataset.rm)), ['1', '1.5', '2', '3', '4', '6', '10', '16', '25', '35']);
     await A.click('#cuSeg button[data-v="s"]'); await A.waitForSelector('.cusv[data-cu]');
-    eq('الحسبة القديمة (بند واحد) بتتفتح عادي بالتكلفة والمكسب', await A.evaluate(() => [S.cu.list[0].lines.length, [...document.querySelectorAll('.cusv .n3 b')].map(b => b.textContent)]), [1, ['8,025', '11,500', '3,475']]);
+    eq('الحسبة القديمة (بند واحد) بتتفتح عادي بالتكلفة والمكسب', await A.evaluate(() => [cuS().list[0].lines.length, [...document.querySelectorAll('.cusv .n3 b')].map(b => b.textContent)]), [1, ['8,025', '11,500', '3,475']]);
     await A.click('#cuSeg button[data-v=""]'); await A.waitForSelector('#cuAddLn');
     await A.click('#cuAddLn'); await A.waitForSelector('#cuP_cp');
     eq('ضيف بند من غير أسعار = بيطلب الأسعار الأول', true, true);
@@ -583,7 +583,7 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     await A.click('#cuAddLn'); await A.waitForSelector('#cuL_d');
     await A.click('#cuLz .chip[data-z="3"]'); await A.waitForSelector('#cuL_w');
     await A.fill('#cuL_w', '3.9'); await A.fill('#cuL_l', '15');
-    eq('المقاس اللي وزنه مش مكتوب بيتكتب من النافذة نفسها', await A.evaluate(() => S.cu.sz['3']), {w: 3900, l: 1500});
+    eq('المقاس اللي وزنه مش مكتوب بيتكتب من النافذة نفسها', await A.evaluate(() => cuS().sz['3']), {w: 3900, l: 1500});
     await A.fill('#cuL_d', '0.7'); await A.click('#cuLnlB'); await A.fill('#cuL_len', '100'); await A.fill('#cuL_rolls', '20'); await A.click('#cuLOk');
     await A.waitForFunction(() => document.querySelectorAll('.cuit').length === 2);
     await A.click('#cuAddLn'); await A.waitForSelector('#cuL_d');
@@ -595,9 +595,12 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     eq('دوسة على البند = الحسبة خطوة خطوة', await A.evaluate(() => [...document.querySelectorAll('.cuhow .r')].map(x => x.textContent.trim())), ['= 1.225 كيلو', '= 1.575 كيلو', '= 802.5 جنيه', '= 17,375 جنيه', '= 61.25 كيلو شعرة 0.5']);
     await A.click('#cuHX');
     await A.fill('#cu_name', 'طلبية تجريبية'); await A.click('#cuSave'); await A.click('#cuSeg button[data-v="s"]'); await A.waitForSelector('.cusv[data-cu]');
-    eq('الطلبية اتحفظت ومبتروحش الشيت', await A.evaluate(() => [S.cu.list.length, S.cu.list.find(x => x.name === 'طلبية تجريبية').lines.length, Object.values(S.recs).some(r => r.k === 'cu' || String(r.id).startsWith('cu_')), pending().length]), [2, 3, false, 0]);
-    eq('المحفوظ مكتوب فيه نحاس كل بند', await A.$$eval('.cusv:first-child .cul span', r => r.map(x => x.textContent.replace(/\s+/g, ' ').trim())), ['2 مم · شعرة 0.5 = 61.25 ك', '3 مم · شعرة 0.7 = 48.02 ك', '2 مم · شعرة 0.5 = 12.25 ك']);
-    await A.click('.cusv[data-cu]'); await A.waitForSelector('#cuDel');
+    eq('الطلبية والقديمة والمقاسات بقوا سجلات بتروح شيت المرتبات', await A.evaluate(() => { const R = Object.values(S.recs); return [R.filter(r => r.k === 'cuo' && !r.del).length, R.find(r => r.k === 'cuo' && r.name === 'طلبية تجريبية').lines.length, !!(S.recs.cuz_2 && S.recs.cuz_3), 'list' in S.cu || 'sz' in S.cu]; }), [2, 3, true, false]);
+    await A.evaluate(() => sync()); await A.waitForFunction(() => !pending().length, null, {timeout: 20000});
+    await B.evaluate(() => sync()); await B.waitForFunction(() => Object.values(S.recs).filter(r => r.k === 'cuo').length === 2, null, {timeout: 20000});
+    eq('موبايل تاني بيشوف الطلبيات والمقاسات', await B.evaluate(() => { const c = cuS(); return [c.list.map(o => o.name).sort(), c.sz['3']]; }), [['حسبة قديمة', 'طلبية تجريبية'], {w: 3900, l: 1500}]);
+    eq('المحفوظ مكتوب فيه نحاس كل بند', await A.$$eval('.cusv:has(.h b:text-is("طلبية تجريبية")) .cul span', r => r.map(x => x.textContent.replace(/\s+/g, ' ').trim())), ['2 مم · شعرة 0.5 = 61.25 ك', '3 مم · شعرة 0.7 = 48.02 ك', '2 مم · شعرة 0.5 = 12.25 ك']);
+    await A.click('.cusv:has-text("طلبية تجريبية") >> nth=0'); await A.waitForSelector('#cuDel');
     eq('فتح المحفوظ بيرجّع البنود والأسعار', await A.evaluate(() => [document.querySelectorAll('.cuit').length, S.cu.dr.cp]), [3, 56000]);
 
     eq('مفيش أخطاء في الصفحات', pages.flatMap(p => p.ctx.errs), []);

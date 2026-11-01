@@ -97,13 +97,27 @@ self.addEventListener('fetch', e => {
   const p = rel(req.url);
   if (p !== null && FAST.test(p)) return e.respondWith(fast(e));
   if (p !== null && STATIC.test(p)) return e.respondWith(quick(e));
-  e.respondWith(
-    fetch(req.url, {cache: 'no-store', credentials: 'same-origin'}).then(r => {
-      if (r.ok) { const copy = plain(r.clone()); caches.open(CACHE).then(c => c.put(key(req.url), copy)); }
-      return plain(r);
-    }).catch(() => saved(req.url).then(r => r || caches.match('index.html')).then(r => r && plain(r)))
-  );
+  e.respondWith(normal(e));
 });
+// باقي الأدوات (والرئيسية): الشبكة أولاً. بس لو النت ضعيف ومردّش في WAIT ملّي والملف محفوظ، بيتفتح المحفوظ
+// (بطلبه 1/11/2026: الرئيسية كانت بتفضل سودا مستنية النت). الطلب بيكمّل في الخلفية ويحدّث المحفوظ للفتحة الجاية
+const WAIT = 2500;
+function normal(e) {
+  const u = e.request.url;
+  let put = null;
+  const net = fetch(u, {cache: 'no-store', credentials: 'same-origin'}).then(r => {
+    if (r.ok) { const copy = plain(r.clone()); put = caches.open(CACHE).then(c => c.put(key(u), copy)).catch(() => {}); }
+    return plain(r);
+  });
+  const old = () => saved(u).then(r => r || (e.request.mode === 'navigate' ? caches.match('index.html') : null)).then(r => r && plain(r));
+  e.waitUntil(net.then(() => put, () => {}));
+  return new Promise(done => {
+    let sent = false;
+    const send = r => { if (!sent && r) { sent = true; done(r); } };
+    const t = setTimeout(() => saved(u).then(r => r && send(plain(r))), WAIT);
+    net.then(r => { clearTimeout(t); send(r); }, () => { clearTimeout(t); old().then(r => sent || done(r || Response.error())); });
+  });
+}
 
 // إشعارات الوارد (functions/push.js بيبعتها من شيت السوق): رقم على أيقونة الحسابات + إشعار.
 // وإشعار الطلبيات لموبايل الشريك (g: 'ord'، من غير رقم، بيفتح market.html#ord).

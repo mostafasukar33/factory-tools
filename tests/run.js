@@ -3085,7 +3085,18 @@ const T0 = Date.now();
       [X, ms] = await open('quote.html');
       eq('النت مقطوع: باقي الأدوات (عرض السعر) بتفتح من المحفوظ زي الأول', await X.evaluate(() => document.body.children.length > 0), true);
       await X.close();
+      [X, ms] = await open('index.html');
+      eq('النت مقطوع: الرئيسية بتفتح من المحفوظ بزراير الأدوات', [ms < 2000, await X.evaluate(() => document.querySelectorAll('a.tool').length > 3)], [true, true]);
+      await X.close();
       SRV.down = false;
+      /* نت ضعيف (الطلب بيعلق ومبيردش): الرئيسية وباقي الأدوات متفضلش سودا، المحفوظ بيتفتح بعد ثانيتين ونص */
+      SRV.slow = {'index.html': 15000, 'quote.html': 15000};
+      for (const f of ['index.html', 'quote.html']) {
+        [X, ms] = await open(f);
+        eq('نت ضعيف: ' + f + ' بيفتح من المحفوظ في أقل من 4 ثواني', [ms < 4000, await X.evaluate(() => document.body.children.length > 0)], [true, true]);
+        await X.close();
+      }
+      SRV.slow = {};
 
       /* كلاود فلير بيشيل .html (بيحوّل payroll.html لـ /payroll). الـ SW كان بيرجّع الرد "متحوّل" فسفاري وكروم بيرفضوا يفتحوا الصفحة */
       SRV.pretty = true;

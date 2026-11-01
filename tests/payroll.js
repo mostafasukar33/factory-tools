@@ -359,10 +359,16 @@ const rowsOf = gas => (gas.sheets['الحركات'] ? gas.sheets['الحركات
     eq('الشريك شايف السلف القديمة والقاعدة', await B.evaluate(id => [idx().old.length, idx().rule.get(id).mode], aId), [1, 'fixed']);
 
     console.log('\n١١) الأرشيف: كل الأسابيع متجمعة في شهور بإجمالي كل أسبوع وشهر');
-    eq('الشهور: الأسبوع بيتحسب على شهر خميس القبض، والإجمالي لكل شهر', await A.evaluate(() => { const lk = (t, n) => ({k: 'lk', id: 'lk_' + t, thu: t, snap: {total: n, rows: {}}}); const m = archiveMonths(buildIdx(['2026-09-24', '2026-10-01', '2026-10-08', '2026-10-29', '2026-11-05'].map((t, i) => lk(t, (i + 1) * 100)))); return m.map(x => [x.ym, x.weeks.length, x.total, monthTitle(x.ym)]); }), [['2026-09', 1, 100, 'سبتمبر 2026'], ['2026-10', 3, 900, 'أكتوبر 2026'], ['2026-11', 1, 500, 'نوفمبر 2026']]);
+    eq('الشهور باليوم: كل يوم في شهره، والأسبوع اللي في شهرين بيتقسم، والسلف جزء من المرتبات', await A.evaluate(() => {
+      const lk = (t, rows) => ({k: 'lk', id: 'lk_' + t, thu: t, snap: {total: 0, rows}});
+      const r = {w: 'tw', name: 'تجريبي', days: {'2026-10-31': 1, '2026-11-01': 1, '2026-11-02': 1, '2026-11-03': 0.5}, units: 3.5, daysPay: 35000, fridayPay: 10000, bonus: 5000, advances: 2000, oldApplied: 1000, net: 47000};
+      const m = archiveMonths(buildIdx([lk('2026-09-24', {}), lk('2026-11-05', {tw: r})]));
+      return m.map(x => [x.ym, x.weeks.length, x.wages, x.adv, x.cash, x.days, x.weeks.map(w => [w.thu, w.inM, w.split])]); }),
+      [['2026-09', 1, 0, 0, 0, 0, [['2026-09-24', 7, false]]], ['2026-10', 1, 10000, 0, 10000, 1, [['2026-11-05', 2, true]]], ['2026-11', 1, 40000, 3000, 37000, 3, [['2026-11-05', 5, true]]]]);
     await A.evaluate(() => nav('a', true));
     eq('شاشة الأرشيف: كل أسبوع ظاهر في شهره وقدامه المبلغ، وقدام كل شهر إجماليه', await A.evaluate(() => { const ms = archiveMonths(idx()); return [$$('#main .mo').length === ms.length, $$('#main .row[data-thu]').length === ms.reduce((s, m) => s + m.weeks.length, 0), $$('#main .mh .money').length === ms.length, $$('#main .row[data-thu] .money').length === $$('#main .row[data-thu]').length, $$('#main .mo')[0].classList.contains('shut')]; }), [true, true, true, true, false]);
-    eq('إجمالي الشهر = مجموع أسابيعه', await A.evaluate(() => archiveMonths(idx()).every(m => m.total === m.weeks.reduce((s, w) => s + w.c.total, 0))), true);
+    eq('إجمالي الشهر = مجموع نصيب أسابيعه، واتقبض = المرتبات − السلف', await A.evaluate(() => archiveMonths(idx()).every(m => m.wages === m.weeks.reduce((s, w) => s + w.part.wages, 0) && m.cash === m.wages - m.adv)), true);
+    eq('مجموع الشهور = مجموع مرتبات كل الأسابيع (مفيش يوم ضاع ولا اتحسب مرتين)', await A.evaluate(() => { const I = idx(), ms = archiveMonths(I), th = new Set(ms.flatMap(m => m.weeks.map(w => w.thu))); let t = 0; th.forEach(x => Object.values(calcWeek(I, x).rows).forEach(r => { t += r.wages - (r.prevFridayDelta || 0); })); return ms.reduce((s, m) => s + m.wages, 0) === t; }), true);
     await A.evaluate(() => { document.querySelector('#main .mh').click(); });
     eq('دوسة على الشهر بتقفله، ودوسة تانية بتفتحه', await A.evaluate(() => { const s = document.querySelector('#main .mo'), a = s.classList.contains('shut'); document.querySelector('#main .mh').click(); return [a, s.classList.contains('shut')]; }), [true, false]);
     /* العامل اللي مشى يفضل ظاهر في الأرشيف وفي أسابيعه القديمة */

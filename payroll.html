@@ -271,6 +271,11 @@ html[data-theme=dark] .b-ok{color:#06140d}
 .mh .m{flex:1;min-width:0}.mh .m b{display:block;font-size:16.5px;font-weight:800}.mh .m small{display:block;color:var(--sub);font-size:12px;font-weight:600}
 .mh .money{font-size:19px;color:var(--green)}
 .mo .list{margin-top:6px}.mo.shut .list{display:none}
+.mh .mhs{display:none!important}.mo.shut .mhs{display:block!important}.mo:not(.shut) .mh>.money{display:none}
+.mst{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--row);padding:10px 4px}
+.mst div{text-align:center;font-size:12px;font-weight:700;color:var(--sub);line-height:1.35}.mst div+div{border-inline-start:1px solid var(--row)}
+.mst b{display:block;font-size:20px;color:var(--ink)}.mst b.bk{color:var(--red)}.mst b.ok{color:var(--green)}
+.tag.spl{display:inline-block;margin:3px 0 1px;margin-inline-start:0;background:var(--wait-l);color:var(--wait)}.tbl td small{display:block;font-weight:600}
 details.more{margin-top:12px}
 details.more summary{font-weight:800;color:var(--gold-d);font-size:14px;padding:6px 4px;cursor:pointer}
 /* السجل */
@@ -1561,55 +1566,81 @@ function workerModal(w) {
   if ($('#wkGone')) $('#wkGone').onclick = async () => { if (await ask(`${w.name} مشى؟ هيختفي من الأسبوع، واسمه هيفضل في الأرشيف.`, 'أيوه مشى', 'لأ', true)) setSt('gone', `${myName()} علّم إن ${w.name} مشى`); };
 }
 
-/* ---------- الأرشيف: كل الأسابيع متجمعة في شهور (الأسبوع بيتحسب على شهر خميس القبض)، قدام كل أسبوع وكل شهر إجمالي المرتبات ---------- */
+/* ---------- الأرشيف: الشهر باليوم (بطلبه 1/11/2026). المرتب يومي، فكل يوم بيتحسب في شهره حتى لو أسبوعه داخل في شهرين.
+   المرتبات = أيام الشغل (كل يوم في تاريخه) + الجمعة (في تاريخ الجمعة) + الحافز (يوم الخميس) − فرق الجمعة.
+   السلف جزء من المرتبات: "منها سلف" = السلف الجديدة (في تاريخها) + الخصم من السلف القديمة (يوم الخميس)، و"اتقبض كاش" = المرتبات − منها سلف ---------- */
 const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 const monthTitle = ym => MONTHS[+ym.slice(5, 7) - 1] + ' ' + ym.slice(0, 4);
+const monthEnd = ym => ym + '-' + String(new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate()).padStart(2, '0');
 let archOpen = {};   // الشهور اللي المستخدم فتحها/قفلها (الباقي: آخر شهر مفتوح بس)
-/* بيرجّع الشهور (الأقدم أول)، كل شهر فيه أسابيعه (مقفولة بلقطتها، أو الحالي/اللي لسه متقفلش محسوبة حية) وإجماليها */
+/* نصيب كل شهر من أسبوع: Map شهر ← {wages, adv, dates (أيام فيها شغل), ws: كل عامل {wages, adv, units}} */
+function weekSplit(I, thu, c) {
+  const out = new Map(), part = d => { const k = d.slice(0, 7); if (!out.has(k)) out.set(k, {wages: 0, adv: 0, dates: new Set(), ws: {}}); return out.get(k); };
+  const wk = (d, r) => { const p = part(d); return p.ws[r.w] || (p.ws[r.w] = {w: r.w, name: r.name, wages: 0, adv: 0, units: 0}); };
+  const addW = (d, r, n) => { if (!n) return; part(d).wages += n; wk(d, r).wages += n; };
+  const addA = (d, r, n) => { if (!n) return; part(d).adv += n; wk(d, r).adv += n; };
+  Object.values(c.rows || {}).forEach(r => {
+    /* الأيام: أجر كل يوم في تاريخه (بنقسم أجر الأيام على الوحدات بالتراكم علشان القروش متضيعش) */
+    const ds = Object.entries(r.days || {}).filter(([, u]) => u > 0).sort(), units = ds.reduce((s, [, u]) => s + u, 0);
+    if (units) { let cu = 0, done = 0; ds.forEach(([d, u]) => { cu += u; const v = Math.round((r.daysPay || 0) * cu / units) - done; done += v; addW(d, r, v); part(d).dates.add(d); wk(d, r).units += u; }); }
+    else addW(thu, r, r.daysPay || 0);
+    addW(addDays(thu, 1), r, r.fridayPay || 0);
+    addW(thu, r, (r.bonus || 0) - (r.prevFridayDelta || 0));
+    /* السلف الجديدة في تاريخها (لو الحركات لسه زي اللقطة)، وإلا يوم الخميس */
+    const av = I.adv.filter(x => x.w === r.w && !x.inst && ownerThursday(x.date) === thu);
+    if (av.reduce((s, x) => s + x.amt, 0) === (r.advances || 0)) av.forEach(x => addA(x.date, r, x.amt)); else addA(thu, r, r.advances || 0);
+    addA(thu, r, r.oldApplied || 0);
+  });
+  return out;
+}
+/* بيرجّع الشهور (الأقدم أول). كل شهر فيه الأسابيع اللي ليها أيام فيه (part = نصيب الشهر من الأسبوع) والإجماليات */
 function archiveMonths(I) {
   const nowThu = ownerThursday(today()), set = new Set(I.lk.keys()), map = new Map();
   for (let t = I.first; t && t <= nowThu; t = addDays(t, 7)) set.add(t);
   [...set].sort().forEach(thu => {
     const lk = I.lk.get(thu), closed = !!(lk && lk.snap);
     if (!closed && (thu > nowThu || (thu !== nowThu && !weekHasData(I, thu)))) return;
-    const c = calcWeek(I, thu), rs = Object.values(c.rows || {});
-    if (!closed && !rs.length) return;
-    const ym = thu.slice(0, 7);
-    if (!map.has(ym)) map.set(ym, {ym, weeks: [], total: 0, wages: 0, adv: 0, open: false});
-    const m = map.get(ym);
-    m.weeks.push({thu, c, closed, lk});
-    m.total += c.total || 0; m.wages += rs.reduce((s, r) => s + (r.wages || 0), 0); m.adv += rs.reduce((s, r) => s + (r.advances || 0), 0);
-    if (!closed) m.open = true;
+    const c = calcWeek(I, thu);
+    if (!closed && !Object.keys(c.rows || {}).length) return;
+    const sp = weekSplit(I, thu, c);
+    if (!sp.size) sp.set(thu.slice(0, 7), {wages: 0, adv: 0, dates: new Set(), ws: {}});
+    const span = weekDates(thu).map(d => d.slice(0, 7));
+    sp.forEach((p, ym) => {
+      if (!map.has(ym)) map.set(ym, {ym, weeks: [], wages: 0, adv: 0, cash: 0, dates: new Set(), ws: {}, open: false});
+      const m = map.get(ym);
+      m.weeks.push({thu, c, closed, lk, part: p, inM: span.filter(x => x === ym).length, split: new Set(span).size > 1});
+      m.wages += p.wages; m.adv += p.adv; p.dates.forEach(d => m.dates.add(d));
+      Object.values(p.ws).forEach(x => { const a = m.ws[x.w] || (m.ws[x.w] = {w: x.w, name: x.name, wages: 0, adv: 0, units: 0}); a.wages += x.wages; a.adv += x.adv; a.units += x.units; });
+      if (!closed) m.open = true;
+    });
   });
-  return [...map.values()];
+  const ms = [...map.values()].sort((a, b) => a.ym.localeCompare(b.ym));
+  ms.forEach(m => { m.cash = m.wages - m.adv; m.days = m.dates.size; m.weeks.sort((a, b) => a.thu.localeCompare(b.thu)); });
+  return ms;
 }
 /* كل عامل خد كام في الشهر ده (بما فيهم اللي مشى: اسمه بيفضل من لقطات الأسابيع) */
 function monthSheet(ym) {
   const I = idx(), m = archiveMonths(I).find(x => x.ym === ym);
   if (!m) return closeModal();
-  const acc = {};
-  m.weeks.forEach(w => Object.values(w.c.rows || {}).forEach(r => {
-    const a = acc[r.w] || (acc[r.w] = {w: r.w, name: r.name, wages: 0, adv: 0, net: 0});
-    a.wages += r.wages || 0; a.adv += r.advances || 0; a.net += r.net || 0;
-  }));
-  const list = Object.values(acc).sort((a, b) => ((I.W.get(a.w) || {}).ord || 0) - ((I.W.get(b.w) || {}).ord || 0));
-  modal(`<h3>العمال في ${monthTitle(ym)}</h3>
-    <table class="tbl"><thead><tr><th>الاسم</th><th>المرتب</th><th>السلف</th><th>الصافي</th></tr></thead><tbody>
-    ${list.map(a => { const w = I.W.get(a.w); return `<tr><td><b>${esc((w || a).name)}${w && w.st === 'gone' ? '<span class="tag gone">مشى</span>' : ''}</b></td><td>${fmt(a.wages)}</td><td class="${a.adv ? 'bk' : ''}">${nz(a.adv)}</td><td class="net">${fmt(a.net)}</td></tr>`; }).join('')}</tbody>
-    <tfoot><tr><td>الإجمالي</td><td>${fmt(m.wages)}</td><td class="${m.adv ? 'bk' : ''}">${nz(m.adv)}</td><td class="net">${fmt(m.total)}</td></tr></tfoot></table>
-    <p class="hint">الصافي = اللي خرج فعلاً للعامل بعد السلف والخصومات.${m.open ? ' الشهر لسه شغال فالأرقام لحد دلوقتي.' : ''}</p>
+  const list = Object.values(m.ws).filter(a => a.wages || a.adv).sort((a, b) => ((I.W.get(a.w) || {}).ord || 0) - ((I.W.get(b.w) || {}).ord || 0));
+  modal(`<h3>العمال في ${monthTitle(ym)}<small>من ${dm(ym + '-01')} لـ ${dm(monthEnd(ym))} · ${m.days} يوم شغل</small></h3>
+    <table class="tbl"><thead><tr><th>الاسم</th><th>المرتب</th><th>منها سلف</th><th>اتقبض</th></tr></thead><tbody>
+    ${list.map(a => { const w = I.W.get(a.w); return `<tr><td><b>${esc((w || a).name)}${w && w.st === 'gone' ? '<span class="tag gone">مشى</span>' : ''}</b><small class="sm">${unitsText(a.units)}</small></td><td>${fmt(a.wages)}</td><td class="${a.adv ? 'bk' : ''}">${nz(a.adv)}</td><td class="net">${fmtN(a.wages - a.adv)}</td></tr>`; }).join('')}</tbody>
+    <tfoot><tr><td>الإجمالي</td><td>${fmt(m.wages)}</td><td class="${m.adv ? 'bk' : ''}">${nz(m.adv)}</td><td class="net">${fmtN(m.cash)}</td></tr></tfoot></table>
+    <p class="hint">المرتب = كل يوم اشتغله في الشهر ده بس (الأسبوع اللي داخل في شهرين بيتقسم بالأيام). السلف جزء من المرتب، واتقبض = المرتب − السلف.${m.open ? ' الشهر لسه شغال فالأرقام لحد دلوقتي.' : ''}</p>
     <button class="lnk" id="msX" type="button">إغلاق</button>`);
   $('#msX').onclick = closeModal;
 }
 function drawArchive() {
   const I = idx(), nowThu = ownerThursday(today()), ms = archiveMonths(I).reverse(), last = ms[0] && ms[0].ym;
-  const weekRow = w => {
-    const {thu, c, closed, lk} = w, ds = weekDates(thu), rs = Object.values(c.rows || {}).filter(r => r.net > 0), paid = closed ? rs.filter(r => I.pd.has(thu + '|' + r.w)).length : 0;
-    return `<div class="row" data-thu="${thu}"><div class="m"><b>أسبوع الخميس ${dm(thu)}${thu === nowThu ? ' · الحالي' : ''}</b><small>${dm(ds[0])} ← ${dm(ds[5])}${closed ? ' · ' + (lk.auto ? 'تلقائي' : esc(lk.closer || lk.by)) : ''}${c.fri === 'work' ? ' · الجمعة شغل' : ''}</small></div><div class="a"><b class="money">${fmt(c.total)}</b>${closed ? `<small class="sm ${paid < rs.length ? 'wt' : 'ok'}">قبض ${paid} من ${rs.length}</small>` : '<small class="sm wt">لسه مقفولش</small>'}</div></div>`;
+  const weekRow = (w, ym) => {
+    const {thu, c, closed, lk, part} = w, ds = weekDates(thu), rs = Object.values(c.rows || {}).filter(r => r.net > 0), paid = closed ? rs.filter(r => I.pd.has(thu + '|' + r.w)).length : 0;
+    const other = ds.filter(d => d.slice(0, 7) !== ym), mn = MONTHS[+ym.slice(5, 7) - 1];
+    return `<div class="row" data-thu="${thu}"><div class="m"><b>أسبوع الخميس ${dm(thu)}${thu === nowThu ? ' · الحالي' : ''}</b>${w.split ? `<span class="tag spl">فيه ${w.inM > 2 ? w.inM + ' أيام' : w.inM === 2 ? 'يومين' : 'يوم واحد'} بس من ${mn}</span>` : ''}<small>${dm(ds[6])} ← ${dm(ds[5])}${w.split ? ' · ' + (other.sort(), other.length > 1 ? 'من ' + dm(other[0]) + ' لـ ' + dm(other[other.length - 1]) : 'يوم ' + dm(other[0])) + ' محسوب في ' + MONTHS[+other[0].slice(5, 7) - 1] : ''}${closed ? ' · ' + (lk.auto ? 'تلقائي' : esc(lk.closer || lk.by)) : ''}${c.fri === 'work' ? ' · الجمعة شغل' : ''}</small></div><div class="a"><b class="money">${fmt(part.wages)}</b>${closed ? `<small class="sm ${paid < rs.length ? 'wt' : 'ok'}">قبض ${paid} من ${rs.length}</small>` : '<small class="sm wt">لسه مقفولش</small>'}</div></div>`;
   };
   const isOpen = m => m.ym in archOpen ? archOpen[m.ym] : m.ym === last;
-  $('#main').innerHTML = ms.length ? ms.map(m => `<section class="mo${isOpen(m) ? '' : ' shut'}" data-ym="${m.ym}"><div class="mh" data-m="${m.ym}"><i class="car">▾</i><div class="m"><b>${monthTitle(m.ym)}</b><small>${m.weeks.length} ${m.weeks.length === 1 ? 'أسبوع' : m.weeks.length === 2 ? 'أسبوعين' : 'أسابيع'}${m.adv ? ' · سلف ' + fmt(m.adv) : ''}${m.open ? ' · لسه شغال' : ''}</small></div><b class="money">${fmt(m.total)}</b></div>
-      <div class="list">${m.weeks.slice().reverse().map(weekRow).join('')}<div class="row" data-ms="${m.ym}"><div class="m"><b>👷 كل عامل خد كام في الشهر ده</b></div><span class="sm">‹</span></div></div></section>`).join('') + '<p class="hint">دوس على الشهر تفتحه أو تقفله، ودوس على أي أسبوع تشوف تفاصيله وتعلّم مين قبض.</p>'
+  $('#main').innerHTML = ms.length ? ms.map(m => `<section class="mo${isOpen(m) ? '' : ' shut'}" data-ym="${m.ym}"><div class="mh" data-m="${m.ym}"><i class="car">▾</i><div class="m"><b>${monthTitle(m.ym)}</b><small>من ${dm(m.ym + '-01')} لـ ${dm(monthEnd(m.ym))} · ${m.days} يوم شغل${m.open ? ' · لسه شغال' : ''}</small><small class="mhs">المرتبات ${fmt(m.wages)}${m.adv ? ' · منها سلف ' + fmt(m.adv) : ''}</small></div><b class="money">${fmt(m.wages)}</b></div>
+      <div class="list"><div class="mst"><div><b class="money">${fmt(m.wages)}</b>المرتبات</div><div><b class="money ${m.adv ? 'bk' : ''}">${nz(m.adv)}</b>منها سلف</div><div><b class="money ok">${fmtN(m.cash)}</b>اتقبض كاش</div></div>${m.weeks.slice().reverse().map(w => weekRow(w, m.ym)).join('')}<div class="row" data-ms="${m.ym}"><div class="m"><b>👷 كل عامل خد كام في ${MONTHS[+m.ym.slice(5, 7) - 1]}</b></div><span class="sm">‹</span></div></div></section>`).join('') + '<p class="hint">كل شهر من أوله لآخره باليوم: الأسبوع اللي داخل في شهرين بيتقسم عليهم. السلف جزء من المرتبات. دوس على الشهر تفتحه أو تقفله، ودوس على أي أسبوع تشوف تفاصيله وتعلّم مين قبض.</p>'
     : '<div class="list"><div class="empty">لسه مفيش أسابيع.<br>الأسبوع بيظهر هنا أول ما تسجّل فيه، وبعد ما يتقفل بيتجمع في شهره.</div></div>';
   $$('#main .mh').forEach(h => h.onclick = () => { const s = h.parentNode, shut = !s.classList.contains('shut'); s.classList.toggle('shut', shut); archOpen[s.dataset.ym] = !shut; });
   $$('#main .row[data-thu]').forEach(r => r.onclick = () => nav(r.dataset.thu >= nowThu ? 'w' : 'w/' + r.dataset.thu));

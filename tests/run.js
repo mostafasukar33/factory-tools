@@ -1705,16 +1705,23 @@ const T0 = Date.now();
       db.entries.splice(n0); ['e_mg1', 'e_mg2'].forEach(id => E.delete(id));
       const sr = IDX.set.get('itemCost'); db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('itemCost'); saveDB();
       return [di, dO, ok1, !!ms && ms.q, dO2, gone, G3.s[0] === D1, w3, prOk, pre]; }), [500, 200, true, 10, 250, true, true, true, true, null]);
-    eq('توقع الخامات في شاشة الجرد: العدّ بالإيد بيبيّن الفرق، و"استخدم الرقم ده" بيحط القيمة في المخزون، والحفظ بيخلي العدّ نقطة البداية', await A.evaluate(async () => {
-      const t = todayISO(); putSet('matCnt', [[addDays(t, -3), 2000]]); jrDate = ''; jrStock = null; jgKg = null; go('jrd'); renderJrd();
-      const G = matGuess(t), r = [!!$('#jgBox'), $('#jgBox').textContent.includes(kgTxt(G.kg))];
-      const k = $('#jgK'); k.value = String(G.kg - 50); k.dispatchEvent(new Event('input')); r.push($('#jgBox').textContent.includes('نقص عن المفروض'));
-      if (G.pr !== null) { $('#jgUse').click(); r.push(toP($('#jrS').value) === Math.round((G.kg - 50) * G.pr)); } else r.push(true);
-      $('#jrSave').click(); await new Promise(z => setTimeout(z, 50)); if ($('#cOk')) $('#cOk').click(); await new Promise(z => setTimeout(z, 50));
-      const C = getSet('matCnt', []); r.push(C.some(x => x[0] === t && x[1] === G.kg - 50), matGuess(t).s[1] === G.kg - 50);
-      const s0 = jrdSaved().find(x => x.date === t); r.push(!!s0);
-      putSet('matCnt', C.filter(x => x[0] !== t)); const sr = IDX.set.get('matCnt'); db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('matCnt'); saveDB();
-      return r; }), [true, true, true, true, true, true, true]);
+    eq('توقع الخامات في شاشة الجرد: قيمة المخزون بتتحط من التوقع لوحدها وبتتحرك مع العدّ، والرقم بالإيد بيكسب ولو اتمسح يرجع للتوقع، والحفظ بيخلي العدّ نقطة البداية', await A.evaluate(async () => {
+      const t = todayISO(), cur = jrdSaved().find(x => x.date === t), cs = cur && Object.assign({}, cur); if (cur) cur.del = true;
+      const pv = db.entries.length, sp = liveParties().find(p => p.sec === 'sup' && !p.noTot), e = {id: 'e_mg3', party: sp.id, kind: 'pur', date: addDays(t, -1), lines: [{name: 'سابك تجربة توقع', unit: 'كيلو', qty: 100, price: 5000}], disc: 0, at: 1, upd: 1, del: false, hist: []};
+      e.cr = docTotal(e); e.dr = 0; db.entries.push(e); E.set(e.id, e);
+      putSet('matCnt', [[addDays(t, -3), 2000]]); jrDate = ''; jrStock = null; jgKg = null; go('jrd'); renderJrd();
+      const G = matGuess(t), V = kg => Math.round(kg * G.pr), sv = () => $('#jrStockV').textContent, r = [!!$('#jgBox'), toP($('#jrS').value) === V(G.kg), sv() === fmtP(V(G.kg)), $('#jrStockV').previousElementSibling.textContent.includes('توقع البرنامج')];
+      const k = $('#jgK'); k.value = String(G.kg - 50); k.dispatchEvent(new Event('input'));
+      r.push($('#jgBox').textContent.includes('نقص عن المفروض'), toP($('#jrS').value) === V(G.kg - 50), sv() === fmtP(V(G.kg - 50)));
+      const s = $('#jrS'); s.value = '1234'; s.dispatchEvent(new Event('input')); k.value = String(G.kg - 60); k.dispatchEvent(new Event('input'));
+      r.push(sv() === fmtP(123400), $('#jrStockV').previousElementSibling.textContent.includes('بإيدك'));
+      s.value = ''; s.dispatchEvent(new Event('input')); r.push(sv() === fmtP(V(G.kg - 60)));
+      await $('#jrSave').onclick();
+      const C = getSet('matCnt', []), sd = jrdSaved().find(x => x.date === t); r.push(C.some(x => x[0] === t && x[1] === G.kg - 60), !!sd && sd.stock === V(G.kg - 60) && sd.sa === 1);
+      sd.del = true; if (cur) { Object.assign(cur, cs); cur.del = false; }
+      db.entries.splice(pv); E.delete('e_mg3');
+      const sr = IDX.set.get('matCnt'); db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('matCnt'); jrStock = null; jgKg = null; saveDB();
+      return r; }), [true, true, true, true, true, true, true, true, true, true, true, true]);
 
     /* الشكل: التبويبات والأرقام تحت بعض والخط */
     await A.evaluate(() => { jrDate = ''; go('jrd'); }); await A.settle(300);

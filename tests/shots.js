@@ -187,7 +187,7 @@ const ACC = (sfx, vp, extra = {}) => [
   {name: 'acc-ldg-mon-' + sfx, go: accEval(`cashView = 'date'; cashMode = 'month'; cashMonth = ''; cashOpenV = false; go('cash'); renderCash()`), full: true},
   {name: 'acc-set-' + sfx, go: accGo('set'), full: true},
   {name: 'acc-jrd-' + sfx, go: accEval(IVSHOT + "jrDate = ''; jrStock = null; go('jrd')"), full: true},
-  {name: 'acc-jrd-mat-' + sfx, go: accEval("db.sets = db.sets.filter(x => x.id !== 'matCnt'); IDX.set.delete('matCnt'); putSet('matCnt', [[addDays(todayISO(), -45), 8000]]); jrDate = ''; jrStock = null; jgKg = null; go('jrd')")},
+  {name: 'acc-jrd-mat-' + sfx, go: accEval("db.sets = db.sets.filter(x => x.id !== 'matCnt'); IDX.set.delete('matCnt'); putSet('matCnt', [[addDays(todayISO(), -45), 8000]]); jrDate = ''; jrStock = null; jgKg = null; go('jrd')"), full: true},
   {name: 'acc-jrd-old-' + sfx, go: accEval(JRDSHOT + "jrDate = ''; jrStock = null; go('jrd'); jrdOldModal()")},
   {name: 'acc-jrd-list-' + sfx, go: accEval(JRDSHOT + "jrDate = ''; jrStock = null; go('jrd')"), full: true},
   {name: 'acc-rep-stk-' + sfx, go: accEval(JRDSHOT + "go('rep'); repKind = 'profit'; repMode = 'range'; repFrom = addDays(todayISO(), -59); repTo = todayISO(); renderReports()"), full: true},

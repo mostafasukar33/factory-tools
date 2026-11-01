@@ -6899,12 +6899,12 @@ const jrdSaved = () => db.stks.filter(s => !s.del).sort((a, b) => b.date.localeC
 const jrdBefore = d => jrdSaved().find(s => s.date < d) || null;
 let jrDate = '', jrStock = null, jgKg = null;
 /* الجرد بالترتيب اللي بيتحسب بيه: اللي ليك ← − الموردين = قيمة الشغل ← − المساهمين = صافي حقك. نفس السطور في الشاشة والـ PDF */
-function jrdLines(n, stock) {
+function jrdLines(n, stock, sub = 'بالمصنع') {
   if (n.old) return [...(n.mkt ? [{t: 'r', n: 'أرصدة العملاء', s: 'من ورقة الجرد', a: n.mkt}] : []), ...(n.noStock ? [] : [{t: 'r', n: 'قيمة المخزون', s: 'من ورقة الجرد', a: stock}]),
     ...(n.rest ? [{t: 'r', n: 'باقي البنود', s: 'خزن وموردين وغيره', a: n.rest}] : []), {t: 'f', n: '= صافي الجرد', a: jrdTot(n, stock).net}];
   const T = jrdTot(n, stock), cnt = k => n.cnt[k] ? `${n.cnt[k]} حساب` : '', L = [
     {t: 'r', n: 'أرصدة عملاء السوق', s: cnt('mkt'), a: n.mkt}, {t: 'r', n: 'أرصدة عملاء المواقع', s: cnt('site'), a: n.site},
-    {t: 'r', n: 'النقدية بالخزن', s: n.mk ? 'منها خزنة السوق ' + fmtP(n.mk) : '', a: n.vault}, {t: 'r', n: 'قيمة المخزون', s: 'بالمصنع', a: stock, id: 'jrStockV'},
+    {t: 'r', n: 'النقدية بالخزن', s: n.mk ? 'منها خزنة السوق ' + fmtP(n.mk) : '', a: n.vault}, {t: 'r', n: 'قيمة المخزون', s: sub, a: stock, id: 'jrStockV'},
     {t: 's', n: '= إجمالي الأصول', a: T.own}, {t: 'r', n: '− مستحقات الموردين', s: cnt('sup'), a: n.sup, neg: 1}];
   if (n.ivs.length) {
     L.push({t: 's', n: '= صافي الأصول قبل المساهمين', a: T.work});
@@ -6913,13 +6913,13 @@ function jrdLines(n, stock) {
   L.push({t: 'f', n: '= صافي الجرد', a: T.net});
   return L;
 }
-function jrdBlock(n, stock, prev, live) {
+function jrdBlock(n, stock, prev, live, sub) {
   const T = jrdTot(n, stock), diff = prev ? T.net - jrdTot(prev.n, prev.stock).net : null;
   const row = x => x.t === 'r' ? `<tr class="${x.iv ? '' : 'nohov'}" ${x.iv && ivGet(x.iv) ? `data-iv="${esc(x.iv)}"` : ''}><td class="w"><b>${esc(x.n)}</b>${x.s ? `<small>${esc(x.s)}</small>` : ''}</td><td class="am ${x.neg ? 'neg' : ''}" ${x.id ? `id="${x.id}"` : ''}>${fmtP(x.a)}</td></tr>`
     : `<tr class="nohov ${x.t === 'f' ? 'jfin' : 'jsub'}"><td class="w"><b>${esc(x.n)}</b></td><td class="am">${fmtP(x.a)}</td></tr>`;
   return `<div class="tots"><div class="k"><span>صافي الجرد</span><b id="jrNet" class="${T.net < 0 ? 'cr' : ''}">${fmtP(T.net)} <small style="font-size:var(--f2);color:var(--gold)">${CUR}</small></b>
       <em class="df ${diff === null ? '' : diff >= 0 ? 'up' : 'dn'}">${diff === null ? 'هذا أول جرد، ولا يوجد جرد سابق للمقارنة' : diff === 0 ? 'مطابق لجرد ' + dispDate(prev.date) : (diff > 0 ? 'زيادة قدرها ' : 'نقص قدره ') + fmtP(Math.abs(diff)) + ' عن جرد ' + dispDate(prev.date)}</em></div></div>
-    <section class="ctab"><div class="cth"><span>تفصيل الجرد</span><span></span></div><table class="cmt"><tbody>${jrdLines(n, stock).map(row).join('')}</tbody></table></section>
+    <section class="ctab"><div class="cth"><span>تفصيل الجرد</span><span></span></div><table class="cmt"><tbody>${jrdLines(n, stock, sub).map(row).join('')}</tbody></table></section>
     <div style="height:12px"></div>`;
 }
 function jrdReport(d, n, stock, prev) {
@@ -6944,19 +6944,24 @@ function renderJrd() {
   if (parts[1] === 's' && parts[2]) return renderJrdSaved(parts[2]);
   if (parts[1] === 'iv') return renderIvList();
   const pg = $('#p-jrd'), t = todayISO(), d = jrDate || t, n = jrdCalc(d), same = jrdSaved().find(s => s.date === d), prev = jrdBefore(d);
-  const last = same || jrdSaved().find(s => s.date < d && !s.n.old), stock = jrStock !== null ? jrStock : last ? last.stock : 0, saved = jrdSaved();
-  const G = matGuess(d), c0 = matCnts().find(x => x[0] === d); if (jgKg === null) jgKg = c0 ? c0[1] : 0;   // الجرد القديم (بالإيد) مبيتملاش منه المخزون
+  const last = same || jrdSaved().find(s => s.date < d && !s.n.old), saved = jrdSaved();   // الجرد القديم (بالإيد) مبيتملاش منه المخزون
+  const G = matGuess(d), c0 = matCnts().find(x => x[0] === d); if (jgKg === null) jgKg = c0 ? c0[1] : 0;
+  /* قيمة المخزون (بطلبه 1/11/2026): من التوقع لوحدها وبتتحرك معاه، إلا لو كتبها بإيده (jrStock) أو جرد اليوم ده اتحفظ برقم بإيده (من غير sa) */
+  const autoV = () => G && G.pr !== null ? Math.round((jgKg > 0 ? jgKg : G.kg) * G.pr) : null;
+  const pick = () => jrStock !== null ? [jrStock, 'man'] : same && !same.sa ? [same.stock, 'man'] : autoV() !== null ? [autoV(), 'auto'] : [last ? last.stock : 0, 'last'];
+  let [stock, src] = pick();
+  const subOf = () => src === 'auto' ? `توقع البرنامج: ${kgTxt(jgKg > 0 ? jgKg : G.kg)} خامات` : src === 'man' ? 'كتبتها بإيدك' : 'بالمصنع';
   pg.innerHTML = jrdHead('jrd') + `
     <div class="card">
       <div class="g2"><div class="fld"><label>تاريخ الجرد</label><input class="inp" type="date" id="jrD" value="${d}"></div>
       <div class="fld"><label>قيمة المخزون بالمصنع</label><input class="inp num amt" id="jrS" placeholder="0" value="${stock ? fmtP(stock) : ''}"></div></div>
-      ${qh(`أدخل قيمة المخزون فقط، أما أرصدة العملاء والموردين والخزن والمساهمين فتُحتسب تلقائياً حتى نهاية التاريخ المحدد.${last ? ` آخر جرد بتاريخ ${dispDate(last.date)} وقيمة المخزون فيه ${fmtP(last.stock)}.` : ''}`)}
+      ${qh(`${G ? 'قيمة المخزون بتتحط لوحدها من توقع الخامات اللي تحت وبتتحرك معاه، ولو كتبت رقم بإيدك هو اللي بيتحسب (امسحه يرجع للتوقع). ' : ''}أدخل قيمة المخزون فقط، أما أرصدة العملاء والموردين والخزن والمساهمين فتُحتسب تلقائياً حتى نهاية التاريخ المحدد.${last ? ` آخر جرد بتاريخ ${dispDate(last.date)} وقيمة المخزون فيه ${fmtP(last.stock)}.` : ''}`)}
     </div>
+    <div id="jrBlk">${jrdBlock(n, stock, prev, true, subOf())}</div>
     ${G ? `<div id="jgBox">${matGuessHtml(G, jgKg)}</div>
     <div class="card"><div class="fld"><label>الخامات اللي عدّيتها بإيدك (كيلو)، لو عدّيت</label><input class="inp num" id="jgK" inputmode="decimal" placeholder="اختياري" value="${jgKg > 0 ? jgKg : ''}"></div>
-      <div class="mrow3" style="grid-template-columns:1fr${G.miss.length ? ' 1fr' : ''}"><button class="btn gold" id="jgUse" type="button" ${G.pr === null ? 'disabled' : ''}>استخدم الرقم ده</button>${G.miss.length ? '<button class="btn line" id="jgMiss" type="button">اكتب الأوزان الناقصة</button>' : ''}</div></div>
+      ${G.miss.length ? '<button class="btn line" id="jgMiss" type="button">اكتب الأوزان الناقصة</button>' : ''}</div>
     <div style="height:10px"></div>` : ''}
-    <div id="jrBlk">${jrdBlock(n, stock, prev, true)}</div>
     <div class="mrow3" style="grid-template-columns:1fr 1fr"><button class="btn gold" id="jrSave" type="button">💾 ${same ? 'تحديث جرد هذا التاريخ' : 'حفظ الجرد'}</button><button class="btn line" id="jrPdf" type="button">📄 PDF</button></div>
     <div style="height:12px"></div>
     <section class="ctab"><div class="cth"><span>الجرود المحفوظة (${saved.length})</span><span></span></div><table class="cmt"><tbody>
@@ -6968,21 +6973,21 @@ function renderJrd() {
   $('#jrOld').onclick = jrdOldModal;
   const sIn = $('#jrS'); bindMoney(sIn);
   const bindBlk = () => $$('#p-jrd tr[data-iv]').forEach(el => el.onclick = () => go('jrd/iv/' + el.dataset.iv));
-  sIn.addEventListener('input', () => { jrStock = toP(sIn.value); $('#jrBlk').innerHTML = jrdBlock(n, jrStock, prev, true); bindBlk(); });
+  const reBlk = () => { [stock, src] = pick(); $('#jrBlk').innerHTML = jrdBlock(n, stock, prev, true, subOf()); bindBlk(); };
+  sIn.addEventListener('input', () => { jrStock = sIn.value.trim() ? toP(sIn.value) : null; reBlk(); sIn.placeholder = jrStock === null && stock ? fmtP(stock) : '0'; });   // الخانة فاضية = يرجع للتوقع
   $('#jrD').onchange = () => { const v = $('#jrD').value; if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { jrDate = v > t ? t : v; jrStock = null; jgKg = null; renderJrd(); } };
   if (G) {
-    $('#jgK').addEventListener('input', () => { jgKg = Math.max(0, num($('#jgK').value)); $('#jgBox').innerHTML = matGuessHtml(G, jgKg); });
-    $('#jgUse').onclick = () => { if (G.pr === null) return; jrStock = Math.round((jgKg > 0 ? jgKg : G.kg) * G.pr); sIn.value = fmtP(jrStock); $('#jrBlk').innerHTML = jrdBlock(n, jrStock, prev, true); bindBlk(); toast('اتحطت قيمة الخامات في المخزون، زود عليها أي حاجة تانية لو فيه'); };
+    $('#jgK').addEventListener('input', () => { jgKg = Math.max(0, num($('#jgK').value)); $('#jgBox').innerHTML = matGuessHtml(G, jgKg); reBlk(); if (src === 'auto') sIn.value = stock ? fmtP(stock) : ''; });
     if ($('#jgMiss')) $('#jgMiss').onclick = () => costModal(renderJrd, G.miss.map(m => m.k));
   }
   bindBlk();
   $$('#p-jrd tr[data-s]').forEach(el => el.onclick = () => go('jrd/s/' + el.dataset.s));
-  $('#jrPdf').onclick = () => exportReport(jrdReport(d, n, toP(sIn.value), prev), 'preview', `الجرد ${d.split('-').reverse().join('-')}`);
+  $('#jrPdf').onclick = () => exportReport(jrdReport(d, n, stock, prev), 'preview', `الجرد ${d.split('-').reverse().join('-')}`);
   $('#jrSave').onclick = async () => {
-    const st = toP(sIn.value);
+    const st = stock;   // اللي ظاهر في الجرد (بالإيد أو التوقع)
     if (st < 0) return toast('لا يجوز أن تكون قيمة المخزون بالسالب');
     if (!st && !(await confirmBox('لم تُدخل قيمة المخزون (صفر). هل تريد حفظ الجرد بهذه القيمة؟', 'حفظ'))) return;
-    const now = nowS(), cur = jrdSaved().find(s => s.date === d), o = {date: d, stock: st, n: JSON.parse(JSON.stringify(n))};
+    const now = nowS(), cur = jrdSaved().find(s => s.date === d), o = {date: d, stock: st, n: JSON.parse(JSON.stringify(n)), sa: src === 'auto' ? 1 : 0};   // sa = اتحفظ من التوقع
     if (cur) { (cur.hist = cur.hist || []).push({t: now, date: cur.date, desc: `جرد — المخزون ${fmtP(cur.stock)}، صافي ${fmtP(jrdTot(cur.n, cur.stock).net)}`, dr: 0, cr: 0}); Object.assign(cur, o); touch(cur); }
     else { const r = Object.assign({id: newId('jr_'), at: now, upd: now, del: false, hist: []}, o); db.stks.push(r); IDX.stk.set(r.id, r); }
     if (jgKg > 0) { const C = matCnts().filter(x => x[0] !== d); C.push([d, Math.round(jgKg * 1000) / 1000]); putSet('matCnt', C); }   // العدّ بالإيد بقى نقطة البداية

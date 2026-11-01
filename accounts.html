@@ -7932,6 +7932,14 @@ function mkReconcile() {
   return n;
 }
 /* آخر دفعة لكل حساب (تاريخ) */
+/* "متعود يدفع كل كام يوم" لكل عميل (نفس حسبة payInfo بالظبط: آخر 6 أيام دفع، و0 لو أقل من 3)، في لفة واحدة على الحركات.
+   بتروح للشريك مع رصيد العميل (cust.avg) علشان "اتأخروا عن الدفع" عنده يبقى زي الحسابات (بطلب مصطفى 31/10/2026) */
+function payAvgs() {
+  const m = new Map(), out = new Map(), day = d => Math.round(Date.parse(d + 'T00:00:00Z') / 864e5);
+  for (const e of db.entries) if (!e.del && e.kind === 'pay') { let s = m.get(e.party); if (!s) m.set(e.party, s = new Set()); s.add(e.date); }
+  m.forEach((s, pid) => { const ds = [...s].sort().slice(-6); out.set(pid, ds.length >= 3 ? Math.round((day(ds[ds.length - 1]) - day(ds[0])) / (ds.length - 1)) : 0); });
+  return out;
+}
 function lastPays() { const m = new Map(); for (const e of db.entries) if (!e.del && e.kind === 'pay' && (!m.has(e.party) || m.get(e.party) < e.date)) m.set(e.party, e.date); return m; }
 /* ---------- "حصّل من دول": مصطفى بيعلّم على عملاء السوق بالمبلغ اللي عاوزه، وبيظهروا عند الشريك في الرئيسية.
    إعداد مشترك (set) اسمه mkWant = {list: {pid: {amt, at, note}}}، وبيروح للشريك مع رصيد العميل (cust.want).
@@ -8005,13 +8013,13 @@ function mkWantCard() {
    وبعت رصيد قديم، الشيت يرفضه وميكتبش فوق الرصيد الصح. الـ 1e13 علشان يكسب السطور القديمة اللي كانت بوقت الإرسال (مرة واحدة) */
 function mkCustRows() {
   let ver = 0; for (const k of ['parties', 'entries', 'sets']) for (const r of db[k]) if (r.upd > ver) ver = r.upd;
-  const d = mkDb(), bal = allBalances(), out = [], seen = new Set(), now = 1e13 + ver, lps = lastPays(), W = mkWants();
+  const d = mkDb(), bal = allBalances(), out = [], seen = new Set(), now = 1e13 + ver, lps = lastPays(), avs = payAvgs(), W = mkWants();
   liveParties().filter(p => p.sec === 'mkt').forEach(p => {
     seen.add(p.id);
     /* lp = آخر دفعة (للشريك: "آخر دفعة من كام يوم")، want = قايمة "حصّل من دول" */
-    const b = bal.get(p.id) || 0, lim = limitClass(p, b) === 'lim-r' ? 'r' : limitClass(p, b) === 'lim-y' ? 'y' : '', lp = lps.get(p.id) || '', w = W[p.id] || null;
-    const want = w ? {amt: w.amt, at: w.at, note: w.note || ''} : null, sig = 'v3|' + p.name + '|' + b + '|' + lim + '|' + lp + '|' + JSON.stringify(want);
-    if (d.cs[p.id] !== sig) out.push({row: {id: p.id, kind: 'cust', upd: now, del: false, view: ['', cell(p.name), b / 100, 'رصيد عميل', want ? 'مطلوب ' + want.amt / 100 : ''], data: {name: p.name, bal: b, lim, lp, want}}, sig});
+    const b = bal.get(p.id) || 0, lim = limitClass(p, b) === 'lim-r' ? 'r' : limitClass(p, b) === 'lim-y' ? 'y' : '', lp = lps.get(p.id) || '', avg = avs.get(p.id) || 0, w = W[p.id] || null;
+    const want = w ? {amt: w.amt, at: w.at, note: w.note || ''} : null, sig = 'v4|' + p.name + '|' + b + '|' + lim + '|' + lp + '|' + avg + '|' + JSON.stringify(want);
+    if (d.cs[p.id] !== sig) out.push({row: {id: p.id, kind: 'cust', upd: now, del: false, view: ['', cell(p.name), b / 100, 'رصيد عميل', want ? 'مطلوب ' + want.amt / 100 : ''], data: {name: p.name, bal: b, lim, lp, avg, want}}, sig});
   });
   Object.keys(d.cs).forEach(id => { if (!seen.has(id) && d.cs[id] !== '-') out.push({row: {id, kind: 'cust', upd: now, del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-'}); });
   return out;

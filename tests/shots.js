@@ -100,6 +100,7 @@ function mktState() {
    ['p7', 'عميل تجربة أربعة', 9875000, 'r', ''], ['p8', 'عميل تجربة خمسة', 188000, '', iso(1)], ['p9', 'عميل تجربة اتنين', -150000, '', iso(20)]]
     .forEach(([id, name, bal, lim, lp]) => { cust[id] = {id, name, bal, lim, lp, upd: NOW}; });
   cust.p2.want = {amt: 500000, at: NOW - 86400000, note: ''};
+  cust.p3.lp = iso(12); cust.p3.avg = 5; cust.p6.lp = iso(18); cust.p6.avg = 7; cust.p7.lp = iso(45);   // اتأخروا عن الدفع: على عادته (p3، p6) ومن غير عادة بعد 30 يوم (p7)
   cust.p7.want = {amt: 2000000, at: NOW - 86400000, note: 'وعد يدفع السبت'};
   let n = 0;
   const op = (o, state) => { const id = 'm_shot' + (++n); ops[id] = Object.assign({id, upd: o.ts, sy: o.ts, cr: o.ts}, o); if (state) st['st_' + id] = Object.assign({op: id}, state); };
@@ -267,6 +268,7 @@ const SCREENS = [
   {name: 'mkt-edit-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); editSheet(S.ops.m_shot1); }); }},
   {name: 'mkt-hand-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); handModal(); document.activeElement && document.activeElement.blur(); }); }},
   {name: 'mkt-wal-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); wlOpen(); }); }},
+  {name: 'mkt-late-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); lateOpen(); }); }},
   {name: 'mkt-wal-m-end', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); wlOpen(); $('#modal').scrollTop = 1e5; }); }},
   {name: 'mkt-wal-m-dark', app: 'mkt', vp: MOB, dark: true, go: async M => { await M.evaluate(() => { nav(''); wlOpen(); }); }},
   {name: 'mkt-waled-m', app: 'mkt', vp: MOB, go: async M => { await M.evaluate(() => { nav(''); wlEdit(wlList().map(w => ({...w, t: [...w.t]}))); document.activeElement && document.activeElement.blur(); }); }},

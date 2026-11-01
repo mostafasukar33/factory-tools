@@ -1084,8 +1084,10 @@ const T0 = Date.now();
     eq('التشغيل تاني مبيكررش', await A.evaluate(() => autoPartners(true)), 0);
     await bg(A, 'syncNow()'); await bg(B, 'syncNow()'); await B.settle(1500);
     eq('الجهاز التاني مسجلش تاني', [await B.evaluate(() => autoPartners(true)), await autoN(B)], [0, 9]);
+    await A.evaluate(() => { partMode = 'all'; renderPartners(); });   // أول الشهر: الخميسات اللي فاتت في الشهر اللي قبله
     await A.click('#p-part tr[data-i]'); await A.click('#ptDel'); await A.click('#cOk'); await A.settle(150);
     eq('المرتب الملغي مبيرجعش يتسجل', [await A.evaluate(() => autoPartners(true)), await autoN(A)], [0, 8]);
+    await A.evaluate(() => { partMode = 'month'; renderPartners(); });
     await A.click('#ptNew'); await A.fill('#ptA', '50'); await A.fill('#ptN', 'سلفة'); await A.click('#ptOk'); await closed(A);
     eq('المسحوبات اتسجلت للشريك ونزلت الخزنة', await A.evaluate(() => [db.txs.filter(t => t.cat === 'c_pdraw' && !t.del).map(t => [partName(t.pt), t.amt, t.note]), vaultBal('')]), [[['مصطفى', 5000, 'مسحوبات مصطفى — سلفة']], vb0 - 8000 - 5000]);
     eq('بنود الشركاء مش في قايمة المصروفات العادية', await A.evaluate(() => catsL('exp').some(c => c.id === 'c_psal' || c.id === 'c_pdraw')), false);
@@ -2178,6 +2180,12 @@ const T0 = Date.now();
     const card = `#p-mkt [data-mv="${pid1}"]`;
     eq('الوارد متجمع بالعميل: "دفعتين · 5,000 أحمد + 3,000 مصطفى" (الفلوس مع مين) والإجمالي 8,000 جنبه، والتحويل محسوب واصل من الأول (مفيش "وصل؟")', [await A.evaluate(s => { const g = $(s), t = g.querySelector('.mqw small').textContent.replace(/\s+/g, ' '); return t.includes('دفعتين · 5,000 أحمد + 3,000 مصطفى') && !t.includes('=') && g.querySelector('.mqa .n').textContent === '8,000'; }, `#p-mkt .mqg:has([data-mv="${pid1}"])`), await A.isDisabled(card), await A.$('#p-mkt [data-ok]')], [true, false, null]);
     eq('الوارد: "اتأخروا عن الدفع" من عملاء السوق بس', await A.evaluate(() => [mkLate().every(p => p.sec === 'mkt'), mkStatParts().late === lateParties().filter(p => p.sec === 'mkt').length]), [true, true]);
+    eq('عادة الدفع للشريك (payAvgs) = نفس حسبة payInfo لكل حساب، وبتروح مع رصيد عميل السوق (avg)', await A.evaluate(() => {
+      const p = liveParties().find(x => x.sec === 'mkt'), ds = [21, 14, 8, 1].map(n => addDays(todayISO(), -n)), mine = ds.map(d => addEntry({party: p.id, kind: 'pay', date: d, amt: 100, vault: 'v_main'}));
+      const av = payAvgs(), same = liveParties().filter(x => x.sec !== 'sup').every(x => (av.get(x.id) || 0) === ((payInfo(x, partyEntries(x.id, true), 1) || {avg: 0}).avg));
+      const row = mkCustRows().find(r => r.row.id === p.id), r = [same, av.get(p.id) > 0, !!row && row.row.data.avg === av.get(p.id), !!row && row.sig.startsWith('v4|')];
+      db.entries = db.entries.filter(e => !mine.includes(e)); mine.forEach(e => E.delete(e.id)); return r;
+    }), [true, true, true, true]);
     eq('الوارد متقسم (جاهزين للنقل / محتاجين قرارك)، ومفيش زرار "رجّعها" في الوارد نفسه: جوه نافذة السطر', await A.evaluate(async () => {
       const r = [!!document.querySelector('#mkBody .mqsec [data-gs]'), !document.querySelector('#mkBody [data-bk]')];
       document.querySelector('#mkBody [data-gs] .mqw').click(); r.push(!!document.querySelector('#modal [data-bk]') && !!document.querySelector('#modal .mqop')); closeModal(); return r; }), [true, true, true]);
@@ -2887,6 +2895,10 @@ const T0 = Date.now();
       await M.click('#wlSv'); await M.waitForSelector('#wlEd');
       eq('أرقام التحويل: التعديل اتحفظ (مسح وإضافة)', await M.evaluate(() => [S.wal.length, S.wal[4].p, S.wal[4].o, $$('#modal .wlr').length]), [5, '01200000000', 'أحمد', 5]);
       await M.evaluate(() => { delete S.wal; save(); closeModal(); }); await M.settle(200);
+      // اتأخروا عن الدفع: نفس شرط الحسابات (1.5× العادة وأقل حاجة 7 أيام، أو 30 يوم من غير عادة، وعليه فلوس)
+      eq('اتأخروا عن الدفع عند الشريك: نفس شرط الحسابات', await M.evaluate(() => { const d = n => { const x = new Date(today() + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() - n); return x.toISOString().slice(0, 10); };
+        return [isLate({bal: 1, lp: d(11), avg: 7}), isLate({bal: 1, lp: d(10), avg: 7}), isLate({bal: 1, lp: d(8), avg: 2}), isLate({bal: 1, lp: d(7), avg: 2}), isLate({bal: 1, lp: d(31), avg: 0}), isLate({bal: 1, lp: d(30), avg: 0}), isLate({bal: 0, lp: d(90), avg: 3}), isLate({bal: 1, lp: '', avg: 0})]; }), [true, false, true, false, true, false, false, false]);
+      eq('اتأخروا عن الدفع: الزرار بعددهم والقايمة بتفتح الدفعة', await M.evaluate(() => { const c = Object.values(S.cust).find(x => !x.del); const o = [c.bal, c.lp, c.avg]; c.bal = 500000; c.lp = '2020-01-01'; c.avg = 0; drawHome(); const b = $('#qLate'), n = lateList().length; lateOpen(); const r = [!!b && b.textContent.includes('(' + n + ')'), $$('#modal .lrow').length === n]; $('#modal .lrow[data-c="' + c.id + '"]').click(); r.push(scr.v === 'pay' && scr.cid === c.id, !$('#mask').classList.contains('on')); [c.bal, c.lp, c.avg] = o; nav('', true); return r; }), [true, true, true, true]);
       await M.click('#qOrd'); await M.waitForSelector('#ordL');
       eq('الطلبيات: تبويبين بس وفاضية', await M.evaluate(() => [$$('#oTabs button').map(b => b.textContent), !!$('#ordL .oempty')]), [['لسه متسلمتش (0)', 'اتسلمت'], true]);
       await M.click('#oNew'); await M.waitForSelector('#ordF');

@@ -110,6 +110,10 @@ html[data-theme=dark] .seg button.on{background:#3a352a;color:var(--ink)}
 .xb small{background:var(--red);color:var(--card);border-radius:9px;padding:0 7px;font-size:var(--f1);font-weight:800}
 /* أرقام التحويل (المحافظ وإنستا باي، بطلبه 31/10/2026) */
 .xb.wide{grid-column:1/-1}
+.xb.late{border-color:var(--red);background:var(--red-l);color:var(--red)}
+.ltop{display:flex;justify-content:space-between;align-items:baseline;margin:0 2px 10px;font-size:var(--f2);font-weight:700;color:var(--sub)}
+.ltop b{font-size:var(--f4);color:var(--red)}
+.lrow .m small em{font-style:normal;color:var(--red);font-weight:800}
 .wlgp{border:2px solid var(--c);border-radius:16px;margin-top:14px;overflow:hidden}
 .wlg{background:var(--cl);color:var(--c);padding:10px 14px;font-size:var(--f3);font-weight:800;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--c)}
 .wlg small{font-size:var(--f1);color:var(--sub);font-weight:700}
@@ -578,7 +582,7 @@ const custAll = () => liveOps().filter(isCustOp);
 function customers() {
   const al = aliases(), m = new Map();
   /* lp = تاريخ آخر دفعة في الحسابات، want = مصطفى عاوزه يحصّل منه {amt, at, note} (الاتنين بييجوا مع رصيد العميل) */
-  Object.values(S.cust).forEach(c => { if (!c.del) m.set(c.id, {id: c.id, name: c.name, bal: c.bal || 0, lim: c.lim || '', lp: c.lp || '', want: c.want && c.want.amt > 0 ? c.want : null}); });
+  Object.values(S.cust).forEach(c => { if (!c.del) m.set(c.id, {id: c.id, name: c.name, bal: c.bal || 0, lim: c.lim || '', lp: c.lp || '', avg: c.avg || 0, want: c.want && c.want.amt > 0 ? c.want : null}); });
   S.newc.forEach(c => { if (!al[c.id] && !m.has(c.id)) m.set(c.id, {id: c.id, name: c.name, bal: 0, nw: true}); });
   custAll().forEach(o => { const id = al[o.cid] || o.cid; if (!m.has(id)) m.set(id, {id, name: o.cname, bal: 0, nw: id.startsWith('n_')}); });
   /* الصافي = رصيده في الحسابات + الفواتير اللي اتسجلت هنا − الدفعات والمرتجع/الشغل اللي اتسجلوا هنا، لسه متنقلتش (واللي مصطفى شالها من الحسابات مبتتحسبش) */
@@ -590,6 +594,19 @@ function customers() {
 /* "آخر دفعة من كام يوم" تحت اسم العميل */
 const daysAgo = iso => { if (!isDay(iso)) return -1; const [y, m, d] = iso.split('-').map(Number), [Y, M, D] = today().split('-').map(Number); return Math.round((Date.UTC(Y, M - 1, D) - Date.UTC(y, m - 1, d)) / 86400000); };
 const lpTxt = c => { const n = daysAgo(c.lp); return n < 0 ? 'مدفعش قبل كده' : n === 0 ? 'دفع النهارده' : n === 1 ? 'آخر دفعة امبارح' : `آخر دفعة من ${n} يوم`; };
+/* "اتأخروا عن الدفع" زي الحسابات بالظبط (payInfo): عليه فلوس، وعدّى أكتر من 1.5× عادته (أقل حاجة 7 أيام)، أو 30 يوم لو مالوش عادة.
+   العادة (avg) جاية من الحسابات، وآخر دفعة بتتحدث هنا لو أحمد سجّل دفعة (بطلب مصطفى 31/10/2026) */
+const isLate = c => { const n = daysAgo(c.lp); return n >= 0 && c.bal > 0 && (c.avg ? n > Math.max(c.avg * 1.5, 7) : n > 30); };
+const lateList = () => [...customers().values()].filter(isLate).sort((a, b) => daysAgo(b.lp) - daysAgo(a.lp) || b.bal - a.bal);
+const dTxt = n => n === 1 ? 'يوم' : n === 2 ? 'يومين' : `${n} ${n <= 10 ? 'أيام' : 'يوم'}`;
+function lateOpen() {
+  const L = lateList(), tot = L.reduce((a, c) => a + c.bal, 0);
+  modal(`<h3>⏰ اتأخروا عن الدفع <small>دوس على العميل تسجّل دفعته</small></h3>
+    ${L.length ? `<div class="ltop"><span>${L.length === 1 ? 'عميل واحد، عليه' : L.length === 2 ? 'عميلين، عليهم' : L.length + ' ' + (L.length <= 10 ? 'عملاء' : 'عميل') + '، عليهم'}</span><b class="money">${fmt(tot)}</b></div>
+    <div class="list">${L.map(c => `<div class="row lrow" data-c="${esc(c.id)}"><div class="m"><b>${esc(c.name)}</b><small>آخر دفعة من <em>${dTxt(daysAgo(c.lp))}</em>${c.avg ? ` · متعود كل ${dTxt(c.avg)}` : ''}</small></div><div class="a"><b class="money">${fmt(c.bal)}</b></div></div>`).join('')}</div>`
+    : '<p class="hint">مفيش حد متأخر دلوقتي ✓</p>'}`);
+  $$('#modal .lrow').forEach(r => r.onclick = () => nav('p/' + r.dataset.c));
+}
 const lpCls = c => { const n = daysAgo(c.lp); return c.bal > 0 && (n < 0 || n >= 30) ? 'old' : c.bal > 0 && n >= 14 ? 'mid' : ''; };
 /* قايمة "حصّل من دول" اللي مصطفى بيعلّمها من الحسابات: اتحصّل = دفعات سجلها الشريك للعميل ده بعد ما مصطفى طلب */
 function wantList() {
@@ -993,14 +1010,14 @@ function drawHome() {
   const byDay = new Map();
   all.forEach(o => { const d = dayOf(o.ts); if (d !== t) { if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(o); } });
   const days = [...byDay.keys()].filter(d => ldHas(byDay.get(d))).sort().reverse(), earlier = days.slice(0, homeDays);
-  const k = cntOf(t), on = ordN();   /* كارت "مطلوب تحصّل من دول" اتشال من هنا بطلب مصطفى 23/10/2026 */
+  const k = cntOf(t), on = ordN(), lt = lateList().length;   /* كارت "مطلوب تحصّل من دول" اتشال من هنا بطلب مصطفى 23/10/2026 */
   $('#main').innerHTML = `${bk.length ? `<button class="alert" id="bk" type="button">🔴 مصطفى رجّعلك ${bk.length === 1 ? 'عملية' : bk.length + ' عمليات'} تصلحها — دوس هنا</button>` : ''}
     <section class="panel cashc"><div class="ch"><div class="m"><span>معاك كاش دلوقتي</span><small>الفلوس اللي في إيدك</small></div><b class="money ${cn < 0 ? 'neg' : ''}" id="cashT">${fmtN(cn)}</b></div>
       <div class="cap">النهارده</div>${pnHtml(s, 3, true)}
       ${k ? `<button class="kline ${k.amt === k.sys ? 'ok' : 'bad'}" id="kBtn" type="button">🔒 قفلت يومك ${timeOf(k.ts)}: ${k.amt === k.sys ? 'مظبوط ✓' : `${k.amt < k.sys ? 'ناقص' : 'زيادة'} <span class="money">${fmt(k.amt - k.sys)}</span>`}${k.sys !== cn ? ' <em>· فيه حركات بعد القفل، قفّل تاني</em>' : ''}</button>`
         : `<button class="kline" id="kBtn" type="button">🔒 قفّل يومك (عِد الفلوس اللي معاك)</button>`}</section>
     <div class="qa2"><button class="qb g" id="qPay" type="button"><i>💵</i>دفعة أو فاتورة</button><button class="qb qs" id="qSale" type="button"><i>🏭</i>بيع كاش من المصنع</button><button class="qb" id="qSp" type="button"><i>⛽</i>صرفت</button><button class="qb" id="qHand" type="button"><i>🤝</i>سلمت لمصطفى</button></div>
-    <div class="xrow"><button class="xb" id="qOrd" type="button">📋 الطلبيات${on ? ` <small>${on}</small>` : ''}</button><button class="xb" id="qPrc" type="button">🏷️ التسعير</button><button class="xb wide" id="qWal" type="button">${WL_SVG.wa} أرقام التحويل (المحافظ وإنستا باي)</button></div>
+    <div class="xrow"><button class="xb" id="qOrd" type="button">📋 الطلبيات${on ? ` <small>${on}</small>` : ''}</button><button class="xb" id="qPrc" type="button">🏷️ التسعير</button>${lt ? `<button class="xb wide late" id="qLate" type="button">⏰ اتأخروا عن الدفع (${lt})</button>` : ''}<button class="xb wide" id="qWal" type="button">${WL_SVG.wa} أرقام التحويل (المحافظ وإنستا باي)</button></div>
     ${pnShow() ? '<button class="pnl" id="qPn" type="button">🔔 دوس هنا علشان يجيلك إشعار لما مصطفى يكتب طلبية</button>' : ''}
     <div class="lbl"><span>حركات النهارده</span><span>دوس على أي حركة تعدّلها</span></div>
     ${ldTabs()}
@@ -1012,6 +1029,7 @@ function drawHome() {
   $('#qOrd').onclick = () => ordLoad('ordOpen');
   $('#qPrc').onclick = () => ordLoad('prcOpen');
   $('#qWal').onclick = () => wlOpen();
+  if ($('#qLate')) $('#qLate').onclick = () => lateOpen();
   if ($('#qPn')) $('#qPn').onclick = () => pnTap($('#qPn'));
   $('#kBtn').onclick = closeDay;
   $('#qPay').onclick = () => { nav('c'); setTimeout(() => $('#q') && $('#q').focus(), 120); };

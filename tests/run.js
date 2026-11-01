@@ -1162,12 +1162,16 @@ const T0 = Date.now();
         return [sp.map(e => e.textContent.replace(/[\d,.\s▾\u2212\u200f-]/g, '')), +$('.kfn').dataset.cnt === vaultBal('') + vaultBal('v_mkt'), tops.size, $('#kHs b').textContent === fmtP(hsBal())]; }),
         [['معاك', 'أحمد', 'حسن'], true, 1, true]);
       await A.click('#kHs'); await A.waitForSelector('#hsM');
-      eq('نافذة حسن: فاضل معاه والمصاريف', await A.evaluate(() => [$('#modal .ksh2 .n').textContent === fmtP(hsBal()), $$('#modal .kit[data-k]').length]), [true, 3]);
+      /* أول الشهر: الحركات التجريبية (من 10 و20 يوم) بتبقى في الشهر اللي فات، فبنعرض شهر السلفة والمصروف (d10) */
+      const hsN3 = await A.evaluate(([d10, th20]) => { hsMon = d10.slice(0, 7) === todayISO().slice(0, 7) ? 0 : 1; hsWin(); return th20.slice(0, 7) === d10.slice(0, 7) ? 3 : 2; }, [d10, th20]);
+      eq('نافذة حسن: فاضل معاه والمصاريف', await A.evaluate(() => [$('#modal .ksh2 .n').textContent === fmtP(hsBal()), $$('#modal .kit[data-k]').length]), [true, hsN3]);
       await colOk('نافذة حسن', A, '#modal', '.kit>.n');
       await segOk(A, 'نافذة حسن');
+      await A.evaluate(th20 => { if (!$('#modal .kit[data-k=wk]')) { hsMon = th20.slice(0, 7) === todayISO().slice(0, 7) ? 0 : 1; hsWin(); } }, th20);
       await A.click('#modal .kit[data-k=wk]'); await A.waitForSelector('#hiX');
       eq('مرتبات العمال: العامل باسمه', await A.evaluate(() => $('#modal .kits .kit b').textContent), 'عامل تجربة');
       await A.click('#hiX'); await A.click('#hsX'); await closed(A);
+      await A.evaluate(() => { hsMon = 0; });
       /* ننضّف علشان باقي الاختبارات (الأرباح في ١٣ بالقرش) */
       await A.evaluate(mk => {
         const ids = new Set(Object.values(mk)); db.txs.forEach(t => { if (ids.has(t.id) || ids.has(t.id.replace('t_hss_', '')) || t.id.startsWith('t_hs_')) { t.del = true; t.delAt = nowS(); touch(t); } });
@@ -2038,7 +2042,7 @@ const T0 = Date.now();
       let got = tgTexts().slice(t0);
       eq('تجربة الاسترجاع: سليمة = سطر في ملخص الشهر بس، ومفيش رسالة لوحدها', [got.length, got[0] && got[0].startsWith('📅 ملخص شهر'), got[0] && got[0].includes('✔ النسخة الاحتياطية اتجربت'), await A.evaluate(m => [db.cfg.tg.rt.m, db.cfg.tg.rt.ok], nm.slice(0, 7))], [1, true, true, [nm.slice(0, 7), true]]);
       /* النسخة اللي بتتبعت مش مطابقة (كأنها بايظة) = تنبيه لوحده */
-      await A.evaluate(() => { window.__bd = backupData; backupData = async () => Object.assign({app: 'flash-on-accounts-backup'}, await seal(cryptoKey, saltU8, {parties: []})); db.cfg.tg = {}; });
+      await A.evaluate(td => { window.__bd = backupData; backupData = async () => Object.assign({app: 'flash-on-accounts-backup'}, await seal(cryptoKey, saltU8, {parties: []})); db.cfg.tg = {mo: monthDone(new Date(td + 'T10:00:00')).m}; }, TD);   // ملخص الشهر اللي فات متبعت خلاص (أول الشهر كان بيطلع رسالة تانية)
       clearOnce(); t0 = tgTexts().length;
       await bg(A, `tgAfterSync(new Date('${TD}T10:00:00'))`);
       got = tgTexts().slice(t0);
@@ -2898,7 +2902,7 @@ const T0 = Date.now();
       // اتأخروا عن الدفع: نفس شرط الحسابات (1.5× العادة وأقل حاجة 7 أيام، أو 30 يوم من غير عادة، وعليه فلوس)
       eq('اتأخروا عن الدفع عند الشريك: نفس شرط الحسابات', await M.evaluate(() => { const d = n => { const x = new Date(today() + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() - n); return x.toISOString().slice(0, 10); };
         return [isLate({bal: 1, lp: d(11), avg: 7}), isLate({bal: 1, lp: d(10), avg: 7}), isLate({bal: 1, lp: d(8), avg: 2}), isLate({bal: 1, lp: d(7), avg: 2}), isLate({bal: 1, lp: d(31), avg: 0}), isLate({bal: 1, lp: d(30), avg: 0}), isLate({bal: 0, lp: d(90), avg: 3}), isLate({bal: 1, lp: '', avg: 0})]; }), [true, false, true, false, true, false, false, false]);
-      eq('اتأخروا عن الدفع: الزرار بعددهم والقايمة بتفتح الدفعة', await M.evaluate(() => { const c = Object.values(S.cust).find(x => !x.del); const o = [c.bal, c.lp, c.avg]; c.bal = 500000; c.lp = '2020-01-01'; c.avg = 0; drawHome(); const b = $('#qLate'), n = lateList().length; lateOpen(); const r = [!!b && b.textContent.includes('(' + n + ')'), $$('#modal .lrow').length === n]; $('#modal .lrow[data-c="' + c.id + '"]').click(); r.push(scr.v === 'pay' && scr.cid === c.id, !$('#mask').classList.contains('on')); [c.bal, c.lp, c.avg] = o; nav('', true); return r; }), [true, true, true, true]);
+      eq('اتأخروا عن الدفع: الزرار بعددهم والقايمة بتفتح الدفعة', await M.evaluate(() => { const c = S.cust.t_late = {id: 't_late', name: 'عميل تجربة متأخر', bal: 500000, lp: '2020-01-01', avg: 0, upd: 1}; drawHome(); const b = $('#qLate'), n = lateList().length; lateOpen(); const r = [!!b && b.textContent.includes('(' + n + ')'), $$('#modal .lrow').length === n]; $('#modal .lrow[data-c="' + c.id + '"]').click(); r.push(scr.v === 'pay' && scr.cid === c.id, !$('#mask').classList.contains('on')); delete S.cust.t_late; nav('', true); return r; }), [true, true, true, true]);
       await M.click('#qOrd'); await M.waitForSelector('#ordL');
       eq('الطلبيات: تبويبين بس وفاضية', await M.evaluate(() => [$$('#oTabs button').map(b => b.textContent), !!$('#ordL .oempty')]), [['لسه متسلمتش (0)', 'اتسلمت'], true]);
       await M.click('#oNew'); await M.waitForSelector('#ordF');

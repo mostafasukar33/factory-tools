@@ -8619,7 +8619,7 @@ function mkArch() {
       : `<div class="card empty">${day.length ? `لسه متنقلش حاجة من ${perThis}.` : `مفيش حركات من الشريك في ${perThis}.`}${prev ? `<br><a class="lnk" id="maLast">← آخر يوم قبله فيه حاجة اتنقلت: ${dispDate(isoOf(prev))}</a>` : ''}</div>`}`;
   $$('#maMode button').forEach(b => b.onclick = () => {
     const m = b.dataset.m; if (m === mkAMode) return;
-    if (m === 'range') [mkAFrom, mkATo] = mkARange(); else if (m === 'month') mkAMonth = f.slice(0, 7); else if (mkAMode === 'month' || mkAMode === 'range') mkDay = l < t ? l : t;
+    if (m === 'range') [mkAFrom, mkATo] = mkARange(); else if (m === 'month') mkAMonth = (l < t ? l : t).slice(0, 7);   // شهر آخر يوم في الفترة (أول الشهر: الأسبوع بيبدأ في الشهر اللي فات) else if (mkAMode === 'month' || mkAMode === 'range') mkDay = l < t ? l : t;
     mkAMode = m; mkArch();
   });
   if ($('#maPrev')) { $('#maPrev').onclick = () => mkAStep(-1); $('#maNext').onclick = () => mkAStep(1); }

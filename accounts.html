@@ -6878,14 +6878,49 @@ function matGuess(d) {
   const cb = costBook(), s = C[C.length - 1], pv = C.length > 1 ? C[C.length - 2] : null;
   let w = MAT_WASTE, real = false;
   if (pv) { const F0 = matFlow(pv[0], s[0], cb); if (F0.out >= 500) { w = Math.min(0.3, Math.max(0, (pv[1] + F0.inn - s[1] - F0.out) / F0.out)); real = true; } }
-  const F = matFlow(s[0], d, cb), waste = Math.round(Math.max(0, F.out) * w), kg = Math.max(0, Math.round(s[1] + F.inn - F.out - waste)), pr = matPricer()('plastic', d);
-  return {s, F, w, real, waste, kg, pr, miss: [...F.miss.values()].filter(m => m.q > 0).sort((a, b) => b.q - a.q)};
+  const F = matFlow(s[0], d, cb), waste = Math.round(Math.max(0, F.out) * w), kg = Math.max(0, Math.round(s[1] + F.inn - F.out - waste)), P0 = matStockPrice(d);
+  return {s, F, w, real, waste, kg, pr: P0.pr, prMan: P0.man, prF: P0.f, prT: P0.to, miss: [...F.miss.values()].filter(m => m.q > 0).sort((a, b) => b.q - a.q)};
+}
+/* سعر كيلو المخزون يوم d (بطلبه 2/11/2026): السعر اللي كتبه بإيده (إعداد set اسمه matPr، قرش للكيلو) لو موجود، وإلا متوسط كل خامات البلاستيك
+   والألوان (مش النحاس) اللي دخلت آخر أسبوع لحد يوم d (ولو مفيش في الأسبوع ده: آخر أسبوع فيه شراء)، من الموردين اللي متشالوش في matSupX.
+   المرتجع والسعر الغريب مبيدخلوش */
+const matSupOff = () => new Set(getSet('matSupX', null) || []);
+function matStockPrice(d) {
+  const m = getSet('matPr', null); if (m > 0) return {pr: m, man: true};
+  const X = matSupOff(), a = matLines('', d).filter(x => MAT_GS.includes(x.g) && x.kg > 0 && x.v > 0 && !x.odd && !X.has(x.e.party));
+  if (!a.length) return {pr: null, man: false};
+  const L = a.reduce((r, x) => x.e.date > r ? x.e.date : r, ''), to = L >= addDays(d, -6) ? d : L, f = addDays(to, -6);
+  let k = 0, v = 0; a.forEach(x => { if (x.e.date >= f && x.e.date <= to) { k += x.kg; v += x.v; } });
+  return {pr: k > 0 ? v / k : null, man: false, f, to};
+}
+function matEditModal(G, after) {
+  const s0 = G.s, m = getSet('matPr', null), X = matSupOff(), ids = new Set();
+  matLines().forEach(x => { if (MAT_GS.includes(x.g) && x.v > 0) ids.add(x.e.party); });
+  const sups = [...ids].map(id => P.get(id)).filter(Boolean).sort((a, b) => a.name < b.name ? -1 : 1);
+  modal(`<h3>✏️ العدّ والسعر</h3>
+    <div class="g2"><div class="fld"><label>تاريخ العدّ</label><input class="inp" type="date" id="meD" value="${s0[0]}"></div>
+    <div class="fld"><label>كام كيلو خامات كانت موجودة</label><input class="inp num" id="meK" inputmode="decimal" value="${s0[1]}"></div></div>
+    <div class="fld"><label>سعر كيلو الخامات</label><input class="inp num amt" id="meP" inputmode="decimal" placeholder="${m > 0 || G.pr === null ? 'يتحسب لوحده' : fmtP(Math.round(G.pr)) + ' (لوحده)'}" value="${m > 0 ? fmtP(m) : ''}"></div>
+    <p class="hint">سيب السعر فاضي والبرنامج يحسبه لوحده: متوسط كل خامات البلاستيك اللي دخلت آخر أسبوع من الموردين اللي متعلم عليهم تحت.</p>
+    ${sups.length ? `<p class="hint" style="margin-top:10px"><b>موردين البلاستيك اللي يدخلوا في السعر</b></p>${sups.map((p, i) => `<div class="chkrow"><input type="checkbox" class="meS" id="meS${i}" value="${esc(p.id)}" ${X.has(p.id) ? '' : 'checked'}><label for="meS${i}">${esc(p.name)}</label></div>`).join('')}` : ''}
+    <div class="mfoot"><div class="mrow"><button class="btn gold" id="meOk" type="button">حفظ</button><button class="btn line" id="meX" type="button">رجوع</button></div></div>`);
+  bindMoney($('#meP')); $('#meX').onclick = closeModal;
+  $('#meOk').onclick = () => {
+    const d = $('#meD').value, k = num($('#meK').value), p = $('#meP').value.trim() ? toP($('#meP').value) : 0;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d > todayISO()) return toast('اختار تاريخ صح');
+    if (!(k >= 0) || !$('#meK').value.trim()) return toast('اكتب الكيلو');
+    if (p < 0) return toast('السعر مينفعش يبقى بالسالب');
+    const C = matCnts().filter(x => x[0] !== s0[0] && x[0] !== d); C.push([d, Math.round(k * 1000) / 1000]); putSet('matCnt', C);
+    if ((p || null) !== (m > 0 ? m : null)) putSet('matPr', p || null);
+    const off = $$('#modal .meS').filter(x => !x.checked).map(x => x.value).sort(); if (JSON.stringify(off) !== JSON.stringify([...X].sort())) putSet('matSupX', off);
+    closeModal(); toast('اتحفظ ✔'); if (after) after();
+  };
 }
 const kgTxt = kg => fmtQ(Math.round(kg)) + ' ك';
 function matGuessHtml(G, cnt) {
   const r = (n, s, a) => `<tr class="nohov"><td class="w"><b>${n}</b>${s ? `<small>${s}</small>` : ''}</td><td class="am">${a}</td></tr>`, mq = G.miss.reduce((a, m) => a + m.q, 0);
-  const v = G.pr === null ? '' : `بآخر سعر كيلو ${fmtP(Math.round(G.pr))} = ${fmtP(Math.round(G.kg * G.pr))}`, df = cnt > 0 ? cnt - G.kg : null;
-  return `<section class="ctab"><div class="cth"><span>🧮 توقع البرنامج للخامات بالمصنع</span><span></span></div><table class="cmt"><tbody>
+  const v = G.pr === null ? '' : `${G.prMan ? 'بالسعر اللي كتبته' : `بمتوسط خامات ${shortDate(G.prF)} لـ ${shortDate(G.prT)}`}: الكيلو ${fmtP(Math.round(G.pr))} = ${fmtP(Math.round(G.kg * G.pr))}`, df = cnt > 0 ? cnt - G.kg : null;
+  return `<section class="ctab"><div class="cth"><span>🧮 توقع البرنامج للخامات بالمصنع</span><span><button class="lnk" id="jgEd" type="button">✏️ عدّل</button></span></div><table class="cmt"><tbody>
     ${r(`في العدّ يوم ${dispDate(G.s[0])}`, 'آخر مرة اتعدّت', kgTxt(G.s[1]))}
     ${r('+ دخل من الموردين', 'بلاستيك وألوان، من الفواتير', kgTxt(G.F.inn))}
     ${r('− خرج في الشغل اللي اتباع', 'من الفواتير، بوزن كل صنف', kgTxt(G.F.out))}
@@ -6979,6 +7014,7 @@ function renderJrd() {
   if (G) {
     $('#jgK').addEventListener('input', () => { jgKg = Math.max(0, num($('#jgK').value)); $('#jgBox').innerHTML = matGuessHtml(G, jgKg); reBlk(); if (src === 'auto') sIn.value = stock ? fmtP(stock) : ''; });
     if ($('#jgMiss')) $('#jgMiss').onclick = () => costModal(renderJrd, G.miss.map(m => m.k));
+    $('#jgBox').addEventListener('click', ev => { if (ev.target.closest('#jgEd')) matEditModal(G, renderJrd); });
   }
   bindBlk();
   $$('#p-jrd tr[data-s]').forEach(el => el.onclick = () => go('jrd/s/' + el.dataset.s));

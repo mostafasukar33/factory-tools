@@ -1701,7 +1701,7 @@ const T0 = Date.now();
       /* عدّ تاني بعد البيع: الهالك الحقيقي = (1000 + اللي دخل − العدّ − اللي خرج) ÷ اللي خرج */
       const D1 = addDays(t, -2), F1 = matFlow(D0, D1, costBook()), cnt = Math.round(1000 + F1.inn - F1.out - F1.out * 0.05);
       putSet('matCnt', [[D0, 1000], [D1, cnt]]); const G3 = matGuess(t), w3 = F1.out >= 500 ? G3.real && Math.abs(G3.w - 0.05) < 0.001 : !G3.real;
-      const pre = matGuess(addDays(D0, -1)), prOk = G1.pr === matPricer()('plastic', t);
+      const pre = matGuess(addDays(D0, -1)), prOk = G1.pr === matStockPrice(t).pr;
       db.entries.splice(n0); ['e_mg1', 'e_mg2'].forEach(id => E.delete(id));
       const sr = IDX.set.get('itemCost'); db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('itemCost'); saveDB();
       return [di, dO, ok1, !!ms && ms.q, dO2, gone, G3.s[0] === D1, w3, prOk, pre]; }), [500, 200, true, 10, 250, true, true, true, true, null]);
@@ -1722,6 +1722,21 @@ const T0 = Date.now();
       db.entries.splice(pv); E.delete('e_mg3');
       const sr = IDX.set.get('matCnt'); db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete('matCnt'); jrStock = null; jgKg = null; saveDB();
       return r; }), [true, true, true, true, true, true, true, true, true, true, true, true]);
+
+    eq('توقع الخامات: سعر الكيلو = متوسط خامات البلاستيك آخر أسبوع من الموردين المختارين، والسعر بالإيد بيكسب، و"عدّل" بيغيّر العدّ وتاريخه والموردين', await A.evaluate(() => {
+      const t = todayISO(), n0 = db.entries.length, sps = liveParties().filter(p => p.sec === 'sup' && !p.noTot), sp = sps[0];
+      const add = (id, date, qty, price, name = 'سابك تجربة سعر') => { const e = {id, party: sp.id, kind: 'pur', date, lines: [{name, unit: 'كيلو', qty, price}], disc: 0, at: 1, upd: 1, del: false, hist: []}; e.cr = docTotal(e); e.dr = 0; db.entries.push(e); E.set(id, e); };
+      putSet('matSupX', sps.slice(1).map(p => p.id)); const base = matLines('', t).filter(x => x.e.party === sp.id && x.e.date >= addDays(t, -6)).length;
+      add('e_mp1', addDays(t, -3), 1000, 4000); add('e_mp2', addDays(t, -1), 100, 6000); add('e_mp3', addDays(t, -20), 2000, 1000); add('e_mp4', addDays(t, -2), 10, 900000, 'نحاس تجربة سعر');
+      const a = matStockPrice(t);
+      putSet('matSupX', sps.map(p => p.id)); const x = matStockPrice(t);
+      putSet('matPr', 5500); const c = matStockPrice(t); putSet('matPr', null); putSet('matSupX', sps.slice(1).map(p => p.id));
+      putSet('matCnt', [[addDays(t, -5), 8000]]); jrDate = ''; jrStock = null; jgKg = null; go('jrd'); renderJrd();
+      $('#jgEd').click(); $('#meD').value = addDays(t, -4); $('#meK').value = '6500'; $('#meP').value = '60'; const cb = $$('#modal .meS').find(i => i.value === sp.id); const hasSp = !!cb && cb.checked; cb.checked = false; $('#meOk').click();
+      const C = getSet('matCnt', []), G = matGuess(t), r = [base ? 'data' : Math.round(a.pr), x.pr, c.pr, c.man, C.length, C[0][0] === addDays(t, -4) && C[0][1] === 6500, G.pr, G.prMan, $('#jgBox').textContent.includes('بالسعر اللي كتبته'), hasSp, matSupOff().has(sp.id)];
+      db.entries.splice(n0); ['e_mp1', 'e_mp2', 'e_mp3', 'e_mp4'].forEach(id => E.delete(id));
+      ['matCnt', 'matPr', 'matSupX'].forEach(k => { const sr = IDX.set.get(k); if (sr) { db.sets.splice(db.sets.indexOf(sr), 1); IDX.set.delete(k); } }); jrStock = null; jgKg = null; saveDB();
+      return r; }), [4182, null, 5500, true, 1, true, 6000, true, true, true, true]);
 
     /* الشكل: التبويبات والأرقام تحت بعض والخط */
     await A.evaluate(() => { jrDate = ''; go('jrd'); }); await A.settle(300);

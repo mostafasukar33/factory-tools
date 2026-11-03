@@ -8186,7 +8186,21 @@ function mkWantCard() {
 /* mkUpd: الشيت بيرفض أي سطر وقته مش أكبر من اللي عنده، وبيقول "وصل" برضه، فلو الرصيد اتغير من حركة جاية من جهاز تاني بوقت أقدم
    (أو الجهاز ده نفسه كتب رصيد قبل ما توصله حركة) كان الرصيد الصح بيترفض ويتعلّم إنه اتبعت، والعميل يفضل غلط عند الشريك (بطلبه 3/11/2026).
    دلوقتي الوقت دايماً أكبر بواحد من آخر وقت الجهاز ده بعته للسطر ده (d.cu) */
+const mkCsSig = x => 'v5|' + x.name + '|' + x.bal + '|' + x.lim + '|' + x.lp + '|' + x.avg + '|' + JSON.stringify(x.want);
 const mkUpd = (d, id, now) => Math.max(now + 1, ((d.cu = d.cu || {})[id] || 0) + 1);
+/* رصيد عميل/مورد جاي من الشيت (بطلبه 3/11/2026، "ايمن رصيده عندي صفر وعند احمد 22500"): الشيت ممكن يكون فيه سطر بوقت أكبر من اللي الجهاز
+   ده بيبعته (ساعة جهاز كانت قدام، أو جهاز تاني)، فكان بيرفض الرصيد الصح. هنا بنتعلم وقت السطر اللي في الشيت (d.cu) واللي فيه فعلاً (d.cs/d.ss)،
+   فلو مختلف عن الحسابات بيتبعت تاني بوقت أكبر منه. مبيغيّرش أي حاجة في الحسابات */
+/* الجهاز ده خد آخر الحسابات من شيتها في الفتحة دي (أو مش مربوط بشيت)، فرصيده مش قديم ويقدر يصلّح اللي في شيت السوق */
+const mkAccFresh = () => !(db.cfg.sheetUrl && db.cfg.sheetOk) || lastPullAt > 0;
+function mkSeen(d, r) {
+  const cu = d.cu = d.cu || {}, box = r.kind === 'sup' ? (d.ss = d.ss || {}) : d.cs, u = Number(r.upd) || 0;
+  const sig = r.del ? '-' : r.kind === 'sup' ? 's2|' + strHash(JSON.stringify(r.data)) : mkCsSig(r.data);
+  let ch = false;
+  if (u > (cu[r.id] || 0)) { cu[r.id] = u; ch = true; }
+  if (box[r.id] !== sig && mkAccFresh()) { box[r.id] = sig; ch = true; }
+  return ch;
+}
 function mkCustRows() {
   let ver = 0; for (const k of ['parties', 'entries', 'sets']) for (const r of db[k]) if (r.upd > ver) ver = r.upd;
   const d = mkDb(), bal = allBalances(), out = [], seen = new Set(), now = 1e13 + ver, lps = lastPays(), avs = payAvgs(), W = mkWants();
@@ -8194,7 +8208,7 @@ function mkCustRows() {
     seen.add(p.id);
     /* lp = آخر دفعة (للشريك: "آخر دفعة من كام يوم")، want = قايمة "حصّل من دول" */
     const b = bal.get(p.id) || 0, lim = limitClass(p, b) === 'lim-r' ? 'r' : limitClass(p, b) === 'lim-y' ? 'y' : '', lp = lps.get(p.id) || '', avg = avs.get(p.id) || 0, w = W[p.id] || null;
-    const want = w ? {amt: w.amt, at: w.at, note: w.note || ''} : null, sig = 'v5|' + p.name + '|' + b + '|' + lim + '|' + lp + '|' + avg + '|' + JSON.stringify(want);
+    const want = w ? {amt: w.amt, at: w.at, note: w.note || ''} : null, sig = mkCsSig({name: p.name, bal: b, lim, lp, avg, want});
     if (d.cs[p.id] !== sig) out.push({row: {id: p.id, kind: 'cust', upd: mkUpd(d, p.id, now), del: false, view: ['', cell(p.name), b / 100, 'رصيد عميل', want ? 'مطلوب ' + want.amt / 100 : ''], data: {name: p.name, bal: b, lim, lp, avg, want}}, sig});
   });
   Object.keys(d.cs).forEach(id => { if (!seen.has(id) && d.cs[id] !== '-') out.push({row: {id, kind: 'cust', upd: mkUpd(d, id, now), del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-'}); });
@@ -8253,7 +8267,8 @@ async function mkSyncOnce() {
   let fresh = [], ch = false, edits = [], ordCh = false;
   try {
     const d = mkDb();
-    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}, ss: {}, cu: {}, ord: {}, prc: {}, oit: ''}); ch = true; }
+    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}, ss: {}, cu: {}, ord: {}, prc: {}, oit: '', scan: 1}); ch = true; }
+    if (d.scan !== 1 && mkAccFresh()) { d.scan = 1; d.cursor = 0; ch = true; }   // مرة واحدة (بعد ما الحسابات تتزامن): يقرا الشيت كله علشان يعرف أرصدة العملاء اللي فيه فعلاً (mkSeen)
     ensureMktVault();
     if (mkReconcile()) ch = true;
     if (mkWantPrune()) ch = true;
@@ -8281,6 +8296,7 @@ async function mkSyncOnce() {
       if (!j || j.ok !== true || !Array.isArray(j.rows)) throw new Error(j && j.error === 'key' ? 'key' : 'pull');
       j.rows.forEach(r => {
         if (!r || !r.id || !r.data) return;
+        if (r.kind === 'cust' || r.kind === 'sup') { if (mkSeen(d, r)) ch = true; return; }
         const box = r.kind === 'op' ? d.ops : r.kind === 'st' ? d.st : r.kind === 'ord' ? d.ord : r.kind === 'prc' ? d.prc : null; if (!box) return;
         const cur = box[r.id], own = r.kind !== 'op';   // الطلبيات والتسعير بيتكتبوا من الجهتين، فاللي جاي من الشيت اتبعت خلاص (sy)
         if (cur && cur.upd >= r.upd) { if (cur.upd === r.upd && own) cur.sy = cur.upd; return; }

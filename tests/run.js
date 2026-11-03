@@ -2823,6 +2823,15 @@ const T0 = Date.now();
     await sync2();
     /* آخر دفعة: بتيجي من الحسابات مع رصيد العميل */
     eq('الحسابات بتبعت تاريخ آخر دفعة مع رصيد عميل السوق', JSON.parse(mkRows('cust').find(r => r[0] === pid1)[10]).lp, await A.evaluate(id => lastPays().get(id) || '', pid1));
+    {   /* ايمن (3/11/2026): الشيت فيه سطر للعميل بوقت أكبر من الحسابات ورصيد قديم، فكان بيرفض الرصيد الصح ويقول "وصل" */
+      const key = await A.evaluate(() => getSet('mktSheet', null).k);
+      JSON.parse(sheets.mkt.post(JSON.stringify({key, action: 'push', who: 'a', rows: [{id: pid1, kind: 'cust', upd: 3e13, del: false, view: ['', 'قديم', 22500, 'رصيد عميل', ''], data: {name: C1, bal: 2250000, lim: '', lp: '', avg: 0, want: null}}]})));
+      await bg(A, 'mkSync()'); await A.settle(200); await bg(A, 'mkSync()'); await A.settle(200);
+      const row = mkRows('cust').find(r => r[0] === pid1), want = await A.evaluate(id => allBalances().get(id), pid1);
+      eq('رصيد قديم في الشيت بوقت أكبر من الحسابات: الحسابات بتشوفه وبتبعت الصح بوقت أكبر منه', [JSON.parse(row[10]).bal, Number(row[2]) > 3e13], [want, true]);
+      await bg(M, 'sync()'); await M.settle(200);
+      eq('والشريك بياخد الرصيد الصح', await M.evaluate(id => S.cust[id].bal, pid1), want);
+    }
     await M.evaluate(() => nav('c', true)); await M.settle(150);
     eq('العملاء: زرار ترتيب في العنوان والافتراضي "الأكبر"، وتحت كل اسم "آخر دفعة"', await M.evaluate(() => [$('#cSortB').textContent.trim(), $$('#lists .pt[data-c]').length === $$('#lists .pt .lp').length, $('#lists .pth span:last-child').textContent]), ['⇅ الأكبر', true, 'عليه']);
     eq('الأكبر: مترتبين بحجم الرصيد من الكبير للصغير (زي الحسابات، و"له عندنا" بحجمه)', await M.evaluate(() => { const b = $$('#lists .pt[data-c]').map(r => Math.abs(customers().get(r.dataset.c).bal)); return b.every((x, i) => !i || b[i - 1] >= x); }), true);

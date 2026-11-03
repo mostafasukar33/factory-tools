@@ -8183,6 +8183,10 @@ function mkWantCard() {
 /* أرصدة عملاء السوق بس (اسم + رصيد) بتتبعت للشيت علشان الشريك يشوفها. اللي اتبعت قبل كده بيتحفظ علشان مبعتش نفس الحاجة تاني.
    الوقت (upd) = آخر تعديل في الحسابات والحركات والإعدادات (مش وقت الإرسال)، علشان لو جهاز حسابات تاني لسه موصلهوش آخر تعديل
    وبعت رصيد قديم، الشيت يرفضه وميكتبش فوق الرصيد الصح. الـ 1e13 علشان يكسب السطور القديمة اللي كانت بوقت الإرسال (مرة واحدة) */
+/* mkUpd: الشيت بيرفض أي سطر وقته مش أكبر من اللي عنده، وبيقول "وصل" برضه، فلو الرصيد اتغير من حركة جاية من جهاز تاني بوقت أقدم
+   (أو الجهاز ده نفسه كتب رصيد قبل ما توصله حركة) كان الرصيد الصح بيترفض ويتعلّم إنه اتبعت، والعميل يفضل غلط عند الشريك (بطلبه 3/11/2026).
+   دلوقتي الوقت دايماً أكبر بواحد من آخر وقت الجهاز ده بعته للسطر ده (d.cu) */
+const mkUpd = (d, id, now) => Math.max(now + 1, ((d.cu = d.cu || {})[id] || 0) + 1);
 function mkCustRows() {
   let ver = 0; for (const k of ['parties', 'entries', 'sets']) for (const r of db[k]) if (r.upd > ver) ver = r.upd;
   const d = mkDb(), bal = allBalances(), out = [], seen = new Set(), now = 1e13 + ver, lps = lastPays(), avs = payAvgs(), W = mkWants();
@@ -8190,10 +8194,10 @@ function mkCustRows() {
     seen.add(p.id);
     /* lp = آخر دفعة (للشريك: "آخر دفعة من كام يوم")، want = قايمة "حصّل من دول" */
     const b = bal.get(p.id) || 0, lim = limitClass(p, b) === 'lim-r' ? 'r' : limitClass(p, b) === 'lim-y' ? 'y' : '', lp = lps.get(p.id) || '', avg = avs.get(p.id) || 0, w = W[p.id] || null;
-    const want = w ? {amt: w.amt, at: w.at, note: w.note || ''} : null, sig = 'v4|' + p.name + '|' + b + '|' + lim + '|' + lp + '|' + avg + '|' + JSON.stringify(want);
-    if (d.cs[p.id] !== sig) out.push({row: {id: p.id, kind: 'cust', upd: now, del: false, view: ['', cell(p.name), b / 100, 'رصيد عميل', want ? 'مطلوب ' + want.amt / 100 : ''], data: {name: p.name, bal: b, lim, lp, avg, want}}, sig});
+    const want = w ? {amt: w.amt, at: w.at, note: w.note || ''} : null, sig = 'v5|' + p.name + '|' + b + '|' + lim + '|' + lp + '|' + avg + '|' + JSON.stringify(want);
+    if (d.cs[p.id] !== sig) out.push({row: {id: p.id, kind: 'cust', upd: mkUpd(d, p.id, now), del: false, view: ['', cell(p.name), b / 100, 'رصيد عميل', want ? 'مطلوب ' + want.amt / 100 : ''], data: {name: p.name, bal: b, lim, lp, avg, want}}, sig});
   });
-  Object.keys(d.cs).forEach(id => { if (!seen.has(id) && d.cs[id] !== '-') out.push({row: {id, kind: 'cust', upd: now, del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-'}); });
+  Object.keys(d.cs).forEach(id => { if (!seen.has(id) && d.cs[id] !== '-') out.push({row: {id, kind: 'cust', upd: mkUpd(d, id, now), del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-'}); });
   return out;
 }
 /* حسابات الموردين كلها (بطلب صاحب المشروع 15/10/2026): نسخة للشريك يشوفها بس. كل مورد سطر sup فيه:
@@ -8228,11 +8232,11 @@ function mkSupRows() {
   sups.forEach(p => {
     seen.add(p.id);
     let m = mkSupMemo.M.get(p.id);
-    if (!m) { const data = mkSupData(p, by.get(p.id).sort(entCmp), from); m = {data, sig: 's1|' + strHash(JSON.stringify(data))}; mkSupMemo.M.set(p.id, m); }
+    if (!m) { const data = mkSupData(p, by.get(p.id).sort(entCmp), from); m = {data, sig: 's2|' + strHash(JSON.stringify(data))}; mkSupMemo.M.set(p.id, m); }
     const {data, sig} = m;
-    if (ss[p.id] !== sig) out.push({row: {id: p.id, kind: 'sup', upd: now, del: false, view: ['', cell(p.name), data.bal / 100, 'رصيد مورد', ''], data}, sig, box: 'ss'});
+    if (ss[p.id] !== sig) out.push({row: {id: p.id, kind: 'sup', upd: mkUpd(d, p.id, now), del: false, view: ['', cell(p.name), data.bal / 100, 'رصيد مورد', ''], data}, sig, box: 'ss'});
   });
-  Object.keys(ss).forEach(id => { if (!seen.has(id) && ss[id] !== '-') out.push({row: {id, kind: 'sup', upd: now, del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-', box: 'ss'}); });
+  Object.keys(ss).forEach(id => { if (!seen.has(id) && ss[id] !== '-') out.push({row: {id, kind: 'sup', upd: mkUpd(d, id, now), del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-', box: 'ss'}); });
   return out;
 }
 const mkStView = s => { const o = mkDb().ops[s.op] || {}; return ['', cell(o.cname || o.sname || o.cat || o.buyer || (o.t === 'hand' ? 'تسليم كاش' : '')), o.amt ? o.amt / 100 : '', 'حالة', cell([s.done ? 'اتنقلت' : '', s.ok ? 'وصل' : '', s.back ? 'راجعة: ' + s.back : ''].filter(Boolean).join(' — '))]; };
@@ -8249,7 +8253,7 @@ async function mkSyncOnce() {
   let fresh = [], ch = false, edits = [], ordCh = false;
   try {
     const d = mkDb();
-    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}, ss: {}, ord: {}, prc: {}, oit: ''}); ch = true; }
+    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}, ss: {}, cu: {}, ord: {}, prc: {}, oit: ''}); ch = true; }
     ensureMktVault();
     if (mkReconcile()) ch = true;
     if (mkWantPrune()) ch = true;
@@ -8266,7 +8270,7 @@ async function mkSyncOnce() {
       if (db !== d0) return false;
       if (!j || j.ok !== true) throw new Error(j && j.error === 'key' ? 'key' : j && j.error ? String(j.error) : 'push');
       const ack = new Set(j.ack || []);
-      part.forEach(x => { if (!ack.has(x.row.id)) return; if (x.s) { if (x.s.upd === x.row.upd) x.s.sy = x.s.upd; } else if (x.oit) d.oit = x.sig; else (x.box ? d[x.box] : d.cs)[x.row.id] = x.sig; });
+      part.forEach(x => { if (!ack.has(x.row.id)) return; if (x.s) { if (x.s.upd === x.row.upd) x.s.sy = x.s.upd; } else if (x.oit) d.oit = x.sig; else { (x.box ? d[x.box] : d.cs)[x.row.id] = x.sig; (d.cu = d.cu || {})[x.row.id] = x.row.upd; } });
       ch = true;
     }
     const first = !d.cursor;

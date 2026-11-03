@@ -2312,9 +2312,18 @@ const T0 = Date.now();
     eq('عادة الدفع للشريك (payAvgs) = نفس حسبة payInfo لكل حساب، وبتروح مع رصيد عميل السوق (avg)', await A.evaluate(() => {
       const p = liveParties().find(x => x.sec === 'mkt'), ds = [21, 14, 8, 1].map(n => addDays(todayISO(), -n)), mine = ds.map(d => addEntry({party: p.id, kind: 'pay', date: d, amt: 100, vault: 'v_main'}));
       const av = payAvgs(), same = liveParties().filter(x => x.sec !== 'sup').every(x => (av.get(x.id) || 0) === ((payInfo(x, partyEntries(x.id, true), 1) || {avg: 0}).avg));
-      const row = mkCustRows().find(r => r.row.id === p.id), r = [same, av.get(p.id) > 0, !!row && row.row.data.avg === av.get(p.id), !!row && row.sig.startsWith('v4|')];
+      const row = mkCustRows().find(r => r.row.id === p.id), r = [same, av.get(p.id) > 0, !!row && row.row.data.avg === av.get(p.id), !!row && row.sig.startsWith('v5|')];
       db.entries = db.entries.filter(e => !mine.includes(e)); mine.forEach(e => E.delete(e.id)); return r;
     }), [true, true, true, true]);
+    eq('رصيد العميل/المورد عند الشريك: الوقت دايماً أكبر من آخر وقت الجهاز بعته للسطر (الشيت كان بيرفض الرصيد الصح ويقول وصل)', await A.evaluate(() => {
+      const d = mkDb(), p = liveParties().find(x => x.sec === 'mkt'), s = liveParties().find(x => x.sec === 'sup'), cu0 = d.cu, cs0 = d.cs[p.id], ss0 = (d.ss || {})[s.id];
+      d.cu = {[p.id]: 2e13, [s.id]: 2e13}; delete d.cs[p.id]; if (d.ss) delete d.ss[s.id];
+      const c = mkCustRows().find(r => r.row.id === p.id), u = mkSupRows().find(r => r.row.id === s.id);
+      d.cu = {}; const c2 = mkCustRows().find(r => r.row.id === p.id);
+      d.cu = cu0; if (cs0 === undefined) delete d.cs[p.id]; else d.cs[p.id] = cs0; if (d.ss) { if (ss0 === undefined) delete d.ss[s.id]; else d.ss[s.id] = ss0; }
+      let ver = 0; for (const k of ['parties', 'entries', 'sets']) for (const r of db[k]) if (r.upd > ver) ver = r.upd;
+      return [c.row.upd, u.row.upd, c2.row.upd === 1e13 + ver + 1, c.sig.startsWith('v5|'), u.sig.startsWith('s2|')];
+    }), [2e13 + 1, 2e13 + 1, true, true, true]);
     eq('الوارد متقسم (جاهزين للنقل / محتاجين قرارك)، ومفيش زرار "رجّعها" في الوارد نفسه: جوه نافذة السطر', await A.evaluate(async () => {
       const r = [!!document.querySelector('#mkBody .mqsec [data-gs]'), !document.querySelector('#mkBody [data-bk]')];
       document.querySelector('#mkBody [data-gs] .mqw').click(); r.push(!!document.querySelector('#modal [data-bk]') && !!document.querySelector('#modal .mqop')); closeModal(); return r; }), [true, true, true]);

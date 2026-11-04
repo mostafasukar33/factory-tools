@@ -1971,7 +1971,15 @@ const T0 = Date.now();
     /* تليجرام من الحسابات لمصطفى: نسخة يومية وملخص وتنبيه. على نفس البوت، ومن غير ما يتكتب أي حاجة في شيت الحركات (الشريك مبيشوفهاش) */
     const tgDocs = () => sheets.mkt.tg.calls.filter(c => c.url.endsWith('/sendDocument'));
     const mkRows0 = sheets.mkt.sheets['الحركات'].rows.length;
-    eq('كود شيت السوق نسخة 7، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [7, null]);
+    eq('كود شيت السوق نسخة 8، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [8, null]);
+    {   /* نسخة 8: الكتابة بتتحفظ قبل ما القفل يتساب (غير كده سطر جديد كان بيتكتب مكان سطر جديد تاني لو الاتنين بعتوا في نفس الثواني) */
+      const G = makeGas(); G.load(await A.evaluate(() => marketScript()));
+      G.post(JSON.stringify({key: 'Flush-Key-1234', action: 'ping'})); G.lockLog.length = 0;
+      G.post(JSON.stringify({key: 'Flush-Key-1234', action: 'push', who: 'a', rows: [{id: 'st_x1', kind: 'st', upd: 5, del: false, view: ['', '', '', '', ''], data: {op: 'x1', done: true}}]}));
+      eq('شيت السوق نسخة 8: بيحفظ الكتابة (flush) قبل ما يسيب القفل', G.lockLog.join(','), 'lock,flush,release');
+      eq('نسخة 7 القديمة كانت بتسيب القفل من غير ما تحفظ (ده اللي كان بيضيّع السطور)', (() => { const O = makeGas(); O.load(fs.readFileSync(path.join(__dirname, 'fixtures/mkt-sheet-v7.gs'), 'utf8')); O.post(JSON.stringify({key: 'Flush-Key-1234', action: 'ping'})); O.lockLog.length = 0; O.post(JSON.stringify({key: 'Flush-Key-1234', action: 'push', who: 'a', rows: [{id: 'st_x1', kind: 'st', upd: 5, del: false, view: ['', '', '', '', ''], data: {op: 'x1'}}]})); return O.lockLog.join(','); })(), 'lock,release');
+      eq('شيت السوق نسخة 7: تحذير إن سطر ممكن يضيع لو اتبعتوا في نفس الثانية', await A.evaluate(() => { tgInfo = {ok: true, v: 7, token: false}; renderMktSettings(); const t = $('#mkOld') ? $('#mkOld').textContent : ''; tgInfo = null; return t.includes('نفس الثانية'); }), true);
+    }
     {
       /* كود شيت السوق نسخة 4 قدام نسخة 3 القديمة بآلاف السطور: نفس الردود ونفس الشيت بالظبط، والقراية أقل بكتير */
       const oldMk = fs.readFileSync(path.join(__dirname, 'fixtures/mkt-sheet-v3.gs'), 'utf8'), newMk = await A.evaluate(() => marketScript());
@@ -2725,7 +2733,7 @@ const T0 = Date.now();
     eq('صفحة العملاء: إجمالي اللي على العملاء ظاهر', await M.evaluate(() => { const t = [...customers().values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0); return $('#main .ctot .money').textContent === fmt(t); }), true);
     await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(500);
     eq('وصل لمصطفى في الوارد', await A.evaluate(() => mkPending().filter(o => o.t === 'cs').map(o => [o.buyer, o.amt])), [['مشتري تجربة', 450000]]);
-    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 7', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 7]);
+    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 8', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 8]);
     const csV0 = await A.evaluate(() => vaultBal('v_mkt'));
     await A.evaluate(() => { const o = mkPending().find(x => x.t === 'cs'); mkMove(o, {amt: o.amt, date: todayISO(), vault: 'v_mkt', to: ''}); saveDB(); });
     eq('اتنقل إيراد في خزنة السوق (مبيعات نقدي) من غير ما يتعمل عميل', await A.evaluate(([v0, p0]) => [vaultBal('v_mkt') - v0, db.txs.filter(t => t.id.startsWith('t_mk_') && t.type === 'inc' && t.cat === 'c_inc1' && !t.del).length > 0, db.parties.length], [csV0, csP0]), [450000, true, csP0]);
@@ -3115,6 +3123,65 @@ const T0 = Date.now();
       eq('التسعير وصل الحسابات زي ما هو ومكتوب أحمد', await A.evaluate(() => { const m = Object.values(mkDb().prc)[0]; return m && [m.p1, m.p2, m.a, m.op, m.pr, m.by]; }), [6500, 5500, 70, 600, 10, 'أحمد']);
       eq('مفيش أي رصيد ولا حركة ولا خزنة اتغيرت (عند الاتنين)', await money(), m0);
       await A.evaluate(() => { closeModal(); go('home'); });
+    }
+    sec('٢٢د) سطر بيضيع من شيت السوق (ايمن 4/11/2026): الحسابات وتطبيق أحمد بيتأكدوا إن اللي اتبعت موجود فعلاً');
+    {
+      /* كود الشيت قبل نسخة 8 كان بيسيب القفل قبل ما الكتابة تتحفظ، فسطر "اتنقلت" بتاع فاتورة ايمن اتكتب مكانه سطر أحمد وضاع والشيت قال "وصل":
+         أحمد فضل حاسب الفاتورة مرتين (عنده 22500 وفي الحسابات صفر). هنا السطر بيتشال من الشيت بإيدنا بعد ما اتقال "وصل" */
+      const R = () => sheets.mkt.sheets['الحركات'].rows, drop = id => { const i = R().findIndex(x => x[0] === id); if (i > 0) R().splice(i, 1); return i > 0; };
+      const inSheet = (id, f) => R().some(x => x[0] === id && (!f || f(JSON.parse(x[10]))));
+      const age = (X, v) => X.evaluate(v => { const o = eval(v); Object.values(o.q).forEach(q => { q[2] -= 3e5; }); o.ck.forEach(c => { c[0] -= 3e5; }); o.at -= 3e5; }, v);   // كأن دقيقتين عدّوا
+      const balM = () => M.evaluate(id => customers().get(id).bal, pid1), balA = () => A.evaluate(id => allBalances().get(id), pid1);
+      const invM = amt => M.evaluate(([id, amt]) => { const c = customers().get(id), now = nowS(), o = {id: newId(), t: 'inv', cid: id, cname: c.name, newc: false, amt, ts: now, cr: now, upd: now, del: false}; S.ops[o.id] = o; save(); return o.id; }, [pid1, amt]);
+      const sync3 = async () => { await bg(A, 'mkSync()'); await A.settle(150); await bg(A, 'mkSync()'); await A.settle(150); };
+      await sync2();
+      eq('قبل التجربة: رصيد العميل عند أحمد زي الحسابات', await balM(), await balA());
+      const o1 = await invM(2250000);
+      await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(150);
+      await A.evaluate(([o, p]) => { mkInvPut(db.mkt.ops[o], p); saveDB(); }, [o1, pid1]);
+      await bg(A, 'mkSync()'); await A.settle(150);
+      const lost = drop('st_' + o1);
+      await bg(M, 'sync()'); await M.settle(150);
+      eq('سطر "اتنقلت" ضاع من الشيت: أحمد بيحسب الفاتورة مرتين (اللي كان بيحصل)', [lost, await balM() - await balA()], [true, 2250000]);
+      await sync3();
+      eq('قبل دقيقتين: الحسابات مستنية (الشيت ممكن لسه مكتبهوش)', [inSheet('st_' + o1), await A.evaluate(o => !!db.mkt.vf.q['st_' + o], o1)], [false, true]);
+      await age(A, 'db.mkt.vf'); await sync3();
+      eq('بعد دقيقتين: الحسابات بتراجع الشيت ومش لاقياه، فبتبعته تاني لوحدها', [inSheet('st_' + o1, s => s.done), await A.evaluate(o => !!db.mkt.vf.q['st_' + o], o1)], [true, true]);
+      await bg(M, 'sync()'); await M.settle(150);
+      eq('وأحمد رصيد العميل عنده رجع زي الحسابات بالظبط', await balM(), await balA());
+      await age(A, 'db.mkt.vf'); await sync3();
+      eq('المراجعة اللي بعدها: موجود، فمفيش حاجة مستنية ومبيتبعتش تاني', [await A.evaluate(() => Object.keys(db.mkt.vf.q).length), R().filter(x => x[0] === 'st_' + o1).length], [0, 1]);
+
+      /* الأجهزة اللي السطر ضاع منها قبل التحديث (ايمن الحقيقي): أول مرة بعد التحديث بيراجع الشيت كله، والرصيد كمان لو سطره ضاع */
+      const o2 = await invM(1500000);
+      await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(150);
+      await A.evaluate(([o, p]) => { mkInvPut(db.mkt.ops[o], p); saveDB(); }, [o2, pid1]);
+      await bg(A, 'mkSync()'); await A.settle(150);
+      const lost2 = [drop('st_' + o2), drop(pid1)];
+      await A.evaluate(() => { delete db.mkt.vf; });   // زي جهاز لسه نازل عليه التحديث
+      await sync3();
+      eq('أول مرة بعد التحديث: بيقرا الشيت كله ويبعت "اتنقلت" ورصيد العميل اللي ضاعوا قبل كده', [lost2, inSheet('st_' + o2, s => s.done), inSheet(pid1)], [[true, true], true, true]);
+      await bg(M, 'sync()'); await M.settle(150);
+      eq('وأحمد رصيده زي الحسابات', await balM(), await balA());
+      eq('المراجعة الكاملة بتتعاد كل أسبوع بس', await A.evaluate(() => [Date.now() - db.mkt.vf.full < 60000, MK_FULL]), [true, 7 * 864e5]);
+
+      /* حركة أحمد نفسها ضاعت من الشيت: تطبيقه بيلاحظ ويبعتها تاني، فتوصل الوارد عند مصطفى */
+      const o3 = await M.evaluate(id => { const c = customers().get(id), now = nowS(), o = {id: newId(), t: 'pay', cid: id, cname: c.name, newc: false, amt: 70000, m: 'cash', ts: now, cr: now, upd: now, del: false}; S.ops[o.id] = o; save(); return o.id; }, pid1);
+      await bg(M, 'sync()'); await M.settle(150);
+      const lost3 = drop(o3);
+      await bg(M, 'sync()'); await M.settle(150);
+      eq('حركة أحمد ضاعت: قبل دقيقتين لسه مستنية', [lost3, inSheet(o3), await M.evaluate(o => !!S.vf.q[o], o3)], [true, false, true]);
+      await age(M, 'S.vf'); await bg(M, 'sync()'); await M.settle(150); await bg(M, 'sync()'); await M.settle(150);
+      await bg(A, 'mkSync()'); await A.settle(150);
+      eq('بعد دقيقتين: اتبعتت تاني ووصلت الوارد عند مصطفى', [inSheet(o3), await A.evaluate(o => mkPending().some(x => x.id === o), o3)], [true, true]);
+      const seq0 = sheets.mkt.props.SEQ;
+      await M.evaluate(() => { S.vf.full = 0; }); await bg(M, 'sync()'); await M.settle(150);
+      eq('المراجعة الكاملة عند أحمد: كل حركاته موجودة، فمبيبعتش حاجة تاني', [sheets.mkt.props.SEQ === seq0, await M.evaluate(() => pending().length), Date.now() - await M.evaluate(() => S.vf.full) < 60000], [true, 0, true]);
+
+      /* نرجّع زي ما كنا: أحمد بيمسح التلاتة (المنقول بيتشال من الحسابات لوحده) */
+      await M.evaluate(ids => { ids.forEach(id => { S.ops[id].del = true; bump(S.ops[id]); }); save(); }, [o1, o2, o3]);
+      await sync2(); await sync2(); await A.evaluate(() => { const b = $('#mkBar'); if (b) b.classList.remove('on'); });   // المسح بيتطبق في الحسابات بعد السحب، والرصيد الجديد بيتبعت في اللي بعدها
+      eq('بعد المسح: الرصيد عند أحمد زي الحسابات ومفيش حاجة من التجربة في الوارد', [await balM() === await balA(), await A.evaluate(ids => mkPending().some(x => ids.includes(x.id)), [o1, o2, o3])], [true, false]);
     }
     }   // نهاية أقسام السوق
     }   // نهاية RUN.sync

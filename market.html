@@ -691,20 +691,33 @@ const tgText = o => { const a = fmt(o.amt), w = {cash: 'كاش', tr: 'تحويل
 const view = o => o.t === 'cnt' ? [dayOf(o.ts) + ' ' + timeOf(o.ts), 'تقفيل اليوم', o.amt / 100, 'تقفيل يوم', o.amt === o.sys ? 'مظبوط' : 'المفروض ' + o.sys / 100] : [dayOf(o.ts) + ' ' + timeOf(o.ts), isCustOp(o) ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat + (o.note && o.note !== o.cat ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, o.t === 'pay' ? M_SAID[o.m] || o.m : csTr(o) ? 'بيع كاش — ' + M_SAID.tr : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة', rt: 'مرتجع/شغل'}[o.t], o.t === 'rt' ? o.note || '' : ''];
 const ordView = (k, o) => k === 'ord' ? [dayOf(o.at || o.upd) + ' ' + timeOf(o.at || o.upd), o.cname || '', '', 'طلبية' + (o.st === 'done' ? ' (اتسلمت)' : o.st === 'x' ? ' (اتلغت)' : ''), (o.items || []).map(it => it.n + (it.k ? ' ' + it.k + ' ك' : '')).join('، ')]
   : [dayOf(o.upd) + ' ' + timeOf(o.upd), o.name || '', '', 'تسعير', `${o.n1} ${o.p1 / 100} × ${o.a}% + ${o.n2} ${o.p2 / 100}`];
+/* السطر اللي بيضيع في الشيت (4/11/2026، "رصيد ايمن عند أحمد 22500 وعند مصطفى صفر"): كود الشيت قبل نسخة 8 كان بيسيب القفل قبل ما اللي كتبه يتحفظ،
+   فلو أحمد ومصطفى بعتوا في نفس الثواني، السطر الجديد بتاع واحد فيهم ممكن يتكتب مكانه سطر التاني ويضيع، والشيت قال "وصل".
+   فاللي بيتبعت بيتحط في vf.q لحد ما يتشاف في الشيت في قراية بعده بدقيقتين على الأقل (VF_LAG)، ولو مش موجود بيتبعت تاني (sy بيتشال).
+   القراية من vf.b (رقم مزامنة اتسحب من دقيقتين على الأقل، vf.ck) فبتجيب كمان أي سطر ظهر متأخر برقم أقل من اللي اتسحب (حالة "اتنقلت" أو رصيد عميل).
+   وأول ما التحديث ينزل وكل أسبوع قراية للشيت كله بتراجع كل اللي اتبعت. نفس فكرة الحسابات بالظبط (mkVf في accounts.html) */
+const VF_LAG = 120000, VF_FULL = 7 * 864e5;
+function vfOf(now) {
+  if (!S.vf || S.vf.u !== S.u) S.vf = {u: S.u, q: {}, ck: [], b: S.cursor || 0, at: 0, full: S.cursor ? 0 : now};
+  const v = S.vf, l = v.ck[v.ck.length - 1];
+  if (!l || l[1] !== (S.cursor || 0)) { v.ck.push([now, S.cursor || 0]); if (v.ck.length > 60) v.ck.splice(0, v.ck.length - 60); }
+  return v;
+}
 async function sync() {
   if (!ready || !S.u || S.bad) return;
   if (syncing) { again = true; return; }
   syncing = true; syncAt = Date.now(); let changed = false;
   try {
+    const vf = vfOf(Date.now());   // قبل الإرسال: أي سطر هيتبعت بعد كده رقمه أكبر من S.cursor دلوقتي
     let p = pending();
     while (p.length) {
       const batch = p.slice(0, 40);
       const rows = batch.map(o => { const d = Object.assign({}, o, {tg: tgText(o)}); delete d.sy; return {id: o.id, kind: 'op', upd: o.upd, del: !!o.del, view: view(o), data: d}; });
-      const j = await callSheet({action: 'push', who: 'm', rows});
+      const tp = Date.now(), j = await callSheet({action: 'push', who: 'm', rows});
       if (j && j.error === 'key') { S.bad = true; throw new Error('key'); }
       if (!j || j.ok !== true) throw new Error('push');
       const ack = new Set(j.ack || []);
-      batch.forEach((o, i) => { if (ack.has(o.id) && o.upd === rows[i].upd) o.sy = o.upd; });
+      batch.forEach((o, i) => { if (ack.has(o.id) && o.upd === rows[i].upd) { o.sy = o.upd; vf.q[o.id] = [o.upd, 'op', tp]; } });
       if (batch.some(o => !ack.has(o.id))) throw new Error('ack');
       changed = true; save(); p = pending();
     }
@@ -712,20 +725,38 @@ async function sync() {
     const ox = ['ord', 'prc'].flatMap(k => Object.values(S[k]).filter(o => o.sy !== o.upd).map(o => ({k, o})));
     for (let i = 0; i < ox.length; i += 40) {
       const batch = ox.slice(i, i + 40), rows = batch.map(({k, o}) => { const d = Object.assign({}, o); delete d.sy; return {id: o.id, kind: k, upd: o.upd, del: !!o.del, view: ordView(k, o), data: d}; });
-      const j = await callSheet({action: 'push', who: 'm', rows});
+      const tp = Date.now(), j = await callSheet({action: 'push', who: 'm', rows});
       if (j && j.error === 'key') { S.bad = true; throw new Error('key'); }
       if (!j || j.ok !== true) throw new Error('push');
       const ack = new Set(j.ack || []);
-      batch.forEach(({o}, n) => { if (ack.has(o.id) && o.upd === rows[n].upd) o.sy = o.upd; });
+      batch.forEach(({k, o}, n) => { if (ack.has(o.id) && o.upd === rows[n].upd) { o.sy = o.upd; vf.q[o.id] = [o.upd, k, tp]; } });
       save();
     }
-    let more = true;
-    while (more) {
-      const j = await callSheet({action: 'pull', since: S.cursor});
-      if (j && j.error === 'key') { S.bad = true; throw new Error('key'); }
-      if (!j || j.ok !== true || !Array.isArray(j.rows)) throw new Error('pull');
-      j.rows.forEach(r => { if (merge(r)) { changed = true; lastNew = Date.now(); } });
-      S.cursor = j.next || S.cursor; more = !!j.more;
+    /* السحب من رقم مزامنة: seen = آخر وقت لكل سطر اتشاف (للمراجعة) */
+    const pullFrom = async (since, page) => {
+      const seen = new Map(); let nx = since, more = true;
+      while (more) {
+        const j = await callSheet({action: 'pull', since: nx});
+        if (j && j.error === 'key') { S.bad = true; throw new Error('key'); }
+        if (!j || j.ok !== true || !Array.isArray(j.rows)) throw new Error('pull');
+        j.rows.forEach(r => { if (r && r.id) seen.set(r.id, Math.max(seen.get(r.id) || 0, Number(r.upd) || 0)); if (merge(r)) { changed = true; lastNew = Date.now(); } });
+        nx = j.next || nx; more = !!j.more; page(nx);
+      }
+      return seen;
+    };
+    await pullFrom(S.cursor, nx => { S.cursor = nx; });
+    /* المراجعة (فوق vfOf): اللي اتبعت من دقيقتين أو أكتر لازم يكون في الشيت، وإلا بيتبعت تاني */
+    const R = Date.now(), full = R - (vf.full || 0) > VF_FULL;
+    if (full || (R - (vf.at || 0) >= VF_LAG && (S.cursor > vf.b || Object.values(vf.q).some(q => q[2] <= R - VF_LAG)))) {
+      const seen = await pullFrom(full ? 0 : vf.b, nx => { if (nx > S.cursor) S.cursor = nx; });
+      const gone = [], has = (id, u) => (seen.get(id) || 0) >= u;
+      Object.keys(vf.q).forEach(id => { const q = vf.q[id]; if (q[2] > R - VF_LAG) return; if (!has(id, q[0])) gone.push([id, q[1]]); delete vf.q[id]; });
+      if (full) { [['op', S.ops], ['ord', S.ord], ['prc', S.prc]].forEach(([k, box]) => Object.values(box).forEach(o => { if (o.upd && o.sy === o.upd && !vf.q[o.id] && !has(o.id, o.upd)) gone.push([o.id, k]); })); vf.full = R; }
+      gone.forEach(([id, k]) => { const o = (k === 'op' ? S.ops : S[k])[id]; if (o) delete o.sy; });
+      let nb = null; vf.ck.forEach(c => { if (c[0] <= R - VF_LAG) nb = c; });
+      if (nb) { if (nb[1] > vf.b) vf.b = nb[1]; vf.ck = vf.ck.filter(c => c[0] >= nb[0]); }
+      vf.at = R;
+      if (gone.length) { changed = true; again = true; }   // ضاع من الشيت: يتبعت تاني على طول
     }
     online = true; S.lastOk = nowS();
   } catch (e) { online = false; }

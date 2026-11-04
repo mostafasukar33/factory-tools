@@ -7581,7 +7581,7 @@ const HEAD = ['id','النوع','آخر تعديل','رقم المزامنة','�
 const W = HEAD.length;
 const TG = 'https://api.telegram.org/bot';
 const PUSH = 'https://app.flashoneg.com/push';   // وسيط إشعارات الأيفون (functions/push.js في نفس المشروع)
-const VER = 7;   /* 7 = إشعار لموبايل الشريك لما مصطفى يكتب طلبية جديدة (psub فيه r: 'mk'، والإشعارات التانية مبتروحلوش). 6 = إشعارات الأيفون (رقم الوارد على أيقونة الحسابات): psub/pseen/ptest، وبعد تليجرام بيبعت للوسيط PUSH. 5 = كل رد فيه وقت الشيت t. 2 = نص تليجرام بييجي جاهز من تطبيق الشريك (data.tg). 3 = رسايل من الحسابات لمصطفى (نسخة احتياطية وملخص وتنبيه: tgmsg/tgdoc). 4 = السحب بيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس، والإرسال بيقرا عمود الـ id بس */
+const VER = 8;   /* 8 = الكتابة بتتحفظ (flush) قبل ما القفل يتساب، علشان لو الشريك والحسابات بعتوا في نفس الثواني سطر جديد ميتكتبش مكان سطر جديد تاني ويضيع. 7 = إشعار لموبايل الشريك لما مصطفى يكتب طلبية جديدة (psub فيه r: 'mk'، والإشعارات التانية مبتروحلوش). 6 = إشعارات الأيفون (رقم الوارد على أيقونة الحسابات): psub/pseen/ptest، وبعد تليجرام بيبعت للوسيط PUSH. 5 = كل رد فيه وقت الشيت t. 2 = نص تليجرام بييجي جاهز من تطبيق الشريك (data.tg). 3 = رسايل من الحسابات لمصطفى (نسخة احتياطية وملخص وتنبيه: tgmsg/tgdoc). 4 = السحب بيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس، والإرسال بيقرا عمود الـ id بس */
 const MW = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون كاش'};
 function sh_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -7662,6 +7662,8 @@ function push_(rows, who) {
     });
     if (add.length) s.getRange(last + 1, 1, add.length, W).setValues(add);
     props.setProperty('SEQ', String(seq));
+    /* لازم قبل ما القفل يتساب: جوجل بيأجّل الكتابة لآخر الطلب (وده بعد تليجرام بثواني)، فطلب تاني كان بيقرا آخر سطر قديم ويكتب سطوره مكان دي */
+    SpreadsheetApp.flush();
     res = {ok: true, ack: ack, seq: seq};
   } catch (err) { res = {ok: false, error: String(err)}; }
   finally { lock.releaseLock(); }
@@ -8201,6 +8203,25 @@ function mkSeen(d, r) {
   if (box[r.id] !== sig && mkAccFresh()) { box[r.id] = sig; ch = true; }
   return ch;
 }
+/* السطر اللي بيضيع في شيت السوق (بطلبه 4/11/2026، "ايمن" للمرة التالتة: فاتورته اتنقلت عندي وأحمد لسه شايفها مستنية، فرصيده عنده 22500 وعندي صفر).
+   السبب الحقيقي: كود الشيت قبل نسخة 8 كان بيسيب القفل قبل ما اللي كتبه يتحفظ (وبيكمّل يبعت تليجرام)، فلو أحمد ومصطفى بعتوا في نفس الثواني
+   السطر الجديد بتاع واحد فيهم بيتكتب مكان السطر الجديد بتاع التاني ويضيع، والشيت قال "وصل" (هنا ضاع سطر "اتنقلت" st، فالرصيد عند أحمد بيحسبها مرتين).
+   فاللي بيتبعت مبيتصدقش على طول: بيتحط في vf.q لحد ما يتشاف في الشيت في قراية بعده بدقيقتين على الأقل (MK_LAG)، ولو مش موجود بيتبعت تاني (mkLost).
+   القراية دي من vf.b (رقم مزامنة الجهاز كان سحبه من دقيقتين على الأقل، vf.ck) فبتجيب كمان أي سطر ظهر في الشيت متأخر برقم أقل من اللي اتسحب.
+   وأول ما التحديث ينزل وبعدين كل أسبوع قراية للشيت كله بتراجع كل اللي الجهاز فاكر إنه اتبعت. مبيغيّرش أي حاجة في الحسابات، بيبعت تاني بس */
+const MK_LAG = 120000, MK_FULL = 7 * 864e5;
+function mkVf(d, now) {
+  if (!d.vf) d.vf = {q: {}, ck: [], b: d.cursor || 0, at: 0, full: d.cursor ? 0 : now};
+  const v = d.vf, l = v.ck[v.ck.length - 1];
+  if (!l || l[1] !== (d.cursor || 0)) { v.ck.push([now, d.cursor || 0]); if (v.ck.length > 60) v.ck.splice(0, v.ck.length - 60); }
+  return v;
+}
+function mkLost(d, id, k) {
+  if (k === 'cust') d.cs[id] = '';   // مش توقيع ولا '-': mkCustRows بيبعته تاني (الرصيد، أو "اتشال" لو الحساب اتشال)
+  else if (k === 'sup') (d.ss = d.ss || {})[id] = '';
+  else if (k === 'oit') d.oit = '';
+  else { const s = ((k === 'st' ? d.st : d[k]) || {})[id]; if (s) s.sy = 0; }
+}
 function mkCustRows() {
   let ver = 0; for (const k of ['parties', 'entries', 'sets']) for (const r of db[k]) if (r.upd > ver) ver = r.upd;
   const d = mkDb(), bal = allBalances(), out = [], seen = new Set(), now = 1e13 + ver, lps = lastPays(), avs = payAvgs(), W = mkWants();
@@ -8264,11 +8285,11 @@ function mkNext() { mkQ = null; return mkSync(); }
 async function mkSyncOnce() {
   const cr = mkCreds(); if (!db || !cr || mkBusy) return false;
   mkBusy = true; mkAt = Date.now(); const d0 = db;
-  let fresh = [], ch = false, edits = [], ordCh = false;
+  let fresh = [], ch = false, edits = [], ordCh = false, again = false;
   try {
     const d = mkDb();
-    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}, ss: {}, cu: {}, ord: {}, prc: {}, oit: '', scan: 1}); ch = true; }
-    if (d.scan !== 1 && mkAccFresh()) { d.scan = 1; d.cursor = 0; ch = true; }   // مرة واحدة (بعد ما الحسابات تتزامن): يقرا الشيت كله علشان يعرف أرصدة العملاء اللي فيه فعلاً (mkSeen)
+    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}, ss: {}, cu: {}, ord: {}, prc: {}, oit: '', vf: null}); ch = true; }
+    const vf = mkVf(d, Date.now());   // قبل الإرسال: أي سطر هيتبعت بعد كده رقمه أكبر من d.cursor دلوقتي
     ensureMktVault();
     if (mkReconcile()) ch = true;
     if (mkWantPrune()) ch = true;
@@ -8281,31 +8302,59 @@ async function mkSyncOnce() {
     all.forEach(x => { const n = JSON.stringify(x.row.data).length; if (cur.length && (cur.length >= 100 || sz + n > 400000)) { parts.push(cur); cur = []; sz = 0; } cur.push(x); sz += n; });
     if (cur.length) parts.push(cur);
     for (const part of parts) {
-      const j = await call({action: 'push', who: 'a', rows: part.map(x => x.row)});
+      const tp = Date.now(), j = await call({action: 'push', who: 'a', rows: part.map(x => x.row)});
       if (db !== d0) return false;
       if (!j || j.ok !== true) throw new Error(j && j.error === 'key' ? 'key' : j && j.error ? String(j.error) : 'push');
       const ack = new Set(j.ack || []);
-      part.forEach(x => { if (!ack.has(x.row.id)) return; if (x.s) { if (x.s.upd === x.row.upd) x.s.sy = x.s.upd; } else if (x.oit) d.oit = x.sig; else { (x.box ? d[x.box] : d.cs)[x.row.id] = x.sig; (d.cu = d.cu || {})[x.row.id] = x.row.upd; } });
+      part.forEach(x => {
+        if (!ack.has(x.row.id)) return;
+        vf.q[x.row.id] = [x.row.upd, x.row.kind, tp];   // "وصل" لسه مش أكيد: لازم يتشاف في الشيت بعد دقيقتين (فوق mkVf)
+        if (x.s) { if (x.s.upd === x.row.upd) x.s.sy = x.s.upd; } else if (x.oit) d.oit = x.sig; else { (x.box ? d[x.box] : d.cs)[x.row.id] = x.sig; (d.cu = d.cu || {})[x.row.id] = x.row.upd; }
+      });
       ch = true;
     }
     const first = !d.cursor;
-    let more = true;
-    while (more) {
-      const j = await call({action: 'pull', since: d.cursor});
-      if (db !== d0) return false;
-      if (!j || j.ok !== true || !Array.isArray(j.rows)) throw new Error(j && j.error === 'key' ? 'key' : 'pull');
-      j.rows.forEach(r => {
-        if (!r || !r.id || !r.data) return;
-        if (r.kind === 'cust' || r.kind === 'sup') { if (mkSeen(d, r)) ch = true; return; }
-        const box = r.kind === 'op' ? d.ops : r.kind === 'st' ? d.st : r.kind === 'ord' ? d.ord : r.kind === 'prc' ? d.prc : null; if (!box) return;
-        const cur = box[r.id], own = r.kind !== 'op';   // الطلبيات والتسعير بيتكتبوا من الجهتين، فاللي جاي من الشيت اتبعت خلاص (sy)
-        if (cur && cur.upd >= r.upd) { if (cur.upd === r.upd && own) cur.sy = cur.upd; return; }
-        box[r.id] = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del}, own ? {sy: r.upd} : {});
-        if (own && r.kind !== 'st') ordCh = true;
-        if (r.kind === 'op' && !cur && !r.del && !first) fresh.push(box[r.id]);
-        ch = true; mkNew = Date.now();
-      });
-      d.cursor = j.next || d.cursor; more = !!j.more;
+    const take = r => {
+      if (!r || !r.id || !r.data) return;
+      if (r.kind === 'cust' || r.kind === 'sup') { if (mkSeen(d, r)) ch = true; return; }
+      const box = r.kind === 'op' ? d.ops : r.kind === 'st' ? d.st : r.kind === 'ord' ? d.ord : r.kind === 'prc' ? d.prc : null; if (!box) return;
+      const cur = box[r.id], own = r.kind !== 'op';   // الطلبيات والتسعير بيتكتبوا من الجهتين، فاللي جاي من الشيت اتبعت خلاص (sy)
+      if (cur && cur.upd >= r.upd) { if (cur.upd === r.upd && own) cur.sy = cur.upd; return; }
+      box[r.id] = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del}, own ? {sy: r.upd} : {});
+      if (own && r.kind !== 'st') ordCh = true;
+      if (r.kind === 'op' && !cur && !r.del && !first) fresh.push(box[r.id]);
+      ch = true; mkNew = Date.now();
+    };
+    /* السحب من رقم مزامنة: seen = آخر وقت لكل سطر اتشاف (للمراجعة) */
+    const pullFrom = async (since, page) => {
+      const seen = new Map(); let nx = since, more = true;
+      while (more) {
+        const j = await call({action: 'pull', since: nx});
+        if (db !== d0) return null;
+        if (!j || j.ok !== true || !Array.isArray(j.rows)) throw new Error(j && j.error === 'key' ? 'key' : 'pull');
+        j.rows.forEach(r => { if (r && r.id) seen.set(r.id, Math.max(seen.get(r.id) || 0, Number(r.upd) || 0)); take(r); });
+        nx = j.next || nx; more = !!j.more; page(nx);
+      }
+      return seen;
+    };
+    if (!await pullFrom(d.cursor, nx => { d.cursor = nx; })) return false;
+    /* المراجعة (فوق mkVf): اللي اتبعت من دقيقتين أو أكتر لازم يكون في الشيت، وإلا بيتبعت تاني */
+    const R = Date.now(), full = mkAccFresh() && R - (vf.full || 0) > MK_FULL;
+    if (full || (R - (vf.at || 0) >= MK_LAG && (d.cursor > vf.b || Object.values(vf.q).some(q => q[2] <= R - MK_LAG)))) {
+      const seen = await pullFrom(full ? 0 : vf.b, nx => { if (nx > d.cursor) d.cursor = nx; }); if (!seen) return false;
+      const gone = [], has = (id, u) => (seen.get(id) || 0) >= u;
+      Object.keys(vf.q).forEach(id => { const q = vf.q[id]; if (q[2] > R - MK_LAG) return; if (!has(id, q[0])) gone.push([id, q[1]]); delete vf.q[id]; });
+      if (full) {   // كل اللي الجهاز فاكر إنه اتبعت
+        [['st', d.st], ['ord', d.ord], ['prc', d.prc]].forEach(([k, box]) => Object.values(box || {}).forEach(s => { if (s.upd && s.sy === s.upd && !vf.q[s.id] && !has(s.id, s.upd)) gone.push([s.id, k]); }));
+        [['cust', d.cs], ['sup', d.ss || {}]].forEach(([k, box]) => Object.keys(box).forEach(id => { if (box[id] && box[id] !== '-' && !vf.q[id] && !seen.has(id)) gone.push([id, k]); }));
+        if (d.oit && !vf.q.oit && !seen.has('oit')) gone.push(['oit', 'oit']);
+        vf.full = R;
+      }
+      gone.forEach(([id, k]) => mkLost(d, id, k));
+      if (gone.length) again = true;
+      let nb = null; vf.ck.forEach(c => { if (c[0] <= R - MK_LAG) nb = c; });
+      if (nb) { if (nb[1] > vf.b) vf.b = nb[1]; vf.ck = vf.ck.filter(c => c[0] >= nb[0]); }
+      vf.at = R; ch = true;
     }
     if (mkReconcile()) ch = true;
     const fl = mkFollow(); if (fl.n) { ch = true; if (!first) edits = fl.msgs; }
@@ -8319,6 +8368,7 @@ async function mkSyncOnce() {
       else if (edits.length) mkEditAlert(edits);
       if (ch || fresh.length) whenStill(mkRefresh);
       if (ordCh) { ordBadge(); if (window.ordRefresh) ordRefresh(); }
+      if (again) setTimeout(mkSync, 300);   // سطر ضاع من الشيت: يتبعت تاني على طول
     }
   }
   return !mkErr;
@@ -9104,7 +9154,7 @@ function mktHelp() {
     catch (e) { $('#mhShow').click(); const r = document.createRange(); r.selectNodeContents($('#mhCode')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('اضغط مطوّل على الكود واختار نسخ (Copy)', 6000); }
   };
 }
-const MK_VER = 7;
+const MK_VER = 8;
 /* تحديث كود شيت السوق (من الموبايل أو اللاب). بيتطلب بس لما VER يزيد: نص تنبيهات الشريك بييجي من التطبيق فمش محتاج تحديث */
 function mktUpdateHelp() {
   const code = marketScript(), wide = isWide(), su = db && db.cfg.mkSheetUrl;
@@ -9424,7 +9474,7 @@ function renderMktSettings() {
     if (!j) { el.innerHTML = '⚠️ معرفتش أوصل لشيت السوق دلوقتي.'; return; }
     tgInfo = j;
     if (j.url && db && db.cfg.mkSheetUrl !== j.url) { db.cfg.mkSheetUrl = j.url; flushSave(); }   // لينك جدول "حركة السوق" نفسه (من نسخة 3): زرار يفتحه على طول
-    el.innerHTML = (!j.v || j.v < MK_VER ? `<div class="sync warn" id="mkOld" style="margin-bottom:8px">⚠️ كود شيت السوق قديم: ${j.v >= 6 ? 'شغال عادي، بس إشعار الطلبيات لموبايل أحمد محتاج التحديث' : j.v >= 5 ? 'شغال عادي، بس إشعارات الأيفون (رقم الوارد على الأيقونة) محتاجة التحديث' : j.v >= 3 ? 'شغال عادي، بس هيبطأ مع كتر الحركات على مدار السنين' : 'بعض تنبيهات شريكك بتوصل ناقصة، والنسخة اليومية والملخص مش هيوصلوك'}. <a>حدّثه (مرة واحدة)</a></div>` : '')
+    el.innerHTML = (!j.v || j.v < MK_VER ? `<div class="sync warn" id="mkOld" style="margin-bottom:8px">⚠️ كود شيت السوق قديم: ${j.v >= 7 ? 'شغال، بس لو انت وأحمد بعتوا في نفس الثانية ممكن سطر يضيع من الشيت (البرنامج بيلاحظ وبيبعته تاني بعد دقيقتين، بس التحديث بيمنعه من الأول)' : j.v >= 6 ? 'شغال عادي، بس إشعار الطلبيات لموبايل أحمد محتاج التحديث' : j.v >= 5 ? 'شغال عادي، بس إشعارات الأيفون (رقم الوارد على الأيقونة) محتاجة التحديث' : j.v >= 3 ? 'شغال عادي، بس هيبطأ مع كتر الحركات على مدار السنين' : 'بعض تنبيهات شريكك بتوصل ناقصة، والنسخة اليومية والملخص مش هيوصلوك'}. <a>حدّثه (مرة واحدة)</a></div>` : '')
       + (!j.token ? 'لسه مفيش بوت. اعمله من الخطوات تحت (مرة واحدة).'
       : !j.chat ? `<b style="color:var(--gold-d)">⏳ البوت @${esc(j.bot)} محفوظ. افتحه في تليجرام وابعتله "ابدأ"، وبعدين دوس "جرّب التنبيه".</b>`
       : `<b style="color:var(--green)">✔ التنبيهات شغالة على البوت @${esc(j.bot)}.</b>`);

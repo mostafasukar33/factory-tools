@@ -23,9 +23,11 @@ function makeGas(opts = {}) {
   };
   const ss = {getId: () => 'ss1', getUrl: () => 'https://docs.google.com/spreadsheets/d/ss1/edit', getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = mkSheet(n))};
   const props = {}, triggers = [], folders = [], tg = {calls: [], updates: []};
+  /* ترتيب القفل والحفظ: كود الشيت لازم يعمل flush قبل ما يسيب القفل (شيت السوق نسخة 8) */
+  const lockLog = [];
   const ctx = {
-    SpreadsheetApp: {getActiveSpreadsheet: () => ss},
-    LockService: {getScriptLock: () => ({waitLock() {}, tryLock() { return true; }, releaseLock() {}})},
+    SpreadsheetApp: {getActiveSpreadsheet: () => ss, flush: () => { lockLog.push('flush'); }},
+    LockService: {getScriptLock: () => ({waitLock() { lockLog.push('lock'); }, tryLock() { return true; }, releaseLock() { lockLog.push('release'); }})},
     PropertiesService: {getScriptProperties: () => ({getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = String(v); }, deleteProperty: k => { delete props[k]; }})},
     ...(opts.noDrive ? {} : {
     ScriptApp: {getProjectTriggers: () => triggers.map(h => ({getHandlerFunction: () => h})), newTrigger: h => { const b = {timeBased: () => b, everyDays: () => b, atHour: () => b, create: () => { triggers.push(h); }}; return b; }},
@@ -53,7 +55,7 @@ function makeGas(opts = {}) {
   };
   vm.createContext(ctx);
   return {
-    sheets, ctx, triggers, folders, props, tg, reads,
+    sheets, ctx, triggers, folders, props, tg, reads, lockLog,
     load(src) { vm.runInContext(src, ctx); },
     post(body) { return ctx.doPost({postData: {contents: body}}).t; },
     get() { return ctx.doGet({parameter: {}}).t; }

@@ -203,6 +203,7 @@ nav svg{width:26px;height:26px}
   <div class="stack">
     <button class="btn green" id="bShare" type="button">ابعت واتساب</button>
     <button class="btn" id="bPdf" type="button">معاينة / تنزيل PDF</button>
+    <button class="btn line" id="bRc" type="button">إذن استلام (أصناف وكميات)</button>
     <button class="btn gold" id="bSave" type="button">حفظ في الأرشيف</button>
     <button class="btn line" id="bSaveNew" type="button" style="display:none">حفظ كعرض جديد برقم جديد</button>
   </div>
@@ -562,19 +563,21 @@ $('#bSave').onclick = () => { const q = commit(false); if (q) toast(`اتحفظ 
 $('#bSaveNew').onclick = () => { const q = commit(true); if (q) toast(`اتحفظ كعرض جديد برقم ${q.no}`); };
 $('#bPdf').onclick = async () => { const q = commit(false); if (q) await doExport(q, 'preview'); };
 $('#bShare').onclick = async () => { const q = commit(false); if (q) await doExport(q, 'share'); };
+// إذن استلام من نفس العرض: الأصناف والكميات بس، ومن تحت "المستلم" بس (من غير أسعار ولا شروط)
+$('#bRc').onclick = async () => { const q = commit(false); if (q) await doExport(q, 'preview', true); };
 
 /* ====================== توليد الـ PDF ====================== */
-function buildPages(q) {
+function buildPages(q, rc) {
   // تظبيط الصفحة تلقائي: لو البنود كتير نصغّر المسافات والخط لحد ما العرض يتلم في أقل عدد صفحات
   let best = null;
   for (let d = 1; d <= 3; d++) {
-    const n = buildPagesD(q, d).length;
+    const n = buildPagesD(q, d, rc).length;
     if (!best || n < best.n) best = {d, n};
     if (n === 1) break;
   }
-  return buildPagesD(q, best.d);
+  return buildPagesD(q, best.d, rc);
 }
-function buildPagesD(q, dens) {
+function buildPagesD(q, dens, rc) {
   const box = $('#render'); box.innerHTML = '';
   const s = db.settings, cu = s.currency;
   const c = calc(q);
@@ -582,9 +585,9 @@ function buildPagesD(q, dens) {
     const p = document.createElement('div'); p.className = 'pg d' + dens;
     p.innerHTML = `<div class="strip"></div><div class="in">` + (first
       ? `<div class="hd"><img src="icons/logo.jpg" alt=""><div class="co"><b>فلاش أون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${s.phone ? `<em>${esc(s.phone)}</em>` : ''}</div>
-         <div class="ti"><h3>عرض سعر</h3><div>رقم: <span>${esc(q.no)}</span></div><div>التاريخ: <span>${dispDate(q.date)}</span></div></div></div>
+         <div class="ti"><h3>${rc ? 'إذن استلام' : 'عرض سعر'}</h3><div>رقم: <span>${esc(q.no)}</span></div><div>التاريخ: <span>${dispDate(q.date)}</span></div></div></div>
          <div class="cust">السادة / <b>${esc(q.customer)}</b></div>`
-      : `<div class="mini"><b>فلاش أون</b><span>عرض سعر رقم ${esc(q.no)} — ${esc(q.customer)}</span></div>`) +
+      : `<div class="mini"><b>فلاش أون</b><span>${rc ? 'إذن استلام' : 'عرض سعر'} رقم ${esc(q.no)} — ${esc(q.customer)}</span></div>`) +
       `</div><div class="ft"><span>عالم متكامل من احتياجاتك الكهربائية</span><span class="pn"></span></div>`;
     box.appendChild(p);
     return {p, inn: p.querySelector('.in')};
@@ -593,7 +596,8 @@ function buildPagesD(q, dens) {
   const full = isFull(q);
   const mkTable = () => {
     const t = document.createElement('table');
-    t.innerHTML = !full ? `<colgroup><col style="width:8%"><col style="width:52%"><col style="width:20%"><col style="width:20%"></colgroup>
+    t.innerHTML = rc ? `<colgroup><col style="width:8%"><col style="width:56%"><col style="width:18%"><col style="width:18%"></colgroup>
+      <thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>الكمية</th></tr></thead><tbody></tbody>` : !full ? `<colgroup><col style="width:8%"><col style="width:52%"><col style="width:20%"><col style="width:20%"></colgroup>
       <thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>سعر الوحدة</th></tr></thead><tbody></tbody>` : `<colgroup><col style="width:6%"><col style="width:38%"><col style="width:12%"><col style="width:12%"><col style="width:16%"><col style="width:16%"></colgroup>
       <thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody></tbody>`;
     return t;
@@ -601,7 +605,7 @@ function buildPagesD(q, dens) {
   let pg = shell(true), tbl = mkTable(); pg.inn.appendChild(tbl);
   q.items.forEach((r, i) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = full ? `<td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.unit)}</td><td class="n">${fmt(r.qty)}</td><td class="n">${fmt(r.price)}</td><td class="t">${fmt(r.qty * r.price)}</td>`
+    tr.innerHTML = rc ? `<td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.unit)}</td><td class="t">${r.qty ? fmt(r.qty) : ''}</td>` : full ? `<td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.unit)}</td><td class="n">${fmt(r.qty)}</td><td class="n">${fmt(r.price)}</td><td class="t">${fmt(r.qty * r.price)}</td>`
       : `<td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.unit)}</td><td class="t">${fmt(r.price)} ${esc(cu)}</td>`;
     tbl.tBodies[0].appendChild(tr);
     if (over(pg.inn, tr) && tbl.tBodies[0].rows.length > 1) {
@@ -613,13 +617,13 @@ function buildPagesD(q, dens) {
   sum.innerHTML = (c.disc > 0 ? `<div class="l"><span>المجموع</span><span>${fmt(c.sub)} ${esc(cu)}</span></div>
       <div class="l"><span>الخصم${q.discType === 'pct' ? ' (' + fmt(num(q.discVal)) + '%)' : ''}</span><span>- ${fmt(c.disc)} ${esc(cu)}</span></div>` : '') +
     `<div class="f"><span>الإجمالي النهائي</span><b>${fmt(c.total)} <small style="font-size:15px;color:#DAAE57">${esc(cu)}</small></b></div>`;
-  if (full) tail.push(sum);
-  const lines = (q.terms || '').split('\n').map(x => x.trim()).filter(Boolean);
+  if (full && !rc) tail.push(sum);
+  const lines = rc ? [] : (q.terms || '').split('\n').map(x => x.trim()).filter(Boolean);
   if (lines.length) {
     const h = document.createElement('div'); h.className = 'th'; h.textContent = 'الشروط والأحكام'; tail.push(h);
     lines.forEach(l => { const d = document.createElement('div'); d.className = 'tl'; d.textContent = l; tail.push(d); });
   }
-  const boxes = (s.showSign !== false ? '<div>التوقيع</div>' : '') + (s.showStamp !== false ? '<div>الختم</div>' : '');
+  const boxes = rc ? '<div>المستلم</div>' : (s.showSign !== false ? '<div>التوقيع</div>' : '') + (s.showStamp !== false ? '<div>الختم</div>' : '');
   if (boxes) { const sig = document.createElement('div'); sig.className = 'sg2' + (boxes.split('</div>').length === 2 ? ' one' : ''); sig.innerHTML = boxes; tail.push(sig); }
   tail.forEach(el => {
     pg.inn.appendChild(el);
@@ -639,10 +643,10 @@ function loadPdfLibs() {
 }
 // أول لمسة في الصفحة بتبدأ تجهّز أداة الـ PDF في الخلفية (الصفحة نفسها بتفتح من غيرها)
 addEventListener('pointerdown', () => loadPdfLibs().catch(() => {}), {once: true});
-async function makePdf(q) {
+async function makePdf(q, rc) {
   await loadPdfLibs();
   await Promise.all(['400', '600', '700', '800'].map(w => document.fonts.load(w + ' 16px Cairo', 'نص عربي 123abc')));
-  const pages = buildPages(q);
+  const pages = buildPages(q, rc);
   await Promise.all([...$('#render').querySelectorAll('img')].map(i => i.decode ? i.decode().catch(() => {}) : 0));
   await document.fonts.ready;
   const {jsPDF} = window.jspdf;
@@ -656,7 +660,7 @@ async function makePdf(q) {
     cv.width = cv.height = 0;
   }
   $('#render').innerHTML = '';
-  const name = `عرض سعر ${q.no} - ${q.customer}`.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim() + '.pdf';
+  const name = `${rc ? 'إذن استلام' : 'عرض سعر'} ${q.no} - ${q.customer}`.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim() + '.pdf';
   return {blob: doc.output('blob'), imgs, name};
 }
 
@@ -669,9 +673,10 @@ function busy(on) {
   if (on) modal('<p style="text-align:center">جاري تجهيز ملف الـ PDF…</p>'); else closeModal();
 }
 
-async function shareFile(res, q) {
+async function shareFile(res, q, rc) {
   const file = new File([res.blob], res.name, {type: 'application/pdf'});
-  const data = {files: [file], title: `عرض سعر رقم ${q.no}`, text: `عرض سعر رقم ${q.no} - فلاش أون`};
+  const k = rc ? 'إذن استلام' : 'عرض سعر';
+  const data = {files: [file], title: `${k} رقم ${q.no}`, text: `${k} رقم ${q.no} - فلاش أون`};
   if (!(navigator.canShare && navigator.canShare(data))) {
     downloadBlob(res.blob, res.name);
     toast('الموبايل ده مش بيدعم المشاركة المباشرة. الملف اتنزّل، ابعته من واتساب بإيدك.', 6000);
@@ -690,19 +695,19 @@ async function shareFile(res, q) {
   }
 }
 
-async function doExport(q, mode) {
+async function doExport(q, mode, rc) {
   busy(true);
   let res;
-  try { res = await makePdf(q); }
+  try { res = await makePdf(q, rc); }
   catch (e) { busy(false); console.error(e); toast('حصلت مشكلة في تجهيز الـ PDF، جرّب تاني.'); return; }
   busy(false);
-  if (mode === 'share') return shareFile(res, q);
+  if (mode === 'share') return shareFile(res, q, rc);
   if (mode === 'download') { downloadBlob(res.blob, res.name); return; }
   modal(`${res.imgs.map(u => `<img src="${u}" alt="">`).join('')}
     <div class="stack"><button class="btn green" id="pvShare">ابعت واتساب</button><button class="btn gold" id="pvDl">تنزيل PDF</button><button class="btn line" id="pvX">إغلاق</button></div>`, true);
   $('#pvX').onclick = closeModal;
   $('#pvDl').onclick = () => downloadBlob(res.blob, res.name);
-  $('#pvShare').onclick = () => { closeModal(); shareFile(res, q); };
+  $('#pvShare').onclick = () => { closeModal(); shareFile(res, q, rc); };
 }
 
 /* ====================== الأرشيف ====================== */
@@ -726,7 +731,8 @@ function renderArchive() {
       <div class="q-m">${q.items.length} صنف</div>
       <div class="q-t">${isFull(q) ? `${fmt(calc(q).total)} <small style="font-size:13px">${esc(db.settings.currency)}</small>` : '<small style="font-size:14px;color:#777">أسعار وحدات</small>'}</div>
       <div class="g2"><button class="btn green sm" data-a="share">ابعت واتساب</button><button class="btn sm" data-a="open">فتح وتعديل</button>
-      <button class="btn line sm" data-a="copy">نسخة جديدة</button><button class="btn red sm" data-a="del">مسح</button></div>
+      <button class="btn line sm" data-a="copy">نسخة جديدة</button><button class="btn red sm" data-a="del">مسح</button>
+      <button class="btn line sm" data-a="rc" style="grid-column:1/-1">إذن استلام</button></div>
     </div>`).join('') : `<div class="empty">${all.length ? 'مفيش نتايج للبحث ده' : 'لسه مفيش عروض في الأرشيف'}</div>`;
 }
 $('#qsearch').addEventListener('input', renderArchive);
@@ -735,6 +741,7 @@ $('#qlist').addEventListener('click', async e => {
   const q = db.quotes.find(x => x.id === b.closest('.q').dataset.id); if (!q) return;
   const a = b.dataset.a;
   if (a === 'share') await doExport(q, 'share');
+  else if (a === 'rc') await doExport(q, 'preview', true);
   else if (a === 'open') { cur = clone(q); saveDraft(); go('new'); }
   else if (a === 'copy') {
     cur = clone(q); cur.id = null; cur.no = null; cur.copyOf = q.no; cur.date = todayISO(); delete cur.createdAt; delete cur.updatedAt;

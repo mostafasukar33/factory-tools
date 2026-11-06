@@ -152,7 +152,7 @@ nav svg{width:26px;height:26px}
 <header class="top">
   <img src="icons/logo.jpg" alt="فلاش أون">
   <div><h1>فلاش أون</h1><small>عروض الأسعار</small></div>
-  <a class="homebtn" href="index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>الرئيسية</a>
+  <a class="homebtn" id="homeBtn" href="index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>الرئيسية</a>
 </header>
 
 <main>
@@ -316,6 +316,8 @@ const dispDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `
 const clone = o => JSON.parse(JSON.stringify(o));
 
 let toastT;
+/* لو اتفتح من الحسابات (جوه أيقونتها) الرجوع يروح للحسابات مش للرئيسية */
+try { if (/[?&]from=acc/.test(location.search)) sessionStorage.setItem('fo_q_from', 'acc'); if (sessionStorage.getItem('fo_q_from') === 'acc') { const h = $('#homeBtn'); h.href = 'accounts.html'; h.lastChild.textContent = 'الحسابات'; } } catch (e) {}
 function toast(msg, ms = 2600) {
   const t = $('#toast'); t.textContent = msg; t.style.display = 'block';
   clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms);

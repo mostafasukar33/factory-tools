@@ -376,6 +376,8 @@ const T0 = Date.now();
     await openParty(A, 'عميل تجربة واحد');
     await A.click('#fbDoc'); await A.fill('.li [data-f=name]', 'لفة تجربة 16 مم'); await A.dispatchEvent('.li [data-f=name]', 'change');
     eq('آخر سعر للعميل بيتكتب لوحده', await A.inputValue('.li [data-f=price]'), '350');
+    await A.click('#dcQuote');
+    eq('"من عرض سعر" فيه زرار يفتح عروض الأسعار جوه الحسابات', await A.$eval('#dcQGo', x => x.getAttribute('href')), 'quote.html?from=acc'); await A.click('#dcQuote');
     await A.fill('.li [data-f=qty]', '4'); await A.click('.mmore summary'); await A.fill('#dcDisc', '50');
     eq('الفاتورة للبنود بس: مفيش خانة "دفع دلوقتي"', !!(await A.$('#dcPaid')), false); await A.click('#dcOk'); await closed(A);
     await A.click('#fbPay'); await A.fill('#pyAmt', '400'); await A.click('#pyOk'); await closed(A);

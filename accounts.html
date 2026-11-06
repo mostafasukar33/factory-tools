@@ -2981,7 +2981,9 @@ function docModal(p, kind, e, opts = {}) {
     const pn = norm(p.name).replace(/^(ا|م|الحاج|شركه)\s*\/?\s*/, '');
     qs = qs.slice().sort((a, b) => (norm(b.customer || '').includes(pn) - norm(a.customer || '').includes(pn)) || (b.no - a.no));
     const box = $('#dcQ'); box.style.display = box.style.display === 'none' ? '' : 'none';
-    box.innerHTML = qs.length ? `<div class="card" style="max-height:40vh;overflow:auto;padding:8px">${qs.slice(0, 60).map((q, i) => `<div class="pt" data-q="${i}"><div class="m"><b>عرض سعر رقم ${esc(q.no)} — ${esc(q.customer || '')}</b><small>${dispDate(q.date)} — ${(q.items || []).length} صنف</small></div></div>`).join('')}</div>` : '<div class="empty">مفيش عروض أسعار محفوظة على الجهاز ده</div>';
+    box.innerHTML = (qs.length ? `<div class="card" style="max-height:40vh;overflow:auto;padding:8px">${qs.slice(0, 60).map((q, i) => `<div class="pt" data-q="${i}"><div class="m"><b>عرض سعر رقم ${esc(q.no)} — ${esc(q.customer || '')}</b><small>${dispDate(q.date)} — ${(q.items || []).length} صنف</small></div></div>`).join('')}</div>` : '<div class="empty">مفيش عروض أسعار محفوظة هنا</div>') +
+      /* الآيفون بيفصل مخزن الأيقونة عن سفاري: عرض السعر لازم يتفتح من جوه الحسابات علشان يشوفوا بعض (بطلبه 6/11/2026) */
+      '<a class="btn line sm" id="dcQGo" href="quote.html?from=acc" style="display:block;text-align:center;margin-top:8px">افتح عروض الأسعار</a>';
     $$('#dcQ .pt').forEach(el => el.onclick = () => {
       const q = qs[+el.dataset.q], items = (q.items || []).filter(r => r.name);
       draw(items.length ? items.map(r => ({name: r.name, unit: r.unit || 'وحدة', qty: r.qty ? fmtQ(num(r.qty)) : '', price: r.price ? fmtP(toP(r.price)) : ''})) : lines);

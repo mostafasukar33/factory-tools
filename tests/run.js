@@ -733,6 +733,13 @@ const T0 = Date.now();
     await A.evaluate(() => { window.__sh = null; navigator.canShare = () => true; navigator.share = d => { window.__sh = d; return Promise.resolve(); }; });
     await A.click('#ivShare'); await A.waitForFunction(() => window.__sh, null, {timeout: 90000});
     eq('واتساب الفاتورة: الملف بس واسمه "فاتورة" + اسم الشخص', await A.evaluate(() => [Object.keys(__sh), __sh.files[0].name]), [['files'], 'فاتورة عميل تجربة واحد.pdf']);
+    /* إذن استلام من آخر فاتورة: أصناف وكميات بس ومن تحت "المستلم" بس */
+    await A.evaluate(() => closeModal()); await A.click('#fbStmt'); await A.settle(150);
+    eq('إذن استلام: الأصناف والكميات بس من غير أسعار، وتحت "المستلم" بس', await A.evaluate(() => { const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), l = partyEntries(p.id).filter(e => e.kind === 'inv').pop();
+      const pg = buildRcPages(p, l)[0], r = [!!$('#smRc'), pg.querySelector('h3').textContent, [...pg.querySelectorAll('thead th')].map(x => x.textContent).join('|'), pg.querySelectorAll('tbody tr').length === l.lines.filter(x => x.name).length, pg.querySelector('.rcv').textContent, !pg.textContent.includes(fmtP(docTotal(l)))]; $('#render').innerHTML = ''; return r; }),
+      [true, 'إذن استلام', '#|الصنف|الوحدة|الكمية', true, 'المستلم', true]);
+    await A.evaluate(() => { window.__sh = null; }); await A.click('#smRc'); await A.waitForSelector('#pvShare', {timeout: 90000}); await A.click('#pvShare'); await A.waitForFunction(() => window.__sh, null, {timeout: 90000});
+    eq('واتساب إذن الاستلام: اسمه "إذن استلام" + اسم الشخص', await A.evaluate(() => __sh.files[0].name), 'إذن استلام عميل تجربة واحد.pdf');
 
     sec('٧ب) نقل فواتير الحساب الفرعي لحسابه الأساسي (زي الهاشمية قنا)');
     await A.evaluate(() => closeModal());

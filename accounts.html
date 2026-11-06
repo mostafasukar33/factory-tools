@@ -447,6 +447,7 @@ nav svg{width:26px;height:26px}
 .pg tr.nt td{background:#F7F2E4 !important;font-weight:800;border-bottom:2px solid #9C7420}
 .pg .sum .l.sub{font-weight:800;border-top:2px solid #111;background:#FBF5E6}
 .pg .note{margin-top:14px;font-size:13.5px;font-weight:600;color:#555;flex:none}
+.pg .rcv{margin-top:auto;padding:18px 0 14px;display:flex;flex:none}.pg .rcv div{flex:0 0 50%;height:110px;border:2px dashed #B9A678;border-radius:10px;text-align:center;padding-top:8px;font-weight:700;color:#7a6a3a;font-size:15px}
 .pg .coi{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 22px;margin:-6px 0 10px;padding:3px 10px;border-bottom:1px solid #E4DCC8;font-size:13.5px;font-weight:600;color:#555;flex:none}
 .pg .coi b{color:#111;font-weight:800}.pg .coi b.ltr{direction:ltr;unicode-bidi:isolate}
 .pg table.st td{padding:3px 4px}
@@ -3271,6 +3272,7 @@ function stmtModal(p) {
     <div class="seg s4" id="smMode">${[['last', 'آخر فاتورة'], ['prev', perL()], ['all', 'الحساب كله'], ['range', 'من – إلى']].map(([k, l]) => `<button type="button" data-m="${k}" class="${k === mode ? 'on' : ''}"${k === 'last' && !lastInv ? ' disabled' : ''}>${l}</button>`).join('')}</div>
     <div class="seg s4" id="smPer" style="display:none">${PERS.map(([k, l]) => `<button type="button" data-p="${k}" class="${k === per ? 'on' : ''}">${l}</button>`).join('')}</div>
     ${lastInv ? `<button type="button" class="btn line" id="smInv" style="min-height:40px;font-size:var(--f2);margin:-2px 0 10px">🧾 ابعت آخر فاتورة بس (من غير الرصيد اللي قبلها)</button>` : ''}
+    ${lastInv ? `<button type="button" class="btn line" id="smRc" style="min-height:40px;font-size:var(--f2);margin:-2px 0 10px">📦 إذن استلام (أصناف وكميات آخر فاتورة)</button>` : ''}
     <div class="g2" id="smRange" style="display:none;margin-bottom:6px"><div><label>من</label><input class="inp" type="date" id="smFrom" value="${y}-01-01"></div><div><label>إلى</label><input class="inp" type="date" id="smTo" value="${t}"></div></div>
     <div id="smOut"></div>
     <div class="mfoot"><div class="mrow3"><button class="btn green" id="smShare" type="button">📲 واتساب</button>
@@ -3294,6 +3296,52 @@ function stmtModal(p) {
   $('#smShare').onclick = () => run('share');
   $('#smPdf').onclick = () => run('preview');
   if ($('#smInv')) $('#smInv').onclick = () => invOnlyModal(p, lastInv);
+  if ($('#smRc')) $('#smRc').onclick = () => exportRc(p, lastInv);
+}
+/* إذن استلام (بطلبه 6/11/2026): أصناف وكميات آخر فاتورة بس، من غير أسعار ولا رصيد، ومن تحت خانة "المستلم" بس. عرض بس، مبيغيّرش أي حركة */
+function buildRcPages(p, e) {
+  const box = $('#render'); box.innerHTML = '';
+  const phone = db.cfg.phone, web = coWeb();
+  const shell = first => {
+    const pg = document.createElement('div'); pg.className = 'pg';
+    pg.innerHTML = `<div class="strip"></div><div class="in">` + (first
+      ? `<div class="hd"><img src="icons/logo-pdf.jpg" alt=""><div class="co"><b>فلاش <i class="al">أ</i>ون</b><span>لصناعة الخراطيم والكابلات الكهربائية</span>${phone ? `<em>${esc(phone)}</em>` : ''}</div>
+         <div class="ti"><h3>إذن استلام</h3><div>التاريخ: <span>${dispDate(e.date)}</span></div></div></div>
+         <div class="cust"><span>السادة / <b>${esc(p.name)}</b></span></div>`
+      : `<div class="mini"><b>فلاش أون</b><span>إذن استلام — ${esc(p.name)} — ${dispDate(e.date)}</span></div>`) +
+      `</div><div class="ft"><span>عالم متكامل من احتياجاتك الكهربائية</span>${web ? `<span>${esc(web)}</span>` : ''}<span class="pn"></span></div>`;
+    box.appendChild(pg);
+    return {pg, inn: pg.querySelector('.in')};
+  };
+  const over = (inn, el, m) => el.getBoundingClientRect().bottom > inn.getBoundingClientRect().bottom - m;
+  const mkTable = () => { const t = document.createElement('table'); t.innerHTML = `<colgroup><col style="width:8%"><col style="width:56%"><col style="width:18%"><col style="width:18%"></colgroup>
+    <thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>الكمية</th></tr></thead><tbody></tbody>`; return t; };
+  let pg = shell(true), tbl = mkTable(); pg.inn.appendChild(tbl);
+  (e.lines || []).filter(l => l.name).forEach((l, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i + 1}</td><td>${esc(l.name)}</td><td>${esc(l.unit || '')}</td><td>${l.qty ? fmtQ(l.qty) : ''}</td>`;
+    tbl.tBodies[0].appendChild(tr);
+    if (over(pg.inn, tr, 16) && tbl.tBodies[0].rows.length > 1) { tr.remove(); pg = shell(false); tbl = mkTable(); pg.inn.appendChild(tbl); tbl.tBodies[0].appendChild(tr); }
+  });
+  const sig = document.createElement('div'); sig.className = 'rcv'; sig.innerHTML = '<div>المستلم</div>';
+  pg.inn.appendChild(sig); if (over(pg.inn, sig, -1)) { sig.remove(); pg = shell(false); pg.inn.appendChild(sig); }
+  const pages = [...box.children];
+  pages.forEach((x, i) => x.querySelector('.pn').textContent = `صفحة ${i + 1} من ${pages.length}`);
+  return pages;
+}
+async function exportRc(p, e) {
+  modal('<p style="text-align:center">جاري تجهيز إذن الاستلام…</p>');
+  let res;
+  try { res = await pagesToPdf(() => buildRcPages(p, e), `إذن استلام - ${p.name}`, `إذن استلام ${p.name}`); }
+  catch (x) { closeModal(); console.error(x); toast('حصلت مشكلة في تجهيز الـ PDF، جرّب تاني.'); return; }
+  closeModal();
+  const title = `إذن استلام ${p.name}`;
+  modal(`<div class="pvz">${res.imgs.map(u => `<img src="${u}" alt="">`).join('')}</div>
+    <div class="stack"><button class="btn green" id="pvShare">ابعت واتساب</button><button class="btn gold" id="pvDl">تنزيل PDF</button><button class="btn line" id="pvX">إغلاق</button></div>`, true);
+  $('#pvX').onclick = closeModal;
+  $('#pvDl').onclick = () => downloadBlob(res.blob, res.name);
+  $('#pvShare').onclick = () => { closeModal(); shareFile(res, title); };
+  pvZoom($('#modal .pvz'));
 }
 /* آخر فاتورة لوحدها: بنودها وإجماليها بس، من غير الرصيد اللي قبلها ولا الدفعات (الكشف نفسه زي ما هو) */
 function invOnlyData(p, e) {

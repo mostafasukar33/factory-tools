@@ -316,8 +316,6 @@ const dispDate = iso => { const [y, m, d] = (iso || '').split('-'); return y ? `
 const clone = o => JSON.parse(JSON.stringify(o));
 
 let toastT;
-/* لو اتفتح من الحسابات (جوه أيقونتها) الرجوع يروح للحسابات مش للرئيسية */
-try { if (/[?&]from=acc/.test(location.search)) sessionStorage.setItem('fo_q_from', 'acc'); if (sessionStorage.getItem('fo_q_from') === 'acc') { const h = $('#homeBtn'); h.href = 'accounts.html'; h.lastChild.textContent = 'الحسابات'; } } catch (e) {}
 function toast(msg, ms = 2600) {
   const t = $('#toast'); t.textContent = msg; t.style.display = 'block';
   clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms);

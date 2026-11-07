@@ -735,9 +735,9 @@ html[data-theme=dark] .fab2,html[data-theme=dark] .cbar{background:linear-gradie
 .mrow3{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}
 .msec{display:flex;gap:6px;margin-bottom:8px}.msec .btn{flex:1}
 .mtools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.mtools .btn{width:auto;flex:1;white-space:nowrap}
-/* الفاتورة أنضف (بطلبه 15/10/2026): "+ صنف كمان" عريض تحت البنود، و"زي آخر فاتورة" و"من عرض سعر" زراير رفيعة صغيرة جنب بعض */
+/* الفاتورة أنضف (بطلبه 15/10/2026): "+ صنف كمان" عريض تحت البنود، و"زي آخر فاتورة" زرار رفيع صغير */
 #modal .mtools #dcAdd{flex:1 1 100%;min-height:44px;border:1.5px dashed var(--gold);background:var(--gold-l);color:var(--gold-d);font-weight:800;font-size:var(--f2)}
-#modal .mtools :is(#dcLast,#dcQuote){min-height:34px;font-size:var(--f1);color:var(--sub);border-color:var(--line);background:var(--row);overflow:hidden;text-overflow:ellipsis}
+#modal .mtools #dcLast{min-height:34px;font-size:var(--f1);color:var(--sub);border-color:var(--line);background:var(--row);overflow:hidden;text-overflow:ellipsis}
 /* الفاتورة جدول (بطلبه 17/10/2026): كل صنف سطر رفيع، والسطر اللي بتكتب فيه دهبي فاتح، والاقتراحات طايرة فوق السطور */
 #modal .lhd,#dcLines .li{display:grid;grid-template-columns:22px minmax(0,1fr) 64px 58px 72px 76px 26px;gap:4px;align-items:center}
 #modal .lhd{padding:0 6px 4px;font-size:var(--f1);font-weight:800;color:var(--sub)}
@@ -2844,9 +2844,7 @@ function docModal(p, kind, e, opts = {}) {
     <div class="fld"><label>التاريخ</label><input class="inp" id="dcDate" type="date" value="${dr ? esc(dr.date) : e ? e.date : opts.mk ? isoOf(opts.mk.ts) : todayISO()}"></div>
     <div class="lhd"><span>#</span><span>الصنف</span><span>الوحدة</span><span>الكمية</span><span>السعر</span><span>الإجمالي</span><span></span></div>
     <div id="dcLines"></div>
-    <div class="mtools">${lastDoc ? `<button class="btn line sm" id="dcLast" type="button">↻ زي آخر ${ret ? 'مرتجع' : 'فاتورة'} (${dispDate(lastDoc.date)})</button>` : ''}
-      ${fill && kind === 'inv' ? '<button class="btn line sm" id="dcQuote" type="button">📋 من عرض سعر</button>' : ''}</div>
-    ${fill && kind === 'inv' ? '<div id="dcQ" style="display:none"></div>' : ''}
+    <div class="mtools">${lastDoc ? `<button class="btn line sm" id="dcLast" type="button">↻ زي آخر ${ret ? 'مرتجع' : 'فاتورة'} (${dispDate(lastDoc.date)})</button>` : ''}</div>
     <details class="mmore" ${(e && (e.disc || e.note)) ? 'open' : ''}><summary>+ خصم أو ملاحظة</summary>
       <div class="g2"><div class="fld"><label>خصم على الفاتورة</label><input class="inp num" id="dcDisc" placeholder="0" value="${e && e.disc ? fmtP(e.disc) : ''}"></div>
         <div class="fld"><label>ملاحظة</label><input class="inp" id="dcNote" value="${esc(e ? e.note || '' : '')}"></div></div></details>
@@ -2975,27 +2973,7 @@ function docModal(p, kind, e, opts = {}) {
   };
   $('#dcX').onclick = closeModal;
   if ($('#dcLast')) $('#dcLast').onclick = () => { draw(lastDoc.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty), price: fmtP(l.price)}))); toast('اتنسخت أصناف آخر ' + (ret ? 'مرتجع' : 'فاتورة') + '. راجع الكميات والأسعار.', 3000); };
-  let warned = false, fromQuote = '';
-  /* عرض السعر ← فاتورة: بنقرا عروض الأسعار من أداة عرض السعر (من غير ما نغيّر فيها حاجة) */
-  if ($('#dcQuote')) $('#dcQuote').onclick = () => {
-    let qs = []; try { qs = (JSON.parse(localStorage.getItem('fo_db')) || {}).quotes || []; } catch (x) {}
-    const pn = norm(p.name).replace(/^(ا|م|الحاج|شركه)\s*\/?\s*/, '');
-    qs = qs.slice().sort((a, b) => (norm(b.customer || '').includes(pn) - norm(a.customer || '').includes(pn)) || (b.no - a.no));
-    const box = $('#dcQ'); box.style.display = box.style.display === 'none' ? '' : 'none';
-    box.innerHTML = (qs.length ? `<div class="card" style="max-height:40vh;overflow:auto;padding:8px">${qs.slice(0, 60).map((q, i) => `<div class="pt" data-q="${i}"><div class="m"><b>عرض سعر رقم ${esc(q.no)} — ${esc(q.customer || '')}</b><small>${dispDate(q.date)} — ${(q.items || []).length} صنف</small></div></div>`).join('')}</div>` : '<div class="empty">مفيش عروض أسعار محفوظة هنا</div>') +
-      /* الآيفون بيفصل مخزن الأيقونة عن سفاري: عرض السعر لازم يتفتح من جوه الحسابات علشان يشوفوا بعض (بطلبه 6/11/2026) */
-      '<a class="btn line sm" id="dcQGo" href="quote.html?from=acc" style="display:block;text-align:center;margin-top:8px">افتح عروض الأسعار</a>';
-    $$('#dcQ .pt').forEach(el => el.onclick = () => {
-      const q = qs[+el.dataset.q], items = (q.items || []).filter(r => r.name);
-      draw(items.length ? items.map(r => ({name: r.name, unit: r.unit || 'وحدة', qty: r.qty ? fmtQ(num(r.qty)) : '', price: r.price ? fmtP(toP(r.price)) : ''})) : lines);
-      const sub = items.reduce((t, r) => t + Math.round(num(r.qty) * toP(r.price)), 0), dv = num(q.discVal);
-      const disc = dv > 0 ? (q.discType === 'pct' ? Math.round(sub * dv / 100) : toP(q.discVal)) : 0;
-      $('#dcDisc').value = disc ? fmtP(disc) : ''; calc();
-      fromQuote = String(q.no); if (!$('#dcNote').value.trim()) $('#dcNote').value = `من عرض سعر رقم ${q.no}`;
-      box.style.display = 'none';
-      toast(items.some(r => !num(r.qty)) ? 'اتملت من العرض. اكتب الكميات اللي ناقصة.' : 'اتملت من العرض ✔ راجعها واحفظ', 4000);
-    });
-  };
+  let warned = false;
   /* فاتورة ← إذن تسليم: بنحط الأصناف في مكان مؤقت، وأداة إذن التسليم بتاخدها أول ما تفتح */
   if ($('#dcDlv')) $('#dcDlv').onclick = () => {
     try { localStorage.setItem('fo_inv_to_delivery', JSON.stringify({customer: p.name, no: '', items: e.lines.map(l => ({name: l.name, unit: l.unit, qty: fmtQ(l.qty)}))})); } catch (x) { return toast('معرفتش أجهّز الإذن'); }

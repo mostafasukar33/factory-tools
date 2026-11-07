@@ -1759,6 +1759,10 @@ const T0 = Date.now();
 
     /* المزامنة: الجهاز التاني بياخد المساهمين والكشوف والجرد */
     await bg(A, 'syncNow()'); await bg(B, 'syncNow()'); await B.settle(1500);
+    /* المزامنة ممكن تخلص بعد الانتظار الذكي (حذف جرد آخر لحظة): استنى النتيجة نفسها، ولو موصلتش مزامنة تانية */
+    { const want = JSON.stringify(await A.evaluate(() => [ivList().length, db.ivrs.filter(r => !r.del).length, jrdSaved().length, ivSums('ip_imp_t').bal]));
+      const got = () => B.waitForFunction(w => JSON.stringify([ivList().length, db.ivrs.filter(r => !r.del).length, jrdSaved().length, ivSums('ip_imp_t').bal]) === w, want, {timeout: 8000}).then(() => 1, () => 0);
+      if (!await got()) { await bg(A, 'syncNow()'); await bg(B, 'syncNow()'); await got(); } }
     eq('الجهاز التاني: نفس المساهمين والكشوف والجرد ونفس الأرقام', await B.evaluate(() => [ivList().length, db.ivrs.filter(r => !r.del).length, jrdSaved().length, ivSums('ip_imp_t').bal]),
       await A.evaluate(() => [ivList().length, db.ivrs.filter(r => !r.del).length, jrdSaved().length, ivSums('ip_imp_t').bal]));
     await A.evaluate(() => go('home')); await A.settle(200);

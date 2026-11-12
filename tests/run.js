@@ -3354,6 +3354,11 @@ const T0 = Date.now();
     for (const [nm, root] of [['الوارد (جاهزين للنقل)', '#mqReady'], ['الوارد (محتاجين قرارك)', '#mqDec']]) if (await A.evaluate(r => $$(r + ' .mqa>.n').length >= 2, root)) await colOk('الحسابات — ' + nm, A, root, '.mqa>.n');
     await A.evaluate(() => { cashMode = 'day'; go('home'); }); await A.settle(300);
     await colOk('الحسابات — قايمة العملاء', A, '#hList', '.pt .a b');
+    eq('ليا وعليا والصافي: الرقم الكبير (بالملايين والقروش) بيصغر ومبيتقصّش', await A.evaluate(() => {   // بطلبه 12/11/2026
+      const b = $('#hTots'), keep = b.innerHTML, cls = b.className, big = '<b>99,999,999.90</b>';
+      b.innerHTML = `<div><span>ليا</span>${big}</div><div class="cr"><span>عليا</span>${big}</div><div class="k"><span>الصافي</span>${big}</div>`; fitTots();
+      const ok = [...b.children].every(d => d.lastElementChild.getBoundingClientRect().width <= d.clientWidth + 1) && b.scrollWidth <= b.clientWidth + 1;
+      b.innerHTML = keep; b.className = cls; fitTots(); return [ok, !b.classList.contains('t3') && !b.classList.contains('t2')]; }), [true, true]);
     if (DM) { const MX = DM.pages().find(p => p.url().includes('market.html')); if (MX) { await MX.evaluate(() => nav('')); await MX.settle(400); await colOk('حركة السوق — الرئيسية (دخل جيبك)', MX, '#main .fbd .mb.in', '.mr>.n,.mbh .n'); await colOk('حركة السوق — الرئيسية (طلع من جيبك)', MX, '#main .fbd .mb.out', '.mr>.n,.mbh .n'); } }
 
     sec('١٥) المراجعة الداخلية');

@@ -1399,6 +1399,8 @@ body{font-size:var(--f3);line-height:1.6}
   #hTots div span{font-size:var(--f1)}
   #hTots div b,#hTots .k b{font-size:var(--f4);font-weight:800;line-height:1.3}
 }
+/* الأرقام لما تكبر متتقصّش: التلاتة يصغروا مع بعض درجة أو اتنين (fitTots) */
+#hTots.t3 div b{font-size:var(--f3)}#hTots.t2 div b{font-size:var(--f2)}
 @media (min-width:1000px){
   main.split #hList .pt .a b{font-size:var(--f3)}
   main.split #hList .pt .a{flex-direction:row-reverse}   /* "ليه" يمين الرقم، فالرقم يفضل لازق في الشمال تحت اللي فوقه */
@@ -2292,6 +2294,14 @@ $('#bLock').onclick = () => lockNow();
 const norm = s => normDigits(s).toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
 let tab = 'mkt';
 let homeVer = '', routeKeep = false;
+/* ليا وعليا والصافي: لو رقم مش واخد مكانه (بالملايين والقروش) التلاتة يصغروا مع بعض، بدل ما الرقم يتقص */
+function fitTots() {
+  const box = $('#hTots'); if (!box) return;
+  box.classList.remove('t3', 't2');
+  const over = () => box.scrollWidth > box.clientWidth + 1 || [...box.children].some(d => d.scrollWidth > d.clientWidth + 1 || [...d.children].some(x => x.getBoundingClientRect().width > d.clientWidth + 1));
+  for (const c of ['t3', 't2']) { if (!over()) return; box.classList.add(c); }
+}
+addEventListener('resize', () => { if ($('#hTots') && $('#hTots').offsetWidth) fitTots(); });
 function renderHome() {
   if (!db) return;
   homeVer = dataVer + '|' + tab;
@@ -2323,7 +2333,7 @@ function renderHome() {
   $('#hTabs').classList.remove('t3');
   $$('#hTabs button[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
   if ($('#hJrd')) $('#hJrd').onclick = () => go('jrd');
-  renderMkHome(); renderList(bal); qkMark(); runCounters($('#hTots'));
+  renderMkHome(); renderList(bal); qkMark(); fitTots(); runCounters($('#hTots'));
 }
 function qkMark() { const sp = $('main').classList.contains('split'); $$('nav .qk button').forEach(x => x.classList.toggle('on', sp && x.dataset.q === tab)); }
 let curParty = '';

@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # ubuntu-latest بقى 26.04 وPlaywright 1.56.1 مبيشتغلش عليه (12/11/2026)
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

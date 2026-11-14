@@ -1330,7 +1330,7 @@ function editSheet(o) {
     ${o.t === 'spay' ? `<label style="font-size:var(--f1);font-weight:700;color:var(--sub)">اسم المورد</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.sname)}">` : ''}
     ${o.t === 'cs' ? `<label style="font-size:var(--f1);font-weight:700;color:var(--sub)">اسم المشتري</label><input class="inp" id="eN" autocomplete="off" value="${esc(o.buyer)}">` : ''}
     <label class="amt sm" for="eA" style="margin-top:6px"><input id="eA" type="text" inputmode="decimal" autocomplete="off" value="${fmt(o.amt)}"><em>جنيه</em></label>
-    ${isCustOp(o) || o.t === 'cs' || o.t === 'exp' || o.t === 'spay' ? datePick('eD', dayOf(o.ts)) : ''}
+    ${isCustOp(o) || o.t === 'cs' || o.t === 'exp' || o.t === 'spay' || o.t === 'hand' ? datePick('eD', dayOf(o.ts)) : ''}
     ${o.t === 'rt' ? `<input class="inp2 rt" id="eRt" autocomplete="off" placeholder="ملاحظة: مرتجع إيه أو شغل إيه" value="${esc(o.note || '')}">` : ''}
     ${o.t === 'pay' || o.t === 'cs' ? `<div class="seg" id="eM" style="--n:2;margin-top:10px">${['cash', 'tr'].map(k => `<button type="button" data-m="${k}" class="${k === m || (k === 'tr' && m !== 'cash') ? 'on' : ''}">${{cash: 'فلوس معايا', tr: 'تحويل لمصطفى'}[k]}</button>`).join('')}</div>` : ''}
     ${o.t === 'exp' ? `<label class="wh" for="eNt">المصروف ده إيه؟</label><input class="inp2 exp" id="eNt" autocomplete="off" placeholder="اكتب المصروف" value="${esc(o.cat + (o.note ? ' — ' + o.note : ''))}" style="margin-top:6px">` : ''}
@@ -1512,17 +1512,18 @@ function handModal() {
     <p style="font-size:var(--f2);color:var(--sub);font-weight:600">اكتب الفلوس اللي سلمتها له. مصطفى هيأكد "استلمت" من عنده.</p>
     <label class="amt sm" for="hAmt" style="margin-top:0"><input id="hAmt" type="text" inputmode="decimal" autocomplete="off" placeholder="0"><em>جنيه</em></label>
     ${cn > 0 ? `<button class="sbtn" id="hAll" type="button" style="width:100%;margin-top:8px;height:42px">كل اللي معايا (${fmt(cn)})</button>` : ''}
+    ${datePick('hD', today())}
     <button class="big b-cash" id="hOk" type="button">سلمت</button><button class="big b-home" id="hX" type="button">رجوع</button>`);
-  bindAmt($('#hAmt'));
+  bindAmt($('#hAmt')); bindDate('hD');
   setTimeout(() => $('#hAmt') && $('#hAmt').focus(), 80);
   $('#hX').onclick = closeModal;
   if ($('#hAll')) $('#hAll').onclick = () => { $('#hAmt').value = fmt(cn).replace(/[^\d,.]/g, ''); };
   $('#hOk').onclick = async () => {
     const amt = amtOf($('#hAmt'));
     if (!(amt > 0)) return toast('اكتب المبلغ');
-    const dup = liveOps().find(o => o.t === 'hand' && o.amt === amt && nowS() - o.ts < 120000);
+    const dup = liveOps().find(o => o.t === 'hand' && o.amt === amt && nowS() - (o.cr || o.ts) < 120000);
     if (dup && !(await ask(`سجلت تسليم ${fmt(amt)} من شوية. دي مرة تانية؟`, 'أيوه، مرة تانية', 'لأ، دي نفسها'))) return;
-    const now = nowS(), o = {id: newId(), t: 'hand', amt, ts: now, upd: now, del: false};
+    const now = nowS(), o = {id: newId(), t: 'hand', amt, ts: tsOnDay(dateOf('hD')), cr: now, upd: now, del: false};
     S.ops[o.id] = o; save(); sync(); closeModal();
     savedHere(`✔ اتسجل: سلمت لمصطفى ${fmt(amt)}`);
   };

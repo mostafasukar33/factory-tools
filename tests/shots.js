@@ -229,6 +229,8 @@ const HSSHOT = `if (!getSet('paySheet', null)) {
 const SCREENS = [
   ...ACC('m', MOB),
   {name: 'acc-rep-ah-m', app: 'acc', vp: MOB, full: true, go: accEval(`go('rep'); repKind = 'ah'; repMode = 'week'; repDay = addDays(todayISO(), -3); renderReports()`)},
+  {name: 'acc-more-m', app: 'acc', vp: MOB, go: accEval("go('more')")},
+  {name: 'acc-party-top-m', app: 'acc', vp: MOB, go: async A => { await accEval(`tab = 'mkt'; go('p/' + ${party}.id)`)(A); await A.evaluate(() => { $('#p-party').scrollTop = 0; }); }},
   {name: 'acc-lock-m', app: 'acc', vp: MOB, go: accEval("$('#bLock').click()")},
   ...ACC('l', LAP),
   {name: 'acc-party-l1100', app: 'acc', vp: LAP2, go: accEval(`go('p/' + ${party}.id)`)},

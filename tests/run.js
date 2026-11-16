@@ -198,6 +198,7 @@ if (process.argv.includes('--dry')) process.exit(0);   // يقول هيشغّل 
    كل الصفحات بتتقدم مع بعض بنفس المقدار، فترتيب الحركات بين الأجهزة زي ما هو. */
 const TRACKER = `(() => {
   if (window.__tk) return;
+  try { if (localStorage.getItem('fo_auto') === null) localStorage.setItem('fo_auto', '0'); } catch (e) {}
   const T = window.__tk = {n: 0, last: 0}, DBG = ${process.env.SETTLE_DEBUG ? 'true' : 'false'};   // SETTLE_DEBUG=1: بيطبع في الآخر مين اللي خلّى الانتظار يوصل للحد الأقصى
   const RD = Date; let off = null;
   const getOff = () => { if (off === null) { try { off = +sessionStorage.getItem('__tkOff') || +window.__tkOff0 || 0; } catch (e) { off = +window.__tkOff0 || 0; } } return off; };
@@ -804,15 +805,15 @@ const T0 = Date.now();
       sb('sup'); r.push(on()); sb('mkt'); r.push(on()); $('#pmDir button[data-v="cr"]').click(); sb('sup'); sb('site'); r.push(on()); closeModal(); return r; }), ['cr', 'dr', 'cr']);
 
     sec('٩) قفل الفترة');
-    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.fill('#sLockD', today); await A.click('#sLockGo'); await A.click('#cOk'); await A.settle(200);
+    await A.evaluate(() => go('set')); await A.evaluate(() => setOpenAll()); await A.fill('#sLockD', today); await A.click('#sLockGo'); await A.click('#cOk'); await A.settle(200);
     await openParty(A, 'عميل تجربة واحد'); await A.click('#fbPay'); await A.fill('#pyAmt', '1'); await A.click('#pyOk'); await A.settle(150);
     eq('مينفعش تسجل في فترة مقفولة', (await A.textContent('#toast')).includes('مقفولة'), true); await A.click('#pyX');
-    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.click('#sUnlock'); await A.fill('#apP', PASS); await A.click('#apOk'); await A.settle(600);
+    await A.evaluate(() => go('set')); await A.evaluate(() => setOpenAll()); await A.click('#sUnlock'); await A.fill('#apP', PASS); await A.click('#apOk'); await A.settle(600);
 
     }
     if (RUN.sync) {   // ← وضع الشكل (smoke) بيتخطى ١٠ لحد ٢٢
     sec('١٠) المزامنة مع الشيت وجهاز تاني');
-    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.waitForSelector('#sSheet details.adv', {state: 'attached'}); await A.evaluate(() => setOpenAll()); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details.fld summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.settle(300);
+    await A.evaluate(() => go('set')); await A.waitForSelector('#sSheet details.adv', {state: 'attached'}); await A.evaluate(() => setOpenAll()); await A.fill('#shUrl', ACC_URL); await A.click('#sSheet details.fld summary'); await A.fill('#shKey', KEY); await A.click('#shSave'); await A.settle(300);
     await A.click('#shHelp'); await A.click('#hpCopy'); const accCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.acc.load(accCode); await A.click('#hpX');
     eq('كود الشيت مفيهوش المفتاح', accCode.includes(KEY), false);
     eq('رقم تعريف النشر بيتحول للينك', await A.evaluate(() => normSheetUrl(' AKfycbxTEST1234567890abcdefghij ')), 'https://script.google.com/macros/s/AKfycbxTEST1234567890abcdefghij/exec');
@@ -822,7 +823,7 @@ const T0 = Date.now();
     eq('الشيت بيرفض مفتاح غلط', JSON.parse(sheets.acc.post(JSON.stringify({key: 'x', action: 'pull'}))).error, 'key');
     D2 = await newDevice(browser, base, sheets); B = await D2.page('accounts.html');
     await unlock(B, true);
-    await B.click('#bSet:visible, nav button[data-go=set]:visible'); await B.waitForSelector('#sSheet details.adv', {state: 'attached'}); await B.evaluate(() => setOpenAll()); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details.fld summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.settle(4000);
+    await B.evaluate(() => go('set')); await B.waitForSelector('#sSheet details.adv', {state: 'attached'}); await B.evaluate(() => setOpenAll()); await B.fill('#shUrl', ACC_URL); await B.click('#sSheet details.fld summary'); await B.fill('#shKey', KEY); await B.click('#shSave'); await B.settle(4000);
     if (MO) await A.evaluate(() => { const now = Date.now(), p = {id: newId('p_'), sec: 'mkt', name: 'عميل ترتيب تجربة', phone: '', note: '', noTot: false, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p); saveDB(); });
     if (RUN.base) {   // ← وضع السوق بيتخطى باقي ١٠ لحد ١٤
     const snap = X => X.evaluate(() => [liveParties().map(p => balance(p.id)).sort(), vaultBal(''), selfCheck().length]);
@@ -837,7 +838,7 @@ const T0 = Date.now();
     eq('جهاز جديد برابط الربط بس نزلت عليه كل الحسابات', await snap(J), await snap(A));
     eq('الجهاز الجديد فضل مربوط', await J.evaluate(() => db.cfg.sheetOk), true);
     eq('الرابط اتشال من شريط العنوان', J.url().includes('join'), false);
-    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll()); await A.click('#shAudit'); await A.settle(3000);
+    await A.evaluate(() => go('set')); await A.evaluate(() => setOpenAll()); await A.click('#shAudit'); await A.settle(3000);
     eq('مراجعة الجهاز مع الشيت متطابقة', (await A.textContent('#modal .sync')).includes('متطابقين ('), true); await A.click('#saX');
     {   // جوجل رد بصفحة خطأ مرة: البرنامج بيعيد لوحده ويكمّل، وعدد "مستني" في الإعدادات بيتحدث بعد المزامنة
       await A.evaluate(() => { const p = liveParties()[0]; p.note = 'تجربة صفحة جوجل'; p.upd = nowS(); saveDB(); renderSettings(); });
@@ -1010,7 +1011,7 @@ const T0 = Date.now();
     await bg(A, 'syncNow()'); await A.settle(500);
     eq('شيت بالكود القديم: المزامنة شغالة عادي والتحذير الأصفر ظاهر', await A.evaluate(() => [syncErr, pendingRecs().length, db.cfg.accV, $('#syncBox').classList.contains('warn'), !!$('#syUpd')]), ['', 0, 1, true, true]);
     eq('الحركة وصلت الشيت القديم', GOLD.sheets['السجلات'].rows.some(r => r[0] === 't_oldsheet'), true);
-    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.waitForFunction(() => document.body.dataset.pg === 'set' && $('#shUpd')); await A.evaluate(() => setOpenAll()); await A.settle(800);   // نستنى صفحة الإعدادات تترسم الأول (الرسم بعدها بيقفل "متقدم" تاني)
+    await A.evaluate(() => go('set')); await A.waitForFunction(() => document.body.dataset.pg === 'set' && $('#shUpd')); await A.evaluate(() => setOpenAll()); await A.settle(800);   // نستنى صفحة الإعدادات تترسم الأول (الرسم بعدها بيقفل "متقدم" تاني)
     eq('الإعدادات: تحذير "الكود قديم" وزرار ثابت "تحديث كود شيت الحسابات"', [!!(await A.$('#accOld')), (await A.textContent('#shUpd')).includes('تحديث كود شيت الحسابات')], [true, true]);
     await A.click('#shUpd'); await A.settle(150);
     eq('خطوات التحديث من جوه الجدول: إزاي تعرفه (بدون عنوان، ورقة السجلات جنب الورقة1، العناوين) ولينك الجدول نفسه', await A.evaluate(() => { const t = $('#modal').textContent; return [t.includes('الإضافات (Extensions)'), t.includes('جدول بيانات بدون عنوان'), t.includes('السجلات') && t.includes('الورقة1') && t.includes('رقم المزامنة'), t.includes('New version'), !!$('#modal a[href*="docs.google.com/spreadsheets/d/ss1"]')]; }), [true, true, true, true, true]);
@@ -1134,7 +1135,7 @@ const T0 = Date.now();
     sec('١٢) الشركاء: مرتب كل خميس ومسحوبات');
     await bg(A, 'syncNow()');   // ياخد اللي اتسجل في الجهاز التاني الأول
     const vb0 = await A.evaluate(() => vaultBal(''));
-    eq('الموبايل: الشريط اللي تحت العملاء | الموردين | الوارد | التقارير | الخزنة (التقارير بطلبه 31/10/2026)، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ["home", "sup", "mkt", "rep", "cash"]);
+    eq('الموبايل: الشريط اللي تحت العملاء | الموردين | الوارد | الخزنة | المزيد (بطلبه 16/11/2026)، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ["home", "sup", "mkt", "cash", "more"]);
     await A.evaluate(() => go('cash')); await A.click('#cMore'); await A.click('#modal [data-b=cPart]'); await A.waitForSelector('#ptBack', {timeout: 3000}).catch(() => {});   // الصفحة بتفتح بعد تغيير العنوان
     eq('الشركاء من الخزنة: الخزنة متعلّمة تحت وفيه رجوع', [await A.evaluate(() => $('nav button.on').dataset.go), !!await A.$('#ptBack')], ['cash', true]);
     await A.click('#psGo'); await A.fill('#psA', '10');
@@ -1215,6 +1216,10 @@ const T0 = Date.now();
       await bg(A, 'hsPull(true)');
       eq('حسن عدّل سلفة بعد النقل: الأسبوع بيرجع "اتغيّر" ورقمه اتحدث', await A.evaluate(() => [hsWeeks().filter(w => w.st).map(w => [w.st, w.adv]), hsBal()]), [[['chg', 25000]], 800000 - 195000]);
       eq('النقل تاني بيحدّث نفس السطر (مش تكرار)', await A.evaluate(th => { hsMoveAll(); return [db.txs.filter(t => t.id.startsWith('t_hs_') && !t.del).length, IDX.tx.get(`t_hs_${thuOnOrAfter(addDays(todayISO(), -10))}_adv`).amt]; }, th20), [3, 25000]);
+      eq('حسن بيدخل لوحده (بطلبه 16/11/2026): الأسبوع اللي اتغيّر بيتنقل من غير دوسة، ولما التلقائي مقفول لأ', await A.evaluate(() => {
+        const id = `t_hs_${thuOnOrAfter(addDays(todayISO(), -10))}_adv`; IDX.tx.get(id).amt = 100; const off = hsAuto();
+        localStorage.setItem('fo_auto', '1'); const n = hsAuto(); localStorage.setItem('fo_auto', '0');
+        return [off, n > 0, IDX.tx.get(id).amt, hsPend().length, db.txs.filter(t => t.id.startsWith('t_hs_') && !t.del).length]; }), [0, true, 25000, 0, 3]);
       /* الكارت الأسود: حسن جنبهم للعلم، الرقم الكبير معاك + أحمد بس، وسطر واحد */
       await A.evaluate(() => go('cash')); await A.waitForSelector('#kHs');
       eq('الكارت الأسود: "أحمد" و"حسن" من غير "مع"، والرقم الكبير من غير حسن، وكلهم سطر واحد', await A.evaluate(() => {
@@ -1547,9 +1552,9 @@ const T0 = Date.now();
         pg.every(x => x.querySelector('.gen').textContent.startsWith('صدر هذا الكشف إلكترونياً')), !last.querySelector('.note'), pg[0].querySelector('thead').textContent.includes('المدفوع')];
       [c.coAddr, c.coCr, c.coTax] = old; $('#render').innerHTML = ''; return r; }), [true, true, true, true, true, true, true, true, true, true]);
     sec('١٣ب) الجرد والمساهمين');
-    eq('الموبايل: الجرد مش تحت وزرار جوه التقارير، وزرار اختيار التقرير ظاهر في الملخص وبيفتح التقرير، وتبويب التقارير متعلّم', await A.evaluate(() => {
+    eq('الموبايل: الجرد مش تحت وزرار جوه التقارير، وزرار اختيار التقرير ظاهر في الملخص وبيفتح التقرير، والمزيد هو المتعلّم (التقارير جواه)', await A.evaluate(() => {
       repKind = 'home'; go('rep'); renderReports(); const r = [getComputedStyle($('nav button[data-go=jrd]')).display, !!$('#rpJrd'), !!$('#rpPick') && $('#rpPick').offsetParent !== null, $('nav button.on').dataset.go];
-      $('#rpPick').click(); const b = $('#modal .rpkm [data-v=mat]'); r.push(!!b); b.click(); r.push(repKind, !!$('#rpXK')); repKind = 'home'; renderReports(); return r; }), ['none', true, true, 'rep', true, 'mat', true]);
+      $('#rpPick').click(); const b = $('#modal .rpkm [data-v=mat]'); r.push(!!b); b.click(); r.push(repKind, !!$('#rpXK')); repKind = 'home'; renderReports(); return r; }), ['none', true, true, 'more', true, 'mat', true]);
     await A.click('#rpJrd'); await A.waitForSelector('#jrS', {timeout: 3000});
     /* الأرقام اللي جاية لوحدها = نفس اللي بيتحسب من الحسابات والخزنة بطريقة تانية */
     eq('الجرد: العملا والموردين والخزن من الحسابات (من غير الحساب الفرعي)', await A.evaluate(() => {
@@ -1845,7 +1850,7 @@ const T0 = Date.now();
         $('#p-party .ldgw').scrollWidth <= $('#p-party .ldgw').clientWidth + 1]; }), ['التاريخ|البيان|الإجمالي|دفعة|الرصيد', true, false, true, true]);
     eq('الموبايل (بطلبه 30/10/2026): صفحة الحساب ⋯ فيها تعديل ومرتجع وخصم، و📞 بيتصل، والشريط الرفيع بالاسم والرصيد بيظهر لما تنزل', await A.evaluate(() => {
       const p = liveParties().find(x => x.sec === 'mkt'), ph0 = p.phone; p.phone = '0100 000 0009'; go('p/' + p.id); renderParty(p.id); const box = $('#p-party'), r = [!!$('#ppMore').offsetParent, $('#ppCall').getAttribute('href').startsWith('tel:'), !$('#ppRet').offsetParent];
-      $('#ppMore').click(); r.push($$('#modal .kmenu [data-b]').map(b => b.dataset.b).join(',').startsWith('ppEdit2,ppRet,ppAdj')); closeModal();
+      $('#ppMore').click(); r.push($$('#modal .kmenu [data-b]').map(b => b.dataset.b).join(',').startsWith('ppRet,ppAdj') && !!$('#ppEdit2').offsetParent); closeModal();
       box.scrollTop = 0; ppStkWatch(); /* من فوق (الطويل بقى بيفتح على آخر حركة، بطلبه 1/11/2026) */ r.push($('#ppStk').classList.contains('on')); box.scrollTop = box.scrollHeight; box.dispatchEvent(new Event('scroll')); r.push(!box.scrollTop || $('#ppStk').classList.contains('on')); box.scrollTop = 0; box.dispatchEvent(new Event('scroll'));
       r.push($('#ppCall').getAttribute('href')); p.phone = ph0; renderParty(p.id); return r; }), [true, true, true, true, false, true, 'tel:01000000009']);
     {   // بطلبه 1/11/2026: الحساب الطويل بيفتح على آخر حركة (والشريط الرفيع بالاسم والرصيد ظاهر)، والقصير بيفضل من فوق، والرجوع للقايمة مكانها زي ما هو
@@ -1886,7 +1891,7 @@ const T0 = Date.now();
     eq('الموبايل: مفيش زرار الليلي فوق، وزرار الحساب الجديد مش نفس ＋ بتاع التسجيل السريع، وسطر "آخر دفعة" تحت الاسم', await A.evaluate(() => [!!$('#bTheme').offsetParent, $('#bNewParty').textContent.includes('＋'), !!$('#bNewParty svg'),
       [...$$('#hList .lpy')].some(x => x.offsetParent && x.textContent.startsWith('آخر دفعة'))]), [false, false, true, true]);
     eq('الموبايل (بطلبه 30/10/2026): البحث والجرد وجديد في سطر واحد (التقارير اتشالت من هنا 31/10/2026، بقت تحت)، و"في الحركات" مستخبي لحد ما تكتب، والترتيب جنب التبويبات من غير سطر "الاسم/عليه"', await A.evaluate(() => {
-      const bs = ['#hJrd', '#bNewParty'].map(x => $(x).getBoundingClientRect()), q = $('#hSearch').getBoundingClientRect(), tb = $('#hTabs').getBoundingClientRect(), so = $('#hSortB').getBoundingClientRect();
+      const bs = ['#bNewParty'].map(x => $(x).getBoundingClientRect()), q = $('#hSearch').getBoundingClientRect(), tb = $('#hTabs').getBoundingClientRect(), so = $('#hSortB').getBoundingClientRect();
       return [!!$('#hSearch').offsetParent, !!$('#bSearch').offsetParent, q.bottom <= $('#hList').getBoundingClientRect().top + 1, bs.every(r => Math.abs(r.top - q.top) < 3 && r.height >= 44 && r.width >= 44 && r.left >= 0),
         bs.slice(1).every((r, i) => Math.abs(r.right - bs[i].left) >= 6 || Math.abs(bs[i].right - r.left) >= 6), !!$('#bSearchAll').offsetParent, !!$('#hTabs #hSortB') && so.top >= tb.top - 1 && so.bottom <= tb.bottom + 1, !$('#hList .pth').offsetParent]; }), [true, false, true, true, true, false, true, true]);
     await A.fill('#hSearch', 'تجربة واحد'); await A.settle(200);
@@ -1954,7 +1959,7 @@ const T0 = Date.now();
     const C1 = 'عميل تجربة واحد', bal0 = await bal(A, C1), pid1 = await A.evaluate(n => liveParties().find(x => x.name === n).id, C1);
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('قبل الربط: مفيش سطر في الرئيسية، وتبويب حركة السوق بيوديه للإعدادات على كارتها', [(await A.textContent('#mkRem')).trim(), (await A.click('nav button[data-go=mkt]'), await A.click('#mkSet'), await A.settle(400), await A.evaluate(() => [location.hash, !!$('#sMkt #smHelp')]))], ['', ['#set', true]]);
-    await A.click('#bSet:visible, nav button[data-go=set]:visible'); await A.evaluate(() => setOpenAll());
+    await A.evaluate(() => go('set')); await A.evaluate(() => setOpenAll());
     await A.click('#smHelp'); await A.click('#mhCopy'); const mkCode = await A.evaluate(() => navigator.clipboard.readText()); sheets.mkt.load(mkCode); await A.click('#mhX');
     await A.fill('#smUrl', MKT_URL); await A.click('#smGo'); await A.settle(2500);
     await A.evaluate(() => putSet('tgOpts', {bk: false, sum: false, al: false, wk: false, mo: false, nl: false, dr: false}));   // رسايل الحسابات على تليجرام بتتجرب لوحدها تحت، علشان متدخلش وسط رسايل الشريك
@@ -2308,14 +2313,22 @@ const T0 = Date.now();
     eq('اللاب: عداد حركة السوق على زرارها ومفيش جرس', await A.evaluate(() => [$('#nbMkt').textContent, !$('#bBell'), getComputedStyle($('nav button[data-go=mkt]')).display !== 'none']), ['3', true, true]);
     await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
     eq('الموبايل: زرار حركة السوق تحت مكان الشركاء (بطلب صاحب المشروع) ومفيش جرس', await A.evaluate(() => [getComputedStyle($('nav button[data-go=mkt]')).display, getComputedStyle($('nav button[data-go=part]')).display, !$('#bBell')]), ['flex', 'none', true]);
-    eq('الموبايل: الإعدادات ترس فوق (مش تحت)، والشريط 5 خانات (التقارير اتضافت بطلبه 31/10/2026)', await A.evaluate(() => [getComputedStyle($('#bSet')).display !== 'none', getComputedStyle($('nav button[data-go=set]')).display, getComputedStyle($('nav')).gridTemplateColumns.split(' ').length]), [true, 'none', 5]);
+    eq('الموبايل (بطلبه 16/11/2026): الشريط 5 خانات آخرها "المزيد" بعد الخزنة، والتقارير والترس جوه المزيد', await A.evaluate(() => { const vis = $$('nav button[data-go]').filter(b => b.offsetParent).sort((a, b) => b.getBoundingClientRect().left - a.getBoundingClientRect().left).map(b => b.dataset.go); return [vis.join(','), getComputedStyle($('#bSet')).display, getComputedStyle($('nav')).gridTemplateColumns.split(' ').length]; }), ['home,sup,mkt,cash,more', 'none', 5]);
     await A.click('nav button[data-go=home]'); await A.settle(200);
-    eq('الموبايل: مفيش زرار تقارير في العملاء (بقى تحت)، والجرد وجديد جنب البحث في سطر واحد', await A.evaluate(() => { const q = $('#hSearch').getBoundingClientRect(), j = $('#hJrd').getBoundingClientRect(), n = $('#bNewParty').getBoundingClientRect(); return [!$('#hRep'), Math.abs(q.top - j.top) < 4 && Math.abs(j.top - n.top) < 4, j.left !== n.left]; }), [true, true, true]);
-    await A.click('#hJrd'); await A.settle(200);
-    eq('زرار الجرد فوق بيفتح الجرد', await A.evaluate(() => location.hash), '#jrd');
+    eq('الشكل الجديد (بطلبه 16/11/2026): ليا وعليا والصافي فوق الخزنة بنفس حسبة الحسابات، والعملاء كارت واحد بإجمالي القسم وزرارين بإجماليهم، وراس الحساب بزراير واضحة', await A.evaluate(() => {
+      let ly = 0, al = 0; allBalances().forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });
+      go('cash'); renderCash(); const k = $$('#cTots b').map(b => +b.dataset.cnt), box = $('#cTots');
+      tab = 'mkt'; go('home'); renderHome(); const bal = allBalances(), mk = liveParties().filter(p => p.sec === 'mkt' && !p.noTot).reduce((n, p) => n + (bal.get(p.id) || 0), 0);
+      const r = [k[0] === ly, k[1] === al, k[2] === Math.abs(ly - al), $$('#hTots .hk').length, +$('#hTots .hk b').dataset.cnt === Math.abs(mk), $$('#hTabs .tbt').filter(x => x.offsetParent).length];
+      const p = liveParties().find(x => x.sec === 'mkt'), ph0 = p.phone; p.phone = '0100 000 0009'; renderParty(p.id);
+      r.push(!!$('#p-party .ph2'), $('#ppWa').getAttribute('href'), !!$('#ppEdit2'), +$('#p-party .ph2b b').dataset.cnt === Math.abs(balance(p.id))); p.phone = ph0; renderHome(); return r; }), [true, true, true, 1, true, 2, true, 'https://wa.me/201000000009', true, true]);
+    await A.click('nav button[data-go=more]'); await A.settle(200);
+    eq('المزيد: كروت بسطر شرح (التقارير والجرد والشركاء والإعدادات…) وهو المتعلّم تحت', await A.evaluate(() => [location.hash, $$('#p-more .moc').map(b => b.dataset.mo).join(','), $$('#p-more .moc').every(b => b.querySelector('small').textContent.length > 5), $('nav button.on').dataset.go]), ['#more', 'rep,jrd,part,find,cats,cl,doc,set', true, 'more']);
+    await A.click('#p-more [data-mo=jrd]'); await A.settle(200);
+    eq('الجرد من المزيد بيفتح الجرد والمزيد لسه متعلّم', await A.evaluate(() => [location.hash, $('nav button.on').dataset.go, !$('#hJrd')]), ['#jrd', 'more', true]);
     eq('الوقت المتسجل من ساعة الموبايل (حتى لو الشيت رد بوقت مختلف)', await A.evaluate(() => { const t0 = Date.now(); srvClock({t: t0 + 5 * 36e5}, t0); const r = {}; touch(r); return [Math.abs(r.upd - Date.now()) < 3000, Math.abs(nowS() - Date.now()) < 3000]; }), [true, true]);
-    await A.click('#bSet'); await A.settle(200);
-    eq('ترس الإعدادات فوق بيفتح الإعدادات', await A.evaluate(() => location.hash), '#set');
+    await A.click('nav button[data-go=more]'); await A.click('#p-more [data-mo=set]'); await A.settle(200);
+    eq('الإعدادات من المزيد', await A.evaluate(() => location.hash), '#set');
     await A.click('nav button[data-go=mkt]'); await A.settle(300);
     eq('سطر الوارد: المستني نقل ظاهر فوق الوارد', await A.evaluate(() => [!!$('#mkStat'), /مستنياك/.test($('#mkStat').textContent), $('#mkStat').getBoundingClientRect().top < $('#mkBody').getBoundingClientRect().top]), [true, true, true]);
     eq('أول شاشة بعد القفل: الوارد لو فيه حاجة مستنية', await A.evaluate(() => landingHash()), '#mkt');
@@ -2735,6 +2748,29 @@ const T0 = Date.now();
     }, ib0), [true, true, [150000, 60000], true, ['m_tia3'], 2, true]);
     await A.evaluate(() => { ['m_tia1', 'm_tia2', 'm_tia3'].forEach(id => { mkDb().ops[id].del = true; }); ['e_mk_m_tia1', 'e_mk_m_tia2'].forEach(id => { const e = E.get(id); e.del = true; e.delAt = nowS(); }); saveDB(); renderMkt(); });
 
+    /* الدخول التلقائي (بطلبه 16/11/2026): فواتير ومرتجعات أحمد لوحدها، والفلوس والعميل الجديد بموافقة، واللي اتمسح مبيرجعش لوحده */
+    const au = await A.evaluate(() => {
+      localStorage.setItem('fo_auto', '1');
+      const t = nowS(), p = liveParties().find(x => x.name === 'عميل فاتورة سريعة'), b0 = balance(p.id);
+      const mk = (id, tt, cid, amt, x) => { mkDb().ops[id] = Object.assign({id, t: tt, cid, cname: p.name, amt, m: '', ts: t, upd: t, del: false}, x); };
+      mk('m_au1', 'inv', p.id, 70000); mk('m_au2', 'rt', p.id, 5000, {note: 'تالف'}); mk('m_au3', 'inv', 'c_new_au', 9000, {cname: 'عميل تجربة ملوش حساب'}); mk('m_au4', 'pay', p.id, 20000, {m: 'cash'}); mk('m_au5', 'pay', p.id, 30000, {m: 'tr'});
+      const n = mkAuto(), r = [n, E.get('e_mk_m_au1').mkNL, E.get('e_mk_m_au2').kind, balance(p.id) - b0, !E.get('e_mk_m_au3'), !E.get('e_mk_m_au4'), mkPending().map(o => o.id).filter(i => i.startsWith('m_au')).sort().join(',')];
+      mkView = 'in'; go('mkt'); renderMkt(); r.push(($('#mkAuL') || {}).textContent || '', !$('#hsCard'));
+      const e = E.get('e_mk_m_au1'); e.del = true; e.delAt = nowS(); mkReconcile(); r.push(mkAuto(), mkState(mkDb().ops.m_au1));
+      /* الكاش مع أحمد والتحويل لمصطفى اتنقلوا كل واحدة لوحدها: سطر "دفعة" واحد في الحساب */
+      const d = isoOf(t); mkMove(mkDb().ops.m_au4, {pid: p.id, amt: 20000, date: d, vault: MKV, to: ''}); mkMove(mkDb().ops.m_au5, {pid: p.id, amt: 30000, date: d, vault: 'v_main', to: ''});
+      const row = stmtData(p.id, '', '').rows.find(x => x.grp && x.grp.some(g => g.id === 'e_mk_m_au4'));
+      r.push(row.grp.map(g => g.id).sort().join(','), row.cr - row.dr === row.grp.reduce((a, g) => a + g.amt, 0), E.get('e_mk_m_au4').vault !== E.get('e_mk_m_au5').vault, stmtData(p.id, '', '').close === balance(p.id));
+      localStorage.setItem('fo_auto', '0'); mkDb().ops.m_au6 = Object.assign({}, mkDb().ops.m_au3, {id: 'm_au6', cid: p.id}); r.push(mkAuto());
+      ['m_au1', 'm_au2', 'm_au3', 'm_au4', 'm_au5', 'm_au6'].forEach(id => { mkDb().ops[id].del = true; const x = E.get('e_mk_' + id); if (x) { x.del = true; x.delAt = nowS(); } }); delete mkDb().au; saveDB(); renderMkt();
+      return r;
+    });
+    eq('فواتير ومرتجعات أحمد بتدخل لوحدها (الفاتورة بالإجمالي والمرتجع خصم)، والدفعات والعميل الجديد لسه في الوارد', au.slice(0, 7), [2, true, 'adj', 65000, true, true, 'm_au3,m_au4,m_au5']);
+    eq('سطر "دخل لوحده النهارده" ظاهر في الوارد ومفيش كارت لحسن', [au[7].includes('فاتورة ومرتجع'), au[8]], [true, true]);
+    eq('اللي مصطفى مسحه بعد ما دخل بيرجع الوارد ومبيدخلش تاني لوحده', au.slice(9, 11), [0, 'new']);
+    eq('دفعة كاش مع أحمد + تحويل لمصطفى لنفس العميل في نفس اليوم: سطر "دفعة" واحد بإجماليهم، والحركتين كل واحدة في خزنتها، والرصيد زي ما هو', au.slice(11, 15), ['e_mk_m_au4,e_mk_m_au5', true, true, true]);
+    eq('الدخول التلقائي لما يتقفل مبيدخّلش حاجة', au[15], 0);
+
     sec('١٩) حركة السوق: بيع كاش من المصنع (اسم مشتري ومبلغ بس، من غير عملاء)');
     const csC0 = await M.evaluate(() => cashNow()), csP0 = await A.evaluate(() => db.parties.length);
     await M.evaluate(() => nav('')); await M.settle(200);
@@ -2939,15 +2975,15 @@ const T0 = Date.now();
     await A.evaluate(() => closeModal()); await A.setViewportSize({width: 400, height: 860}); await A.settle(200);
 
     /* الشريط اللي تحت على الموبايل: العملاء | الموردين | حركة السوق | التقارير | الإعدادات */
-    eq('الموبايل: ترتيب الشريط اللي تحت', await A.evaluate(() => $$('nav button[data-go]').filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => (+getComputedStyle(a).order) - (+getComputedStyle(b).order)).map(b => b.innerText.trim())), ['العملاء', 'الموردين', 'الوارد', 'التقارير', 'الخزنة']);
+    eq('الموبايل: ترتيب الشريط اللي تحت', await A.evaluate(() => $$('nav button[data-go]').filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => (+getComputedStyle(a).order) - (+getComputedStyle(b).order)).map(b => b.innerText.trim().split('\n')[0])), ['العملاء', 'الموردين', 'الوارد', 'الخزنة', 'المزيد']);
     await A.click('nav button[data-go=home]'); await A.settle(150);
-    eq('العملاء: عملاء السوق والمواقع بس + زرار الخزنة، والبحث مبيجيبش موردين', await A.evaluate(() => { const t = $$('#hTabs button[data-t]').map(b => b.dataset.t); $('#hSearch').value = 'مورد'; renderList(); const n = $$('#hList .pt.sup').length; $('#hSearch').value = ''; renderList(); return [t, !!$('#hJrd'), n]; }), [['mkt', 'site'], true, 0]);
+    eq('العملاء: عملاء السوق والمواقع بس (الجرد بقى جوه المزيد)، والبحث مبيجيبش موردين', await A.evaluate(() => { const t = $$('#hTabs button[data-t]').map(b => b.dataset.t); $('#hSearch').value = 'مورد'; renderList(); const n = $$('#hList .pt.sup').length; $('#hSearch').value = ''; renderList(); return [t, !!$('#hJrd'), n]; }), [['mkt', 'site'], false, 0]);
     await A.click('nav button[data-go=sup]'); await A.settle(150);
     eq('الموردين تبويب لوحده تحت وفيه موردين بس', await A.evaluate(() => [$('nav button.on').dataset.go, $$('#hList .pt').length > 0 && $$('#hList .pt').every(x => x.classList.contains('sup')), $$('#hTabs button[data-t]').length]), ['sup', true, 0]);
     await A.click('#hList .pt'); await A.settle(150);
     eq('صفحة المورد: الموردين هو المتعلّم والرجوع بيرجع للموردين', [await A.evaluate(() => $('nav button.on').dataset.go), (await A.click('#ppBack2'), await A.settle(150), await A.evaluate(() => location.hash))], ['sup', '#sup']);
-    await A.click('nav button[data-go=home]'); await A.click('nav button[data-go=rep]'); await A.settle(150);
-    eq('تبويب التقارير تحت بيفتح التقارير', await A.evaluate(() => location.hash), '#rep');
+    await A.click('nav button[data-go=home]'); await A.click('nav button[data-go=more]'); await A.click('#p-more [data-mo=rep]'); await A.settle(150);
+    eq('التقارير من المزيد بتفتح التقارير', await A.evaluate(() => location.hash), '#rep');
     eq('حساب طويل: آخر 30 سطر بس وزرار واحد للأقدم، والرصيد السابق في عمود الرصيد، وكل دوسة بتفرد 30 وفيه طي', await A.evaluate(async () => {
       const p = liveParties()[0], bal = balance(p.id), made = [];
       for (let i = 0; i < 60; i++) made.push(addEntry({party: p.id, kind: 'man', date: '2019-01-' + pad2(1 + i % 28), desc: 'حركة طويلة ' + i, dr: 100, cr: 0}));
@@ -2959,7 +2995,7 @@ const T0 = Date.now();
       return [a, b, c, balance(p.id) === bal];
     }), [[30, 1, false, true, 'الرصيد السابق'], [60, true], [30, true], true]);
     await A.click('nav button[data-go=cash]'); await A.settle(150);
-    eq('الخزنة والتقارير في التابات تحت (التقارير بطلبه 31/10/2026)', [await A.evaluate(() => location.hash), await A.isVisible('nav button[data-go=cash]'), await A.isVisible('nav button[data-go=rep]')], ['#cash', true, true]);
+    eq('الخزنة والمزيد في التابات تحت (التقارير جوه المزيد بطلبه 16/11/2026)', [await A.evaluate(() => location.hash), await A.isVisible('nav button[data-go=cash]'), await A.isVisible('nav button[data-go=more]'), await A.isVisible('nav button[data-go=rep]')], ['#cash', true, true, false]);
     /* المطلوب منك النهارده + الألوان */
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('الرئيسية: مفيش تنبيهات (لا الفواتير اللي بنودها لسه ولا وارد السوق ولا الحد الأحمر ولا النسخة)', await A.evaluate(() => [$('#nlRem').textContent.trim() === '', $('#mkRem').textContent.trim(), !!$('#bkRem'), !!$('#tkRows')]), [true, '', false, false]);

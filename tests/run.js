@@ -2318,10 +2318,16 @@ const T0 = Date.now();
     eq('الشكل الجديد (بطلبه 16/11/2026): ليا وعليا والصافي فوق الخزنة بنفس حسبة الحسابات، والعملاء كارت واحد بإجمالي القسم وزرارين بإجماليهم، وراس الحساب بزراير واضحة', await A.evaluate(() => {
       let ly = 0, al = 0; allBalances().forEach((v, id) => { if (P.get(id).noTot) return; if (v > 0) ly += v; else al -= v; });
       go('cash'); renderCash(); const k = $$('#cTots b').map(b => +b.dataset.cnt), box = $('#cTots');
-      tab = 'mkt'; go('home'); renderHome(); const bal = allBalances(), mk = liveParties().filter(p => p.sec === 'mkt' && !p.noTot).reduce((n, p) => n + (bal.get(p.id) || 0), 0);
-      const r = [k[0] === ly, k[1] === al, k[2] === Math.abs(ly - al), $$('#hTots .hk').length, +$('#hTots .hk b').dataset.cnt === Math.abs(mk), $$('#hTabs .tbt').filter(x => x.offsetParent).length];
+      tab = 'mkt'; go('home'); renderHome(); const bal = allBalances(), mk = liveParties().filter(p => (p.sec === 'mkt' || p.sec === 'site') && !p.noTot).reduce((n, p) => n + (bal.get(p.id) || 0), 0);
+      const r = [k[0] === ly, k[1] === al, k[2] === Math.abs(ly - al), $$('#hTots .hk').length, +$('#hTots .hk b').dataset.cnt === Math.abs(Math.round(mk / 100) * 100), $$('#hTabs .tbt').filter(x => x.offsetParent).length];
       const p = liveParties().find(x => x.sec === 'mkt'), ph0 = p.phone; p.phone = '0100 000 0009'; renderParty(p.id);
       r.push(!!$('#p-party .ph2'), $('#ppWa').getAttribute('href'), !!$('#ppEdit2'), +$('#p-party .ph2b b').dataset.cnt === Math.abs(balance(p.id))); p.phone = ph0; renderHome(); return r; }), [true, true, true, 1, true, 2, true, 'https://wa.me/201000000009', true, true]);
+    eq('كارت العملاء (بطلبه 16/11/2026): نفس الإجمالي في السوق والمواقع ولأقرب جنيه، والمتأخرين بيتداسوا يفتحوا أساميهم', await A.evaluate(() => {
+      tab = 'mkt'; renderHome(); const a = +$('#hTots .hk b').dataset.cnt; tab = 'site'; renderHome(); const b = +$('#hTots .hk b').dataset.cnt;
+      const noPt = a % 100 === 0 && !/[.٫]/.test($('#hTots .hk b').firstChild.nodeValue) && $$('#hTabs .tbt').every(x => !/[.٫]/.test(x.textContent));
+      const p = liveParties().find(x => x.sec === 'mkt'); hkLateIds = [p.id]; hkLateModal();
+      const rows = $$('#modal .pt[data-p]').length; $('#modal .pt[data-p]').click(); const h = location.hash; tab = 'mkt'; go('home'); renderHome();
+      return [a === b, noPt, rows, h === '#p/' + p.id, !$('#hkLate') || typeof $('#hkLate').onclick === 'function']; }), [true, true, 1, true, true]);
     await A.click('nav button[data-go=more]'); await A.settle(200);
     eq('المزيد: كروت بسطر شرح (التقارير والجرد والشركاء والإعدادات…) وهو المتعلّم تحت', await A.evaluate(() => [location.hash, $$('#p-more .moc').map(b => b.dataset.mo).join(','), $$('#p-more .moc').every(b => b.querySelector('small').textContent.length > 5), $('nav button.on').dataset.go]), ['#more', 'rep,jrd,part,find,cats,cl,doc,set', true, 'more']);
     await A.click('#p-more [data-mo=jrd]'); await A.settle(200);

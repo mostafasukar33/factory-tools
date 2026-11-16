@@ -1667,7 +1667,7 @@ html[data-theme=dark] .k3 .nt{background:var(--gold-l);border-color:var(--gold-d
   #hTots .k.hk>b small{display:inline;font-size:var(--f2);font-weight:700;color:var(--gold)}
   #hTots .hkc{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;position:relative;z-index:1}
   #hTots .hkc em{font-style:normal;font-size:var(--f1);font-weight:700;line-height:1.5;color:var(--card);background:color-mix(in srgb,var(--card) 16%,transparent);border-radius:999px;padding:2px 10px}
-  #hTots .hkc em.hkl{background:var(--red)}
+  #hTots .hkc em.hkl{background:var(--red);cursor:pointer}
   #hTots .hkc em i-c{color:inherit}
   html[data-theme=dark] #hTots .k.hk{background:var(--card);border:1px solid var(--gold-d)}
   html[data-theme=dark] #hTots .k.hk>b{color:var(--ink)}
@@ -2422,27 +2422,40 @@ function renderHome() {
   const secTot = k => ps.filter(p => p.sec === k && !p.noTot).reduce((n, p) => n + (bal.get(p.id) || 0), 0);
   /* الموبايل: "العملاء" فيها السوق والمواقع بس + زرار الخزنة، و"الموردين" تبويب لوحده تحت (#sup) */
   const wide = isWide(), tabs = wide ? [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع'], ['sup', 'الموردين']] : tab === 'sup' ? [] : [['mkt', 'عملاء السوق'], ['site', 'عملاء المواقع']];
-  $('#hTabs').innerHTML = (!wide && tab === 'sup' ? `<div class="supt">🏭 الموردين <small>${cnt('sup')}</small></div>` : tabs.map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small>${wide ? '' : `<b class="tbt n">${fmtP(Math.abs(secTot(k)))}</b>`}</button>`).join(''))
+  $('#hTabs').innerHTML = (!wide && tab === 'sup' ? `<div class="supt">🏭 الموردين <small>${cnt('sup')}</small></div>` : tabs.map(([k, n]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${n}<small>${cnt(k)}</small>${wide ? '' : `<b class="tbt n">${fmtP(Math.abs(rnd1(secTot(k))))}</b>`}</button>`).join(''))
     ;
   /* زرار التقارير اتشال من هنا بطلبه 31/10/2026 (بقى تبويب تحت)، والجرد وجديد جنب البحث */
   $('#hTools').innerHTML = '';   // الجرد بقى جوه "المزيد" (بطلبه 16/11/2026)
   $('#hTabs').classList.remove('t3');
   $$('#hTabs button[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; renderHome(); });
   if ($('#hJrd')) $('#hJrd').onclick = () => go('jrd');
+  if ($('#hkLate')) $('#hkLate').onclick = hkLateModal;
   renderMkHome(); renderList(bal); qkMark(); fitTots(); runCounters($('#hTots'));
 }
-/* كارت الإجمالي فوق قايمة العملاء/الموردين على الموبايل: الرقم كبير، وتحته كام واحد عليه فلوس وكام متأخر عن عادته */
+/* كارت الإجمالي فوق قايمة العملاء/الموردين على الموبايل: الرقم كبير، وتحته كام واحد عليه فلوس وكام متأخر.
+   العملاء (بطلبه 16/11/2026): الرقم = السوق + المواقع مع بعض (كل قسم رقمه على زراره تحت)، ولأقرب جنيه من غير قروش، و"متأخرين" بيتداس يفتح أساميهم */
+const rnd1 = q => Math.round(q / 100) * 100;
+let hkLateIds = [];
 function hkCard(sec, bal) {
-  const sup = sec === 'sup', L = liveParties().filter(p => !p.noTot && p.sec === sec), sg = sup ? -1 : 1;
-  const tot = L.reduce((n, p) => n + (bal.get(p.id) || 0), 0) * sg, owe = L.filter(p => (bal.get(p.id) || 0) * sg > 0);
-  let late = 0;
+  const sup = sec === 'sup', L = liveParties().filter(p => !p.noTot && (sup ? p.sec === 'sup' : p.sec === 'mkt' || p.sec === 'site')), sg = sup ? -1 : 1;
+  let tot = L.reduce((n, p) => n + (bal.get(p.id) || 0), 0) * sg; const owe = L.filter(p => (bal.get(p.id) || 0) * sg > 0);
+  if (!sup) tot = rnd1(tot);
+  let late = 0; hkLateIds = [];
   if (!sup && owe.length) {
     const pays = new Map(); for (const e of db.entries) if (e.kind === 'pay' && !e.del) (pays.get(e.party) || pays.set(e.party, []).get(e.party)).push(e);
-    late = owe.filter(p => { const i = payInfo(p, pays.get(p.id) || [], bal.get(p.id) || 0); return i && i.late; }).length;
+    hkLateIds = owe.filter(p => { const i = payInfo(p, pays.get(p.id) || [], bal.get(p.id) || 0); return i && i.late; }).sort((a, b) => (bal.get(b.id) || 0) - (bal.get(a.id) || 0)).map(p => p.id);
+    late = hkLateIds.length;
   }
-  const lbl = sup ? (tot >= 0 ? 'ليهم عندي' : 'ليا عندهم') : (tot >= 0 ? 'ليا عند ' : 'عليا لـ') + (sec === 'site' ? 'عملاء المواقع' : 'عملاء السوق');
-  const chips = (owe.length ? `<em>${sup ? '🏭 ' + owe.length + ' ليهم فلوس' : '👥 ' + owe.length + ' عليهم فلوس'}</em>` : '') + (late ? `<em class="hkl">⏰ ${late === 1 ? 'واحد متأخر' : late + ' متأخرين'}</em>` : '');
-  return `<div class="k hk"><span>${lbl}</span><b data-ck="h:${sec}" data-cnt="${Math.abs(tot)}">${fmtP(Math.abs(tot))} <small>${CUR}</small></b>${chips ? `<p class="hkc">${chips}</p>` : ''}</div>`;
+  const lbl = sup ? (tot >= 0 ? 'ليهم عندي' : 'ليا عندهم') : (tot >= 0 ? 'ليا عند العملاء' : 'عليا للعملاء');
+  const chips = (owe.length ? `<em>${sup ? '🏭 ' + owe.length + ' ليهم فلوس' : '👥 ' + owe.length + ' عليهم فلوس'}</em>` : '') + (late ? `<em class="hkl" id="hkLate" role="button">⏰ ${late === 1 ? 'واحد متأخر' : late + ' متأخرين'} ‹</em>` : '');
+  return `<div class="k hk"><span>${lbl}</span><b data-ck="h:${sup ? 'sup' : 'cus'}" data-cnt="${Math.abs(tot)}">${fmtP(Math.abs(tot))} <small>${CUR}</small></b>${chips ? `<p class="hkc">${chips}</p>` : ''}</div>`;
+}
+/* الدوس على "متأخرين" في الكارت: أساميهم (السوق والمواقع) والدوس على اسم يفتح حسابه */
+function hkLateModal() {
+  const ps = hkLateIds.map(id => P.get(id)).filter(Boolean);
+  modal(`<h3>⏰ العملاء اللي اتأخروا عن عادة الدفع</h3>${ps.map(p => `<div class="pt" data-p="${esc(p.id)}"><div class="m"><b>${esc(p.name)}</b><small>${p.sec === 'site' ? 'مواقع' : 'سوق'} · ${esc(lpAgo(p.id))}</small></div><div class="a"><b>${fmtP(balance(p.id))}</b></div></div>`).join('')}<button class="btn line" id="ltX" type="button" style="margin-top:10px">رجوع</button>`, true);
+  $('#ltX').onclick = closeModal;
+  $$('#modal .pt[data-p]').forEach(x => x.onclick = () => { closeModal(); go('p/' + x.dataset.p); });
 }
 function qkMark() { const sp = $('main').classList.contains('split'); $$('nav .qk button').forEach(x => x.classList.toggle('on', sp && x.dataset.q === tab)); }
 let curParty = '';

@@ -266,6 +266,26 @@ html[data-theme=dark] .chk{color:#0b1a10}
 .sent{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px;margin-top:14px;font-size:var(--f3);font-weight:700;line-height:1.7;box-shadow:var(--shadow)}
 .sent .money{font-size:var(--f4)}
 .sent small{display:block;font-size:var(--f1);font-weight:700;margin-top:4px}
+.sdb{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.b-sdi{background:var(--gold-l);color:var(--gold-d);border:1.5px solid var(--gold)}.b-sdr{background:var(--card);color:var(--ink);border:1.5px solid var(--line)}
+.sdh,#sdL .sdi{display:grid;grid-template-columns:minmax(0,1fr) 46px 48px 64px 62px 20px;gap:3px;align-items:center}
+.sdh{padding:12px 6px 4px;font-size:var(--f1);font-weight:800;color:var(--sub)}.sdh span{text-align:center;white-space:nowrap}.sdh span:first-child{text-align:start}
+#sdL{border:1.5px solid var(--line);border-radius:10px;background:var(--card)}
+#sdL .sdi{position:relative;border-bottom:1px solid var(--line);padding:3px 4px}#sdL .sdi:last-child{border-bottom:0}#sdL .sdi:focus-within{background:var(--gold-l)}
+#sdL .inp{width:100%;min-height:40px;border:1px solid var(--field);border-radius:8px;background:var(--card);color:var(--ink);padding:4px 3px;font:inherit;font-size:var(--f2);outline:none}
+#sdL select.inp{-webkit-appearance:none;appearance:none;text-align:center;text-align-last:center}
+#sdL [data-f=qty],#sdL [data-f=price]{text-align:center;direction:ltr}
+#sdL .lt{font-size:var(--f1);text-align:center;overflow:hidden}
+#sdL .sdx{border:0;background:none;color:var(--sub);font-size:var(--f1);padding:0;cursor:pointer}#sdL .sdi.blank .sdx{visibility:hidden}
+#sdL .lnm{position:relative;min-width:0}
+#sdL .sg{display:none;position:absolute;top:100%;right:0;width:min(320px,86vw);z-index:6;margin-top:2px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden;box-shadow:var(--shadow)}
+#sdL .sg.on{display:block}
+#sdL .sg .sh{font-size:var(--f1);font-weight:800;color:var(--gold-d);background:var(--gold-l);padding:3px 10px}
+#sdL .sg .sr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;font-weight:700;font-size:var(--f2);border-top:1px solid var(--line);cursor:pointer}
+#sdL .sg .sh+.sr{border-top:0}#sdL .sg .sr:active{background:var(--gold-l)}
+#sdL .sg .sr small{display:block;color:var(--sub);font-weight:700;font-size:var(--f1)}
+#sdL .sg .sr b{direction:ltr;unicode-bidi:isolate;color:var(--gold-d);white-space:nowrap;font-size:var(--f3)}
+.sdt{display:flex;justify-content:space-between;align-items:center;margin:12px 4px 0;font-weight:800;font-size:var(--f2)}.sdt .money{font-size:var(--f4)}
 .oops{display:inline-block;margin:16px 8px 0;background:none;border:0;color:var(--red);font-weight:700;font-size:var(--f2);cursor:pointer;text-decoration:underline}
 .oops.n{color:var(--gold-d)}
 /* الأرشيف */
@@ -626,26 +646,32 @@ const supLive = () => Object.values(S.sup).filter(x => !x.del && x.name);
 const supByName = () => new Map(supLive().map(x => [norm(x.name), x.id]));
 /* دفعة المورد بتاعة مين: المختار من القايمة (sid)، وإلا نفس الاسم بالظبط */
 const supIdOf = (o, byN) => o.sid && S.sup[o.sid] && !S.sup[o.sid].del ? o.sid : (byN || supByName()).get(norm(o.sname)) || '';
-const supPend = o => o.t === 'spay' && !['done', 'rm'].includes(opState(o));
+/* حركات المورد من الشريك: دفعة (spay)، وفاتورة شراء ببنودها (sinv) ومرتجع شراء (srt) بطلبه 16/11/2026: بيدخلوا حسابات مصطفى لوحدهم ومبيلمسوش الكاش */
+const isSupDoc = o => o.t === 'sinv' || o.t === 'srt';
+const isSupOp = o => o.t === 'spay' || isSupDoc(o);
+const supSign = o => o.t === 'sinv' ? 1 : -1;   // الفاتورة بتزوّد اللي ليه، والدفعة والمرتجع بينقصوه
+const supPend = o => isSupOp(o) && !['done', 'rm'].includes(opState(o));
 function suppliers() {
   const m = new Map(), byN = supByName();
-  supLive().forEach(x => m.set(x.id, {id: x.id, name: x.name, bal: x.bal || 0, ob: x.ob || 0, from: x.from || '', r: Array.isArray(x.r) ? x.r : [], pend: []}));
-  liveOps().filter(supPend).forEach(o => { const v = m.get(supIdOf(o, byN)); if (v) { v.bal -= o.amt; v.pend.push(o); } });
+  supLive().forEach(x => m.set(x.id, {id: x.id, name: x.name, bal: x.bal || 0, ob: x.ob || 0, from: x.from || '', r: Array.isArray(x.r) ? x.r : [], it: Array.isArray(x.it) ? x.it : [], pend: []}));
+  liveOps().filter(supPend).forEach(o => { const v = m.get(supIdOf(o, byN)); if (v) { v.bal += supSign(o) * o.amt; v.pend.push(o); } });
   return m;
 }
 /* اللي معايا كاش دلوقتي = كاش حصّلته − مصروفات − دفعات موردين − كاش سلمته لمصطفى (التحويلات مش على الشريك) */
 /* بيع كاش اتحوّل لمصطفى على طول (m: 'tr'). القديم من غير m = كاش مع الشريك */
 const csTr = o => o.t === 'cs' && o.m === 'tr';
-const cashSign = o => o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'cs' ? (csTr(o) ? 0 : 1) :o.t === 'inv' || o.t === 'rt' ? 0 : -1;
+const cashSign = o => o.t === 'pay' ? (o.m === 'cash' ? 1 : 0) : o.t === 'cs' ? (csTr(o) ? 0 : 1) :o.t === 'inv' || o.t === 'rt' || isSupDoc(o) ? 0 : -1;
 const cashNow = () => liveOps().reduce((s, o) => s + cashSign(o) * o.amt, 0);
 /* حصّلت / راح لمصطفى (تحويلات + كاش سلمته) / مصروف (مصروفات + دفعات موردين) / معايا */
 function sums(ops) {
   let col = 0, toM = 0, sp = 0, inv = 0;
-  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'cs') { col += o.amt; if (csTr(o)) toM += o.amt; } else if (o.t === 'inv' || o.t === 'rt') { if (o.t === 'inv') inv += o.amt; } else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
+  ops.forEach(o => { if (o.t === 'pay') { col += o.amt; if (o.m !== 'cash') toM += o.amt; } else if (o.t === 'cs') { col += o.amt; if (csTr(o)) toM += o.amt; } else if (o.t === 'inv' || o.t === 'rt' || isSupDoc(o)) { if (o.t === 'inv') inv += o.amt; } else if (o.t === 'hand') toM += o.amt; else sp += o.amt; });
   return {col, toM, sp, inv, left: col - toM - sp};
 }
-const opWhat = o => o.t === 'rt' ? '↩️ مرتجع/شغل ' + o.cname : o.t === 'cs' ? 'بيع كاش — ' + o.buyer : o.t === 'pay' ? o.cname : o.t === 'inv' ? 'فاتورة ' + o.cname : o.t === 'exp' ? o.cat + (o.note && o.note !== o.cat ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعت لـ ' + o.sname : 'سلمت لمصطفى';
-const opHow = o => o.t === 'rt' ? 'مرتجع/شغل' + (o.note ? ' — ' + o.note : '') : o.t === 'cs' ? 'من المصنع' + (csTr(o) ? ' — ' + M_TXT.tr : '') : o.t === 'pay' ? M_TXT[o.m] : o.t === 'inv' ? 'فاتورة (إجمالي بس)' : o.t === 'hand' ? 'كاش' : o.t === 'exp' ? 'مصروف' : 'دفعة مورد';
+const SD_TXT = {sinv: 'فاتورة شراء', srt: 'مرتجع شراء'};
+const sdLines = o => (o.lines || []).map(l => l.name).join('، ');
+const opWhat = o => isSupDoc(o) ? SD_TXT[o.t] + ' — ' + o.sname : o.t === 'rt' ? '↩️ مرتجع/شغل ' + o.cname : o.t === 'cs' ? 'بيع كاش — ' + o.buyer : o.t === 'pay' ? o.cname : o.t === 'inv' ? 'فاتورة ' + o.cname : o.t === 'exp' ? o.cat + (o.note && o.note !== o.cat ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعت لـ ' + o.sname : 'سلمت لمصطفى';
+const opHow = o => isSupDoc(o) ? SD_TXT[o.t] + ((o.lines || []).length ? ' — ' + sdLines(o) : '') : o.t === 'rt' ? 'مرتجع/شغل' + (o.note ? ' — ' + o.note : '') : o.t === 'cs' ? 'من المصنع' + (csTr(o) ? ' — ' + M_TXT.tr : '') : o.t === 'pay' ? M_TXT[o.m] : o.t === 'inv' ? 'فاتورة (إجمالي بس)' : o.t === 'hand' ? 'كاش' : o.t === 'exp' ? 'مصروف' : 'دفعة مورد';
 const pending = () => Object.values(S.ops).filter(o => o.sy !== o.upd);
 /* حركة مستنية تتبعت من أكتر من ساعة (من آخر مرة اتسجلت أو اتعدّلت) = تنبيه أحمر فوق في كل الشاشات */
 const STUCK_MS = 3600000;
@@ -683,12 +709,13 @@ function merge(r) {
   return true;
 }
 /* نص تنبيه تليجرام بيتبعت جاهز مع العملية، فكود الشيت مش محتاج يتحدّث لو الجمل اتغيرت */
-const TG_IC = {rt: '↩️', pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭'};
+const TG_IC = {rt: '↩️', pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭', sinv: '🧾', srt: '↩️'};
 const tgText = o => { const a = fmt(o.amt), w = {cash: 'كاش', tr: 'تحويل', insta: 'إنستا', voda: 'فودافون كاش'};
+  if (isSupDoc(o)) return `${SD_TXT[o.t]} من ${o.sname || ''} بـ ${a}: ${(o.lines || []).map(l => `${l.name} ${l.qty} ${l.unit || ''} × ${fmt(l.price)}`).join('، ')}`;
   return o.t === 'pay' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${a} ${w[o.m] || ''}` : o.t === 'inv' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${a}` : o.t === 'rt' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} مرتجع/شغل بـ ${a}${o.note ? ' — ' + o.note : ''}`
     : o.t === 'exp' ? `مصروف ${o.cat || ''}: ${a}${o.note && o.note !== o.cat ? ' — ' + o.note : ''}` : o.t === 'spay' ? `دفع للمورد ${o.sname || ''} ${a}` : o.t === 'hand' ? `سلّمك ${a} كاش` : o.t === 'cs' ? `بيع كاش من المصنع ${a} — ${o.buyer || ''}${csTr(o) ? ' (تحويل)' : ''}`
     : o.t === 'cnt' ? `قفّل يومه: عدّ ${a} كاش${o.amt === o.sys ? ' — مظبوط ✓' : ` — المفروض ${fmtN(o.sys)}، ${o.amt < o.sys ? 'ناقص' : 'زيادة'} ${fmt(o.amt - o.sys)}`}` : 'حركة ' + a; };
-const view = o => o.t === 'cnt' ? [dayOf(o.ts) + ' ' + timeOf(o.ts), 'تقفيل اليوم', o.amt / 100, 'تقفيل يوم', o.amt === o.sys ? 'مظبوط' : 'المفروض ' + o.sys / 100] : [dayOf(o.ts) + ' ' + timeOf(o.ts), isCustOp(o) ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' ? o.sname : o.t === 'exp' ? o.cat + (o.note && o.note !== o.cat ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, o.t === 'pay' ? M_SAID[o.m] || o.m : csTr(o) ? 'بيع كاش — ' + M_SAID.tr : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة', rt: 'مرتجع/شغل'}[o.t], o.t === 'rt' ? o.note || '' : ''];
+const view = o => o.t === 'cnt' ? [dayOf(o.ts) + ' ' + timeOf(o.ts), 'تقفيل اليوم', o.amt / 100, 'تقفيل يوم', o.amt === o.sys ? 'مظبوط' : 'المفروض ' + o.sys / 100] : [dayOf(o.ts) + ' ' + timeOf(o.ts), isCustOp(o) ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' || isSupDoc(o) ? o.sname : o.t === 'exp' ? o.cat + (o.note && o.note !== o.cat ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, isSupDoc(o) ? SD_TXT[o.t] : o.t === 'pay' ? M_SAID[o.m] || o.m : csTr(o) ? 'بيع كاش — ' + M_SAID.tr : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة', rt: 'مرتجع/شغل'}[o.t], o.t === 'rt' ? o.note || '' : isSupDoc(o) ? sdLines(o) : ''];
 const ordView = (k, o) => k === 'ord' ? [dayOf(o.at || o.upd) + ' ' + timeOf(o.at || o.upd), o.cname || '', '', 'طلبية' + (o.st === 'done' ? ' (اتسلمت)' : o.st === 'x' ? ' (اتلغت)' : ''), (o.items || []).map(it => it.n + (it.k ? ' ' + it.k + ' ك' : '')).join('، ')]
   : [dayOf(o.upd) + ' ' + timeOf(o.upd), o.name || '', '', 'تسعير', `${o.n1} ${o.p1 / 100} × ${o.a}% + ${o.n2} ${o.p2 / 100}`];
 /* السطر اللي بيضيع في الشيت (4/11/2026، "رصيد ايمن عند أحمد 22500 وعند مصطفى صفر"): كود الشيت قبل نسخة 8 كان بيسيب القفل قبل ما اللي كتبه يتحفظ،
@@ -812,7 +839,7 @@ const IC = {
 };
 const TABS = [['home', 'الرئيسية'], ['c', 'العملاء'], ['v', 'الموردين'], ['a', 'الأرشيف'], ['s', 'الإعدادات']];
 const TAB_OF = {home: 'home', c: 'c', v: 'v', a: 'a', day: 'a', mon: 'a', s: 's'};
-const TITLE = {home: 'حركة السوق', c: 'العملاء', v: 'الموردين', sup: 'حساب مورد', a: 'الأرشيف', day: 'الأرشيف', mon: 'الأرشيف', s: 'الإعدادات', pay: 'دفعة', spend: 'صرفت', sale: 'بيع كاش من المصنع', ok: ''};
+const TITLE = {home: 'حركة السوق', c: 'العملاء', v: 'الموردين', sup: 'حساب مورد', sdoc: 'حساب مورد', a: 'الأرشيف', day: 'الأرشيف', mon: 'الأرشيف', s: 'الإعدادات', pay: 'دفعة', spend: 'صرفت', sale: 'بيع كاش من المصنع', ok: ''};
 let scr = {v: 'home'};
 function dotHtml() {
   if (!S.u) return '';
@@ -823,11 +850,11 @@ function dotHtml() {
   return '<span class="dot" id="dot"><i></i>متصل</span>';
 }
 function drawTop() {
-  const t = $('#top'), sub = scr.v === 'pay' || scr.v === 'sup' || scr.v === 'spend' || scr.v === 'sale' || scr.v === 'ok';
+  const t = $('#top'), sub = scr.v === 'pay' || scr.v === 'sup' || scr.v === 'sdoc' || scr.v === 'spend' || scr.v === 'sale' || scr.v === 'ok';
   drawStuck();
   t.innerHTML = sub ? `<button class="back" id="bBack" type="button">→ رجوع</button>${TITLE[scr.v] ? `<b style="font-size:var(--f3)">${TITLE[scr.v]}</b>` : ''}${dotHtml()}`
     : `${LOGO}<h1>${TITLE[scr.v] || 'حركة السوق'}${scr.v === 'home' ? '<small>فلاش أون</small>' : ''}</h1>${dotHtml()}`;
-  if ($('#bBack')) $('#bBack').onclick = () => nav(scr.v === 'pay' ? 'c' : scr.v === 'sup' ? 'v' : scr.v === 'spend' ? spBack : '');
+  if ($('#bBack')) $('#bBack').onclick = () => nav(scr.v === 'pay' ? 'c' : scr.v === 'sup' ? 'v' : scr.v === 'sdoc' ? (S.sup[scr.sid] ? 'v/' + scr.sid : 'v') : scr.v === 'spend' ? spBack : '');
 }
 function drawTabs() {
   const k = TAB_OF[scr.v], el = $('#tabs');
@@ -877,14 +904,14 @@ const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 function route() {
   mPush = false; hideModal();
   const h = decodeURIComponent(location.hash.slice(1)), [a, b] = h.split('/');
-  scr = a === 'p' && b ? {v: 'pay', cid: b} : a === 'ok' && b && S.ops[b] ? {v: 'ok', op: b} : a === 'x' ? {v: 'spend'} : a === 'b' ? {v: 'sale'} : a === 'c' ? {v: 'c'} : a === 'v' ? (b ? {v: 'sup', sid: b} : {v: 'v'}) : a === 's' ? {v: 's'} : a === 'a' ? (isDay(b) ? {v: 'day', day: b} : /^\d{4}-\d{2}$/.test(b || '') ? {v: 'mon', mon: b} : {v: 'a'}) : {v: 'home'};
+  scr = a === 'p' && b ? {v: 'pay', cid: b} : a === 'ok' && b && S.ops[b] ? {v: 'ok', op: b} : a === 'x' ? {v: 'spend'} : a === 'b' ? {v: 'sale'} : a === 'c' ? {v: 'c'} : a === 'vd' && b ? {v: 'sdoc', sid: b, k: h.split('/')[2] === 'srt' ? 'srt' : 'sinv', op: h.split('/')[3] || ''} : a === 'v' ? (b ? {v: 'sup', sid: b} : {v: 'v'}) : a === 's' ? {v: 's'} : a === 'a' ? (isDay(b) ? {v: 'day', day: b} : /^\d{4}-\d{2}$/.test(b || '') ? {v: 'mon', mon: b} : {v: 'a'}) : {v: 'home'};
   render(); window.scrollTo(0, 0);
   if (a === 'ord') { history.replaceState(null, '', location.pathname); ordLoad('ordOpen'); }   // دوسة على إشعار طلبية
 }
 function render() {
   drawTop(); drawTabs();
   if (!S.u) { $('#main').innerHTML = `<div class="gate">${LOGO}<h2>حركة السوق</h2><p>التطبيق ده لسه متربطش.<br>اطلب من مصطفى يبعتلك الرابط على الواتساب وافتحه من هنا.</p></div>`; return; }
-  ({pay: drawPay, ok: drawSaved, spend: drawSpend, sale: drawSale, c: drawCustomers, v: drawSuppliers, sup: drawSup, a: drawArchive, mon: drawMonth, day: drawDay, s: drawSettings}[scr.v] || drawHome)();
+  ({pay: drawPay, ok: drawSaved, spend: drawSpend, sale: drawSale, c: drawCustomers, v: drawSuppliers, sup: drawSup, sdoc: drawSDoc, a: drawArchive, mon: drawMonth, day: drawDay, s: drawSettings}[scr.v] || drawHome)();
 }
 /* لما يوصل جديد من الشيت: نرسم من غير ما نبوّظ اللي بيكتبه */
 function refresh() {
@@ -910,37 +937,38 @@ function stHtml(o) {
 }
 /* سطر عملية: دوسة عليه بتفتح التعديل */
 /* نفس معنى الألوان في التطبيقين: أخضر = فلوس دخلت معاك، أحمر = فلوس طلعت، دهبي = فاتورة/مستني مصطفى، أزرق = راحت لمصطفى */
-const dirOf = o => (o.t === 'cs' && !csTr(o)) || (o.t === 'pay' && o.m === 'cash') ? 'd-in' : o.t === 'exp' || o.t === 'spay' ? 'd-out' : o.t === 'inv' ? 'd-inv' : o.t === 'rt' ? '' : 'd-to';
+const dirOf = o => (o.t === 'cs' && !csTr(o)) || (o.t === 'pay' && o.m === 'cash') ? 'd-in' : o.t === 'exp' || o.t === 'spay' ? 'd-out' : o.t === 'inv' || isSupDoc(o) ? 'd-inv' : o.t === 'rt' ? '' : 'd-to';
 const opRow = (o, withDay, noName) => `<div class="row t-${o.t} ${dirOf(o)}" data-o="${esc(o.id)}"><div class="m"><b>${esc(noName ? opHow(o) : opWhat(o))}</b><small>${withDay ? dispDate(dayOf(o.ts)) + ' · ' : ''}${timeOf(o.ts)}${noName ? '' : ' · ' + esc(opHow(o))}</small></div><div class="a"><b class="money">${fmt(o.amt)}</b>${stHtml(o)}</div></div>`;
 /* حركات اليوم متجمعة بالنوع، كل نوع تحت بعضه وبإجماليه (المصروفات لوحدها والموردين لوحدهم) */
-const GROUPS = [['in', 'تحصيل وفواتير العملاء', o => o.t === 'pay' || o.t === 'inv'], ['rt', 'مرتجع / شغل (اتخصم من العملاء)', o => o.t === 'rt'], ['cs', 'بيع كاش من المصنع', o => o.t === 'cs'], ['exp', 'المصروفات', o => o.t === 'exp'], ['spay', 'دفعات الموردين', o => o.t === 'spay'], ['hand', 'سلّمت لمصطفى', o => o.t === 'hand']];
+const GROUPS = [['in', 'تحصيل وفواتير العملاء', o => o.t === 'pay' || o.t === 'inv'], ['rt', 'مرتجع / شغل (اتخصم من العملاء)', o => o.t === 'rt'], ['cs', 'بيع كاش من المصنع', o => o.t === 'cs'], ['exp', 'المصروفات', o => o.t === 'exp'], ['sdoc', 'فواتير ومرتجعات الموردين', isSupDoc], ['spay', 'دفعات الموردين', o => o.t === 'spay'], ['hand', 'سلّمت لمصطفى', o => o.t === 'hand']];
 const dayList = ops => GROUPS.map(([k, t, f]) => { const g = ops.filter(f); return g.length ? `<div class="gh g-${k}"><span>${t} (${g.length})</span><b class="money">${fmt(g.reduce((a, o) => a + o.amt, 0))}</b></div><div class="list">${g.map(o => opRow(o)).join('')}</div>` : ''; }).join('');
 const bindOps = root => $$(root + ' .row[data-o], ' + root + ' tr[data-o], ' + root + ' .mr[data-o]').forEach(r => r.onclick = () => editSheet(S.ops[r.dataset.o]));
 /* اليوم زي "بالتاريخ" في خزنة الحسابات (بطلب مصطفى 23/10/2026، المصاريف كانت سايحة على بعضها):
    جدول البيان | وارد | منصرف للكاش اللي في إيدك بس. الوارد فوق والمنصرف تحته (الأقدم الأول)، وكل حركة سطر لوحده (الدوس بيعدّلها).
    اللي مش كاش معاك (تحويل لمصطفى، تسليم، فاتورة، مرتجع) سطر رمادي تحت. "بدأ بـ" و"قفل اليوم بـ" = الكاش اللي معاك */
 const cashBefore = d => liveOps().reduce((n, o) => dayOf(o.ts) < d ? n + cashSign(o) * o.amt : n, 0);
-const ldName = o => o.t === 'cs' ? 'بيع كاش' + (o.buyer ? ' — ' + o.buyer : '') : o.t === 'pay' ? o.cname : o.t === 'exp' ? o.cat : o.t === 'spay' ? 'دفعت لـ ' + o.sname : o.t === 'hand' ? '⇄ سلّمت لمصطفى' : o.t === 'inv' ? '🧾 فاتورة ' + o.cname : o.t === 'rt' ? '↩️ مرتجع/شغل ' + o.cname : '⇄ ' + o.cname;
-const ldSub = o => [timeOf(o.ts), o.t === 'exp' ? (o.note && o.note !== o.cat ? o.note : '') : o.t === 'pay' ? M_TXT[o.m] : o.t === 'cs' && csTr(o) ? M_TXT.tr : o.t === 'rt' ? o.note || '' : o.t === 'inv' ? 'إجمالي بس' : '']
+const ldName = o => isSupDoc(o) ? (o.t === 'sinv' ? '🏭 فاتورة شراء ' : '↩️ مرتجع شراء ') + o.sname : o.t === 'cs' ? 'بيع كاش' + (o.buyer ? ' — ' + o.buyer : '') : o.t === 'pay' ? o.cname : o.t === 'exp' ? o.cat : o.t === 'spay' ? 'دفعت لـ ' + o.sname : o.t === 'hand' ? '⇄ سلّمت لمصطفى' : o.t === 'inv' ? '🧾 فاتورة ' + o.cname : o.t === 'rt' ? '↩️ مرتجع/شغل ' + o.cname : '⇄ ' + o.cname;
+const ldSub = o => [timeOf(o.ts), o.t === 'exp' ? (o.note && o.note !== o.cat ? o.note : '') : o.t === 'pay' ? M_TXT[o.m] : o.t === 'cs' && csTr(o) ? M_TXT.tr : o.t === 'rt' ? o.note || '' : o.t === 'inv' ? 'إجمالي بس' : isSupDoc(o) ? sdLines(o) : '']
   .filter(Boolean).map(esc).join(' · ') + stHtml(o);
 /* تبويبين تحت الحركات (بطلب مصطفى 24/10/2026): الفواتير (والمرتجعات) لوحدها، والمتحصلات = الفلوس بس.
    المتحصلات 3 مربعات بكلام واضح بدل ألوان الجدول: دخل جيبك (أخضر)، اتحوّل لمصطفى على طول (أزرق، مش داخل في حسبته)،
    طلع من جيبك (أحمر: مصروف ومورد واللي سلّمه لمصطفى)، وتحتهم سطر الحسبة: بدأت بـ + دخل − طلع = معاك */
 let ldTab = 'col';
 const isTrIn = o => (o.t === 'pay' && o.m !== 'cash') || csTr(o);
-const isInvTab = o => o.t === 'inv' || o.t === 'rt';
+const isInvTab = o => o.t === 'inv' || o.t === 'rt' || isSupDoc(o);
 const ldHas = ops => ops.some(o => ldTab === 'inv' ? isInvTab(o) : !isInvTab(o));
 const ldTabs = () => `<div class="seg ldt" id="ldT" style="--n:2"><button type="button" data-v="inv" class="${ldTab === 'inv' ? 'on' : ''}">الفواتير</button><button type="button" data-v="col" class="${ldTab === 'col' ? 'on' : ''}">المتحصلات</button></div>`;
 const bindLdTabs = redraw => $$('#ldT button').forEach(b => b.onclick = () => { if (ldTab !== b.dataset.v) { ldTab = b.dataset.v; redraw(); } });
 const ldHead = (d, side) => `<div class="fbh"><b>${d === today() ? 'النهارده' : AR_DAYS[dowOf(d)]} ${dispDate(d)}</b><span>${side}</span></div>`;
 function invDay(d, ops) {
-  const L = ops.filter(o => o.t === 'inv').sort((a, b) => a.ts - b.ts), R = ops.filter(o => o.t === 'rt').sort((a, b) => a.ts - b.ts), tot = L.reduce((n, o) => n + o.amt, 0);
+  const L = ops.filter(o => o.t === 'inv').sort((a, b) => a.ts - b.ts), R = ops.filter(o => o.t === 'rt').sort((a, b) => a.ts - b.ts), V = ops.filter(isSupDoc).sort((a, b) => a.ts - b.ts), tot = L.reduce((n, o) => n + o.amt, 0);
   const row = (o, nm) => `<tr class="fbr" data-o="${esc(o.id)}" role="button" tabindex="0"><td><b>${esc(nm)}</b><small>${ldSub(o)}</small></td><td class="c"><span class="n">${fmt(o.amt)}</span></td></tr>`;
   return `<section class="fbd" data-d="${d}">${ldHead(d, L.length === 1 ? 'فاتورة واحدة' : L.length === 2 ? 'فاتورتين' : L.length ? L.length + (L.length <= 10 ? ' فواتير' : ' فاتورة') : '')}
     <table class="fbt"><thead><tr><th>العميل</th><th class="c">المبلغ</th></tr></thead><tbody>
     ${L.map(o => row(o, o.cname)).join('')}
     ${L.length ? `<tr class="fbtot"><td>إجمالي فواتير اليوم</td><td class="c"><span class="n">${fmt(tot)}</span></td></tr>` : ''}
-    ${R.map(o => row(o, '↩️ مرتجع/شغل ' + o.cname)).join('')}</tbody></table></section>`;
+    ${R.map(o => row(o, '↩️ مرتجع/شغل ' + o.cname)).join('')}
+    ${V.map(o => row(o, ldName(o))).join('')}</tbody></table></section>`;
 }
 function ledgerDay(d, ops) {
   if (ldTab === 'inv') return invDay(d, ops);
@@ -1169,7 +1197,7 @@ function newCustomer() {
 
 /* ---------- الموردين (نسخة من حساباتهم عند مصطفى): الإجمالي فوق والقايمة، ودوسة بتفتح حساب المورد ---------- */
 const supWord = b => b > 0 ? 'ليه' : b < 0 ? 'عليه' : 'خالص';
-const supLast = v => { const d = v.r.length ? v.r[v.r.length - 1][0] : '', n = daysAgo(d); return v.pend.length ? `⏳ ${v.pend.length === 1 ? 'دفعة' : v.pend.length + ' دفعات'} عند مصطفى` : n < 0 ? 'مفيش حركات آخر 3 شهور' : n === 0 ? 'آخر حركة النهارده' : n === 1 ? 'آخر حركة امبارح' : `آخر حركة من ${n} ${n <= 10 ? 'أيام' : 'يوم'}`; };
+const supLast = v => { const d = v.r.length ? v.r[v.r.length - 1][0] : '', n = daysAgo(d); return v.pend.length ? `⏳ ${v.pend.length === 1 ? 'حركة' : v.pend.length + ' حركات'} لسه منزلتش عند مصطفى` : n < 0 ? 'مفيش حركات آخر 3 شهور' : n === 0 ? 'آخر حركة النهارده' : n === 1 ? 'آخر حركة امبارح' : `آخر حركة من ${n} ${n <= 10 ? 'أيام' : 'يوم'}`; };
 function drawSuppliers(q0) {
   const all = [...suppliers().values()].sort((a, b) => Math.abs(b.bal) - Math.abs(a.bal) || a.name.localeCompare(b.name, 'ar'));
   const owe = all.reduce((a, v) => a + (v.bal > 0 ? v.bal : 0), 0), n = all.filter(v => v.bal > 0).length;
@@ -1192,15 +1220,152 @@ function drawSup() {
   let run = v.ob; const rows = v.r.map(x => { run += x[3]; return {d: x[0], k: x[1], t: x[2], x: x[3], n: x[4] || '', run}; }).reverse(), shown = rows.slice(0, vShow);
   $('#main').innerHTML = `<div class="cust"><b>${esc(v.name)}<small class="lp">${esc(supLast(v))}</small></b><div><span>${supWord(v.bal)}</span>${v.bal ? `<b class="money">${fmt(v.bal)}</b>` : ''}</div></div>
     <button class="big b-sup" id="vPay" type="button">🏭 دفعتله</button>
-    ${v.pend.length ? `<div class="lbl" style="margin-top:16px"><span>دفعات سجلتها ولسه عند مصطفى (${v.pend.length})</span><span>نزلت من رصيده</span></div><div class="list">${v.pend.sort((a, b) => b.ts - a.ts).map(o => opRow(o, true, true)).join('')}</div>` : ''}
+    <div class="sdb"><button class="big b-sdi" id="vInv" type="button">🧾 فاتورة شراء</button><button class="big b-sdr" id="vRt" type="button">↩️ مرتجع</button></div>
+    ${v.pend.length ? `<div class="lbl" style="margin-top:16px"><span>سجلتها ولسه منزلتش عند مصطفى (${v.pend.length})</span><span>محسوبة في رصيده</span></div><div class="list">${v.pend.sort((a, b) => b.ts - a.ts).map(o => opRow(o, true, true)).join('')}</div>` : ''}
     <div class="lbl" style="margin-top:16px"><span>كشف الحساب${v.from ? ' من ' + dispDate(v.from) : ''}</span><span>الرصيد بعدها</span></div>
     <div class="list sst">${shown.map(r => `<div class="row ${r.x > 0 ? 'd-inv' : 'd-out'}"><div class="m"><b>${esc(r.t)}</b><small>${dispDate(r.d)}${r.n ? ' · ' + esc(r.n) : ''}</small></div><div class="a"><b class="money">${r.x < 0 ? '−' : '+'}${fmt(r.x)}</b><small>${fmt(r.run)}${r.run < 0 ? ' عليه' : ''}</small></div></div>`).join('')}
       ${rows.length > shown.length ? '' : `<div class="row ob"><div class="m"><b>رصيد سابق</b><small>${v.from ? 'قبل ' + dispDate(v.from) : ''}</small></div><div class="a"><b class="money">${fmt(v.ob)}</b><small>${supWord(v.ob)}</small></div></div>`}</div>
     ${rows.length > shown.length ? '<button class="more" id="vMore" type="button" style="margin-top:10px">اعرض أقدم</button>' : ''}
-    <p class="hint">ده نفس حساب المورد عند مصطفى. أي دفعة بتسجلها بتنزل من رصيده على طول.</p>`;
+    <p class="hint">ده نفس حساب المورد عند مصطفى. الدفعة والمرتجع بينزلوا من رصيده، والفاتورة بتزوّده، على طول.</p>`;
   $('#vPay').onclick = () => { spTab = 'spay'; spPick = v.id; spBack = 'v/' + v.id; nav('x'); };
+  $('#vInv').onclick = () => nav('vd/' + v.id + '/sinv');
+  $('#vRt').onclick = () => nav('vd/' + v.id + '/srt');
   if ($('#vMore')) $('#vMore').onclick = () => { vShow += 30; drawSup(); };
   bindOps('#main');
+}
+
+/* ---------- فاتورة شراء / مرتجع شراء للمورد ببنودها (بطلبه 16/11/2026) ----------
+   نفس طريقة فاتورة الحسابات: كل صنف سطر (الصنف، الوحدة، الكمية، السعر)، وآخر سطر فاضي دايماً، وEnter بينقل بين الخانات.
+   أول ما يكتب حرف بتنزل أصناف المورد ده بس بآخر سعر واتشرت إمتى (من حسابات مصطفى sup.it + اللي سجله هنا)، ودوسة = الاسم والوحدة والسعر.
+   بتدخل حسابات مصطفى لوحدها (mkAuto) ومصطفى بيوصله إشعار في الوارد بس. مبتلمسش الكاش (cashSign = 0) */
+const SD_UNITS = ['كيلو', 'لفة', 'قطعة', 'وحدة', 'متر', 'كرتونة'];
+const sdTot = l => Math.round((+l.qty || 0) * (l.price || 0));
+function sdItems(sid, sname) {
+  const m = new Map(), v = S.sup[sid];
+  (v && Array.isArray(v.it) ? v.it : []).forEach(x => { if (Array.isArray(x) && x[0]) { const k = norm(x[0]); if (!m.has(k)) m.set(k, {name: x[0], unit: x[1] || '', price: +x[2] || 0, date: x[3] || ''}); } });
+  liveOps().filter(o => o.t === 'sinv' && (o.sid === sid || norm(o.sname) === norm(sname))).sort((a, b) => a.ts - b.ts).forEach(o => (o.lines || []).forEach(l => {
+    const k = norm(l.name), d = dayOf(o.ts), x = m.get(k); if (!x || x.date <= d) m.set(k, {name: l.name, unit: l.unit, price: l.price, date: d}); }));
+  return [...m.values()].sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+}
+function drawSDoc() {
+  lastSave = 0;
+  const o0 = scr.op ? S.ops[scr.op] : null, back = () => nav(S.sup[scr.sid] ? 'v/' + scr.sid : 'v', true);
+  if (scr.op && (!o0 || o0.del || !isSupDoc(o0))) return back();
+  const k = o0 ? o0.t : scr.k, v = suppliers().get(scr.sid), name = v ? v.name : o0 ? o0.sname : '';
+  if (!name) return back();
+  const ret = k === 'srt', mine = sdItems(scr.sid, name), byK = new Map(mine.map(x => [norm(x.name), x]));
+  const init = o0 ? o0.lines.map(l => ({name: l.name, unit: l.unit, qty: String(l.qty), price: fmt(l.price)})) : [{name: '', unit: 'كيلو', qty: '', price: ''}];
+  $('#main').innerHTML = `<div class="cust"><b>${esc(name)}<small class="lp">${ret ? '↩️ مرتجع شراء' : '🧾 فاتورة شراء'}${o0 ? ' — تعديل' : ''}</small></b>${v ? `<div><span>${supWord(v.bal)}</span>${v.bal ? `<b class="money">${fmt(v.bal)}</b>` : ''}</div>` : ''}</div>
+    <div class="sdh"><span>الصنف</span><span>الوحدة</span><span>الكمية</span><span>السعر</span><span>الإجمالي</span><span></span></div>
+    <div id="sdL"></div>
+    ${datePick('sdD', o0 ? dayOf(o0.ts) : today())}
+    <div class="sdt"><span>${ret ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}</span><b class="money" id="sdT">0</b></div>
+    <div id="sdW"></div>
+    <button class="big ${ret ? 'b-sdr' : 'b-sdi'}" id="sdOk" type="button">${o0 ? 'حفظ التعديل' : ret ? 'حفظ المرتجع' : 'حفظ الفاتورة'}</button>
+    ${o0 ? '<div style="text-align:center"><button class="oops" id="sdDel" type="button">🗑 امسحها</button></div>' : ''}
+    <p class="hint">${ret ? 'بينزل من اللي ليه' : 'بتزوّد اللي ليه'} وبتدخل حسابات مصطفى لوحدها. مبتلمسش الكاش اللي معاك.</p>`;
+  bindDate('sdD');
+  const F = (li, f) => li.querySelector(`[data-f=${f}]`);
+  const qtyOf = li => Math.round((+normDigits(F(li, 'qty').value).replace(/[٫،]/g, '.').replace(/[^\d.]/g, '') || 0) * 1000) / 1000;
+  const read = () => $$('#sdL .sdi').map(li => ({name: F(li, 'name').value.trim().replace(/\s+/g, ' '), unit: F(li, 'unit').value, qty: qtyOf(li), price: amtOf(F(li, 'price'))}));
+  const isBlank = li => !F(li, 'name').value.trim() && !F(li, 'qty').value.trim() && !F(li, 'price').value.trim();
+  const rowHtml = l => `<div class="sdi"${l.name ? ' data-um="1"' : ''}><div class="lnm"><input class="inp" data-f="name" placeholder="اسم الصنف" value="${esc(l.name)}" autocomplete="off" enterkeyhint="next"><div class="sg"></div></div>
+      <select class="inp" data-f="unit" tabindex="-1">${[...new Set(SD_UNITS.concat(l.unit ? [l.unit] : []))].map(u => `<option ${u === l.unit ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select>
+      <input class="inp" data-f="qty" inputmode="decimal" placeholder="0" value="${esc(l.qty)}" autocomplete="off" enterkeyhint="next">
+      <input class="inp" data-f="price" inputmode="decimal" placeholder="0" value="${esc(l.price)}" autocomplete="off" enterkeyhint="next">
+      <div class="lt money">—</div><button class="sdx" data-del type="button" tabindex="-1" aria-label="مسح السطر">✕</button></div>`;
+  const calc = () => {
+    let t = 0;
+    $$('#sdL .sdi').forEach(li => { const lt = sdTot({qty: qtyOf(li), price: amtOf(F(li, 'price'))}); li.querySelector('.lt').textContent = lt ? fmt(lt) : '—'; t += lt; });
+    $('#sdT').textContent = fmt(t);
+  };
+  const setUnit = (li, u) => { const s = F(li, 'unit'); if (![...s.options].some(o => o.value === u)) s.add(new Option(u)); s.value = u; };
+  const syncBlank = li => { const nx = li.nextElementSibling; if (nx && nx.classList.contains('blank') && isBlank(nx)) setUnit(nx, F(li, 'unit').value); };
+  const tidy = () => {
+    let L = $$('#sdL .sdi');
+    if (!L.length || !isBlank(L[L.length - 1])) {
+      const prev = L[L.length - 1];
+      $('#sdL').insertAdjacentHTML('beforeend', rowHtml({name: '', unit: prev ? F(prev, 'unit').value : 'كيلو', qty: '', price: ''}));
+      bindRow($('#sdL').lastElementChild); L = $$('#sdL .sdi');
+    }
+    L.forEach((li, i) => li.classList.toggle('blank', i === L.length - 1));
+  };
+  const FLD = ['name', 'qty', 'price'];
+  const bindRow = li => {
+    const el = F(li, 'name'), box = li.querySelector('.sg'), pr = F(li, 'price'), q = F(li, 'qty');
+    bindAmt(pr);
+    q.addEventListener('input', () => { q.value = normDigits(q.value).replace(/[٫،]/g, '.').replace(/[^\d.]/g, ''); });
+    li.querySelectorAll('input').forEach(x => x.addEventListener('input', () => { calc(); if (li.classList.contains('blank') && !isBlank(li)) tidy(); }));
+    F(li, 'unit').addEventListener('change', () => { li.dataset.um = '1'; syncBlank(li); });
+    li.querySelectorAll('[data-f]').forEach(x => x.addEventListener('keydown', ev => {
+      if (ev.key !== 'Enter' || ev.isComposing) return;
+      ev.preventDefault();
+      const i = FLD.indexOf(x.dataset.f);
+      if (i >= 0 && i < FLD.length - 1) return F(li, FLD[i + 1]).focus();
+      x.blur(); tidy();
+      const nx = li.nextElementSibling; if (nx) { F(nx, 'name').focus(); nx.scrollIntoView({block: 'nearest'}); }
+    }));
+    /* اقتراحات الاسم: أصناف المورد ده بس بآخر سعر واتشرت إمتى. دوسة = الاسم والوحدة والسعر */
+    let rows = [];
+    const hide = () => { box.classList.remove('on'); box.innerHTML = ''; };
+    const show = () => {
+      const s = norm(el.value);
+      rows = mine.filter(x => !s || norm(x.name).includes(s)).slice(0, 5);
+      if (!rows.length || (rows.length === 1 && norm(rows[0].name) === s)) return hide();
+      box.innerHTML = `<div class="sh">اتشرى من المورد ده قبل كده</div>` + rows.map((x, i) => `<div class="sr" data-i="${i}"><span>${esc(x.name)}<small>${esc(x.unit || '')}${x.date ? ' — آخر مرة ' + dispDate(x.date) : ''}</small></span>${x.price ? `<b>${fmt(x.price)}</b>` : ''}</div>`).join('');
+      box.classList.add('on');
+    };
+    box.onmousedown = ev => ev.preventDefault();
+    box.onclick = ev => {
+      const r = ev.target.closest('.sr'), x = r && rows[+r.dataset.i]; if (!x) return;
+      el.value = x.name;
+      if (x.unit) { setUnit(li, x.unit); syncBlank(li); }
+      if (x.price) pr.value = fmt(x.price);
+      hide(); calc(); tidy(); q.focus();
+    };
+    el.addEventListener('focus', show); el.addEventListener('input', show);
+    el.addEventListener('blur', () => setTimeout(hide, 200));
+    el.addEventListener('change', () => {
+      const x = byK.get(norm(el.value)); if (!x) return;
+      if (!li.dataset.um && x.unit) { setUnit(li, x.unit); syncBlank(li); }
+      if (!pr.value && x.price && (!x.unit || x.unit === F(li, 'unit').value)) { pr.value = fmt(x.price); calc(); }
+    });
+    li.querySelector('[data-del]').onclick = () => { li.remove(); tidy(); calc(); };
+  };
+  $('#sdL').innerHTML = init.map(rowHtml).join('');
+  $$('#sdL .sdi').forEach(bindRow); tidy(); calc();
+  let warned = false;
+  $('#sdL').addEventListener('input', () => { if (warned) { warned = false; $('#sdW').innerHTML = ''; $('#sdOk').textContent = o0 ? 'حفظ التعديل' : ret ? 'حفظ المرتجع' : 'حفظ الفاتورة'; } });
+  $('#sdOk').onclick = () => {
+    if (Date.now() - lastSave < 700) return;
+    const raw = read().filter(l => l.name || l.qty || l.price);
+    if (!raw.length) return toast('اكتب صنف واحد على الأقل');
+    for (const [i, l] of raw.entries()) {
+      if (!l.name) return toast(`اكتب اسم الصنف في السطر ${i + 1}`);
+      if (!(l.qty > 0)) return toast(`اكتب الكمية في السطر ${i + 1}`);
+      if (!(l.price > 0)) return toast(`اكتب السعر في السطر ${i + 1}`);
+    }
+    if (raw.length > 60) return toast('أصناف كتير أوي في ورقة واحدة. قسّمها على اتنين');
+    const ls = raw.map(l => ({name: l.name.slice(0, 80), unit: l.unit, qty: l.qty, price: l.price})), amt = ls.reduce((s, l) => s + sdTot(l), 0), ts = tsOnDay(dateOf('sdD'), o0 ? o0.ts : 0);
+    if (o0 && amt === o0.amt && dayOf(ts) === dayOf(o0.ts) && JSON.stringify(ls) === JSON.stringify(o0.lines)) return back();
+    if (!warned) {
+      const w = [], seen = new Set();
+      ls.forEach(l => { const kk = norm(l.name), x = byK.get(kk); if (seen.has(kk)) return; seen.add(kk);
+        if (x && x.price > 0 && x.unit === l.unit && (l.price >= x.price * 5 || l.price * 5 <= x.price)) w.push(`سعر "${l.name}" (${fmt(l.price)}) بعيد أوي عن آخر سعر (${fmt(x.price)}). اتأكد إن مفيش صفر زيادة أو ناقص.`); });
+      if (!o0 && liveOps().some(o => o.t === k && o.amt === amt && (o.sid === scr.sid || norm(o.sname) === norm(name)) && nowS() - (o.cr || o.ts) < 120000)) w.push(`سجلت ${ret ? 'مرتجع' : 'فاتورة'} بنفس المبلغ (${fmt(amt)}) للمورد ده من شوية. متأكد إنها مش متكررة؟`);
+      if (w.length) { warned = true; $('#sdW').innerHTML = `<div class="note">${w.map(esc).join('<br>')}</div>`; $('#sdOk').textContent = 'متأكد، احفظ برضه'; return; }
+    }
+    lastSave = Date.now();
+    const now = nowS();
+    if (o0) { Object.assign(o0, {lines: ls, amt, ts}); bump(o0); }
+    else { const o = {id: newId(), t: k, sid: S.sup[scr.sid] ? scr.sid : '', sname: name, amt, lines: ls, ts, cr: now, upd: now, del: false}; if (!o.sid) delete o.sid; S.ops[o.id] = o; }
+    save(); sync();
+    try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
+    back();
+    toast(`✔ ${o0 ? 'اتعدّل' : 'اتسجل'} ${ret ? 'مرتجع' : 'فاتورة'} ${name} — ${fmt(amt)} جنيه`, 3000);
+  };
+  if ($('#sdDel')) $('#sdDel').onclick = async () => { if (await delOp(o0)) back(); };
+  if (!o0) setTimeout(() => { const f = $('#sdL [data-f=name]'); f && f.focus(); }, 120);
 }
 
 /* ---------- شاشة الدفعة (دوسة على الزرار بتحفظ على طول) ---------- */
@@ -1320,6 +1485,7 @@ async function saveInv(c) {
 const EDIT_TITLE = {rt: 'مرتجع / شغل', pay: 'دفعة عميل', inv: 'فاتورة (إجمالي)', exp: 'مصروف', spay: 'دفعة لمورد', hand: 'تسليم كاش لمصطفى', cs: 'بيع كاش من المصنع'};
 function editSheet(o) {
   if (!o || o.del) return;
+  if (isSupDoc(o)) return nav(`vd/${supIdOf(o) || o.sid || '-'}/${o.t}/${o.id}`);   // فاتورة/مرتجع المورد بيتعدّلوا في نفس شاشة البنود
   /* التعديل والمسح في أي وقت (بطلب صاحب المشروع)، حتى بعد ما مصطفى ينقلها: التعديل بيتطبق عنده لوحده وبيوصله إشعار */
   const s = opState(o);
   let m = o.t === 'cs' ? o.m || 'cash' : o.m;
@@ -1355,7 +1521,7 @@ function editSheet(o) {
   $('#eDel').onclick = async () => { if (await delOp(o)) refresh(); };
 }
 async function delOp(o) {
-  if (!(await ask(`تمسح ${o.t === 'pay' ? 'دفعة' : o.t === 'inv' ? 'فاتورة' : o.t === 'rt' ? 'مرتجع/شغل' : o.t === 'hand' ? 'تسليم' : o.t === 'cs' ? 'بيع كاش' : 'مصروف'} ${fmt(o.amt)} (${opWhat(o)}${o.t === 'pay' ? ' — ' + M_SAID[o.m] : csTr(o) ? ' — ' + M_SAID.tr : ''})؟`, 'أيوه امسحها', 'لأ', true))) return false;
+  if (!(await ask(`تمسح ${o.t === 'pay' ? 'دفعة' : o.t === 'inv' ? 'فاتورة' : o.t === 'rt' ? 'مرتجع/شغل' : o.t === 'hand' ? 'تسليم' : o.t === 'cs' ? 'بيع كاش' : isSupDoc(o) ? SD_TXT[o.t] : o.t === 'spay' ? 'دفعة مورد' : 'مصروف'} ${fmt(o.amt)} (${opWhat(o)}${o.t === 'pay' ? ' — ' + M_SAID[o.m] : csTr(o) ? ' — ' + M_SAID.tr : ''})؟`, 'أيوه امسحها', 'لأ', true))) return false;
   o.del = true; bump(o); save(); sync();
   toast('اتمسحت ✔');
   return true;

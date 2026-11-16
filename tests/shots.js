@@ -120,6 +120,7 @@ function mktState() {
   /* الموردين: نسخة من الحسابات (رصيد سابق + كشف آخر 3 شهور) */
   const sup = {}, sp = (id, name, ob, from, r) => { sup[id] = {id, name, ob, from, r, bal: ob + r.reduce((a, x) => a + x[3], 0), upd: NOW}; };
   sp('v1', 'مورد تجربة الخامات', 9000000, iso(100), [[iso(80), 'ppay', 'دفعة نقدي', -2500000, ''], [iso(30), 'pur', 'فاتورة مشتريات', 10100000, 'خامة تجربة 2000 كيلو'], [iso(10), 'ppay', 'دفعة تحويل', -6000000, ''], [iso(2), 'pur', 'فاتورة مشتريات', 1850000, 'خامة تجربة 300 كيلو، صبغة تجربة 20 كيلو']]);
+  sup.v1.it = [['خامة تجربة', 'كيلو', 5050, iso(2)], ['صبغة تجربة', 'كيلو', 17000, iso(2)], ['خامة تجربة بيضا', 'كيلو', 4800, iso(30)]];
   sp('v2', 'مورد تجربة الكرتون', 0, iso(100), [[iso(22), 'pur', 'فاتورة مشتريات', 600000, 'كرتون تجربة 500 كرتونة'], [iso(5), 'ppay', 'دفعة نقدي', -400000, '']]);
   sp('v3', 'مورد تجربة النحاس', 4350000, iso(100), [[iso(40), 'pur', 'فاتورة مشتريات', 2200000, 'نحاس تجربة 50 كيلو']]);
   sp('v4', 'مورد تجربة البلاستيك', 0, iso(100), [[iso(6), 'ppay', 'دفعة نقدي زيادة', -300000, '']]);   // اتدفعله زيادة = عليه
@@ -234,6 +235,7 @@ const SCREENS = [
   {name: 'acc-lock-m', app: 'acc', vp: MOB, go: accEval("$('#bLock').click()")},
   ...ACC('l', LAP),
   {name: 'acc-party-l1100', app: 'acc', vp: LAP2, go: accEval(`go('p/' + ${party}.id)`)},
+  {name: 'acc-mkt-nt-m', app: 'acc', vp: MOB, full: true, go: accEval("const v = liveParties().find(p => p.sec === 'sup'), d = mkDb(), t = Date.now(); d.ops.m_sd1 = {id: 'm_sd1', t: 'sinv', sid: v.id, sname: v.name, amt: 1530000, lines: [{name: 'خامة تجربة', unit: 'كيلو', qty: 300, price: 5100}], ts: t, upd: t, del: false}; mkSupDocPut(d.ops.m_sd1, v.id); go('mkt'); renderMkt()")},
   {name: 'acc-mkt-arch-m', app: 'acc', vp: MOB, full: true, go: accEval("mkView = 'arch'; mkDay = ''; go('mkt'); renderMkt()")},
   {name: 'acc-cash-wk-m', app: 'acc', vp: MOB, go: accEval("cashSide = 'me'; cashMode = 'week'; go('cash'); renderCash()")},
   {name: 'acc-cash-rng-m', app: 'acc', vp: MOB, go: accEval("cashSide = 'me'; cashMode = 'range'; go('cash'); renderCash()")},
@@ -259,6 +261,7 @@ const SCREENS = [
   {name: 'mkt-spend-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { nav('x'); document.activeElement && document.activeElement.blur(); }); }},
   {name: 'mkt-sup-m', app: 'mkt', vp: MOB, full: true, go: mktGo('v')},
   {name: 'mkt-supacc-m', app: 'mkt', vp: MOB, full: true, go: mktGo('v/v1')},
+  {name: 'mkt-sdoc-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => nav('vd/v1/sinv')); await M.fill('#sdL .sdi:first-child [data-f=name]', 'خامة'); }},
   {name: 'mkt-supneg-m', app: 'mkt', vp: MOB, full: true, go: mktGo('v/v4')},
   {name: 'mkt-suppay-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { spTab = 'spay'; spPick = ''; nav('x'); document.activeElement && document.activeElement.blur(); }); }},
   {name: 'mkt-suppick-m', app: 'mkt', vp: MOB, full: true, go: async M => { await M.evaluate(() => { spTab = 'spay'; spPick = 'v1'; spBack = 'v/v1'; nav('x'); document.activeElement && document.activeElement.blur(); }); }},

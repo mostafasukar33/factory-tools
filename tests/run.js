@@ -2354,7 +2354,7 @@ const T0 = Date.now();
       d.cu = {}; const c2 = mkCustRows().find(r => r.row.id === p.id);
       d.cu = cu0; if (cs0 === undefined) delete d.cs[p.id]; else d.cs[p.id] = cs0; if (d.ss) { if (ss0 === undefined) delete d.ss[s.id]; else d.ss[s.id] = ss0; }
       let ver = 0; for (const k of ['parties', 'entries', 'sets']) for (const r of db[k]) if (r.upd > ver) ver = r.upd;
-      return [c.row.upd, u.row.upd, c2.row.upd === 1e13 + ver + 1, c.sig.startsWith('v5|'), u.sig.startsWith('s2|')];
+      return [c.row.upd, u.row.upd, c2.row.upd === 1e13 + ver + 1, c.sig.startsWith('v5|'), u.sig.startsWith('s3|')];
     }), [2e13 + 1, 2e13 + 1, true, true, true]);
     eq('الوارد متقسم (جاهزين للنقل / محتاجين قرارك)، ومفيش زرار "رجّعها" في الوارد نفسه: جوه نافذة السطر', await A.evaluate(async () => {
       const r = [!!document.querySelector('#mkBody .mqsec [data-gs]'), !document.querySelector('#mkBody [data-bk]')];
@@ -3035,7 +3035,7 @@ const T0 = Date.now();
       const op = await M.evaluate(() => liveOps().filter(o => o.t === 'spay').sort((a, b) => b.cr - a.cr || b.ts - a.ts)[0]);
       eq('الدفعة متسجلة بالمورد (sid) ونزلت من رصيده عند الشريك على طول', [op.sid, op.amt, await M.evaluate(id => suppliers().get(id).bal, vid)], [vid, 50000, bal0 - 50000]);
       await M.click('#bBack'); await M.settle(200);
-      eq('الرجوع من دفعت لمورد بيرجع لحساب المورد، وفيه الدفعة "عند مصطفى"', await M.evaluate(() => [scr.v, $('#main').textContent.includes('ولسه عند مصطفى')]), ['sup', true]);
+      eq('الرجوع من دفعت لمورد بيرجع لحساب المورد، وفيه الدفعة "عند مصطفى"', await M.evaluate(() => [scr.v, $('#main').textContent.includes('منزلتش عند مصطفى')]), ['sup', true]);
       /* اسم مكتوب بإيده مش في القايمة: من غير sid زي الأول */
       await M.evaluate(() => nav('')); await M.click('#qSp'); await M.click('#spT button[data-v=spay]'); await M.settle(150);
       eq('القايمة بتظهر في دفعت لمورد وبتتفلتر بالكتابة', [await M.evaluate(() => $$('#vpk .vlist button').length), (await M.fill('#sn', 'مورد مش موجود خالص'), await M.evaluate(() => [$$('#vpk .vlist button').length, $('#vpk').textContent.includes('مصطفى يربطه')]))], [supRows.length, [0, true]]);
@@ -3047,6 +3047,65 @@ const T0 = Date.now();
       /* نشيل الدفعتين علشان باقي الاختبارات */
       await M.evaluate(() => { liveOps().filter(o => o.t === 'spay' && (o.sid || o.sname === 'مورد مش موجود خالص') && opState(o) !== 'done').forEach(o => { o.del = true; bump(o); }); save(); });
       await bg(M, 'sync()'); await bg(A, 'mkSync()');
+    }
+
+    sec('٢٢ب٢) حركة السوق: أحمد بيسجل فاتورة/مرتجع شراء للمورد ببنودها (اقتراحات بآخر سعر) وبتدخل الحسابات لوحدها وإشعار في الوارد');
+    {
+      const VN = 'مورد تجربة', vid = await A.evaluate(n => liveParties().find(x => x.name === n).id, VN), ib0 = await A.evaluate(id => balance(id), vid);
+      await A.evaluate(() => localStorage.setItem('fo_auto', '1'));   // الدخول لوحده مقفول في الاختبارات القديمة
+      const pe0 = await A.evaluate(id => { const e = addEntry({party: id, kind: 'pur', date: addDays(todayISO(), -1), no: '', lines: [{name: 'خامة تجربة', unit: 'كيلو', qty: 100, price: 5000}], disc: 0, note: ''}); applyAmounts(e); e.desc = docDesc(e); saveDB(); return e.id; }, vid);
+      await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(200);
+      eq('أصناف المورد بآخر سعر وصلت تطبيق أحمد مع كشفه', await M.evaluate(id => (S.sup[id].it || []).find(x => x[0] === 'خامة تجربة'), vid), ['خامة تجربة', 'كيلو', 5000, await A.evaluate(() => addDays(todayISO(), -1))]);
+      const cash0 = await M.evaluate(() => cashNow()), sb0 = await M.evaluate(id => suppliers().get(id).bal, vid);
+      await M.evaluate(id => nav('v/' + id), vid); await M.settle(150);
+      await M.click('#vInv'); await M.settle(200);
+      eq('فاتورة شراء: شاشة البنود، وأول ما يكتب حرف بيظهر صنف المورد بآخر سعر', [await M.evaluate(() => scr.v), (await M.fill('#sdL .sdi:first-child [data-f=name]', 'خا'), await M.evaluate(() => [$('#sdL .sg.on') ? $('#sdL .sg .sr span').firstChild.textContent : '', $('#sdL .sg .sr b') ? $('#sdL .sg .sr b').textContent : '']))], ['sdoc', ['خامة تجربة', '50']]);
+      await M.click('#sdL .sg .sr'); await M.settle(50);
+      eq('دوسة على الاقتراح = الاسم والوحدة والسعر، والكيبورد على الكمية', await M.evaluate(() => { const li = $('#sdL .sdi'); return [li.querySelector('[data-f=name]').value, li.querySelector('[data-f=unit]').value, li.querySelector('[data-f=price]').value, document.activeElement.dataset.f]; }), ['خامة تجربة', 'كيلو', '50', 'qty']);
+      await M.fill('#sdL .sdi:nth-child(1) [data-f=qty]', '10');
+      await M.fill('#sdL .sdi:nth-child(2) [data-f=name]', 'صنف جديد تجربة'); await M.fill('#sdL .sdi:nth-child(2) [data-f=qty]', '2'); await M.fill('#sdL .sdi:nth-child(2) [data-f=price]', '30');
+      eq('آخر سطر فاضي بيطلع لوحده، والإجمالي = الكميات × الأسعار', await M.evaluate(() => [$$('#sdL .sdi').length, $('#sdT').textContent]), [3, '560']);
+      await M.click('#sdOk'); await M.settle(300);
+      const op = await M.evaluate(() => liveOps().filter(o => o.t === 'sinv').sort((a, b) => b.cr - a.cr)[0]);
+      eq('اتسجلت sinv بالبنود والمورد، ورصيد المورد زاد عند أحمد، والكاش اللي معاه زي ما هو', [op.sid, op.amt, op.lines.length, await M.evaluate(() => scr.v), await M.evaluate(id => suppliers().get(id).bal, vid) - sb0, await M.evaluate(() => cashNow()) - cash0], [vid, 56000, 2, 'sup', 56000, 0]);
+      await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(300);
+      eq('دخلت حساب المورد لوحدها فاتورة شراء ببنودها (من غير ما تستنى في الوارد)', await A.evaluate(([id, oid, b]) => { const e = E.get('e_mk_' + oid); return [e.kind, e.party === id, e.lines.length, docTotal(e), balance(id) - b, mkState(mkDb().ops[oid]), mkPending().some(o => o.id === oid), /من/.test(e.note)]; }, [vid, op.id, ib0 - 500000]), ['pur', true, 2, 56000, -56000, 'done', false, true]);
+      await A.evaluate(() => go('mkt')); await A.settle(200);
+      eq('إشعار في الوارد: "سجّل فاتورة شراء" باسم المورد والبنود، و"تمام" بيشيله', [await A.evaluate(() => [mkNtList().map(x => x.k).join(), !!$('#mqNt') && $('#mqNt').textContent.includes('سجّل فاتورة شراء') && $('#mqNt').textContent.includes('خامة تجربة')]), (await A.click('#mkNtOk'), await A.settle(100), await A.evaluate(() => [mkNtList().length, !!$('#mqNt')]))], [['new', true], [0, false]]);
+      /* أحمد عدّل الكمية: بتتعدّل في الحسابات لوحدها وإشعار "عدّل" */
+      await M.evaluate(oid => editSheet(S.ops[oid]), op.id); await M.settle(200);
+      eq('تعديل فاتورة المورد بيفتح نفس شاشة البنود بأصنافها', await M.evaluate(() => [scr.v, $$('#sdL .sdi').length, $('#sdT').textContent]), ['sdoc', 3, '560']);
+      await M.fill('#sdL .sdi:nth-child(1) [data-f=qty]', '20'); await M.click('#sdOk'); await M.settle(300);
+      await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(300);
+      eq('تعديل أحمد اتطبق لوحده (106,000 قرش) والإشعار بقى "عدّل"', await A.evaluate(oid => [docTotal(E.get('e_mk_' + oid)), mkNtList().map(x => x.k).join()], op.id), [106000, 'edit']);
+      /* مصطفى عدّلها بإيده: تعديل أحمد بعد كده إشعار بس */
+      await A.evaluate(oid => { const e = E.get('e_mk_' + oid); e.lines[1].price = 3500; applyAmounts(e); touch(e); saveDB(); }, op.id);
+      await M.evaluate(oid => { const o = S.ops[oid]; o.lines[1].qty = 5; o.amt = o.lines.reduce((s, l) => s + sdTot(l), 0); bump(o); save(); }, op.id);
+      await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(300);
+      eq('اللي مصطفى عدّله بإيده مبيتغيرش من أحمد (إشعار "ظبطها بإيدك")', await A.evaluate(oid => [docTotal(E.get('e_mk_' + oid)), !!$('#mqNt') && $('#mqNt').textContent.includes('ظبطها بإيدك')], op.id), [107000, true]);
+      /* مرتجع شراء */
+      await M.evaluate(id => nav('vd/' + id + '/srt'), vid); await M.settle(200);
+      await M.fill('#sdL .sdi:first-child [data-f=name]', 'خامة تجربة'); await M.evaluate(() => $('#sdL [data-f=name]').dispatchEvent(new Event('change')));
+      await M.fill('#sdL .sdi:first-child [data-f=qty]', '1');
+      eq('المرتجع: الاسم المكتوب بالكامل بياخد السعر لوحده', await M.evaluate(() => [$('#sdL [data-f=price]').value, $('#sdT').textContent]), ['50', '50']);
+      await M.click('#sdOk'); await M.settle(300);
+      const rt = await M.evaluate(() => liveOps().filter(o => o.t === 'srt').sort((a, b) => b.cr - a.cr)[0]);
+      await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(300);
+      eq('المرتجع دخل لوحده مرتجع مشتريات ونزل من رصيد المورد', await A.evaluate(oid => { const e = E.get('e_mk_' + oid); return [e.kind, docTotal(e), mkNtList().some(x => x.o.id === oid && x.k === 'new')]; }, rt.id), ['rpur', 5000, true]);
+      /* سعر بعيد أوي عن آخر سعر: تنبيه بس، والدوسة التانية بتحفظ */
+      await M.evaluate(id => nav('vd/' + id + '/sinv'), vid); await M.settle(200);
+      await M.fill('#sdL .sdi:first-child [data-f=name]', 'خامة تجربة'); await M.fill('#sdL .sdi:first-child [data-f=qty]', '1'); await M.fill('#sdL .sdi:first-child [data-f=price]', '500');
+      await M.click('#sdOk'); await M.settle(100);
+      eq('صفر زيادة في السعر: تنبيه والفاتورة لسه متسجلتش', await M.evaluate(() => [scr.v, $('#sdW').textContent.includes('صفر زيادة')]), ['sdoc', true]);
+      await M.evaluate(() => nav('v/' + scr.sid, true));
+      /* نشيل كل ده علشان باقي الاختبارات: أحمد بيمسح، واللي مصطفى عدّله بيتمسح بإيده */
+      await M.evaluate(ids => { ids.forEach(i => { S.ops[i].del = true; bump(S.ops[i]); }); save(); }, [op.id, rt.id]);
+      await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(300);
+      eq('مسح أحمد للمرتجع شاله من الحسابات لوحده، والفاتورة اللي مصطفى عدّلها لأ (إشعار)', await A.evaluate(([a, b]) => [E.get('e_mk_' + b).del, E.get('e_mk_' + a).del, mkNtList().filter(x => x.k === 'del').length], [op.id, rt.id]), [true, false, 2]);
+      await A.evaluate(ids => { ids.forEach(i => { const e = E.get(i); e.del = true; e.delAt = nowS(); touch(e); }); const d = mkDb(); mkNtList().forEach(x => { d.ns[x.o.id] = x.o.upd; }); saveDB(); }, ['e_mk_' + op.id, pe0]);
+      eq('رصيد المورد رجع زي ما كان', await A.evaluate(id => balance(id), vid), ib0);
+      await A.evaluate(() => localStorage.setItem('fo_auto', '0'));
+      await bg(A, 'mkSync()'); await bg(M, 'sync()');
     }
 
     {

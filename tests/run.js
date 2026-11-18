@@ -1497,6 +1497,15 @@ const T0 = Date.now();
       lineModal(p, e, 0); $('#lnQty').value = String(l0.qty); $('#lnQty').dispatchEvent(new Event('input')); $('#lnOk').click();
       r.push(docTotal(e) === tot0);
       return r; }), [true, true, true, true, true, true]);
+    eq('دوسة على فاتورة في صفحة الحساب: بتفتح لوحدها (واتساب/PDF)، والتعديل من «افتح الفاتورة» و«عدّل الصنف ده بس»', await A.evaluate(() => {
+      const p = liveParties().find(x => x.name === 'عميل تجربة واحد'), e = partyEntries(p.id).find(x => x.kind === 'inv' && x.lines.length > 1 && !x.del);
+      if (!e) return 'no multi-line invoice';
+      const h0 = location.hash; location.hash = 'p/' + p.id; route(); const er = $(`#p-party .ldg tr[data-id="${e.id}"][data-li="1"]`), r = [!!er]; er.click();
+      r.push(!!$('#ivShare') && !!$('#ivPdf') && !!$('#ivEdit') && !!$('#ivRcv') && $('#modal h3').textContent.includes('فاتورة'));
+      r.push(!!$('#ivLine') && $('#ivLine').textContent.includes(e.lines[1].name)); $('#ivLine').click(); r.push(!!$('#lnName') && $('#lnName').value === e.lines[1].name); closeModal();
+      er.click(); $('#ivEdit').click(); r.push(!!$('#dcLines') && !$('#ivShare')); closeModal();
+      er.click(); $('#ivBack').click(); r.push(!$('#mask').classList.contains('on')); location.hash = h0; route();
+      return r; }), [true, true, true, true, true, true]);
     eq('اقتراحات الفاتورة: أصناف الحساب بسعرها القديم، والدوسة تملّي الاسم والسعر، والكتابة بتفلتر', await A.evaluate(() => {
       const p = liveParties().find(x => x.name === 'عميل تجربة واحد'); docModal(p, 'inv');
       const mine = custItems(p.id, 'inv'), n = $('#dcLines [data-f=name]'), box = $('#dcLines .sg');

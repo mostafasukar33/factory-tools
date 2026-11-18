@@ -2800,7 +2800,7 @@ function renderParty(id) {
   ppStkWatch();
   if ($('#ppWantL')) $('#ppWantL').onclick = () => mkWantModal(p);
   if ($('#ppX')) $('#ppX').onclick = () => { showX = !showX; renderParty(id); };
-  $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => el.dataset.g ? mkGrpModal(p, el.dataset.g.split(',')) : el.dataset.li !== undefined ? lineModal(p, E.get(el.dataset.id), +el.dataset.li) : openEntry(p, E.get(el.dataset.id)));
+  $$('#p-party .en, #p-party .ldg tr[data-id]').forEach(el => el.onclick = () => { const e = E.get(el.dataset.id); return el.dataset.g ? mkGrpModal(p, el.dataset.g.split(',')) : e && isDoc(e) && !e.del ? invOnlyModal(p, e, closeModal, el.dataset.li) : el.dataset.li !== undefined ? lineModal(p, e, +el.dataset.li) : openEntry(p, e); });   // الفاتورة بتفتح لوحدها (واتساب/PDF) والتعديل من «✎ افتح الفاتورة» أو «✎ عدّل الصنف ده بس» (بطلبه 18/11/2026)
   if ($('#ppEnd')) $('#ppEnd').onclick = () => jumpTo(true);
   if ($('#ldgOld')) $('#ldgOld').onclick = () => { ldgAll.set(id, (ldgAll.get(id) || 0) + LDG_SHOW); renderParty(id); };
   if ($('#ldgFold')) $('#ldgFold').onclick = () => { ldgAll.delete(id); renderParty(id); };
@@ -3484,15 +3484,20 @@ function invOnlyData(p, e) {
   const rows = rowsWithRef(e).map(r => { run += r.dr - r.cr; const x = (r.dr - r.cr) * sg; return Object.assign(r, {run, gd: x > 0 ? x : 0, pd: x < 0 ? -x : 0}); });
   return {invOnly: e, open: null, rows, n: 1, sg, close: run, from: e.date, to: e.date, tg: 0, tp: 0, lastInv: null};
 }
-function invOnlyModal(p, e) {
-  const s = invOnlyData(p, e), tot = docTotal(e);
-  modal(`<h3>آخر فاتورة بس<small class="mnm">${esc(p.name)}</small></h3>
-    <div class="stm"><div><span>تاريخ الفاتورة</span><b>${dispDate(e.date)}</b></div><div><span>عدد البنود</span><b>${(e.lines || []).length}</b></div>
+/* back = جاي من صفحة الحساب (دوسة على فاتورة): زراير التعديل، و li = سطر الصنف اللي اتداس عليه */
+function invOnlyModal(p, e, back, li) {
+  const s = invOnlyData(p, e), tot = docTotal(e), ln = li !== undefined && (e.lines || [])[+li];
+  modal(`<h3>${back ? 'فاتورة ' + dispDate(e.date) : 'آخر فاتورة بس'}<small class="mnm">${esc(p.name)}</small></h3>
+    <div class="stm"><div><span>تاريخ الفاتورة</span><b style="direction:rtl">${dispDate(e.date)}</b></div><div><span>عدد البنود</span><b>${(e.lines || []).length}</b></div>
       <div class="k"><span>إجمالي الفاتورة</span><b>${fmtP(tot)}</b></div></div>
     
     <div class="mfoot"><div class="mrow3"><button class="btn green" id="ivShare" type="button">📲 واتساب</button>
-      <button class="btn gold" id="ivPdf" type="button">📄 معاينة PDF</button><button class="btn line" id="ivBack" type="button">رجوع</button></div></div>`, true);
-  $('#ivBack').onclick = () => stmtModal(p);
+      <button class="btn gold" id="ivPdf" type="button">📄 معاينة PDF</button><button class="btn line" id="ivBack" type="button">${back ? 'إغلاق' : 'رجوع'}</button></div>
+      ${back && e.kind === 'inv' ? '<button class="btn line" id="ivRcv" type="button" style="margin-top:8px">📦 إذن استلام (البنود والعدد بس)</button>' : ''}${back ? '<button class="btn line" id="ivEdit" type="button" style="margin-top:8px">✎ افتح الفاتورة (تعديل أو إلغاء)</button>' : ''}${back && ln ? `<button class="btn line" id="ivLine" type="button" style="margin-top:8px">✎ عدّل الصنف ده بس («${esc(ln.name)}»)</button>` : ''}</div>`, true);
+  $('#ivBack').onclick = () => back ? back() : stmtModal(p);
+  if ($('#ivRcv')) $('#ivRcv').onclick = () => exportRc(p, e);
+  if ($('#ivEdit')) $('#ivEdit').onclick = () => openEntry(p, e);
+  if ($('#ivLine')) $('#ivLine').onclick = () => lineModal(p, e, +li);
   $('#ivShare').onclick = () => exportStmt(p, s, 'share');
   $('#ivPdf').onclick = () => exportStmt(p, s, 'preview');
 }

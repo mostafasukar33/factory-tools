@@ -7192,7 +7192,7 @@ async function docNow() {
   if (!fresh.length) return;
   toast(`⚠️ الفحص لقى حاجة جديدة: ${fresh[0].t}${fresh.length > 1 ? ` (و${fresh.length - 1} كمان)` : ''}`, 7000);
   if (document.body.dataset.pg === 'home') renderHome();
-  if (typeof tgOpts !== 'function' || !mkCreds() || !tgOpts().dr) return;
+  if (typeof tgOpts !== 'function' || !mkCreds() || !tgOpts().dr || tgMuted()) return;
   const q = {text: window.docText({bad: fresh.filter(x => r.bad.includes(x)), warn: fresh.filter(x => r.warn.includes(x)), info: [], ms: 0, n: r.n}, '🩺 فحص البيانات لقى حاجة جديدة دلوقتي:'), v: drHash(fresh.map(x => x.k))};
   const j = await tgCall('tgmsg', {text: q.text, once: {k: 'drnew', v: q.v}});
   if (!j && db === d0) { db.cfg.doc.drq = q; flushSave(); }   // النت مقطوع: تتبعت مع أول مزامنة (tgAfterSync)
@@ -8024,13 +8024,14 @@ function moreItems() {
     ['cats', '🗄', 'الخزن والبنود', 'أسامي الخزن وبنود المصروفات والإيرادات'],
     ['cl', '💬', 'اسأل Claude', 'ابعتله حساباتك واسأله أي سؤال'],
     ['doc', '🩺', 'فحص البيانات', 'يراجع الحسابات ويقولك لو فيه حاجة غلط'],
+    ...(mkCreds() ? [['tg', '🔔', 'تنبيهات تليجرام', tgMuted() ? tgStTxt().replace('⏳ التنبيهات ', '') : 'كلها شغالة — وقّفها أو شغّلها']] : []),
     ['set', '⚙', 'الإعدادات', 'كلمة السر والنسخ والربط والشكل']
   ];
 }
 function renderMore() {
   $('#p-more').innerHTML = `<div class="sech"><span>المزيد</span></div><div class="mog">${moreItems().map(([k, ic, t, d, n]) =>
     `<button type="button" class="moc" data-mo="${k}"><span class="mo-i">${ic}</span><b>${t}${n ? ` <i class="mo-n">${n}</i>` : ''}</b><small>${d}</small></button>`).join('')}</div>`;
-  $$('#p-more [data-mo]').forEach(b => b.onclick = () => { const k = b.dataset.mo; if (k === 'find') searchModal(''); else if (k === 'cats') vaultSettings(); else if (k === 'cl') loadClaude(); else if (k === 'doc') docOpen(); else go(k); });
+  $$('#p-more [data-mo]').forEach(b => b.onclick = () => { const k = b.dataset.mo; if (k === 'find') searchModal(''); else if (k === 'cats') vaultSettings(); else if (k === 'cl') loadClaude(); else if (k === 'doc') docOpen(); else if (k === 'tg') tgModal(); else go(k); });
 }
 $('#bCl').onclick = $('#nCl').onclick = () => loadClaude();
 $('#bTheme').onclick = () => { uiSet({theme: document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'}); if ($('#uiTheme')) bindUI(); };
@@ -8093,7 +8094,7 @@ const HEAD = ['id','النوع','آخر تعديل','رقم المزامنة','�
 const W = HEAD.length;
 const TG = 'https://api.telegram.org/bot';
 const PUSH = 'https://app.flashoneg.com/push';   // وسيط إشعارات الأيفون (functions/push.js في نفس المشروع)
-const VER = 8;   /* 8 = الكتابة بتتحفظ (flush) قبل ما القفل يتساب، علشان لو الشريك والحسابات بعتوا في نفس الثواني سطر جديد ميتكتبش مكان سطر جديد تاني ويضيع. 7 = إشعار لموبايل الشريك لما مصطفى يكتب طلبية جديدة (psub فيه r: 'mk'، والإشعارات التانية مبتروحلوش). 6 = إشعارات الأيفون (رقم الوارد على أيقونة الحسابات): psub/pseen/ptest، وبعد تليجرام بيبعت للوسيط PUSH. 5 = كل رد فيه وقت الشيت t. 2 = نص تليجرام بييجي جاهز من تطبيق الشريك (data.tg). 3 = رسايل من الحسابات لمصطفى (نسخة احتياطية وملخص وتنبيه: tgmsg/tgdoc). 4 = السحب بيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس، والإرسال بيقرا عمود الـ id بس */
+const VER = 9;   /* 9 = رسايل الشريك على تليجرام بزرار (TG_OPS = '0' مقفولة) ووقف لفترة (TG_MUTE = لحد إمتى بالملّي) من الحسابات (tgcfg)، وإشعارات الموبايل زي ما هي. 8 = الكتابة بتتحفظ (flush) قبل ما القفل يتساب، علشان لو الشريك والحسابات بعتوا في نفس الثواني سطر جديد ميتكتبش مكان سطر جديد تاني ويضيع. 7 = إشعار لموبايل الشريك لما مصطفى يكتب طلبية جديدة (psub فيه r: 'mk'، والإشعارات التانية مبتروحلوش). 6 = إشعارات الأيفون (رقم الوارد على أيقونة الحسابات): psub/pseen/ptest، وبعد تليجرام بيبعت للوسيط PUSH. 5 = كل رد فيه وقت الشيت t. 2 = نص تليجرام بييجي جاهز من تطبيق الشريك (data.tg). 3 = رسايل من الحسابات لمصطفى (نسخة احتياطية وملخص وتنبيه: tgmsg/tgdoc). 4 = السحب بيقرا عمود رقم المزامنة بس وبعدين السطور الجديدة بس، والإرسال بيقرا عمود الـ id بس */
 const MW = {cash: 'كاش', insta: 'إنستا', voda: 'فودافون كاش'};
 function sh_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -8124,6 +8125,7 @@ function doPost(e) {
   if (req.action === 'tg') return out_(tgSet_(req.token));
   if (req.action === 'tgtest') return out_(tgTest_());
   if (req.action === 'tgstate') return out_(tgState_());
+  if (req.action === 'tgcfg') return out_(tgCfgSet_(req));
   if (req.action === 'tgmsg') return out_(tgOnce_(req, () => tgSend_(String(req.text || '').slice(0, 4000))));
   if (req.action === 'psub') return out_(pSub_(req));
   if (req.action === 'pseen') { p.setProperty('PUSH_N', String(Math.max(0, Math.round(Number(req.n) || 0)))); return out_({ok: true, v: VER}); }
@@ -8179,7 +8181,7 @@ function push_(rows, who) {
     res = {ok: true, ack: ack, seq: seq};
   } catch (err) { res = {ok: false, error: String(err)}; }
   finally { lock.releaseLock(); }
-  if (res.ok && msgs.length) tgSend_(msgs.length > 4 ? msgs.join('\\n') : msgs);
+  if (res.ok && msgs.length && tgOps_()) tgSend_(msgs.length > 4 ? msgs.join('\\n') : msgs);
   if (res.ok && msgs.length) pushOps_(msgs, nNew);
   if (res.ok && ords.length) pushOrd_(ords);
   return res;
@@ -8279,7 +8281,18 @@ function tgDoc_(name, text, caption) {
 function tgState_() {
   const p = PropertiesService.getScriptProperties(), t = p.getProperty('TG_TOKEN');
   let url = ''; try { url = SpreadsheetApp.getActiveSpreadsheet().getUrl(); } catch (e) {}
-  return {ok: true, v: VER, token: !!t, bot: p.getProperty('TG_BOT') || '', chat: !!(t && tgChat_(t)), url: url};
+  return {ok: true, v: VER, token: !!t, bot: p.getProperty('TG_BOT') || '', chat: !!(t && tgChat_(t)), url: url, ops: p.getProperty('TG_OPS') !== '0', mute: Number(p.getProperty('TG_MUTE')) || 0};
+}
+/* رسايل الشريك (كل حركة بيسجلها) على تليجرام: مصطفى بيقفلها أو بيوقفها لفترة من الحسابات. إشعارات الموبايل (pushOps_) مش بتتأثر */
+function tgOps_() {
+  const p = PropertiesService.getScriptProperties();
+  return p.getProperty('TG_OPS') !== '0' && !((Number(p.getProperty('TG_MUTE')) || 0) > Date.now());
+}
+function tgCfgSet_(req) {
+  const p = PropertiesService.getScriptProperties();
+  p.setProperty('TG_OPS', req.ops === false ? '0' : '1');
+  p.setProperty('TG_MUTE', String(Math.max(0, Math.round(Number(req.mute) || 0))));
+  return {ok: true, v: VER, ops: req.ops !== false, mute: Number(p.getProperty('TG_MUTE')) || 0};
 }
 function tgTest_() {
   const st = tgState_();
@@ -9772,7 +9785,7 @@ function mktHelp() {
     catch (e) { $('#mhShow').click(); const r = document.createRange(); r.selectNodeContents($('#mhCode')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('اضغط مطوّل على الكود واختار نسخ (Copy)', 6000); }
   };
 }
-const MK_VER = 8;
+const MK_VER = 9;
 /* تحديث كود شيت السوق (من الموبايل أو اللاب). بيتطلب بس لما VER يزيد: نص تنبيهات الشريك بييجي من التطبيق فمش محتاج تحديث */
 function mktUpdateHelp() {
   const code = marketScript(), wide = isWide(), su = db && db.cfg.mkSheetUrl;
@@ -9810,7 +9823,21 @@ function mktUpdateHelp() {
    once (في شيت السوق) بيمنع إن جهازين يبعتوا نفس النسخة أو نفس الملخص. الاختيارات إعداد مشترك set اسمه tgOpts (كلها شغالة من الأول).
    لو كود الشيت قديم (VER < 3) بيرد error 'action'، فبنستنى 6 ساعات قبل ما نجرب تاني (علشان منبعتش ملف كبير على الفاضي). */
 const TG_FAIL_MS = 30 * 60000;
-const tgOpts = () => Object.assign({bk: true, sum: true, al: true, wk: true, mo: true, nl: true, dr: true}, getSet('tgOpts', {}) || {});
+const tgOpts = () => Object.assign({bk: true, sum: true, al: true, wk: true, mo: true, nl: true, dr: true, ops: true, mute: 0}, getSet('tgOpts', {}) || {});
+/* وقف التنبيهات لفترة (بطلبه 22/11/2026): mute = لحد إمتى بالملّي (TG_FOREVER = لحد ما يشغّلها). وهي موقوفة مفيش ملخصات ولا تنبيهات ولا رسايل أحمد،
+   واللي ميعاده جه وقت الإيقاف بيتعلّم اتبعت (مبيتبعتش كله مرة واحدة بعدها). اللي بيفضل شغال: النسخة الاحتياطية اليومية، وتنبيهات سيرفر المصنع (TG_KEEP)،
+   والزراير اللي بيدوسها بإيده (ابعت دلوقتي). رسايل أحمد بيبعتها كود شيت السوق، فـ ops وmute بيتبعتوا له (tgcfg، نسخة 9) */
+const TG_FOREVER = 9e15, TG_KEEP = new Set(['srv', 'srvv', 'shbk', 'bk', 'rt']);   // سيرفر المصنع (بطلبه) + لو النسخة الاحتياطية نفسها وقفت
+const tgMuted = () => tgOpts().mute > nowS();
+const tgCfgSig = () => { const o = tgOpts(); return (o.ops ? 1 : 0) + '|' + (o.mute > nowS() ? o.mute : 0); };
+async function tgCfgSync() {
+  if (!db || !mkCreds()) return;
+  const c = tgCfg(), sig = tgCfgSig(); if (c.cfg === sig) return;
+  const o = tgOpts(), j = await tgCall('tgcfg', {ops: !!o.ops, mute: o.mute > nowS() ? o.mute : 0});
+  if (!db) return;
+  if (j && j.ok) { c.cfg = sig; c.cfgOld = 0; flushSave(); }
+  else if (tgOld(j)) { c.cfgOld = 1; flushSave(); }   // كود الشيت قبل نسخة 9: محتاج تحديث
+}
 const tgCfg = () => db.cfg.tg = db.cfg.tg || {};
 const tgOld = j => !!(j && j.ok === false && j.error === 'action');
 const tgRes = (j, okMsg) => !j ? 'معرفتش أوصل لشيت السوق. جرّب تاني.' : tgOld(j) ? 'كود شيت السوق قديم: حدّثه الأول (التحذير الأصفر فوق).' : j.dup ? 'اتبعت قبل كده النهارده.' : j.sent ? okMsg : 'البوت لسه مش شغال: احفظ التوكن وابعتله "ابدأ" وجرّب التنبيه.';
@@ -9943,7 +9970,7 @@ async function ciCheck(t, chat) {
   if (db !== d0 || !run) return;
   const bad = run.conclusion === 'failure' ? run.id : 0;
   if (bad !== (c.ciBad || 0)) { c.ciBad = bad; flushSave(); renderHome(); }
-  if (bad && chat && tgOpts().al) await tgCall('tgmsg', {text: `⚠️ برنامج الحسابات: آخر تعديل اتنشر (${dispDate(String(run.created_at || '').slice(0, 10))}) الاختبارات فشلت عليه.\nبياناتك سليمة. قول لـ Claude: "رجّع للنسخة السليمة" أو "صلّح الاختبارات".`, once: {k: 'ci', v: String(run.id)}});
+  if (bad && chat && tgOpts().al && !tgMuted()) await tgCall('tgmsg', {text: `⚠️ برنامج الحسابات: آخر تعديل اتنشر (${dispDate(String(run.created_at || '').slice(0, 10))}) الاختبارات فشلت عليه.\nبياناتك سليمة. قول لـ Claude: "رجّع للنسخة السليمة" أو "صلّح الاختبارات".`, once: {k: 'ci', v: String(run.id)}});
 }
 let tgBusy = false;
 async function tgAfterSync(now = new Date(nowS())) {
@@ -9951,12 +9978,18 @@ async function tgAfterSync(now = new Date(nowS())) {
   const c = tgCfg(); if (c.fail0) { c.fail0 = 0; flushSave(); }
   if (tgBusy || !mkCreds() || nowS() - (c.old || 0) < 6 * 3600000) return;
   const o = tgOpts(), t = isoOf(now.getTime()), day = now.getHours() >= 20 ? t : dayBefore(t), d0 = db;
-  const needBk = o.bk && c.bk !== t, needSum = o.sum && (c.sum || '') < day;
+  let needBk = o.bk && c.bk !== t, needSum = o.sum && (c.sum || '') < day;
   const W = weekDone(now), M = monthDone(now);
-  const needWk = o.wk && (c.wk || '') < W.to, needMo = o.mo && (c.mo || '') < M.m, needNl = o.nl && now.getHours() >= 7 && c.nl !== t;
+  let needWk = o.wk && (c.wk || '') < W.to, needMo = o.mo && (c.mo || '') < M.m, needNl = o.nl && now.getHours() >= 7 && c.nl !== t;
   const mo = t.slice(0, 7), needRt = (c.rt || {}).m !== mo, needCi = c.ci !== t || !!c.ciBad && nowS() - (c.ciAt || 0) > 3600000;   // والسطر الأحمر ظاهر: كل ساعة، علشان يختفي بعد ما الاختبارات تنجح
-  const needDr = o.dr && (c.dr || '') < W.to, drq = o.dr && (db.cfg.doc || {}).drq;
+  let needDr = o.dr && (c.dr || '') < W.to, drq = o.dr && (db.cfg.doc || {}).drq;
+  if (tgMuted()) {   // موقوفة: اللي ميعاده جه بيتعلّم اتبعت، والنسخة الاحتياطية بس بتكمّل
+    if (needSum || needWk || needMo || needNl || needDr || drq) { if (needSum) c.sum = day; if (needWk) c.wk = W.to; if (needMo) c.mo = M.m; if (needNl) c.nl = t; if (needDr) c.dr = W.to; if (drq) delete db.cfg.doc.drq; flushSave(); }
+    needSum = needWk = needMo = needNl = needDr = false; drq = null;
+    if (!needBk && !needRt && !needCi) return;
+  }
   if (!needBk && !needSum && !needWk && !needMo && !needNl && !needRt && !needCi && !needDr && !drq) return;
+  if (tgCfgSig() !== c.cfg && !c.cfgOld) tgCfgSync();   // جهاز اتغيّر فيه الاختيار والنت كان مقطوع
   tgBusy = true;
   try {
     /* الأول نسأل الشيت (سؤال صغير): الكود جديد؟ والبوت شغال؟ علشان منبعتش ملف النسخة على الفاضي */
@@ -10004,9 +10037,59 @@ async function tgAfterSync(now = new Date(nowS())) {
     }
   } finally { tgBusy = false; if (db === d0) flushSave(); }
 }
+/* ====================== التحكم في تنبيهات تليجرام (بطلبه 22/11/2026، كارت في «المزيد») ======================
+   وقف الكل لفترة (ساعة، لحد بكره الصبح، أسبوع، لحد ما يشغّلها) وزرار رسايل أحمد، والعلامات اللي كانت في الإعدادات. الإعداد مشترك (tgOpts) بين الأجهزة */
+const tgUntilTxt = ms => ms >= TG_FOREVER ? 'لحد ما تشغّلها' : `لحد ${isoOf(ms) === todayISO() ? 'النهارده' : isoOf(ms) === isoOf(nowS() + 864e5) ? 'بكره' : dispDate(isoOf(ms))} ${dispTime(ms)}`;
+const tgStTxt = () => tgMuted() ? `⏳ التنبيهات موقوفة ${tgUntilTxt(tgOpts().mute)}` : '✅ التنبيهات شغالة';
+function tgMuteAt(k) {
+  const n = nowS(), d = new Date(n);
+  if (k === 'h') return n + 3600000;
+  if (k === 'd') return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 8).getTime();   // بكره 8 الصبح
+  if (k === 'w') return n + 7 * 864e5;
+  return TG_FOREVER;
+}
+function tgPut(ch) { putSet('tgOpts', Object.assign(tgOpts(), ch)); tgCfgSync(); }
+function tgModal() {
+  const o = tgOpts(), mu = tgMuted(), c = tgCfg(), old = c.cfgOld || (tgInfo && tgInfo.v && tgInfo.v < MK_VER);
+  modal(`<h3>🔔 تنبيهات تليجرام</h3>
+    <div class="sync ${mu ? 'warn' : 'ok'}" id="tgmSt" style="margin-bottom:10px"><b>${esc(tgStTxt())}</b></div>
+    ${mu ? '<button class="btn gold big" id="tgmOn" type="button">✅ شغّلها تاني</button>'
+      : `<div class="fld"><label>⛔ وقّف كل التنبيهات</label><div class="g2" id="tgmMute">${[['h', 'ساعة'], ['d', 'لحد بكره الصبح'], ['w', 'أسبوع'], ['f', 'لحد ما أشغلها']].map(([k, n]) => `<button class="btn line sm" type="button" data-tgm="${k}">${n}</button>`).join('')}</div></div>`}
+    <p class="hint" style="margin-top:6px">وهي موقوفة: النسخة الاحتياطية اليومية وتنبيهات سيرفر المصنع بيفضلوا شغالين، والملخصات اللي ميعادها جه مش هتتبعت بعدين.</p>
+    <div class="fld" style="margin-top:12px"><label>🏪 رسايل أحمد</label>
+      <div class="chkrow"><input type="checkbox" id="tgo_ops" data-tgo="ops" ${o.ops ? 'checked' : ''}><label for="tgo_ops">رسالة مع كل حركة أحمد بيسجلها في السوق</label></div>
+      ${old ? '<p class="hint" id="tgmOld" style="color:var(--gold-d)">⚠️ الزرار ده ووقف رسايل أحمد محتاجين تحديث كود شيت السوق مرة واحدة. <a class="lnk" id="tgmUpd">الخطوات</a></p>' : ''}
+      <p class="hint">إشعارات الموبايل ورقم الوارد على الأيقونة زي ما هم، وأحمد مش بيحس بأي حاجة.</p></div>
+      <div class="fld" id="tgMine" style="margin-top:12px"><label>📊 يوصلك من الحسابات (وشريكك مبيشوفش منه حاجة)</label>
+        ${[['bk', '💾 نسخة احتياطية كل يوم (متقفلة بكلمة السر)'], ['sum', '📊 ملخص اليوم بعد 8 بالليل (أو الصبح لو متبعتش)'], ['wk', '📅 ملخص الأسبوع الخميس 8 بالليل (من الجمعة للخميس)'], ['mo', '📅 ملخص الشهر آخر يوم فيه 8 بالليل'], ['nl', '📝 كل يوم الصبح: الفواتير اللي بنودها لسه متكتبتش والوارد المستني'], ['al', '⚠️ تنبيه لو المزامنة وقفت أو حصل تعارض'], ['dr', '🩺 فحص البيانات: تقرير كل أسبوع، وعلى طول لو ظهرت مشكلة جديدة']].map(([k, n]) => `<div class="chkrow"><input type="checkbox" id="tgo_${k}" data-tgo="${k}" ${tgOpts()[k] ? 'checked' : ''}><label for="tgo_${k}">${n}</label></div>`).join('')}
+        <div class="g2" style="margin-top:6px"><button class="btn line sm" id="tgSumNow" type="button">ابعت ملخص النهارده</button><button class="btn line sm" id="tgBkNow" type="button">ابعت نسخة دلوقتي</button></div><button class="btn line sm" id="tgMoNow" type="button" style="margin-top:6px;width:100%">ابعت ملخص الشهر اللي فات</button></div>
+    <div class="stack" style="margin-top:10px"><button class="btn line" id="tgmX" type="button">رجوع</button></div>`);
+  $('#tgmX').onclick = closeModal;
+  if (!tgInfo && mkCreds()) tgCall('tgstate').then(j => { if (j && j.ok) { tgInfo = j; if (j.v < MK_VER && $('#tgmSt') && !$('#tgmOld')) tgModal(); } });   // نسخة كود الشيت (لزرار رسايل أحمد)
+  if ($('#tgmUpd')) $('#tgmUpd').onclick = mktUpdateHelp;
+  if ($('#tgmOn')) $('#tgmOn').onclick = () => { tgPut({mute: 0}); toast('التنبيهات اشتغلت تاني ✔'); tgModal(); };
+  $$('#tgmMute [data-tgm]').forEach(b => b.onclick = () => { const m = tgMuteAt(b.dataset.tgm); tgPut({mute: m}); toast(`اتوقفت التنبيهات ${tgUntilTxt(m)} ✔`); tgModal(); });
+  $$('#modal [data-tgo]').forEach(el => el.onchange = () => tgPut({[el.dataset.tgo]: el.checked}));
+  $('#tgSumNow').onclick = async () => {
+    $('#tgSumNow').disabled = true; const j = await tgCall('tgmsg', {text: daySum(todayISO()).text});
+    if ($('#tgSumNow')) $('#tgSumNow').disabled = false;
+    toast(tgRes(j, 'اتبعت ملخص النهارده على تليجرام ✔'), 6000);
+  };
+  $('#tgMoNow').onclick = async () => {
+    const d = new Date(nowS()), a = new Date(d.getFullYear(), d.getMonth() - 1, 1, 12), z = new Date(d.getFullYear(), d.getMonth(), 0, 12);
+    $('#tgMoNow').disabled = true; const j = await tgCall('tgmsg', {text: monthSheet({f: isoOf(a.getTime()), to: isoOf(z.getTime()), m: isoOf(a.getTime()).slice(0, 7)}).text});
+    if ($('#tgMoNow')) $('#tgMoNow').disabled = false;
+    toast(tgRes(j, 'اتبعت ملخص الشهر اللي فات على تليجرام ✔'), 6000);
+  };
+  $('#tgBkNow').onclick = async () => {
+    $('#tgBkNow').disabled = true; const j = await tgBackup(false);
+    if ($('#tgBkNow')) $('#tgBkNow').disabled = false;
+    toast(tgRes(j, 'اتبعتت نسخة احتياطية على تليجرام ✔'), 6000);
+  };
+}
 /* تنبيه واحد لكل سبب كل كام ساعة بالكتير */
 async function tgAlarm(k, text, every = 6 * 3600000) {
-  if (!db || !mkCreds() || !tgOpts().al) return;
+  if (!db || !mkCreds() || !tgOpts().al || (tgMuted() && !TG_KEEP.has(k))) return;
   const a = tgCfg().al = tgCfg().al || {};
   if (nowS() - (a[k] || 0) < every) return;
   a[k] = nowS(); flushSave();
@@ -10060,9 +10143,7 @@ function renderMktSettings() {
         <li>هيبعتلك رسالة فيها <b>التوكن</b> (رقم وبعده : وحروف). انسخه والصقه هنا تحت، واضغط <b>حفظ التوكن</b>.</li><li>افتح البوت بتاعك (اللينك اللي في رسالة BotFather) واضغط <b>Start</b> أو ابعتله <b>ابدأ</b>.</li><li>ارجع هنا واضغط <b>جرّب التنبيه</b>.</li></ol></details>
       <div class="krow" style="grid-template-columns:1fr auto"><textarea class="inp" id="tgTok" rows="2" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;font-size:var(--f2);min-height:54px;resize:none" placeholder="الصق توكن البوت هنا"></textarea><button class="btn gold" id="tgSave" type="button" style="width:auto;padding:0 14px">حفظ التوكن</button></div>
       <button class="btn line sm" id="tgTest" type="button" style="margin-top:8px">جرّب التنبيه</button>
-      <div class="fld" id="tgMine" style="margin-top:12px"><label>يوصلك كمان من الحسابات (على نفس البوت، وشريكك مبيشوفش منه حاجة)</label>
-        ${[['bk', '💾 نسخة احتياطية كل يوم (متقفلة بكلمة السر)'], ['sum', '📊 ملخص اليوم بعد 8 بالليل (أو الصبح لو متبعتش)'], ['wk', '📅 ملخص الأسبوع الخميس 8 بالليل (من الجمعة للخميس)'], ['mo', '📅 ملخص الشهر آخر يوم فيه 8 بالليل'], ['nl', '📝 كل يوم الصبح: الفواتير اللي بنودها لسه متكتبتش والوارد المستني'], ['al', '⚠️ تنبيه لو المزامنة وقفت أو حصل تعارض'], ['dr', '🩺 فحص البيانات: تقرير كل أسبوع، وعلى طول لو ظهرت مشكلة جديدة']].map(([k, n]) => `<div class="chkrow"><input type="checkbox" id="tgo_${k}" data-tgo="${k}" ${tgOpts()[k] ? 'checked' : ''}><label for="tgo_${k}">${n}</label></div>`).join('')}
-        <div class="g2" style="margin-top:6px"><button class="btn line sm" id="tgSumNow" type="button">ابعت ملخص النهارده</button><button class="btn line sm" id="tgBkNow" type="button">ابعت نسخة دلوقتي</button></div><button class="btn line sm" id="tgMoNow" type="button" style="margin-top:6px;width:100%">ابعت ملخص الشهر اللي فات</button></div>
+      <button class="btn line" id="tgOpen" type="button" style="margin-top:12px;width:100%">🔔 التحكم في التنبيهات (وقّفها أو شغّلها، ورسايل أحمد)</button>
       <p class="hint">التوكن بيتحفظ جوه شيت السوق بس (مش في البرنامج ولا على الجهاز). شريكك ملوش دعوة بتليجرام.</p>
       <div class="sech"><span>📲 إشعارات الموبايل ورقم الوارد على الأيقونة</span></div>
       <div id="pnBox"></div>
@@ -10095,7 +10176,7 @@ function renderMktSettings() {
     if (!j) { el.innerHTML = '⚠️ معرفتش أوصل لشيت السوق دلوقتي.'; return; }
     tgInfo = j;
     if (j.url && db && db.cfg.mkSheetUrl !== j.url) { db.cfg.mkSheetUrl = j.url; flushSave(); }   // لينك جدول "حركة السوق" نفسه (من نسخة 3): زرار يفتحه على طول
-    el.innerHTML = (!j.v || j.v < MK_VER ? `<div class="sync warn" id="mkOld" style="margin-bottom:8px">⚠️ كود شيت السوق قديم: ${j.v >= 7 ? 'شغال، بس لو انت وأحمد بعتوا في نفس الثانية ممكن سطر يضيع من الشيت (البرنامج بيلاحظ وبيبعته تاني بعد دقيقتين، بس التحديث بيمنعه من الأول)' : j.v >= 6 ? 'شغال عادي، بس إشعار الطلبيات لموبايل أحمد محتاج التحديث' : j.v >= 5 ? 'شغال عادي، بس إشعارات الأيفون (رقم الوارد على الأيقونة) محتاجة التحديث' : j.v >= 3 ? 'شغال عادي، بس هيبطأ مع كتر الحركات على مدار السنين' : 'بعض تنبيهات شريكك بتوصل ناقصة، والنسخة اليومية والملخص مش هيوصلوك'}. <a>حدّثه (مرة واحدة)</a></div>` : '')
+    el.innerHTML = (!j.v || j.v < MK_VER ? `<div class="sync warn" id="mkOld" style="margin-bottom:8px">⚠️ كود شيت السوق قديم: ${j.v >= 8 ? 'شغال عادي، بس زرار «رسايل أحمد» ووقف رسايله على تليجرام محتاجين التحديث' : j.v >= 7 ? 'شغال، بس لو انت وأحمد بعتوا في نفس الثانية ممكن سطر يضيع من الشيت (البرنامج بيلاحظ وبيبعته تاني بعد دقيقتين، بس التحديث بيمنعه من الأول)' : j.v >= 6 ? 'شغال عادي، بس إشعار الطلبيات لموبايل أحمد محتاج التحديث' : j.v >= 5 ? 'شغال عادي، بس إشعارات الأيفون (رقم الوارد على الأيقونة) محتاجة التحديث' : j.v >= 3 ? 'شغال عادي، بس هيبطأ مع كتر الحركات على مدار السنين' : 'بعض تنبيهات شريكك بتوصل ناقصة، والنسخة اليومية والملخص مش هيوصلوك'}. <a>حدّثه (مرة واحدة)</a></div>` : '')
       + (!j.token ? 'لسه مفيش بوت. اعمله من الخطوات تحت (مرة واحدة).'
       : !j.chat ? `<b style="color:var(--gold-d)">⏳ البوت @${esc(j.bot)} محفوظ. افتحه في تليجرام وابعتله "ابدأ"، وبعدين دوس "جرّب التنبيه".</b>`
       : `<b style="color:var(--green)">✔ التنبيهات شغالة على البوت @${esc(j.bot)}.</b>`);
@@ -10120,23 +10201,7 @@ function renderMktSettings() {
     if (!j || !j.ok) { $('#tgSt').innerHTML = `<b style="color:var(--red)">❌ ${!j ? 'معرفتش أوصل لشيت السوق.' : j.error === 'token' && seen && seen.ok ? 'التوكن سليم (تليجرام عرفه)، بس شيت السوق مش قادر يكلم تليجرام. افتح Apps Script بتاع شيت السوق ← اختار الدالة tgState_ واضغط تشغيل (Run) ووافق على الإذن، وجرّب تاني.' : j.error === 'token' ? 'التوكن ده مش شغال. افتح BotFather ← /mybots ← البوت ← API Token، واضغط على التوكن والصقه هنا.' : 'تليجرام مردش. جرّب تاني.'}</b>`; return; }
     $('#tgTok').value = ''; showTg(Object.assign({token: true}, j)); toast('اتحفظ التوكن ✔');
   };
-  $$('#tgMine [data-tgo]').forEach(el => el.onchange = () => putSet('tgOpts', Object.assign(tgOpts(), {[el.dataset.tgo]: el.checked})));
-  $('#tgSumNow').onclick = async () => {
-    $('#tgSumNow').disabled = true; const j = await tgCall('tgmsg', {text: daySum(todayISO()).text});
-    if ($('#tgSumNow')) $('#tgSumNow').disabled = false;
-    toast(tgRes(j, 'اتبعت ملخص النهارده على تليجرام ✔'), 6000);
-  };
-  $('#tgMoNow').onclick = async () => {
-    const d = new Date(nowS()), a = new Date(d.getFullYear(), d.getMonth() - 1, 1, 12), z = new Date(d.getFullYear(), d.getMonth(), 0, 12);
-    $('#tgMoNow').disabled = true; const j = await tgCall('tgmsg', {text: monthSheet({f: isoOf(a.getTime()), to: isoOf(z.getTime()), m: isoOf(a.getTime()).slice(0, 7)}).text});
-    if ($('#tgMoNow')) $('#tgMoNow').disabled = false;
-    toast(tgRes(j, 'اتبعت ملخص الشهر اللي فات على تليجرام ✔'), 6000);
-  };
-  $('#tgBkNow').onclick = async () => {
-    $('#tgBkNow').disabled = true; const j = await tgBackup(false);
-    if ($('#tgBkNow')) $('#tgBkNow').disabled = false;
-    toast(tgRes(j, 'اتبعتت نسخة احتياطية على تليجرام ✔'), 6000);
-  };
+  $('#tgOpen').onclick = () => tgModal();
   $('#tgTest').onclick = async () => {
     $('#tgTest').disabled = true; $('#tgSt').textContent = '⏳ ببعت رسالة تجربة…';
     const j = await tgCall('tgtest');

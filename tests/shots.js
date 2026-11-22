@@ -231,6 +231,8 @@ const SCREENS = [
   ...ACC('m', MOB),
   {name: 'acc-rep-ah-m', app: 'acc', vp: MOB, full: true, go: accEval(`go('rep'); repKind = 'ah'; repMode = 'week'; repDay = addDays(todayISO(), -3); renderReports()`)},
   {name: 'acc-more-m', app: 'acc', vp: MOB, go: accEval("go('more')")},
+  {name: 'acc-tg-m', app: 'acc', vp: MOB, full: true, go: accEval("go('more'); putSet('tgOpts', Object.assign(tgOpts(), {mute: 0})); tgModal()")},   // التحكم في تليجرام (22/11/2026)
+  {name: 'acc-tg-off-m', app: 'acc', vp: MOB, full: true, go: accEval("go('more'); putSet('tgOpts', Object.assign(tgOpts(), {mute: tgMuteAt('d')})); tgModal()")},
   {name: 'acc-invtap-m', app: 'acc', vp: MOB, go: async A => { await accEval(`tab = 'mkt'; go('p/' + ${party}.id)`)(A); await A.waitForSelector('#p-party .ldg tr[data-li]'); await A.evaluate(() => [...$$('#p-party .ldg tr[data-li]')].pop().click()); await A.waitForSelector('#mask.on'); }},   // دوسة على سطر فاتورة في صفحة الحساب
   {name: 'acc-party-top-m', app: 'acc', vp: MOB, go: async A => { await accEval(`tab = 'mkt'; go('p/' + ${party}.id)`)(A); await A.evaluate(() => { $('#p-party').scrollTop = 0; }); }},
   {name: 'acc-lock-m', app: 'acc', vp: MOB, go: accEval("$('#bLock').click()")},

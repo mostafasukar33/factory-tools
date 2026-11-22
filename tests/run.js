@@ -2218,7 +2218,35 @@ const T0 = Date.now();
     /* تليجرام من الحسابات لمصطفى: نسخة يومية وملخص وتنبيه. على نفس البوت، ومن غير ما يتكتب أي حاجة في شيت الحركات (الشريك مبيشوفهاش) */
     const tgDocs = () => sheets.mkt.tg.calls.filter(c => c.url.endsWith('/sendDocument'));
     const mkRows0 = sheets.mkt.sheets['الحركات'].rows.length;
-    eq('كود شيت السوق نسخة 8، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [8, null]);
+    eq('كود شيت السوق نسخة 9، ومفيش تحذير "الكود قديم"', [JSON.parse(sheets.mkt.post(JSON.stringify({key: mkc.k, action: 'tgstate'}))).v, await A.$('#mkOld')], [9, null]);
+    {   /* التحكم في تليجرام (بطلبه 22/11/2026): رسايل أحمد بزرار ووقف الكل لفترة. الشيت (نسخة 9) بيبطّل رسايل الشريك، والبرنامج بيبطّل ملخصاته وتنبيهاته
+           ما عدا سيرفر المصنع والنسخة الاحتياطية، وإشعارات الموبايل زي ما هي. على شيت سوق لوحده للجزء بتاع كود الشيت */
+      const G = makeGas(); G.load(await A.evaluate(() => marketScript()));
+      const K = 'Tgc-Key-1234', gp = o => JSON.parse(G.post(JSON.stringify(Object.assign({key: K}, o))));
+      gp({action: 'ping'}); G.props.TG_TOKEN = '123456:ABCDEFGHIJKLMNOPQRSTUVWX'; G.props.TG_CHAT = '777';
+      const sent = () => G.tg.calls.filter(c => c.url.endsWith('/sendMessage')).length, push = () => G.tg.calls.filter(c => /\/push$/.test(c.url)).length;
+      gp({action: 'psub', dev: 'd1', sub: {endpoint: 'https://web.push.apple.com/T1', keys: {p256dh: 'x', auth: 'y'}}, jwk: {d: 'z'}});
+      const op = (id, upd) => ({id, kind: 'op', upd, del: false, view: ['', 'عميل تليجرام', 'دفعة', '', ''], data: {id, t: 'pay', cname: 'عميل تليجرام', amt: 50000, m: 'cash', ts: upd}});
+      const r = [];
+      gp({action: 'push', who: 'm', rows: [op('tgc1', 1001)]}); r.push(sent(), push());
+      r.push(gp({action: 'tgcfg', ops: false, mute: 0}).ops); gp({action: 'push', who: 'm', rows: [op('tgc2', 1002)]}); r.push(sent(), push());
+      gp({action: 'tgcfg', ops: true, mute: Date.now() + 3600000}); gp({action: 'push', who: 'm', rows: [op('tgc3', 1003)]}); r.push(sent(), push());
+      const st = gp({action: 'tgstate'}); r.push(st.ops, st.mute > Date.now());
+      gp({action: 'tgcfg', ops: true, mute: Date.now() - 1}); gp({action: 'push', who: 'm', rows: [op('tgc4', 1004)]}); r.push(sent(), push());
+      const O = makeGas(); O.load(fs.readFileSync(path.join(__dirname, 'fixtures/mkt-sheet-v8.gs'), 'utf8')); r.push(JSON.parse(O.post(JSON.stringify({key: K, action: 'tgcfg', ops: false}))).error);
+      eq('تليجرام: رسايل أحمد بتقف بالزرار وبالإيقاف وبترجع لما الوقت يخلص، وإشعارات الموبايل مكمّلة، والكود القديم مبيفهمهاش', r, [1, 1, false, 1, 2, 1, 3, true, true, 2, 4, 'action']);
+    }
+    eq('تليجرام: كارت «تنبيهات تليجرام» في المزيد، والإيقاف بيوصل الشيت، والتنبيهات بتقف ما عدا سيرفر المصنع، و«شغّلها تاني» بيرجّعها', await A.evaluate(async () => {
+      const r = [moreItems().some(x => x[0] === 'tg' && x[3].startsWith('كلها شغالة'))];
+      tgModal(); r.push(!!$('#tgmMute [data-tgm=d]'), !!$('#modal #tgo_ops'), !!$('#modal #tgSumNow'), !$('#tgMine') || !!$('#modal #tgMine'));
+      $('#tgmMute [data-tgm=d]').click();
+      await new Promise(ok => { const t0 = Date.now(), w = () => tgCfg().cfg && tgCfg().cfg.endsWith('|' + tgOpts().mute) || Date.now() - t0 > 6000 ? ok() : setTimeout(w, 50); w(); });
+      const m = tgOpts().mute, b = new Date(nowS()); r.push(tgMuted(), new Date(m).getHours(), isoOf(m) === isoOf(new Date(b.getFullYear(), b.getMonth(), b.getDate() + 1, 12).getTime()), !!$('#tgmOn'), moreItems().find(x => x[0] === 'tg')[3].startsWith('موقوفة لحد بكره'));
+      const al0 = tgOpts().al; putSet('tgOpts', Object.assign(tgOpts(), {al: true}));   // علامة التنبيهات ممكن تكون اتقفلت في اختبار قبله
+      const a = tgCfg().al = {}; await tgAlarm('sync', 'تجربة إيقاف'); await tgAlarm('srv', 'تجربة سيرفر وقت الإيقاف'); r.push(!!a.sync, !!a.srv);
+      $('#tgmOn').click(); r.push(tgMuted(), tgOpts().mute); closeModal(); putSet('tgOpts', Object.assign(tgOpts(), {al: al0})); return r; }),
+      [true, true, true, true, true, true, 8, true, true, true, false, true, false, 0]);
+    eq('تليجرام: الإيقاف وصل الشيت وتنبيه السيرفر بس اللي اتبعت وقته', [await A.waitForFunction(() => tgCfg().cfg === '1|0', null, {timeout: 6000}).then(() => true), tgTexts().some(t => t.includes('تجربة سيرفر وقت الإيقاف')), tgTexts().some(t => t.includes('تجربة إيقاف')), sheets.mkt.props.TG_MUTE], [true, true, false, '0']);
     {   /* نسخة 8: الكتابة بتتحفظ قبل ما القفل يتساب (غير كده سطر جديد كان بيتكتب مكان سطر جديد تاني لو الاتنين بعتوا في نفس الثواني) */
       const G = makeGas(); G.load(await A.evaluate(() => marketScript()));
       G.post(JSON.stringify({key: 'Flush-Key-1234', action: 'ping'})); G.lockLog.length = 0;
@@ -2560,7 +2588,7 @@ const T0 = Date.now();
       const rows = $$('#modal .pt[data-p]').length; $('#modal .pt[data-p]').click(); const h = location.hash; tab = 'mkt'; go('home'); renderHome();
       return [a === b, noPt, rows, h === '#p/' + p.id, !$('#hkLate') || typeof $('#hkLate').onclick === 'function']; }), [true, true, 1, true, true]);
     await A.click('nav button[data-go=more]'); await A.settle(200);
-    eq('المزيد: كروت بسطر شرح (التقارير والجرد والشركاء والإعدادات…) وهو المتعلّم تحت', await A.evaluate(() => [location.hash, $$('#p-more .moc').map(b => b.dataset.mo).join(','), $$('#p-more .moc').every(b => b.querySelector('small').textContent.length > 5), $('nav button.on').dataset.go]), ['#more', 'rep,jrd,part,find,cats,cl,doc,set', true, 'more']);
+    eq('المزيد: كروت بسطر شرح (التقارير والجرد والشركاء والإعدادات…) وهو المتعلّم تحت', await A.evaluate(() => [location.hash, $$('#p-more .moc').map(b => b.dataset.mo).join(','), $$('#p-more .moc').every(b => b.querySelector('small').textContent.length > 5), $('nav button.on').dataset.go]), ['#more', 'rep,jrd,part,find,cats,cl,doc,tg,set', true, 'more']);
     await A.click('#p-more [data-mo=jrd]'); await A.settle(200);
     eq('الجرد من المزيد بيفتح الجرد والمزيد لسه متعلّم', await A.evaluate(() => [location.hash, $('nav button.on').dataset.go, !$('#hJrd')]), ['#jrd', 'more', true]);
     eq('الوقت المتسجل من ساعة الموبايل (حتى لو الشيت رد بوقت مختلف)', await A.evaluate(() => { const t0 = Date.now(); srvClock({t: t0 + 5 * 36e5}, t0); const r = {}; touch(r); return [Math.abs(r.upd - Date.now()) < 3000, Math.abs(nowS() - Date.now()) < 3000]; }), [true, true]);
@@ -3026,7 +3054,7 @@ const T0 = Date.now();
     eq('صفحة العملاء: إجمالي اللي على العملاء ظاهر', await M.evaluate(() => { const t = [...customers().values()].reduce((a, c) => a + (c.bal > 0 ? c.bal : 0), 0); return $('#main .ctot .money').textContent === fmt(t); }), true);
     await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(500);
     eq('وصل لمصطفى في الوارد', await A.evaluate(() => mkPending().filter(o => o.t === 'cs').map(o => [o.buyer, o.amt])), [['مشتري تجربة', 450000]]);
-    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 8', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 8]);
+    eq('تليجرام: نص البيع الكاش جاي جاهز من التطبيق، وكود الشيت نسخة 9', [tgTexts().pop(), await A.evaluate(async () => (await tgCall('tgstate')).v)], ['🏭 بيع كاش من المصنع 4,500 — مشتري تجربة', 9]);
     const csV0 = await A.evaluate(() => vaultBal('v_mkt'));
     await A.evaluate(() => { const o = mkPending().find(x => x.t === 'cs'); mkMove(o, {amt: o.amt, date: todayISO(), vault: 'v_mkt', to: ''}); saveDB(); });
     eq('اتنقل إيراد في خزنة السوق (مبيعات نقدي) من غير ما يتعمل عميل', await A.evaluate(([v0, p0]) => [vaultBal('v_mkt') - v0, db.txs.filter(t => t.id.startsWith('t_mk_') && t.type === 'inc' && t.cat === 'c_inc1' && !t.del).length > 0, db.parties.length], [csV0, csP0]), [450000, true, csP0]);
@@ -3634,7 +3662,7 @@ const T0 = Date.now();
         }
         await mksX(); await syncM(); await mksX();
         const cust = Y => Y.evaluate(() => typeof customers === 'function' ? [...customers().values()].map(c => [c.name, c.bal]) : liveParties().filter(p => p.sec === 'mkt').map(p => [p.name, balance(p.id)]));
-        await eqM('في الآخر: الشيت كود السوق زي ما هو (نسخة 8)، والأرصدة عند أحمد زي الحسابات، ومفيش حاجة مستنية', [JSON.parse(sh3.mkt.post(JSON.stringify({key: mkKey, action: 'ping'}))).v, await cust(M), await M.evaluate(() => pending().length)], [8, await cust(X), 0]);
+        await eqM('في الآخر: الشيت كود السوق زي ما هو (نسخة 9)، والأرصدة عند أحمد زي الحسابات، ومفيش حاجة مستنية', [JSON.parse(sh3.mkt.post(JSON.stringify({key: mkKey, action: 'ping'}))).v, await cust(M), await M.evaluate(() => pending().length)], [9, await cust(X), 0]);
         eq('مفيش أخطاء في الصفحات', [...DX.errs, ...DM.errs], []);
         await DX.close(); await DM.close();
       }

@@ -11,7 +11,8 @@
 'use strict';
 const VER = 1, PAGE = 1500, OUT_MAX = 3 * 1024 * 1024, ROW_MAX = 1536 * 1024, ROWS_MAX = 300;
 
-function makeCore({q, tx}) {
+/* onWrite(seq, d) بيتنده بعد أي كتابة (بعد ما الـ transaction تخلص): السيرفر بيقول للأجهزة المفتوحة "فيه جديد" (الخط المفتوح، index.js)، ما عدا الجهاز d اللي كتب */
+function makeCore({q, tx, onWrite}) {
   q(`CREATE TABLE IF NOT EXISTS rec (id TEXT PRIMARY KEY, kind TEXT, upd INTEGER, del INTEGER, data TEXT, seq INTEGER)`);
   q(`CREATE INDEX IF NOT EXISTS rec_seq ON rec (seq)`);
   q(`CREATE TABLE IF NOT EXISTS ver (seq INTEGER PRIMARY KEY, id TEXT, kind TEXT, upd INTEGER, del INTEGER, data TEXT, at INTEGER)`);
@@ -31,12 +32,12 @@ function makeCore({q, tx}) {
     const since = Math.max(0, Math.floor(Number(b.since) || 0)), rows = Array.isArray(b.rows) ? b.rows : [];
     if (rows.length > ROWS_MAX) return {ok: false, error: 'big'};
     const bad = rows.find(r => !okRow(r)); if (bad) return {ok: false, error: 'row', id: bad && typeof bad.id === 'string' ? bad.id.slice(0, 60) : ''};
-    return tx(() => {
+    const res = tx(() => {
       /* السحب الأول (زي الشيت): الجديد من بعد since. لو كتير (more) بنسحب بس ومبنكتبش، والجهاز بيكمّل */
       const got = q('SELECT id, kind, upd, del, data, seq FROM rec WHERE seq > ? ORDER BY seq LIMIT ?', since, PAGE + 1), out = [];
       let more = got.length > PAGE, size = 0;
       for (const r of got.slice(0, PAGE)) { size += r.data.length + 120; if (out.length && size > OUT_MAX) { more = true; break; } out.push(r); }
-      let seq = Number(get('seq')) || 0, n = Number(get('n')) || 0;
+      let seq = Number(get('seq')) || 0, n = Number(get('n')) || 0; const seq0 = seq;
       if (more) return {ok: true, rows: out.map(fmt), next: Number(out[out.length - 1].seq), more: true, ack: [], n, ep};
       const ack = [], now = Date.now();
       for (const r of rows) {
@@ -49,14 +50,20 @@ function makeCore({q, tx}) {
       }
       if (ack.length) { put('seq', seq); put('n', n); put('last', now); }
       /* next = آخر رقم دلوقتي: كل اللي قبله يا اتسحب في الرد ده يا الجهاز ده هو اللي كتبه (الطلب كله في transaction واحدة) */
-      return {ok: true, rows: out.map(fmt), next: seq, more: false, ack, n, ep};
+      return {ok: true, rows: out.map(fmt), next: seq, more: false, ack, n, ep, wrote: seq !== seq0};
     });
+    if (res.wrote && onWrite) try { onWrite(res.next, typeof b.d === 'string' ? b.d.slice(0, 40) : ''); } catch (e) {}
+    delete res.wrote;
+    return res;
   }
 
   return {
     VER,
     /* GET من غير تذكرة: السيرفر شغال؟ ومتسلّم ولا لأ (مبيقولش أي رقم) */
     info() { return {ok: true, app: 'fo-srv', v: VER, owned: !!get('own')}; },
+    seq() { return Number(get('seq')) || 0; },
+    /* الخط المفتوح: نفس التذكرة اللي بتستلم السيرفر بس (مبيستلمش لو لسه محدش استلمه) */
+    async auth(k) { if (typeof k !== 'string' || k.length < 20 || k.length > 200) return false; const own = get('own'); return !!own && own === await sha('fo-srv|' + k); },
     async handle(text, off) {
       if (off) return {ok: false, error: 'off'};
       let b = null; try { b = JSON.parse(text); } catch (e) {}

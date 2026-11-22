@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="lib/ui.css">
 <script src="lib/icons.js"></script>
+<script src="lib/mksrv.js"></script>
 <script>
 /* المظهر (تلقائي / فاتح / داكن) وحجم الخط: إعداد على الجهاز بس (نفس مفتاح باقي البرنامج fo_ui)، بيتطبق قبل ما الصفحة تترسم */
 function uiGet() { try { return Object.assign({theme: 'auto', fs: '1'}, JSON.parse(localStorage.getItem('fo_ui') || '{}')); } catch (e) { return {theme: 'auto', fs: '1'}; } }
@@ -570,7 +571,7 @@ booted.then(function join() {
   let o = null; try { o = JSON.parse(unb64u(m[1])); } catch (e) {}
   history.replaceState(null, '', location.pathname);
   if (!o || !o.u || !o.k) { setTimeout(() => toast('الرابط ناقص. اطلب من مصطفى يبعته تاني.', 8000), 300); return; }
-  if (S.u !== o.u) { S.cursor = 0; S.st = {}; S.cust = {}; S.sup = {}; Object.values(S.ops).forEach(x => { delete x.sy; }); }
+  if (S.u !== o.u) { S.cursor = 0; S.st = {}; S.cust = {}; S.sup = {}; Object.values(S.ops).forEach(x => { delete x.sy; }); delete S.xs; if (mkx) { mkx.stop(); mkx = null; } }
   S.u = o.u; S.k = o.k; S.bad = false; save();
   setTimeout(() => toast('✔ التطبيق اتربط. ممكن تحطه على الشاشة الرئيسية.', 5000), 300);
 });
@@ -730,6 +731,12 @@ function vfOf(now) {
   if (!l || l[1] !== (S.cursor || 0)) { v.ck.push([now, S.cursor || 0]); if (v.ck.length > 60) v.ck.splice(0, v.ck.length - 60); }
   return v;
 }
+/* سيرفر المصنع (lib/mksrv.js، بطلبه 22/11/2026): الإرسال والسحب بيروحوا للسيرفر لو اتنقل، والشيت وراه في الخلفية.
+   المنطق هنا زي ما هو بالظبط، بيتغير بس المكان (mkCall). السيرفر عمره ما بيرجّع "key" (يعني مفيش "الربط اتغير" من السيرفر) */
+let mkx = null, mkxT = null;
+const mkxOf = () => mkx || (mkx = window.MkSrv && S.u && S.k ? MkSrv({st: () => S.xs || (S.xs = {}), save: () => { clearTimeout(mkxT); mkxT = setTimeout(save, 300); }, sheet: b => callSheet(b),
+  key: () => S.k, dev: () => S.dev, ok: () => ready && !!S.u && !!S.k && !S.bad && online === true, onLive: () => { lastNew = Date.now(); sync(); }}) : null);
+const mkCall = b => { const x = mkxOf(); return x ? x.call(b) : callSheet(b); };
 async function sync() {
   if (!ready || !S.u || S.bad) return;
   if (syncing) { again = true; return; }
@@ -740,7 +747,7 @@ async function sync() {
     while (p.length) {
       const batch = p.slice(0, 40);
       const rows = batch.map(o => { const d = Object.assign({}, o, {tg: tgText(o)}); delete d.sy; return {id: o.id, kind: 'op', upd: o.upd, del: !!o.del, view: view(o), data: d}; });
-      const tp = Date.now(), j = await callSheet({action: 'push', who: 'm', rows});
+      const tp = Date.now(), j = await mkCall({action: 'push', who: 'm', rows});
       if (j && j.error === 'key') { S.bad = true; throw new Error('key'); }
       if (!j || j.ok !== true) throw new Error('push');
       const ack = new Set(j.ack || []);
@@ -752,7 +759,7 @@ async function sync() {
     const ox = ['ord', 'prc'].flatMap(k => Object.values(S[k]).filter(o => o.sy !== o.upd).map(o => ({k, o})));
     for (let i = 0; i < ox.length; i += 40) {
       const batch = ox.slice(i, i + 40), rows = batch.map(({k, o}) => { const d = Object.assign({}, o); delete d.sy; return {id: o.id, kind: k, upd: o.upd, del: !!o.del, view: ordView(k, o), data: d}; });
-      const tp = Date.now(), j = await callSheet({action: 'push', who: 'm', rows});
+      const tp = Date.now(), j = await mkCall({action: 'push', who: 'm', rows});
       if (j && j.error === 'key') { S.bad = true; throw new Error('key'); }
       if (!j || j.ok !== true) throw new Error('push');
       const ack = new Set(j.ack || []);
@@ -763,7 +770,7 @@ async function sync() {
     const pullFrom = async (since, page) => {
       const seen = new Map(); let nx = since, more = true;
       while (more) {
-        const j = await callSheet({action: 'pull', since: nx});
+        const j = await mkCall({action: 'pull', since: nx});
         if (j && j.error === 'key') { S.bad = true; throw new Error('key'); }
         if (!j || j.ok !== true || !Array.isArray(j.rows)) throw new Error('pull');
         j.rows.forEach(r => { if (r && r.id) seen.set(r.id, Math.max(seen.get(r.id) || 0, Number(r.upd) || 0)); if (merge(r)) { changed = true; lastNew = Date.now(); } });
@@ -786,6 +793,7 @@ async function sync() {
       if (gone.length) { changed = true; again = true; }   // ضاع من الشيت: يتبعت تاني على طول
     }
     online = true; S.lastOk = nowS();
+    if (mkxOf()) setTimeout(() => mkx && mkx.tick(), 0);   // الشيت ورا السيرفر، والنقل لو لسه، والخط المفتوح
   } catch (e) { online = false; }
   finally {
     syncing = false; save(); drawTop();
@@ -796,7 +804,7 @@ async function sync() {
 /* طول ما التطبيق مفتوح وانت شغال (أو لما يوصل جديد): بيسحب كل 5 ثواني، وأي حاجة مستنية بتتبعت لوحدها.
    لو مفيش لمس ولا جديد بيهدى لوحده: كل 15 ثانية بعد دقيقة، وكل دقيقة بعد 5 دقايق. أول لمسة بترجّعه سريع وبيسحب على طول */
 let lastAct = Date.now(), lastNew = 0, syncAt = 0, pollT = null, pollMs = 0;
-const pollGap = () => { const i = Date.now() - Math.max(lastAct, lastNew); return i < 60000 ? 5000 : i < 300000 ? 15000 : 60000; };
+const pollGap = () => { const i = Date.now() - Math.max(lastAct, lastNew), g = i < 60000 ? 5000 : i < 300000 ? 15000 : 60000; return mkx && mkx.alive() ? Math.max(g, 30000) : g; };   // الخط المفتوح شغال: السيرفر بيقول لما فيه جديد، فالسؤال بيبقى احتياطي بس
 function poll() { clearTimeout(pollT); pollMs = pollGap(); pollT = setTimeout(() => { if (!document.hidden) sync(); poll(); }, pollMs); }
 function woke() { lastAct = Date.now(); if (pollMs > 5000) { if (Date.now() - syncAt > 5000) sync(); poll(); } }
 ['pointerdown', 'keydown'].forEach(t => addEventListener(t, woke, {passive: true, capture: true}));

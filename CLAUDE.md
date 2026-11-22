@@ -61,6 +61,7 @@
 | فحص البيانات / دكتور البيانات | `lib/doctor.js` (`docRun`/`docText`) + `accounts.html` (`docSoon`/`docNow`/`docOpen`/`docKeep`، كارت الإعدادات `#sDoc`، سطر الرئيسية `#hDoc`، الأسبوعي في `tgAfterSync`) |
 | عهدة حسن / حسن في الخزنة / ربط المرتبات بالحسابات | `lib/hsn.js` (`hsPull`/`hsWin`/`hsReview`/`hsInbox`) + `accounts.html` (`payCreds`/`hsLoad`/`renderHsSettings`، الشيب `#kHs`، كارت الإعدادات `#sHsn`) |
 | سيرفر المصنع / المزامنة على كلاود فلير (والشيت نسخة كل ساعة) | `server/` (`factory-sync`، الكود `server/src/core.js`، اختباره `server/test/core.js`) + `accounts.html` (`srv*`، `sheetBk`، `sheetCore`/`sheetSync`) |
+| حركة السوق على السيرفر / الخط المفتوح (أحمد بيوصل في لحظتها) | `lib/mksrv.js` (`MkSrv`) + `market.html` (`mkCall`/`mkx`) + `accounts.html` (`mkxOf`/`mkxStop` جوه `mkSyncOnce`) + `server/src/index.js` (`/live`، `?s=mkt`) |
 | حزمة الأمان (الإنذار المبكر، تجربة الاسترجاع، النسخة السليمة) | `accounts.html` (`safeAlertHtml`/`bkWatch`/`bkVerify`/`ciCheck`) + `.github/workflows/tests.yml` |
 
 ---

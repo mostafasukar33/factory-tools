@@ -55,6 +55,15 @@ const row = (id, upd, data = 'x' + upd, del = false, kind = 'party') => ({id, ki
   const p2 = await A({since: p1.next, rows: [row('late', 999)]});
   eq('الدفعة اللي بعدها: كمّل السحب وكتب', [p2.rows.length, p2.more, p2.ack, p2.n], [1603 - 1500, false, ['late'], 1604]);
 
+  /* الخط المفتوح: "فيه جديد" بعد الكتابة بس، ومبيرجعش للجهاز اللي كتب، والتذكرة لازم تبقى بتاعة السيرفر */
+  S.writes.length = 0;
+  await A({since: 0, rows: [], d: 'dev1'});
+  const w1 = S.writes.length;
+  await A({since: 99999, rows: [row('late', 999)], d: 'dev1'});
+  const w2 = S.writes.length;
+  await A({since: 99999, rows: [row('late', 1000)], d: 'dev2'});
+  eq('الخط المفتوح: مفيش إشارة من غير كتابة ولا من نسخة قديمة، والإشارة فيها رقم الكتابة واسم الجهاز اللي كتب', [w1, w2, S.writes], [0, 0, [[1606, 'dev2']]]);
+  eq('الخط المفتوح: التذكرة الصح بس', [await S.core.auth(TOK), await S.core.auth(OTHER), await S.core.auth('x'), S.core.seq()], [true, false, false, 1606]);
   S.off = true;
   eq('زرار الطوارئ (OFF): كل حاجة بترد off', (await A({since: 0, rows: []})).error, 'off');
   S.off = false;

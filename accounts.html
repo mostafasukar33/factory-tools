@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="lib/ui.css">
 <script src="lib/icons.js"></script>
+<script src="lib/mksrv.js"></script>
 <script>
 /* المظهر (ليلي/فاتح) وحجم الخط: إعداد على الجهاز بس، بيتطبق قبل ما الصفحة تترسم */
 function uiGet() { try { return Object.assign({theme: 'auto', fs: '1'}, JSON.parse(localStorage.getItem('fo_ui') || '{}')); } catch (e) { return {theme: 'auto', fs: '1'}; } }
@@ -2335,7 +2336,7 @@ function lockNow(msg) {
   locking = true;
   kbClose();   // الخانة اللي عليها المؤشر بتخلص شغلها (اسم الصنف ← الوحدة والسعر) والحسابات لسه مفتوحة، مش بعد ما تتقفل
   draftKeep();
-  flushSave().finally(() => { locking = false; }).then(() => { db = null; cryptoKey = null; srvK = null; P = new Map(); E = new Map(); $('#p-party').innerHTML = ''; $('#hList').innerHTML = ''; homeVer = ''; showLock(msg); });   // homeVer فاضي = القايمة اللي اتمسحت لازم تترسم تاني بعد الفتح حتى في الرجوع من حساب
+  flushSave().finally(() => { locking = false; }).then(() => { if (typeof mkxStop === 'function') mkxStop(); db = null; cryptoKey = null; srvK = null; P = new Map(); E = new Map(); $('#p-party').innerHTML = ''; $('#hList').innerHTML = ''; homeVer = ''; showLock(msg); });   // homeVer فاضي = القايمة اللي اتمسحت لازم تترسم تاني بعد الفتح حتى في الرجوع من حساب
 }
 function landingHash() {
   if (mkCreds() && (mkPending().length || (db.cfg.clash || []).some(c => !c.seen))) return '#mkt';
@@ -8807,18 +8808,33 @@ function mkSync() {
   return mkQ || (mkQ = mkCur.then(mkNext, mkNext));
 }
 function mkNext() { mkQ = null; return mkSync(); }
+/* حركة السوق على سيرفر المصنع (lib/mksrv.js، بطلبه 22/11/2026): الإرسال والسحب بتوع الوارد بيروحوا للسيرفر لو اتنقل،
+   والشيت وراه في الخلفية بنفس who (الإشعارات زي ما هي). منطق الوارد زي ما هو بالظبط. الحالة في db.mkt.xs (على الجهاز، جوه القاعدة المتشفرة) */
+let mkxI = null, mkxT = null;
+function mkxOf() {
+  const cr = mkCreds(); if (!db || !cr || !window.MkSrv) return null;
+  if (mkxI && mkxI.db === db && mkxI.u === cr.u) return mkxI.x;
+  mkxStop();
+  const d0 = db;
+  const x = MkSrv({st: () => { const d = mkDb(); return d.xs || (d.xs = {}); }, save: () => { clearTimeout(mkxT); mkxT = setTimeout(() => { if (db === d0) flushSave(); }, 2000); },
+    sheet: b => { const c = mkCreds() || cr; return callSheet(b, c.u, c.k, 30000, 3); }, key: () => (mkCreds() || {}).k, dev: () => db ? db.cfg.dev : '',
+    ok: () => db === d0 && !!mkCreds() && !mkErr, onLive: () => { if (db === d0) { mkNew = Date.now(); mkSync(); } }});
+  mkxI = {db, u: cr.u, x};
+  return x;
+}
+function mkxStop() { if (mkxI) { mkxI.x.stop(); mkxI = null; } }
 async function mkSyncOnce() {
   const cr = mkCreds(); if (!db || !cr || mkBusy) return false;
   mkBusy = true; mkAt = Date.now(); const d0 = db;
   let fresh = [], ch = false, edits = [], ordCh = false, again = false, auN = false;
   try {
     const d = mkDb();
-    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}, ss: {}, cu: {}, ord: {}, prc: {}, oit: '', vf: null}); ch = true; }
+    if (d.u !== cr.u) { Object.assign(d, {u: cr.u, cursor: 0, ops: {}, st: {}, cs: {}, ss: {}, cu: {}, ord: {}, prc: {}, oit: '', vf: null, xs: {}}); mkxStop(); ch = true; }
     const vf = mkVf(d, Date.now());   // قبل الإرسال: أي سطر هيتبعت بعد كده رقمه أكبر من d.cursor دلوقتي
     ensureMktVault();
     if (mkReconcile()) ch = true;
     if (mkWantPrune()) ch = true;
-    const call = body => callSheet(body, cr.u, cr.k, 30000, 3);   // يعيد 3 مرات زي الحسابات قبل ما يقول "مش واصل"
+    const call = body => { const x = mkxOf(); return x ? x.call(body) : callSheet(body, cr.u, cr.k, 30000, 3); };   // سيرفر المصنع لو اتنقل (lib/mksrv.js)، وإلا الشيت (يعيد 3 مرات زي الحسابات قبل ما يقول "مش واصل")
     const sts = Object.values(d.st).filter(s => s.sy !== s.upd), cus = mkCustRows().concat(mkSupRows());
     const own = ['ord', 'prc'].flatMap(k => Object.values(d[k]).filter(s => s.sy !== s.upd).map(s => ({row: {id: s.id, kind: k, upd: s.upd, del: !!s.del, view: ordView(k, s), data: stripLocal(s)}, s})));
     const all = sts.map(s => ({row: {id: s.id, kind: 'st', upd: s.upd, del: false, view: mkStView(s), data: stripLocal(s)}, s})).concat(own, cus, ordItemsRow(d));
@@ -8886,6 +8902,7 @@ async function mkSyncOnce() {
     if (mkAuto()) { ch = true; auN = true; again = true; }
     const fl = mkFollow(); if (fl.n) { ch = true; if (!first) edits = fl.msgs; }
     mkErr = ''; mkWhy = ''; mkLastOk = nowS();
+    if (mkxOf()) setTimeout(() => mkxI && mkxI.x.tick(), 0);   // الشيت ورا السيرفر، والنقل لو لسه، والخط المفتوح
   } catch (e) { mkErr = String(e.message || e); mkWhy = mkErr === 'key' ? '' : /^(push|pull)$/.test(mkErr) ? 'الشيت رد بحاجة مش مفهومة' : netWhy(e); }
   finally {
     mkBusy = false;
@@ -8903,7 +8920,7 @@ async function mkSyncOnce() {
 /* سحب وارد السوق: كل 8 ثواني وانت شغال أو لما يوصل جديد. لو مفيش لمس ولا جديد بيهدى لوحده:
    كل 20 ثانية بعد دقيقة، وكل دقيقة بعد 5 دقايق. أول لمسة بترجّعه سريع، وبيسحب على طول لو كان هادي */
 let mkNew = 0, mkAt = 0, mkPollT = null, mkSlow = 0;
-const mkGap = () => { const i = Date.now() - Math.max(lastAct, mkNew); return i < 60000 ? 8000 : i < 300000 ? 20000 : 60000; };
+const mkGap = () => { const i = Date.now() - Math.max(lastAct, mkNew), g = i < 60000 ? 8000 : i < 300000 ? 20000 : 60000; return mkxI && mkxI.x.alive() ? Math.max(g, 30000) : g; };   // الخط المفتوح شغال: السيرفر بيقول لما فيه جديد
 function mkPoll() { clearTimeout(mkPollT); mkSlow = mkGap(); mkPollT = setTimeout(() => { if (db && mkCreds() && !document.hidden) mkSync(); mkPoll(); }, mkSlow); }
 mkPoll();
 ['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => { if (mkSlow > 8000) { if (db && mkCreds() && Date.now() - mkAt > 8000) mkSync(); mkPoll(); } }, {passive: true, capture: true}));

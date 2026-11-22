@@ -77,12 +77,28 @@ async function newDevice(browser, base, sheets, srv) {
   /* سيرفر المصنع التجريبي (كود server/src/core.js الحقيقي في الذاكرة). من غيره البرنامج على localhost مبيكلمش أي سيرفر خالص */
   if (srv) {
     await ctx.addInitScript(u => { window.__srvUrl = u; }, srv.url);
+    /* srv.pick(url) = قاعدة السوق (?s=mkt) أو الحسابات، زي السيرفر الحقيقي */
+    const pick = u => srv.pick ? srv.pick(u) : srv;
     await ctx.route(srv.url + '**', async r => {
-      const q = r.request();
+      const q = r.request(), S0 = pick(q.url());
       if (ctx.srvDown) return r.abort('failed');
-      const body = q.method() === 'POST' ? JSON.stringify(await srv.handle(q.postData())) : JSON.stringify(srv.core.info());
+      const body = q.method() === 'POST' ? JSON.stringify(await S0.handle(q.postData())) : JSON.stringify(S0.core.info());
       if (q.method() === 'POST') srv.log.push(q.postData());
       r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body});
+    });
+    /* الخط المفتوح (/live): نفس اللي بيعمله السيرفر الحقيقي (index.js): التذكرة أول رسالة، وبعدها {seq} لما جهاز تاني يكتب */
+    await ctx.routeWebSocket(srv.url.replace(/^http/, 'ws') + 'live**', ws => {
+      const S0 = pick(ws.url()); let me = null;
+      if (ctx.srvDown) return ws.close({code: 1006});
+      ws.onMessage(async m => {
+        if (m === 'p') return ws.send('o');
+        if (me) return;
+        let b = null; try { b = JSON.parse(m); } catch (e) {}
+        if (!b || !(await S0.core.auth(b.k))) return ws.close({code: 4003});
+        me = {ws, d: b.d || '', ctx}; (S0.socks = S0.socks || new Set()).add(me);
+        ws.send(JSON.stringify({ok: 1, seq: S0.core.seq()}));
+      });
+      ws.onClose(() => { if (me && S0.socks) S0.socks.delete(me); });
     });
   }
   ctx.on('page', p => { p.settle = settle; });
@@ -3504,6 +3520,109 @@ const T0 = Date.now();
       await sync2(); await sync2(); await A.evaluate(() => { const b = $('#mkBar'); if (b) b.classList.remove('on'); });   // المسح بيتطبق في الحسابات بعد السحب، والرصيد الجديد بيتبعت في اللي بعدها
       eq('بعد المسح: الرصيد عند أحمد زي الحسابات ومفيش حاجة من التجربة في الوارد', [await balM() === await balA(), await A.evaluate(ids => mkPending().some(x => ids.includes(x.id)), [o1, o2, o3])], [true, false]);
     }
+      sec('٢٢هـ) حركة السوق على سيرفر المصنع: أحمد بيكتب وتظهر عند مصطفى في لحظتها، والشيت وراه، والرجوع للشيت لو وقع');
+      {
+        const {memServer} = require('../server/test/mem');
+        const SVF = await memServer(), SVM = await memServer(), live = SV => { SV.onWrite = (seq, d) => (SV.socks || new Set()).forEach(x => { if (x.d !== d && !x.ctx.liveDown) x.ws.send(JSON.stringify({seq})); }); };
+        live(SVF); live(SVM);
+        const SV = {url: 'https://srv.test/', log: [], pick: u => /[?&]s=mkt/.test(u) ? SVM : SVF};
+        const sh3 = {acc: makeGas(), cash: makeGas(), mkt: makeGas(), pay: makeGas()};
+        const DX = await newDevice(browser, base, sh3, SV), X = await DX.page('accounts.html');
+        await unlock(X, true);
+        sh3.acc.load(await X.evaluate(() => scriptFor()));
+        await X.evaluate(() => go('set')); await X.waitForSelector('#sSheet details.adv', {state: 'attached'}); await X.evaluate(() => setOpenAll());
+        await X.fill('#shUrl', ACC_URL); await X.click('#sSheet details.fld summary'); await X.fill('#shKey', 'Mkt-Srv-Acc-Key-1'); await X.click('#shSave');
+        await X.waitForFunction(() => db.cfg.sheetOk, null, {timeout: 20000});
+        sh3.mkt.load(await X.evaluate(() => marketScript()));
+        await X.evaluate(() => { const now = nowS(); [['عميل سوق سيرفر', 'mkt'], ['مورد سوق سيرفر', 'sup']].forEach(([name, sec]) => { const p = {id: newId('p_'), sec, name, phone: '', note: '', noTot: false, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p); }); saveDB(); });
+        await X.evaluate(() => go('set')); await X.evaluate(() => setOpenAll());
+        await X.fill('#smUrl', MKT_URL); await X.click('#smGo');
+        await X.waitForFunction(() => !!mkCreds(), null, {timeout: 20000});
+        await X.evaluate(() => putSet('tgOpts', {bk: false, sum: false, al: false, wk: false, mo: false, nl: false, dr: false}));
+        const mkKey = await X.evaluate(() => mkCreds().k);
+        sh3.mkt.post(JSON.stringify({key: mkKey, action: 'psub', dev: 'mostafa-phone', sub: {endpoint: 'https://web.push.apple.com/MKSRV', keys: {p256dh: 'x', auth: 'y'}}, jwk: {d: 'z'}}));   // موبايل مصطفى مشترك في الإشعارات
+        const idleX = () => X.waitForFunction(() => !mkBusy && !syncing, null, {timeout: 30000, polling: 50}).catch(() => {});
+        const mksX = async () => { await idleX(); await bg(X, 'mkSync()'); await idleX(); };
+        await mksX();
+        const mlink = await X.evaluate(() => mktLink());
+        const DM = await newDevice(browser, base, sh3, SV), M = await DM.page('market.html' + mlink.slice(mlink.indexOf('#')));
+        await M.waitForFunction(() => typeof S !== 'undefined' && !!S.u && !!S.k, null, {timeout: 20000});
+        const idleM = () => M.waitForFunction(() => !syncing, null, {timeout: 30000, polling: 50}).catch(() => {});
+        const syncM = async () => { await idleM(); await bg(M, 'sync()'); await idleM(); };
+        await syncM();
+        let dbgL = '';
+        const st = async () => JSON.stringify({x: await X.evaluate(() => { const s = (mkDb().xs || {}); return {on: s.on, err: s.err, bad: s.bad, toSh: Object.keys(s.toSh || {}).length, toSv: Object.keys(s.toSv || {}).length}; }), m: await M.evaluate(() => { const s = S.xs || {}; return {on: s.on, err: s.err, bad: s.bad, toSh: Object.keys(s.toSh || {}).length, toSv: Object.keys(s.toSv || {}).length, online, Sbad: S.bad}; })});
+        const eqM = async (name, got, want) => { eq(name, got, want); if (JSON.stringify(got) !== JSON.stringify(want)) console.log('     حالة الجهازين:', await st()); };
+        await X.waitForFunction(() => mkxI && mkxI.x.on(), null, {timeout: 40000}).catch(() => {});
+        await M.waitForFunction(() => mkx && mkx.on(), null, {timeout: 40000}).catch(() => {});
+        await eqM('الوارد وتطبيق أحمد اتنقلوا لوحدهم للسيرفر بعد ما اتأكدوا إن كل سطر في الشيت بقى على السيرفر', [await X.evaluate(() => mkxI.x.on()), await M.evaluate(() => mkx.on()), await M.evaluate(() => S.bad)], [true, true, false]);
+        const raw = SVM.st.q('SELECT data FROM rec').map(r => r.data).join('');
+        eq('سيرفر السوق شايل حروف مقفولة بس، ومنفصل عن سيرفر الحسابات', [raw.length > 100, raw.includes('عميل سوق سيرفر'), SVM.st.q("SELECT v FROM meta WHERE k = 'own'")[0].v !== (SVF.st.q("SELECT v FROM meta WHERE k = 'own'")[0] || {}).v, SVF.st.q("SELECT count(*) n FROM rec WHERE kind = 'op'")[0].n], [true, false, true, 0]);
+        eq('مفتاح شيت السوق عمره ما اتبعت للسيرفر', SV.log.some(b => b.includes(mkKey)), false);
+        await M.waitForFunction(() => mkx.alive(), null, {timeout: 15000}).catch(() => {});
+        await X.waitForFunction(() => mkxI.x.alive(), null, {timeout: 15000}).catch(() => {});
+        eq('الخط المفتوح شغال عند الاتنين', [await M.evaluate(() => mkx.alive()), await X.evaluate(() => mkxI.x.alive())], [true, true]);
+        const addPay = amt => M.evaluate(a => { const c = [...customers().values()][0]; const now = nowS(); const o = {id: newId(), t: 'pay', cid: c.id, cname: c.name, newc: false, amt: a, m: 'cash', ts: now, cr: now, upd: now, del: false}; S.ops[o.id] = o; save(); sync(); return o.id; }, amt);
+        const onSheet = id => sh3.mkt.sheets['الحركات'].rows.some(r => r[0] === id);
+        const pushes = () => sh3.mkt.tg.calls.filter(c => /\/push$/.test(c.url)).length;
+        {   // أحمد سجّل دفعة: بتظهر في الوارد عند مصطفى في لحظتها (من غير ما الوارد يسأل)، والشيت والإشعار وراها
+          await X.evaluate(() => clearTimeout(mkPollT)); await M.evaluate(() => clearTimeout(pollT));   // مفيش سؤال كل شوية: اللي هيجيبها هو الخط المفتوح بس
+          const p0 = pushes(), t0 = Date.now();
+          const id = await addPay(150000);
+          await X.waitForFunction(i => !!mkDb().ops[i], id, {timeout: 8000}).catch(() => {});
+          const ms = Date.now() - t0;
+          for (let i = 0; i < 80 && !(onSheet(id) && pushes() > p0); i++) await M.waitForFunction(() => true, null, {polling: 100});
+          await eqM('دفعة من أحمد وصلت الوارد لوحدها في ثواني من غير ما الوارد يسأل (الخط المفتوح)، ووصلت الشيت، وإشعار الموبايل اتبعت لمصطفى', [await X.evaluate(i => !!mkDb().ops[i], id), ms < 5000, onSheet(id), pushes() > p0, await M.evaluate(() => [pending().length, /متصل/.test(dotHtml())])], [true, true, true, true, [0, true]]);
+          /* مصطفى رجّعها لأحمد بملاحظة: بتوصل أحمد في لحظتها */
+          await X.evaluate(i => { mkSetSt(i, {back: 'راجع المبلغ يا أحمد', bv: mkDb().ops[i].upd}); }, id); await mksX();
+          await M.waitForFunction(i => Object.values(S.st).some(s => s.op === i && s.back), id, {timeout: 8000}).catch(() => {});
+          await eqM('مصطفى رجّعها: وصلت أحمد في لحظتها بالملاحظة', await M.evaluate(i => Object.values(S.st).some(s => s.op === i && s.back === 'راجع المبلغ يا أحمد'), id), true);
+          await M.evaluate(i => { S.ops[i].del = true; bump(S.ops[i]); save(); sync(); }, id); await idleM(); await mksX();
+        }
+        {   // السيرفر وقع عند أحمد: بيكتب على الشيت عادي، ومفيش "الربط اتغير"، والحركة بتوصل مصطفى (من الشيت) وبعدين السيرفر
+          DM.srvDown = true;
+          const id = await addPay(70000); await idleM();
+          await eqM('السيرفر واقع عند أحمد: الحركة راحت الشيت، ومفيش "الربط اتغير"، والعلامة فوق "متصل" عادي', [onSheet(id), await M.evaluate(() => [S.bad, /الربط اتغير/.test(dotHtml()), /متصل/.test(dotHtml()), pending().length])], [true, [false, false, true, 0]]);
+          await X.evaluate(() => { mkxI.x.state().brAt = 0; }); await mksX();
+          await X.waitForFunction(i => !!mkDb().ops[i], id, {timeout: 10000}).catch(() => {});
+          await eqM('مصطفى خدها (من الشيت للسيرفر) وهو على السيرفر', [await X.evaluate(i => !!mkDb().ops[i], id), await X.evaluate(() => mkxI.x.on())], [true, true]);
+          DM.srvDown = false; await M.evaluate(() => { mkx.retry(); }); await syncM();
+          await M.waitForFunction(() => !Object.keys(S.xs.toSv || {}).length, null, {timeout: 10000}).catch(() => {});
+          await eqM('السيرفر رجع عند أحمد: رجع عليه واللي اتكتب على الشيت بس وصل السيرفر', await M.evaluate(() => [mkx.on(), Object.keys(S.xs.toSv || {}).length]), [true, 0]);
+          await M.evaluate(i => { S.ops[i].del = true; bump(S.ops[i]); save(); sync(); }, id); await idleM(); await mksX();
+        }
+        {   // السيرفر رفض (متوقف بالقصد): أحمد بيرجع للشيت ومفيش "الربط اتغير"
+          SVM.off = true;
+          const id = await addPay(30000); await idleM();
+          await eqM('السيرفر متوقف بالقصد: أحمد كمّل على الشيت ومفيش "الربط اتغير"', [onSheet(id), await M.evaluate(() => [S.bad, /الربط اتغير/.test(dotHtml()), mkx.on(), S.xs.bad && S.xs.bad.why])], [true, [false, false, false, 'off']]);
+          SVM.off = false; await M.evaluate(() => { delete S.xs.bad; S.xs.tryAt = 0; mkx.retry(); }); await syncM();
+          await M.waitForFunction(() => mkx.on(), null, {timeout: 30000}).catch(() => {});
+          await eqM('بعد الطوارئ: أحمد رجع للسيرفر لوحده', await M.evaluate(() => mkx.on()), true);
+          await M.evaluate(i => { S.ops[i].del = true; bump(S.ops[i]); save(); sync(); }, id); await idleM(); await mksX();
+        }
+        {   // جهاز أحمد لسه على النسخة القديمة (بيكتب على الشيت بس): مصطفى بيجيبها من الشيت ويحطها على السيرفر، وأحمد التاني بياخدها من السيرفر
+          const now = Date.now(), id = 'm_old' + now.toString(36);
+          JSON.parse(sh3.mkt.post(JSON.stringify({key: mkKey, action: 'push', who: 'm', rows: [{id, kind: 'op', upd: now, del: false, view: ['', '', '', '', ''], data: {id, t: 'exp', amt: 5000, cat: 'تجربة جهاز قديم', note: '', ts: now, cr: now, upd: now, del: false}}]})));
+          await X.evaluate(() => { mkxI.x.state().brAt = 0; }); await mksX();
+          await M.waitForFunction(i => !!S.ops[i], id, {timeout: 10000}).catch(() => {});
+          await eqM('حركة من جهاز قديم على الشيت بس: وصلت السيرفر ووصلت أحمد على السيرفر', [await X.evaluate(i => !!mkDb().ops[i], id), await M.evaluate(i => !!S.ops[i], id)], [true, true]);
+        }
+        {   // المقارنة اليومية: سطر على السيرفر مش في الشيت بيتكتب في الشيت (من غير إشعار)
+          const now = Date.now(), id = 'm_rc' + now.toString(36), p0 = pushes();
+          await M.evaluate(([id, now]) => { S.ops[id] = {id, t: 'exp', amt: 2500, cat: 'تجربة مقارنة', note: '', ts: now, cr: now, upd: now, del: false}; }, [id, now]);
+          await M.evaluate(async i => { const o = S.ops[i]; await mkx.call({action: 'push', who: 'm', rows: [{id: i, kind: 'op', upd: o.upd, del: false, view: [], data: o}]}); S.xs.toSh = {}; o.sy = o.upd; save(); }, id);   // وصل السيرفر بس (نسخة الشيت ضاعت)
+          const before = onSheet(id);
+          await X.evaluate(() => { mkxI.x.state().rcAt = 0; }); await mksX();
+          for (let i = 0; i < 80 && !onSheet(id); i++) await X.waitForFunction(() => true, null, {polling: 100});
+          await eqM('المقارنة اليومية: السطر اللي على السيرفر بس اتكتب في الشيت ومفيش إشعار ليه', [before, onSheet(id), pushes() === p0], [false, true, true]);
+          await M.evaluate(i => { S.ops[i].del = true; bump(S.ops[i]); save(); sync(); }, id); await idleM(); await mksX();
+        }
+        await mksX(); await syncM(); await mksX();
+        const cust = Y => Y.evaluate(() => typeof customers === 'function' ? [...customers().values()].map(c => [c.name, c.bal]) : liveParties().filter(p => p.sec === 'mkt').map(p => [p.name, balance(p.id)]));
+        await eqM('في الآخر: الشيت كود السوق زي ما هو (نسخة 8)، والأرصدة عند أحمد زي الحسابات، ومفيش حاجة مستنية', [JSON.parse(sh3.mkt.post(JSON.stringify({key: mkKey, action: 'ping'}))).v, await cust(M), await M.evaluate(() => pending().length)], [8, await cust(X), 0]);
+        eq('مفيش أخطاء في الصفحات', [...DX.errs, ...DM.errs], []);
+        await DX.close(); await DM.close();
+      }
     }   // نهاية أقسام السوق
     }   // نهاية RUN.sync
     if (RUN.smoke) {

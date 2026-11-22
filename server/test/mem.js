@@ -10,7 +10,9 @@ function memStore() {
 /* السيرفر كله في الذاكرة: handle(نص الطلب) بيرد زي الـ Worker بالظبط */
 async function memServer() {
   const {makeCore} = await import('../src/core.js');
-  const st = memStore(), core = makeCore(st);
-  return {core, st, off: false, handle(text) { return core.handle(text, this.off); }};
+  const st = memStore(), S = {st, off: false, writes: [], onWrite: null};
+  S.core = makeCore(Object.assign({}, st, {onWrite: (seq, d) => { S.writes.push([seq, d]); if (S.onWrite) S.onWrite(seq, d); }}));
+  S.handle = text => S.core.handle(text, S.off);
+  return S;
 }
 module.exports = {memStore, memServer};

@@ -4024,7 +4024,7 @@ async function sync1(d0, clash, sb = syb) {
   return {got, pushed, last};
 }
 /* المزامنة: على سيرفر المصنع لو شغال (srvSync)، ولو وقع أو لسه متجربش بتروح للشيت على طول زي الأول (sheetSync).
-   وأول ما الشيت يخلص بنجرّب ننقل للسيرفر في الخلفية (srvBoot، مرة كل 10 دقايق بالكتير) */
+   وأول ما الشيت يخلص بنجرّب ننقل للسيرفر في الخلفية (srvBoot، مرة كل دقيقة بالكتير) */
 async function syncNow(manual) {
   if (!db) return;
   if (srvOn()) { const r = await srvSync(manual); if (r !== 'fail' || !db) return; }
@@ -4292,7 +4292,7 @@ async function srvBoot() {
   const S = srvS(), now = nowS();
   if (S.on && Date.now() - srvFailAt <= SRV_REST) return;   // شغال بس واقع لحظة: المزامنة نفسها هتجربه تاني
   if (S.bad && now - S.bad.at < 6 * 3600000) return;   // السيرفر رفض (مفتاح/متوقف): بنجرب كل 6 ساعات
-  if (now - (S.tryAt || 0) < 10 * 60000) return;
+  if (now - (S.tryAt || 0) < 60000) return;   // كل دقيقة بالكتير (أول نقل عنده اتقطع في النص 22/11/2026 واستنى 10 دقايق). بيكمّل من مكان ما وقف
   srvBooting = true; S.tryAt = now;
   const d0 = db, st = {got: 0, pushed: 0}, clash = [];
   try {
@@ -4354,6 +4354,13 @@ async function sheetBk() {
       if (syncAgain && !syncing) { syncAgain = false; setTimeout(() => syncNow(), 300); }
     }
   }
+}
+/* سطر في حالة المزامنة في الإعدادات لحد ما النقل للسيرفر يخلص: واقف فين (بطلبه، علشان يشوف بنفسه) */
+function srvMoveLine() {
+  if (!db || !SRV_URL || !db.cfg.sheetOk || (db.cfg.srv || {}).on) return '';
+  const S = db.cfg.srv || {}, all = srvTotal(), done = all - srvPend().length;
+  const st = srvBooting ? `شغال دلوقتي (وصل ${done} من ${all})` : S.bad ? 'السيرفر رافض، كمّل على الشيت' : S.err ? `اتقطع (${esc(S.err)})، هيكمّل لوحده بعد دقيقة من مكان ما وقف` : 'هيبدأ لوحده بعد المزامنة';
+  return `⚡ النقل لسيرفر المصنع: ${st}<br>`;
 }
 /* الصفحة استخبت: اللي مستني بيتبعت للسيرفر بطلب بيكمّل حتى لو الصفحة نامت (keepalive، لحد ~55 ألف حرف).
    since كبير = مبيسحبش حاجة. مبنعلّمهاش "اتبعتت": المزامنة الجاية بتتأكد (السيرفر بيقول ack من غير ما يكتب تاني) */
@@ -4427,7 +4434,7 @@ function renderSetStat() {
   const n = pendingRecs().length, st = $('#sStat'), openSheet = () => { const k = $('#sSheet').parentNode; $('#p-set').classList.add('advon'); k.classList.remove('shut'); k.scrollIntoView({block: 'start', behavior: 'smooth'}); };
     st.className = 'sstat ' + (c.sheetOk ? 'ok' : 'no');
     const lastBad = (c.syLog || [])[0] && !c.syLog[0].ok ? c.syLog[0] : null;
-    st.innerHTML = c.sheetOk ? `<div><b>${syncing ? '⏳ بيتبعت دلوقتي (' + Math.round((Date.now() - syncAt) / 1000) + ' ثانية)' : syncErr && syncErr !== 'key' ? '⚠️ آخر محاولة مزامنة موصلتش' : n && lastBad ? '⚠️ آخر محاولة موصلتش' : n ? 'مستني يتبعت' : srvOn() ? '✔ متزامن على سيرفر المصنع ⚡' : '✔ متزامن مع الشيت'}</b><small>${syncErr && syncWhy ? esc(syncWhy) + '<br>' : ''}${c.lastSync ? 'آخر مزامنة ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة'}${n ? ' · ' + n + ' مستني' : ''}${syncing && lastBad && lastBad.why ? '<br>المرة اللي فاتت: ' + esc(lastBad.why) : ''}</small>${syLogHtml(c.syLog)}</div><button class="btn line" id="sStatGo" type="button">زامن دلوقتي</button>`
+    st.innerHTML = c.sheetOk ? `<div><b>${syncing ? '⏳ بيتبعت دلوقتي (' + Math.round((Date.now() - syncAt) / 1000) + ' ثانية)' : syncErr && syncErr !== 'key' ? '⚠️ آخر محاولة مزامنة موصلتش' : n && lastBad ? '⚠️ آخر محاولة موصلتش' : n ? 'مستني يتبعت' : srvOn() ? '✔ متزامن على سيرفر المصنع ⚡' : '✔ متزامن مع الشيت'}</b><small>${srvMoveLine()}${syncErr && syncWhy ? esc(syncWhy) + '<br>' : ''}${c.lastSync ? 'آخر مزامنة ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة'}${n ? ' · ' + n + ' مستني' : ''}${syncing && lastBad && lastBad.why ? '<br>المرة اللي فاتت: ' + esc(lastBad.why) : ''}</small>${syLogHtml(c.syLog)}</div><button class="btn line" id="sStatGo" type="button">زامن دلوقتي</button>`
       : `<div><b>الشيت مش مربوط</b><small>البيانات على الجهاز ده بس</small></div><button class="btn gold" id="sStatGo" type="button">اربطه</button>`;
     $('#sStatGo').onclick = () => { if (c.sheetOk && $('#shNow')) $('#shNow').click(); else openSheet(); };
   if ($('#shNow')) $('#shNow').textContent = `زامن دلوقتي (${n} مستني)`;

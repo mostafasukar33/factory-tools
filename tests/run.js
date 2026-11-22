@@ -1216,7 +1216,7 @@ const T0 = Date.now();
         SV.off = true;
         await X.evaluate(id => { const p = P.get(id); p.note = 'وقت الطوارئ'; touch(p); saveDB(); clearTimeout(syncT); }, cX);
         await bg(X, 'syncNow()');
-        eq('السيرفر متوقف بالقصد: رجع للشيت والحركة وصلت الشيت', [await X.evaluate(() => [srvOn(), db.cfg.srv.on, db.cfg.srv.bad.why]), sheetHas(cX, 'وقت الطوارئ')], [[false, false, 'off'], true]);
+        eq('السيرفر متوقف بالقصد: رجع للشيت والحركة وصلت الشيت، والإعدادات بتقول السيرفر رافض', [await X.evaluate(() => [srvOn(), db.cfg.srv.on, db.cfg.srv.bad.why, /السيرفر رافض/.test(srvMoveLine())]), sheetHas(cX, 'وقت الطوارئ')], [[false, false, 'off', true], true]);
         SV.off = false; await X.evaluate(() => { delete db.cfg.srv.bad; db.cfg.srv.tryAt = 0; srvFailAt = 0; });
         await bg(X, 'syncNow()'); await X.waitForFunction(() => db.cfg.srv.on, null, {timeout: 20000}).catch(() => {});
         eq('بعد الطوارئ: اتنقل للسيرفر تاني لوحده بعد المقارنة', await X.evaluate(() => [srvOn(), srvPend().length]), [true, 0]);
@@ -1226,6 +1226,16 @@ const T0 = Date.now();
         await bg(X, 'syncNow()');
         await X.waitForFunction(() => db.cfg.srv.on && db.cfg.srv.ep === 'newbase00000000', null, {timeout: 30000}).catch(() => {});
         eq('قاعدة جديدة على السيرفر: الجهاز بعت كل حاجة تاني واتأكد ورجع عليه', await X.evaluate(() => [srvOn(), db.cfg.srv.ep, srvPend().length]), [true, 'newbase00000000', 0]);
+      }
+      {   // النقل اتقطع في النص (زي موبايله أول مرة 22/11/2026): بيقول في الإعدادات، وبيكمّل لوحده بعد دقيقة من مكان ما وقف
+        DX.srvDown = true;
+        await X.evaluate(() => { srvForget(); db.cfg.srv.on = false; db.cfg.srv.tryAt = 0; srvFailAt = 0; });
+        await bg(X, 'srvBoot()');
+        const cut = await X.evaluate(() => [srvOn(), srvMoveLine()]);
+        DX.srvDown = false; await bg(X, 'srvBoot()');
+        const early = await X.evaluate(() => srvOn());
+        await X.evaluate(() => { db.cfg.srv.tryAt = nowS() - 61000; }); await bg(X, 'srvBoot()');
+        eq('النقل اتقطع: الإعدادات بتقول اتقطع وهيكمّل، ومبيعيدش قبل دقيقة، وبعدها كمّل لوحده ورجع على السيرفر', [cut[0], /اتقطع .*هيكمّل لوحده بعد دقيقة/.test(cut[1]), early, await X.evaluate(() => [srvOn(), srvPend().length, srvMoveLine()])], [false, true, false, [true, 0, '']]);
       }
       {   // المقارنة اليومية: سجل الجهاز فاكره اتبعت والسيرفر معندوش آخر نسخة = بيتبعت تاني
         await X.evaluate(id => { const p = P.get(id); p.note = 'ضاع في السكة'; touch(p); p.svy = p.upd; saveDB(); clearTimeout(syncT); }, cX);

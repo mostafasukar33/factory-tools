@@ -42,6 +42,7 @@ node tests/shots.js --list                           # أسامي الشاشات
 | `market.html` | mkt |
 | `cash.html` (ورقة "الدفتر اتقفل") | acc |
 | `payroll.html` | `tests/payroll.js` |
+| `server/` (سيرفر المصنع) | `server/test/core.js` + acc (فيه قسم ١٠هـ) |
 | `lib/` أو `sw.js` أو `fonts/` أو ملفات الاختبار نفسها | كله |
 | أي صفحة تانية (`index.html`، `quote.html`، ...) | smoke |
 | ملفات كلام بس (`.md`) | ولا حاجة |
@@ -68,6 +69,7 @@ node tests/shots.js --list                           # أسامي الشاشات
 
 ```
 node tests/payroll.js
+node --no-warnings server/test/core.js   # سيرفر المصنع (ثواني، من غير متصفح)
 ```
 
 قواعد الحساب لوحدها، وكود شيت المرتبات (gasmock)، والتطبيق على 3 موبايلات (الدخول بالرقم السري، الكل يوم، يوم ونص، السلف، الجمعة، القفل اليدوي والتلقائي، القبض، السجل، ومن غير نت).

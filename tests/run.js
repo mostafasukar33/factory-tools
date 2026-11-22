@@ -70,10 +70,21 @@ function serve() {
   });
 }
 
-async function newDevice(browser, base, sheets) {
+async function newDevice(browser, base, sheets, srv) {
   const ctx = await browser.newContext({viewport: {width: 400, height: 860}, acceptDownloads: true, permissions: ['clipboard-read', 'clipboard-write']});
   ctx.errs = [];
   await ctx.addInitScript(TRACKER);
+  /* سيرفر المصنع التجريبي (كود server/src/core.js الحقيقي في الذاكرة). من غيره البرنامج على localhost مبيكلمش أي سيرفر خالص */
+  if (srv) {
+    await ctx.addInitScript(u => { window.__srvUrl = u; }, srv.url);
+    await ctx.route(srv.url + '**', async r => {
+      const q = r.request();
+      if (ctx.srvDown) return r.abort('failed');
+      const body = q.method() === 'POST' ? JSON.stringify(await srv.handle(q.postData())) : JSON.stringify(srv.core.info());
+      if (q.method() === 'POST') srv.log.push(q.postData());
+      r.fulfill({status: 200, contentType: 'application/json', headers: {'Access-Control-Allow-Origin': '*'}, body});
+    });
+  }
   ctx.on('page', p => { p.settle = settle; });
   await ctx.route('https://script.google.com/**', r => {
     if (ctx.netDown) return r.abort('failed');
@@ -146,6 +157,7 @@ function changedModes() {
     else if (f === 'cash.html') m = 'acc';
     else if (f === 'payroll.html' || f === 'payroll.webmanifest' || f === 'tests/payroll.js') m = 'payroll';
     else if (/^(tests\/(run|gasmock|speed)\.js|lib\/|sw\.js|fonts\/)/.test(f)) m = 'full';
+    else if (/^server\/(src|test)\//.test(f)) { m = 'acc'; modes.add('srv'); }   // سيرفر المصنع: اختباره لوحده + قسم ١٠هـ (في acc)
     else if (/\.(html|webmanifest)$/.test(f) || /^(icons|calculator)\//.test(f)) m = 'smoke';
     if (m) { modes.add(m); why.push(`${f} → ${m}`); }
   }
@@ -165,6 +177,12 @@ if (MODES.includes('payroll')) {
   MODES = MODES.filter(m => m !== 'payroll');
   if (r.status) process.exit(r.status);
   if (!MODES.length) process.exit(0);
+}
+/* سيرفر المصنع (server/test/core.js، ثواني): كود السيرفر نفسه من غير متصفح. GitHub بيشغّله دايماً */
+if (MODES.includes('srv') || (process.argv.includes('--changed') && MODES.includes('full'))) {
+  console.log('\n— سيرفر المصنع: node server/test/core.js —');
+  if (!process.argv.includes('--dry') && spawnSync(process.execPath, ['--no-warnings', path.join(ROOT, 'server/test/core.js')], {stdio: 'inherit'}).status) fails++;
+  MODES = MODES.filter(m => m !== 'srv');
 }
 /* اختبار السرعة (tests/speed.js، ~نص دقيقة): في --changed لما الحسابات أو lib أو الاختبارات تتغير (GitHub بيشغّله دايماً بعد الرفع) */
 if (process.argv.includes('--changed') && !process.argv.includes('--dry') && MODES.some(m => m === 'full' || m === 'acc')) {
@@ -1108,6 +1126,137 @@ const T0 = Date.now();
     await bg(J2, 'finishJoin(false)'); await J2.waitForFunction(() => db.cfg.sheetOk && !db.cfg.joinWait, null, {timeout: 20000}).catch(() => {}); await J2.settle(500);
     eq('النت رجع: كمّل الربط لوحده ونزّل نفس الأرصدة', [await J2.evaluate(() => [db.cfg.sheetOk, !!db.cfg.joinWait]), await snap(J2)], [[true, false], await snap(A)]);
     eq('رابط مقطوع بيطلع رسالة', await (async () => { const X = await D4.page('accounts.html#join=AAAA'); await X.settle(1200); return (await X.textContent('#toast')).includes('ناقص'); })(), true);
+
+    sec('١٠هـ) سيرفر المصنع: المزامنة عليه متشفرة، والشيت نسخة كل ساعة، والرجوع للشيت لو وقع');
+    {
+      const {memServer} = require('../server/test/mem');
+      const SV = await memServer(); SV.url = 'https://srv.test/'; SV.log = [];
+      const sh2 = {acc: makeGas(), cash: makeGas(), mkt: makeGas(), pay: makeGas()};
+      const SK = 'Srv-Test-Key-2026';
+      const DX = await newDevice(browser, base, sh2, SV), X = await DX.page('accounts.html');
+      await unlock(X, true);
+      sh2.acc.load(await X.evaluate(() => scriptFor()));
+      await X.evaluate(() => go('set')); await X.waitForSelector('#sSheet details.adv', {state: 'attached'}); await X.evaluate(() => setOpenAll());
+      await X.fill('#shUrl', ACC_URL); await X.click('#sSheet details.fld summary'); await X.fill('#shKey', SK); await X.click('#shSave');
+      await X.waitForFunction(() => db.cfg.sheetOk, null, {timeout: 20000});
+      /* بيانات تجريبية: عميلين وفاتورة ودفعة */
+      const mkData = (Y, tag) => Y.evaluate(t => {
+        const now = nowS(), mk = (name, sec) => { const p = {id: newId('p_'), sec, name, phone: '', note: '', noTot: false, at: now, upd: now, del: false}; db.parties.push(p); P.set(p.id, p); return p; };
+        const c = mk('عميل سيرفر ' + t, 'mkt'), s = mk('مورد سيرفر ' + t, 'sup');
+        const e = addEntry({party: c.id, kind: 'inv', date: '2026-02-01', lines: [{name: 'لفة تجربة', unit: 'لفة', qty: 4, price: 12345}]}); applyAmounts(e);
+        applyAmounts(addEntry({party: c.id, kind: 'pay', date: '2026-02-02', amt: 20000, method: ''}));
+        saveDB(); return c.id;
+      }, tag);
+      const cX = await mkData(X, 'أ');
+      const srvSnap = Y => Y.evaluate(() => [liveParties().map(p => p.name + ':' + balance(p.id)).sort(), vaultBal('')]);
+      const sheetHas = (id, txt) => sh2.acc.sheets['السجلات'].rows.some(r => r[0] === id && (!txt || String(r[r.length - 1]).includes(txt)));
+      await bg(X, 'syncNow()');
+      await X.waitForFunction(() => db.cfg.srv && db.cfg.srv.on, null, {timeout: 30000}).catch(() => {});
+      const st1 = await X.evaluate(() => [srvOn(), db.cfg.srv.n, srvTotal(), srvPend().length, sheetPend().length]);
+      eq('أول مزامنة: اتنقلت لوحدها للسيرفر بعد ما اتأكدت إن كل حاجة اتبعتت ومطابقة', [st1[0], st1[1] === st1[2], st1[3], st1[4]], [true, true, 0, 0]);
+      eq('الرسالة: المزامنة بقت على سيرفر المصنع', (await X.textContent('#toast')).includes('سيرفر المصنع'), true);
+      const raw = SV.st.q('SELECT data FROM rec').map(r => r.data).join('');
+      eq('السيرفر شايل حروف مقفولة بس: مفيش اسم عميل ولا مبلغ', [raw.length > 100, raw.includes('عميل'), /12345|49380/.test(raw)], [true, false, false]);
+      eq('مفتاح الشيت عمره ما اتبعت للسيرفر، والسيرفر شايل بصمة التذكرة مش التذكرة', [SV.log.some(b => b.includes(SK)), SV.st.q("SELECT v FROM meta WHERE k = 'own'")[0].v.length], [false, 64]);
+      {   // تعديل: بيروح للسيرفر على طول، والشيت بياخده في نسخة الساعة بس
+        await X.evaluate(id => { const p = P.get(id); p.note = 'تعديل على السيرفر'; touch(p); saveDB(); clearTimeout(syncT); }, cX);
+        const n0 = SV.log.length;
+        await bg(X, 'syncNow()');
+        eq('التعديل راح للسيرفر ومراحش الشيت لسه', [SV.log.length > n0, sheetHas(cX, 'تعديل على السيرفر'), await X.evaluate(() => [pendingRecs().length, db.cfg.syLog[0].ok, /سيرفر [\d.]+/.test(db.cfg.syLog[0].d)])], [true, false, [0, true, true]]);
+        eq('الشاشة بتقول متزامن على سيرفر المصنع', (await X.textContent('#syncBox')).includes('سيرفر المصنع'), true);
+        await X.evaluate(() => { (db.cfg.shBk = db.cfg.shBk || {}).at = 0; }); await bg(X, 'sheetBk()');
+        eq('نسخة الشيت (كل ساعة): التعديل وصل الشيت من غير أي رسالة', [sheetHas(cX, 'تعديل على السيرفر'), await X.evaluate(() => [sheetPend().length, !!db.cfg.shBk.ok])], [true, [0, true]]);
+        await bg(X, 'sheetBk()');
+        eq('نسخة الشيت مبتتكررش قبل ساعة', await X.evaluate(() => nowS() - db.cfg.shBk.at < 60000), true);
+      }
+      /* جهاز تاني برابط الربط: بياخد من الشيت، وبعدين بيتنقل للسيرفر لوحده */
+      const link = await X.evaluate(() => joinLink());
+      const DY = await newDevice(browser, base, sh2, SV), Y = await DY.page('accounts.html' + link.slice(link.indexOf('#')));
+      await unlock(Y, true);
+      await Y.waitForFunction(() => db && db.cfg.sheetOk && db.cfg.srv && db.cfg.srv.on, null, {timeout: 40000}).catch(() => {});
+      eq('الجهاز التاني اتربط واتنقل للسيرفر ونزلت عليه نفس الأرصدة', [await Y.evaluate(() => srvOn()), await srvSnap(Y)], [true, await srvSnap(X)]);
+      {   // حركة على الجهاز التاني بتوصل الأول من السيرفر من غير الشيت
+        const sheet0 = sh2.acc.sheets['السجلات'].rows.length;
+        const cY = await mkData(Y, 'ب');
+        await Y.evaluate(() => clearTimeout(syncT)); await bg(Y, 'syncNow()'); await bg(X, 'syncNow()');
+        eq('حركة الجهاز التاني وصلت الأول من السيرفر (الشيت متلمسش)', [await srvSnap(X), sh2.acc.sheets['السجلات'].rows.length, sheetHas(cY)], [await srvSnap(Y), sheet0, false]);
+        /* تعارض: نفس الحساب اتعدّل على الجهازين قبل المزامنة */
+        await X.evaluate(id => { const p = P.get(id); p.note = 'من الجهاز الأول'; touch(p); saveDB(); clearTimeout(syncT); }, cY);
+        await Y.evaluate(id => { const p = P.get(id); p.note = 'من الجهاز التاني'; touch(p); saveDB(); clearTimeout(syncT); }, cY);
+        await bg(Y, 'syncNow()');
+        const cl0 = await X.evaluate(() => (db.cfg.clash || []).length);
+        await bg(X, 'syncNow()'); await X.evaluate(() => { if ($('#mask').classList.contains('on')) closeModal(); });
+        await bg(Y, 'syncNow()');
+        eq('تعارض بين جهازين على السيرفر: اتقال، والأحدث (التاني) كسب على الجهازين', [await X.evaluate(() => (db.cfg.clash || []).length) - cl0, await X.evaluate(id => P.get(id).note, cY), await Y.evaluate(id => P.get(id).note, cY)], [1, 'من الجهاز التاني', 'من الجهاز التاني']);
+      }
+      {   // السيرفر وقع: نفس المزامنة بتروح للشيت على طول، ومفيش حاجة بتضيع
+        await X.evaluate(id => { const p = P.get(id); p.note = 'والسيرفر واقع'; touch(p); saveDB(); clearTimeout(syncT); }, cX);
+        DX.srvDown = true; await bg(X, 'syncNow()');
+        eq('السيرفر واقع: الحركة راحت للشيت، والسجل بيقول السيرفر موصلش وكمّل على الشيت', [sheetHas(cX, 'والسيرفر واقع'), await X.evaluate(() => [srvOn(), db.cfg.syLog[0].ok, /السيرفر/.test(db.cfg.syLog[1].why), syncErr])], [true, [false, true, true, '']]);
+        DX.srvDown = false; await X.evaluate(() => { srvFailAt = 0; }); await bg(X, 'syncNow()');
+        eq('السيرفر رجع: المزامنة رجعت عليه والحركة وصلته', await X.evaluate(() => [srvOn(), srvPend().length]), [true, 0]);
+        await bg(Y, 'syncNow()');
+        eq('الجهاز التاني خد الحركة من السيرفر', await Y.evaluate(id => P.get(id).note, cX), 'والسيرفر واقع');
+      }
+      {   // حد عدّل في بيانات السيرفر (أو حط سجل مكان سجل): مبيدخلش الحسابات خالص، والمزامنة بتكمّل على الشيت
+        const [a, b] = SV.st.q("SELECT id, data, upd FROM rec WHERE kind = 'party' ORDER BY seq LIMIT 2");
+        const seq = SV.st.q("SELECT v FROM meta WHERE k = 'seq'")[0].v * 1 + 1;
+        SV.st.q('UPDATE rec SET data = ?, upd = ?, seq = ? WHERE id = ?', b.data, a.upd + 5, seq, a.id); SV.st.q("UPDATE meta SET v = ? WHERE k = 'seq'", seq);
+        const before = await X.evaluate(id => JSON.stringify(stripLocal(P.get(id))), a.id);
+        await bg(X, 'syncNow()');
+        eq('سجل متلاعب فيه على السيرفر: اترفض ومدخلش الحسابات، والمزامنة كمّلت على الشيت', [await X.evaluate(id => JSON.stringify(stripLocal(P.get(id))), a.id) === before, await X.evaluate(() => [srvOn(), /مش مطابقة للتشفير/.test(db.cfg.syLog[1].why), db.cfg.syLog[0].ok])], [true, [false, true, true]]);
+        SV.st.q('UPDATE rec SET data = ?, upd = ? WHERE id = ?', a.data, a.upd, a.id);
+        await X.evaluate(id => { touch(P.get(id)); saveDB(); clearTimeout(syncT); srvFailAt = 0; }, a.id); await bg(X, 'syncNow()');
+        eq('بعد ما اتصلّح: رجع على السيرفر', await X.evaluate(() => [srvOn(), srvPend().length]), [true, 0]);
+      }
+      {   // تذكرة غلط (مفتاح تاني): السيرفر رافض
+        eq('مفتاح تاني: السيرفر رافض يسحب أو يكتب', await X.evaluate(async () => (await srvCall({a: 'sync', k: 'x'.repeat(43), ep: db.cfg.srv.ep, since: 0, rows: []})).error), 'key');
+      }
+      {   // زرار الطوارئ على السيرفر (OFF): الأجهزة بترجع للشيت لوحدها، ولما يتشال بترجع للسيرفر
+        SV.off = true;
+        await X.evaluate(id => { const p = P.get(id); p.note = 'وقت الطوارئ'; touch(p); saveDB(); clearTimeout(syncT); }, cX);
+        await bg(X, 'syncNow()');
+        eq('السيرفر متوقف بالقصد: رجع للشيت والحركة وصلت الشيت', [await X.evaluate(() => [srvOn(), db.cfg.srv.on, db.cfg.srv.bad.why]), sheetHas(cX, 'وقت الطوارئ')], [[false, false, 'off'], true]);
+        SV.off = false; await X.evaluate(() => { delete db.cfg.srv.bad; db.cfg.srv.tryAt = 0; srvFailAt = 0; });
+        await bg(X, 'syncNow()'); await X.waitForFunction(() => db.cfg.srv.on, null, {timeout: 20000}).catch(() => {});
+        eq('بعد الطوارئ: اتنقل للسيرفر تاني لوحده بعد المقارنة', await X.evaluate(() => [srvOn(), srvPend().length]), [true, 0]);
+      }
+      {   // السيرفر اتعمل من جديد (رقم القاعدة اتغير): كل حاجة بتتبعت تاني وتتقارن قبل ما يرجع عليه
+        SV.st.q("UPDATE meta SET v = 'newbase00000000' WHERE k = 'ep'");
+        await bg(X, 'syncNow()');
+        await X.waitForFunction(() => db.cfg.srv.on && db.cfg.srv.ep === 'newbase00000000', null, {timeout: 30000}).catch(() => {});
+        eq('قاعدة جديدة على السيرفر: الجهاز بعت كل حاجة تاني واتأكد ورجع عليه', await X.evaluate(() => [srvOn(), db.cfg.srv.ep, srvPend().length]), [true, 'newbase00000000', 0]);
+      }
+      {   // المقارنة اليومية: سجل الجهاز فاكره اتبعت والسيرفر معندوش آخر نسخة = بيتبعت تاني
+        await X.evaluate(id => { const p = P.get(id); p.note = 'ضاع في السكة'; touch(p); p.svy = p.upd; saveDB(); clearTimeout(syncT); }, cX);
+        await X.evaluate(() => { db.cfg.srv.vAt = 0; }); await bg(X, 'srvDaily()');
+        const vb = await X.evaluate(() => { clearTimeout(syncT); return [db.cfg.srv.vBad && db.cfg.srv.vBad.n, srvPend().length]; });
+        await bg(X, 'syncNow()'); await X.waitForFunction(() => !syncing && !srvPend().length, null, {timeout: 15000}).catch(() => {});
+        await bg(Y, 'syncNow()'); await Y.waitForFunction(() => srvOn() && db.cfg.srv.ep === 'newbase00000000', null, {timeout: 30000}).catch(() => {}); await bg(Y, 'syncNow()');   // الجهاز التاني عرف إن السيرفر اتعمل من جديد: كمّل على الشيت ورجع للسيرفر لوحده
+        eq('المقارنة اليومية لقت السجل الناقص، واتبعت تاني ووصل الجهاز التاني', [vb, await Y.evaluate(id => P.get(id).note, cX)], [[1, 1], 'ضاع في السكة']);
+        await X.evaluate(() => { db.cfg.srv.vAt = 0; }); await bg(X, 'srvDaily()');
+        eq('المقارنة اللي بعدها: مطابق', await X.evaluate(() => db.cfg.srv.vBad), null);
+      }
+      {   // البرنامج استخبى: اللي مستني بيروح للسيرفر بطلب بيكمّل حتى لو الصفحة نامت
+        await X.evaluate(id => { const p = P.get(id); p.note = 'الصفحة استخبت'; touch(p); saveDB(); clearTimeout(syncT); }, cX);
+        const sent = await X.evaluate(() => pushOnHide());
+        await X.waitForFunction(() => true); for (let i = 0; i < 50 && !SV.log.some(b => b.includes(String(Number.MAX_SAFE_INTEGER))); i++) await X.waitForFunction(() => true, null, {polling: 100});
+        const v = (await SV.handle(JSON.stringify({a: 'sync', k: await X.evaluate(() => srvK.tok), ep: await X.evaluate(() => db.cfg.srv.ep), since: 0, rows: []}))).rows.find(r => r.id === cX);
+        eq('الصفحة استخبت: الحركة وصلت السيرفر من غير مزامنة كاملة', [sent, v && v.upd === await X.evaluate(id => P.get(id).upd, cX)], [true, true]);
+        await bg(X, 'syncNow()');
+        eq('المزامنة اللي بعدها: مفيش حاجة مستنية ولا تعارض', await X.evaluate(() => [pendingRecs().length, syncErr]), [0, '']);
+      }
+      {   // نسخة الشيت وقعت: المزامنة على السيرفر شغالة عادي ومفيش أي حاجة على الشاشة
+        DX.netDown = true; await X.evaluate(() => { (db.cfg.shBk = db.cfg.shBk || {}).at = 0; }); await bg(X, 'sheetBk()');
+        await X.evaluate(id => { const p = P.get(id); p.note = 'والشيت واقع'; touch(p); saveDB(); clearTimeout(syncT); }, cX); await bg(X, 'syncNow()');
+        eq('الشيت واقع: النسخة اتسجلت إنها فشلت، والمزامنة على السيرفر نجحت، ومفيش أي كلام عن الشيت على الشاشة', await X.evaluate(() => [!!db.cfg.shBk.fail0, srvOn(), srvPend().length, /الشيت|Google|مشكلة/.test($('#syncBox').textContent)]), [true, true, 0, false]);
+        DX.netDown = false; await X.evaluate(() => { (db.cfg.shBk = db.cfg.shBk || {}).at = 0; }); await bg(X, 'sheetBk()');
+        eq('الشيت رجع: النسخة كمّلت لوحدها', [sheetHas(cX, 'والشيت واقع'), await X.evaluate(() => [db.cfg.shBk.fail0 || 0, sheetPend().length])], [true, [0, 0]]);
+      }
+      eq('في الآخر: الجهازين والسيرفر متطابقين', [await srvSnap(X), await X.evaluate(async () => { const v = await srvVerify(db); return [v.bad.length, v.miss.length]; })], [await srvSnap(Y), [0, 0]]);
+      eq('مفيش أخطاء في الصفحات', [...DX.errs, ...DY.errs], []);
+      await DX.close(); await DY.close();
+    }
 
     sec('١١ب) دفتر الخزنة اتشال: مفيش نسخة مكشوفة ولا ربط بشيت الدفتر');
     eq('الحفظ مبيكتبش نسخة للدفتر، ورابط الربط فيه شيت الحسابات بس، ومفيش قسم الدفتر في الإعدادات', await B.evaluate(async () => {

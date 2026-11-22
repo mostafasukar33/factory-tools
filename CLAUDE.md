@@ -60,6 +60,7 @@
 | إشعارات الموبايل ورقم الوارد على الأيقونة | `functions/push.js` (الوسيط على كلاود فلير) + `sw.js` (`push`) + `accounts.html` (`push*`، `renderPushBox`) + كود شيت السوق (`pSub_`/`pSend_`/`pushOps_`) |
 | فحص البيانات / دكتور البيانات | `lib/doctor.js` (`docRun`/`docText`) + `accounts.html` (`docSoon`/`docNow`/`docOpen`/`docKeep`، كارت الإعدادات `#sDoc`، سطر الرئيسية `#hDoc`، الأسبوعي في `tgAfterSync`) |
 | عهدة حسن / حسن في الخزنة / ربط المرتبات بالحسابات | `lib/hsn.js` (`hsPull`/`hsWin`/`hsReview`/`hsInbox`) + `accounts.html` (`payCreds`/`hsLoad`/`renderHsSettings`، الشيب `#kHs`، كارت الإعدادات `#sHsn`) |
+| سيرفر المصنع / المزامنة على كلاود فلير (والشيت نسخة كل ساعة) | `server/` (`factory-sync`، الكود `server/src/core.js`، اختباره `server/test/core.js`) + `accounts.html` (`srv*`، `sheetBk`، `sheetCore`/`sheetSync`) |
 | حزمة الأمان (الإنذار المبكر، تجربة الاسترجاع، النسخة السليمة) | `accounts.html` (`safeAlertHtml`/`bkWatch`/`bkVerify`/`ciCheck`) + `.github/workflows/tests.yml` |
 
 ---

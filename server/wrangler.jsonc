@@ -1,0 +1,12 @@
+// سيرفر حسابات المصنع (بطلبه 22/11/2026). لوحده ومالوش علاقة بسيرفر برنامج الشركات (hesabat).
+// الرفع: cd server && CLOUDFLARE_API_TOKEN="$cloudflare_api_token" npx wrangler deploy   (بعد node test/core.js)
+// العنوان: https://factory-sync.<حساب كلاود فلير>.workers.dev/ ومكتوب في accounts.html (SRV_URL).
+// الحد المجاني على حساب كلاود فلير كله (مشترك مع hesabat): المصنع بياخد حوالي 1% في اليوم.
+{
+  "name": "factory-sync",
+  "main": "src/index.js",
+  "compatibility_date": "2025-10-01",
+  "workers_dev": true,
+  "durable_objects": { "bindings": [ { "name": "F", "class_name": "Factory" } ] },
+  "migrations": [ { "tag": "v1", "new_sqlite_classes": ["Factory"] } ]
+}

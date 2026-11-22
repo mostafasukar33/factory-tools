@@ -28,6 +28,9 @@ jobs:
       - name: المرتبات
         if: always()
         run: node tests/payroll.js
+      - name: سيرفر المصنع (server/)
+        if: always()
+        run: node --no-warnings server/test/core.js
       - name: السرعة (حسابات كبيرة على معالج بطيء)
         if: always()
         run: node tests/speed.js

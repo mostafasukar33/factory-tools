@@ -2335,7 +2335,7 @@ function lockNow(msg) {
   locking = true;
   kbClose();   // الخانة اللي عليها المؤشر بتخلص شغلها (اسم الصنف ← الوحدة والسعر) والحسابات لسه مفتوحة، مش بعد ما تتقفل
   draftKeep();
-  flushSave().finally(() => { locking = false; }).then(() => { db = null; cryptoKey = null; P = new Map(); E = new Map(); $('#p-party').innerHTML = ''; $('#hList').innerHTML = ''; homeVer = ''; showLock(msg); });   // homeVer فاضي = القايمة اللي اتمسحت لازم تترسم تاني بعد الفتح حتى في الرجوع من حساب
+  flushSave().finally(() => { locking = false; }).then(() => { db = null; cryptoKey = null; srvK = null; P = new Map(); E = new Map(); $('#p-party').innerHTML = ''; $('#hList').innerHTML = ''; homeVer = ''; showLock(msg); });   // homeVer فاضي = القايمة اللي اتمسحت لازم تترسم تاني بعد الفتح حتى في الرجوع من حساب
 }
 function landingHash() {
   if (mkCreds() && (mkPending().length || (db.cfg.clash || []).some(c => !c.seen))) return '#mkt';
@@ -3876,7 +3876,9 @@ async function callSheet1(body, url, key, ms) {
     throw e;
   } finally { clearTimeout(tm); sheetLive.delete(me); }
 }
-const pendingRecs = () => db ? Object.entries(STORE).flatMap(([k, a]) => db[a].filter(r => r.sy !== r.upd && r.big !== r.upd).map(r => [k, r])) : [];
+const sheetPend = () => db ? Object.entries(STORE).flatMap(([k, a]) => db[a].filter(r => r.sy !== r.upd && r.big !== r.upd).map(r => [k, r])) : [];
+/* "مستني يتبعت" = للسيرفر لو المزامنة عليه (srvOn)، وإلا للشيت زي الأول. كود الشيت نفسه بيستخدم sheetPend على طول */
+const pendingRecs = () => srvOn() ? srvPend() : sheetPend();
 /* خانة شيت جوجل حدها 50 ألف حرف، ولو سجل واحد عدّاها الشيت بيرفض الدفعة كلها والمزامنة تقف.
    اللي بيكبر هو سجل التعديلات (hist): النسخة اللي بتروح الشيت بتاخد أحدث التعديلات اللي تساعها بس،
    واللي على الجهاز بيفضل كامل (mergeRow بيجمع القديم مع اللي نازل). لو السجل نفسه أكبر من الخانة حتى من غير hist
@@ -3906,14 +3908,18 @@ function viewOf(kind, r) {
   const p = P.get(r.party);
   return [r.date, cell(p ? p.name : '؟'), p ? SECS[p.sec] : '', cell(noRef(r.desc)), (r.dr || 0) / 100, (r.cr || 0) / 100];
 }
-const stripLocal = r => { const o = Object.assign({}, r); delete o.sy; delete o.big; return o; };
-function mergeRow(r) {
+/* علامات الجهاز (مش بيانات): sy = وصل الشيت، big = أكبر من خانة الشيت، svy = وصل سيرفر المصنع، svb = أكبر من سطر السيرفر */
+const LOCAL_MK = ['sy', 'big', 'svy', 'svb'];
+const stripLocal = r => { const o = Object.assign({}, r); LOCAL_MK.forEach(k => delete o[k]); return o; };
+/* mk = علامة المكان اللي السجل نازل منه ('sy' الشيت، 'svy' السيرفر): السجل بيتعلّم إنه موجود هناك بس، ولازم يتبعت للمكان التاني */
+function mergeRow(r, mk = 'sy') {
   const map = IDX[r.kind];
   if (!map || !STORE[r.kind] || !r.data || !r.id) return false;
   const cur = map.get(r.id);
   if (cur && cur.upd > r.upd) return false;
-  if (cur && cur.upd === r.upd) { cur.sy = cur.upd; return false; }
-  const rec = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del, sy: r.upd});
+  if (cur && cur.upd === r.upd) { cur[mk] = cur.upd; return false; }
+  const rec = Object.assign({}, r.data, {id: r.id, upd: r.upd, del: !!r.del});
+  LOCAL_MK.forEach(k => delete rec[k]); rec[mk] = r.upd;
   if (cur) { keepHist(cur, rec); Object.keys(cur).forEach(k => delete cur[k]); Object.assign(cur, rec); }
   else { db[STORE[r.kind]].push(rec); map.set(r.id, rec); }
   return true;
@@ -3934,7 +3940,7 @@ function recSum(kind, r) {
   return (r.name || r.id) + x;
 }
 /* نفس البيانات (من غير الوقت وعلامات الجهاز وسجل التعديلات) = مفيش تعارض حقيقي */
-const sameData = (a, b) => { const c = o => { const x = Object.assign({}, o); ['id', 'upd', 'sy', 'big', 'hist', 'del'].forEach(k => delete x[k]); return JSON.stringify(Object.keys(x).sort().map(k => [k, x[k]])); }; return !!a.del === !!b.del && c(a) === c(b); };
+const sameData = (a, b) => { const c = o => { const x = Object.assign({}, o); ['id', 'upd', 'sy', 'big', 'svy', 'svb', 'hist', 'del'].forEach(k => delete x[k]); return JSON.stringify(Object.keys(x).sort().map(k => [k, x[k]])); }; return !!a.del === !!b.del && c(a) === c(b); };
 let SYNC_BATCH = 250000;   // أقصى حجم دفعة واحدة للشيت (حروف)
 let syncing = false, syncT = null, syncErr = '', syncWhy = '', lastPullAt = 0, syncAgain = false, syncAt = 0;
 /* سجل آخر 8 محاولات مزامنة (الوقت، أخدت كام ثانية، نجحت ولا لأ والسبب، اتبعت كام) بيبان في الإعدادات علشان نعرف البطء من فين. على الجهاز بس */
@@ -3947,8 +3953,9 @@ function schedSync() { clearTimeout(syncT); syncT = setTimeout(() => syncNow(), 
 /* اللاب بيتقفل أو البرنامج بيستخبى وفيه حركات لسه متبعتتش: بنبعتها على طول بطلب بيكمّل حتى لو الصفحة نامت (keepalive، لحد 60 ألف حرف).
    مبنعلّمهاش "اتبعتت" هنا: المزامنة الجاية بتسحب الأول وبتتأكد زي العادي (الحركة اللي وصلت مبتتبعتش تاني ومش تعارض) */
 function pushOnHide() {
+  if (srvOn()) { srvOnHide(); return true; }   // المزامنة على السيرفر: اللي مستني بيروحله هو (الشيت بياخده في نسخة الساعة)
   if (!db || syncing || !db.cfg.sheetUrl || !db.cfg.sheetOk) return false;
-  let rows = pendingRecs().slice(0, 50).map(([kind, r]) => [kind, r, sheetData(r)]).filter(([k, r, d]) => JSON.stringify(d).length <= CELL_MAX)
+  let rows = sheetPend().slice(0, 50).map(([kind, r]) => [kind, r, sheetData(r)]).filter(([k, r, d]) => JSON.stringify(d).length <= CELL_MAX)
     .map(([kind, r, d]) => ({id: r.id, kind, upd: r.upd, del: !!r.del, view: viewOf(kind, r).map(clipCell), data: d}));
   const bodyOf = rs => JSON.stringify({key: db.cfg.sheetKey, action: 'push', rows: rs});
   let body = bodyOf(rows);
@@ -3958,13 +3965,13 @@ function pushOnHide() {
   return true;
 }
 /* السطور اللي نزلت من الشيت: تتدمج، ولو حركة لسه متبعتتش هنا اتعدّلت على جهاز تاني = تعارض (الأحدث بيكسب زي ما هو) */
-function pullRows(rows, clash) {
+function pullRows(rows, clash, mk = 'sy') {
   let got = 0;
   rows.forEach(r => {
     const cur = IDX[r.kind] && r.id && r.data ? IDX[r.kind].get(r.id) : null;
-    const c = cur && cur.sy !== undefined && cur.sy !== cur.upd && r.upd !== cur.sy && r.upd !== cur.upd
+    const c = cur && cur[mk] !== undefined && cur[mk] !== cur.upd && r.upd !== cur[mk] && r.upd !== cur.upd
       && !sameData(cur, Object.assign({}, r.data, {del: !!r.del})) ? {mine: recSum(r.kind, cur), mu: cur.upd} : null;
-    if (mergeRow(r)) got++;
+    if (mergeRow(r, mk)) got++;
     if (c) clash.push({at: nowS(), id: r.id, kind: r.kind, here: c.mu > r.upd, mine: c.mine, theirs: recSum(r.kind, Object.assign({}, r.data, {del: !!r.del}))});
   });
   return got;
@@ -3973,7 +3980,7 @@ function pullRows(rows, clash) {
    ولحد ~250 ألف حرف في الدفعة (الحركات اللي سجل تعديلاتها كبير كانت بتخلي الدفعة تقيلة على جوجل وتعدّي وقتها فالمزامنة تفضل تعيد) */
 function sheetBatch() {
   for (;;) {
-    const p = pendingRecs(); if (!p.length) return [];
+    const p = sheetPend(); if (!p.length) return [];
     let sz = 0;
     const batch = p.slice(0, 50).map(([kind, r]) => [kind, r, sheetData(r)]).filter(([kind, r, d]) => JSON.stringify(d).length <= CELL_MAX || (r.big = r.upd, false))
       .filter((x, i) => { sz += JSON.stringify(x[2]).length; return !i || sz <= SYNC_BATCH; });
@@ -3988,13 +3995,13 @@ const gTime = (t, n) => { const f = ms => (ms / 1000).toFixed(1); return `(جو�
 const batchRows = batch => batch.map(([kind, r, d]) => ({id: r.id, kind, upd: r.upd, del: !!r.del, view: viewOf(kind, r).map(clipCell), data: d}));
 /* الطريقة الجديدة (شيت نسخة 4): كل طلب sync بيسحب الجديد وبعدين يكتب الدفعة، فحركة واحدة = طلب واحد بدل 3.
    لو فيه جديد كتير (more) الشيت بيسحب بس ومبيكتبش، فبنكمّل لحد ما السحب يخلص والحركات كلها تتبعت */
-async function sync1(d0, clash) {
+async function sync1(d0, clash, sb = syb) {
   let got = 0, pushed = 0, last = null;
   for (let guard = 0; guard < 1000; guard++) {
     const batch = sheetBatch(), rows = batchRows(batch);
     let j = null;
     for (let t = 0; t < 3; t++) {   // لو الشيت مشغول (القفل) بنستنى ونعيد
-      j = await callSheet(syb({action: 'sync', since: db.cfg.cursor, rows}), undefined, undefined, syncMs(rows));
+      j = await callSheet(sb({action: 'sync', since: db.cfg.cursor, rows}), undefined, undefined, syncMs(rows));
       if (db !== d0) return null;
       if (j && j.ok === false && /lock/i.test(String(j.error)) && t < 2) { await new Promise(r => setTimeout(r, 2500)); continue; }
       break;
@@ -4012,46 +4019,72 @@ async function sync1(d0, clash) {
       pushed += batch.length; renderSyncBox();
     }
     last = j;
-    if (!j.more && !pendingRecs().length) break;
+    if (!j.more && !sheetPend().length) break;
   }
   return {got, pushed, last};
 }
+/* المزامنة: على سيرفر المصنع لو شغال (srvSync)، ولو وقع أو لسه متجربش بتروح للشيت على طول زي الأول (sheetSync).
+   وأول ما الشيت يخلص بنجرّب ننقل للسيرفر في الخلفية (srvBoot، مرة كل 10 دقايق بالكتير) */
 async function syncNow(manual) {
   if (!db) return;
+  if (srvOn()) { const r = await srvSync(manual); if (r !== 'fail' || !db) return; }
+  await sheetSync(manual);
+  if (db && SRV_URL && !srvOn()) setTimeout(() => srvBoot(), 2000);
+}
+async function sheetSync(manual) {
+  if (!db) return;
   if (!db.cfg.sheetUrl || !db.cfg.sheetOk) { if (manual) toast('اربط الشيت الأول من الإعدادات'); return; }
-  if (syncing) { syncAgain = true; return; }   // حركة اتسجلت والمزامنة شغالة: تتبعت أول ما اللي شغالة تخلص، مش بعد 30 ثانية
-  syncing = true; syncAgain = false; syncErr = ''; syncAt = Date.now(); syT = []; renderSyncBox();
-  const d0 = db;
-  let got = 0, pushed = 0, syncN = null;
+  if (syncing || shRun) { syncAgain = true; return; }   // حركة اتسجلت والمزامنة شغالة: تتبعت أول ما اللي شغالة تخلص، مش بعد 30 ثانية
+  syncing = true; shRun = true; syncAgain = false; syncErr = ''; syncAt = Date.now(); syT = []; renderSyncBox();
+  const d0 = db, st = {got: 0, pushed: 0, last: null};
   try {
+    if (!(await sheetCore(d0, st, []))) return;
+    db.cfg.lastSync = nowS(); lastPullAt = Date.now(); syLog(true, '', st.pushed);
+    await flushSave();
+    if (manual) toast(st.got ? `اتبعت كل حاجة، ونزل ${st.got} سجل جديد ✔` : 'كل حاجة متسجلة على الشيت ✔');
+    if (typeof tgAfterSync === 'function') setTimeout(() => tgAfterSync(), 2500);   // تليجرام: النسخة اليومية والملخص (آخر script)
+  } catch (e) {
+    syncErr = e.message === 'key' ? 'key' : String(e.message || e); syncWhy = syncErr === 'key' ? '' : netWhy(e);
+    if (db === d0) syLog(false, syncErr === 'key' ? 'الشيت رفض المفتاح' : syncWhy, st.pushed);
+    if (typeof tgSyncFail === 'function' && db === d0 && (e.srv || syncErr === 'key')) tgSyncFail();   // الشيت بيرد بس رافض (مش النت)
+    if (manual) toast(syncErr === 'key' ? 'الشيت رفض المفتاح السري. راجع المفتاح في الإعدادات.' : 'المزامنة فشلت: ' + syncWhy, 7000);
+    if (db === d0) flushSave();
+  } finally {
+    syncing = false; shRun = false; syT = null;
+    if (syncAgain && db === d0 && !syncErr) { syncAgain = false; setTimeout(() => syncNow(), 300); }
+    if (db === d0) { renderSyncBox(); if (st.got) { if (Object.entries(STORE).some(([k, a]) => IDX[k].size !== db[a].length)) reindex(); whenStill(() => { if (db === d0 && !$('#mask').classList.contains('on')) route(); }); } }
+  }
+}
+/* شغل الشيت نفسه من غير الشاشة: بيتشغّل من sheetSync ومن نسخة الشيت كل ساعة (sheetBk، sb من غير تسجيل وقت).
+   st بيتملى وهو ماشي (got/pushed)، وبيرجع false لو الحسابات اتقفلت في النص. أي مشكلة = throw زي الأول */
+async function sheetCore(d0, st, clash, sb = syb) {
     /* السحب الأول: علشان لو جهاز تاني عدّل نفس الحركة اللي اتعدّلت هنا ولسه متبعتتش نعرف ونطلّع تنبيه "تعارض"،
        بدل ما واحد يكتب فوق التاني من غير ما حد يحس. الأحدث تعديلاً هو اللي بيكسب زي ما هو */
-    const clash = [];
     /* الشيت نسخة 4 أو أحدث: طلب واحد (sync) بيسحب ويبعت ويقول عدد السطور، بدل سحب ثم إرسال ثم تأكيد.
        لو الشيت رجع قديم (رد بـ action) بنرجع للطريقة القديمة على طول في نفس المزامنة */
     if ((db.cfg.accV || 0) >= 4) {
-      const r1 = await sync1(d0, clash);
-      if (db !== d0) return;
-      if (r1) { got += r1.got; pushed += r1.pushed; syncN = r1.last; }
+      const r1 = await sync1(d0, clash, sb);
+      if (db !== d0) return false;
+      if (r1) { st.got += r1.got; st.pushed += r1.pushed; st.last = r1.last; }
     }
     let more = (db.cfg.accV || 0) < 4;
     while (more) {
-      const j = await callSheet(syb({action: 'pull', since: db.cfg.cursor}), undefined, undefined, syncMs([]));
-      if (db !== d0) return;
+      const j = await callSheet(sb({action: 'pull', since: db.cfg.cursor}), undefined, undefined, syncMs([]));
+      if (db !== d0) return false;
       if (!j || j.ok !== true || !Array.isArray(j.rows)) { const x = new Error(j && j.error ? String(j.error) : 'الشيت مردش ok'); x.srv = true; throw x; }
       accNote({ok: true, v: j.v});
-      got += pullRows(j.rows, clash);
+      st.got += pullRows(j.rows, clash);
       db.cfg.cursor = j.next; more = !!j.more;
     }
     if (clash.length) noteClash(clash);
-    let p = (db.cfg.accV || 0) < 4 ? pendingRecs() : [];
+    let p = (db.cfg.accV || 0) < 4 ? sheetPend() : [];
     while (p.length) {
       const batch = sheetBatch(), rows = batchRows(batch);
       if (!batch.length) break;
       let j = null;
       for (let t = 0; t < 3; t++) {   // لو الشيت مشغول (القفل) بنستنى ونعيد، مش بنرفض على طول
-        j = await callSheet(syb({action: 'push', rows}), undefined, undefined, syncMs(rows));
-        if (db !== d0) return;
+        j = await callSheet(sb({action: 'push', rows}), undefined, undefined, syncMs(rows));
+        if (db !== d0) return false;
         if (j && j.ok === false && /lock/i.test(String(j.error)) && t < 2) { await new Promise(r => setTimeout(r, 2500)); continue; }
         break;
       }
@@ -4061,13 +4094,13 @@ async function syncNow(manual) {
       const miss = batch.filter(([k, r]) => !ack.has(r.id)).length;
       if (miss) { const x = new Error(`الشيت أكد استلام ${batch.length - miss} من ${batch.length} حركة بس`); x.srv = true; throw x; }
       batch.forEach(([k, r], i) => { if (r.upd === rows[i].upd) r.sy = r.upd; });
-      pushed += batch.length;
-      p = pendingRecs(); renderSyncBox();
+      st.pushed += batch.length;
+      p = sheetPend(); renderSyncBox();
     }
     /* اتأكد إن الشيت فعلاً اتملى: عدد السجلات اللي فيه لازم يساوي (أو يزيد عن) اللي على الجهاز */
-    if (pushed) {
-      let v = syncN;   // الطريقة الجديدة: عدد السطور جه مع آخر رد، من غير طلب تأكيد لوحده
-      if (!v) { v = await callSheet(syb({action: 'ping'}), undefined, undefined, syncMs([])); if (v && v.app === 'fo-acc') accNote(v); }
+    if (st.pushed) {
+      let v = st.last;   // الطريقة الجديدة: عدد السطور جه مع آخر رد، من غير طلب تأكيد لوحده
+      if (!v) { v = await callSheet(sb({action: 'ping'}), undefined, undefined, syncMs([])); if (v && v.app === 'fo-acc') accNote(v); }
       const total = Object.values(STORE).reduce((n, a) => n + db[a].length, 0) - bigRecs().filter(r => r.sy === undefined).length;
       if (!v || v.ok !== true || !(v.n >= total)) {
         const retry = nowS() - (db.cfg.vfAt || 0) > 180000;
@@ -4075,21 +4108,7 @@ async function syncNow(manual) {
         const x = new Error(`الشيت فيه ${v && v.n !== undefined ? v.n : '؟'} سجل بس والجهاز فيه ${total}${retry ? '، هعيد الإرسال' : ''}`); x.srv = true; throw x;
       }
     }
-    db.cfg.lastSync = nowS(); lastPullAt = Date.now(); syLog(true, '', pushed);
-    await flushSave();
-    if (manual) toast(got ? `اتبعت كل حاجة، ونزل ${got} سجل جديد ✔` : 'كل حاجة متسجلة على الشيت ✔');
-    if (typeof tgAfterSync === 'function') setTimeout(() => tgAfterSync(), 2500);   // تليجرام: النسخة اليومية والملخص (آخر script)
-  } catch (e) {
-    syncErr = e.message === 'key' ? 'key' : String(e.message || e); syncWhy = syncErr === 'key' ? '' : netWhy(e);
-    if (db === d0) syLog(false, syncErr === 'key' ? 'الشيت رفض المفتاح' : syncWhy, pushed);
-    if (typeof tgSyncFail === 'function' && db === d0 && (e.srv || syncErr === 'key')) tgSyncFail();   // الشيت بيرد بس رافض (مش النت)
-    if (manual) toast(syncErr === 'key' ? 'الشيت رفض المفتاح السري. راجع المفتاح في الإعدادات.' : 'المزامنة فشلت: ' + syncWhy, 7000);
-    if (db === d0) flushSave();
-  } finally {
-    syncing = false; syT = null;
-    if (syncAgain && db === d0 && !syncErr) { syncAgain = false; setTimeout(() => syncNow(), 300); }
-    if (db === d0) { renderSyncBox(); if (got) { if (Object.entries(STORE).some(([k, a]) => IDX[k].size !== db[a].length)) reindex(); whenStill(() => { if (db === d0 && !$('#mask').classList.contains('on')) route(); }); } }
-  }
+    return true;
 }
 /* تنبيه التعارض: بيتحفظ على الجهاز (آخر 30) ويفضل ظاهر فوق في الرئيسية لحد ما تشوفه */
 function noteClash(list) {
@@ -4104,6 +4123,251 @@ function clashModal() {
     ${L.map(c => `<div class="hist"><b>${dispDate(isoOf(c.at))} ${dispTime(c.at)}</b><br>اتحفظ: ${esc(c.here ? c.mine : c.theirs)} (${c.here ? 'تعديل الجهاز ده' : 'تعديل الجهاز التاني'})<br>اتلغى: ${esc(c.here ? c.theirs : c.mine)}</div>`).join('')}
     <div class="stack"><button class="btn gold" id="clX" type="button">تمام، شفته</button></div>`);
   $('#clX').onclick = () => { L.forEach(c => c.seen = true); saveDB(); closeModal(); renderSyncBox(); };
+}
+/* ====================== سيرفر المصنع (بطلبه 22/11/2026) ======================
+   "عاوز أحس بالسرعة زي حساب التجربة، والشيت يزامن لوحده كل ساعة من غير ما أحس، والسوق ميتأثرش".
+   - المزامنة بتروح لسيرفر المصنع على كلاود فلير (server/ في الريبو: Worker لوحده اسمه factory-sync، مالوش علاقة ببرنامج الشركات).
+   - البيانات بتوصله متشفرة (AES-GCM) بمفتاح طالع من مفتاح الشيت (PBKDF2)، فالسيرفر شايل حروف مقفولة، ومفتاح الشيت نفسه مبيتبعتش.
+     كل سجل مقفول على اسمه ونوعه ووقته (AAD)، فالسيرفر ميقدرش يبدّل سجل بسجل.
+   - التحويل بيحصل لوحده (srvBoot): الجهاز بيبعت كل حاجة، وبيسحب كل حاجة من السيرفر ويقارنها بالحرف باللي عنده (srvVerify).
+     لو كله مطابق بس db.cfg.srv.on = true، وغير كده بيفضل على الشيت زي الأول.
+   - السيرفر وقع أو رفض: نفس المزامنة بتروح للشيت على طول (syncNow)، والسيرفر بيتجرب تاني بعد دقيقتين (SRV_REST).
+   - الشيت بياخد نسخة كل ساعة في الخلفية (sheetBk) بنفس كوده من غير أي تغيير، ولو وقف يوم كامل تليجرام بس.
+   - كل يوم مرة: مقارنة كاملة مع السيرفر (srvDaily)، وأي سجل مختلف بيتبعت تاني ورسالة تليجرام.
+   - شغال على عنوانين البرنامج بس (SRV_HOSTS). الاختبارات بتدّي عنوانها في window.__srvUrl (ممنوع توصل السيرفر الحقيقي) */
+const SRV_HOSTS = /^(app\.flashoneg\.com|mostafasukar33\.github\.io)$/;
+const SRV_URL = window.__srvUrl || (SRV_HOSTS.test(location.hostname) ? 'https://factory-sync.mostafasukar33.workers.dev/' : '');
+const SRV_REST = 120000, SRV_ROWS = 200, SRV_BODY = 900000, SRV_ROW_MAX = 1500000, SH_BK_MS = 3600000, SRV_DAY = 86400000;
+let srvFailAt = 0, srvBooting = false, srvK = null, shRun = false, srvDaying = false;
+const srvS = () => db.cfg.srv || (db.cfg.srv = {});
+const srvOn = () => !!(db && SRV_URL && db.cfg.srv && db.cfg.srv.on && db.cfg.sheetOk && db.cfg.sheetKey && Date.now() - srvFailAt > SRV_REST);
+const srvPend = () => db ? Object.entries(STORE).flatMap(([k, a]) => db[a].filter(r => r.svy !== r.upd && r.svb !== r.upd).map(r => [k, r])) : [];
+const srvErr = (code, msg) => Object.assign(new Error(msg || 'srv:' + code), {srvc: code});
+const SRV_WHY = {net: 'النت أو السيرفر مش واصل', slow: 'السيرفر اتأخر في الرد', page: 'رد مش مفهوم من السيرفر', key: 'السيرفر رفض المفتاح', off: 'السيرفر متوقف بالقصد',
+  ep: 'السيرفر اتعمل من جديد، هيتبعت كل حاجة تاني', ack: 'السيرفر مأكدش استلام كل الحركات', open: 'بيانات من السيرفر مش مطابقة للتشفير', big: 'دفعة أكبر من المسموح', row: 'سجل مرفوض', srv: 'خطأ في السيرفر'};
+const srvWhy = e => (e && e.srvc === 'count' ? e.message : SRV_WHY[e && e.srvc]) || String(e && e.message || e);
+/* المفتاح والتذكرة من مفتاح الشيت: بيتحسبوا مرة لكل فتحة (ربع ثانية تقريباً) ويتمسحوا مع القفل */
+async function srvKeys() {
+  const sk = db.cfg.sheetKey;
+  if (srvK && srvK.sk === sk) return srvK;
+  const te = new TextEncoder(), base = await crypto.subtle.importKey('raw', te.encode(sk), 'PBKDF2', false, ['deriveBits']);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits({name: 'PBKDF2', salt: te.encode('fo-srv-v1'), iterations: ITER, hash: 'SHA-256'}, base, 512));
+  const enc = await crypto.subtle.importKey('raw', bits.slice(0, 32), {name: 'AES-GCM'}, false, ['encrypt', 'decrypt']);
+  return srvK = {sk, enc, tok: b64(bits.slice(32)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')};
+}
+const srvAad = (kind, id, upd, del) => new TextEncoder().encode(`${kind}|${id}|${upd}|${del ? 1 : 0}`);
+async function srvSeal(K, kind, r) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({name: 'AES-GCM', iv, additionalData: srvAad(kind, r.id, r.upd, r.del)}, K.enc, new TextEncoder().encode(JSON.stringify(stripLocal(r)))));
+  const o = new Uint8Array(12 + ct.length); o.set(iv); o.set(ct, 12); return b64(o);
+}
+async function srvOpen(K, x) {
+  try {
+    const u = unb64(x.data), pt = await crypto.subtle.decrypt({name: 'AES-GCM', iv: u.slice(0, 12), additionalData: srvAad(x.kind, x.id, x.upd, x.del)}, K.enc, u.slice(12));
+    return JSON.parse(new TextDecoder().decode(pt));
+  } catch (e) { throw srvErr('open'); }   // متعدّل أو مش بمفتاحنا: مبيدخلش الحسابات خالص
+}
+async function srvCall(b, ms = 15000) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+  try {
+    const r = await fetch(SRV_URL, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify(b), signal: ctl.signal, cache: 'no-store'});
+    let j = null; try { j = await r.json(); } catch (e) {}
+    if (!j || typeof j !== 'object') throw srvErr('page');
+    return j;
+  } catch (e) { if (e.srvc) throw e; throw srvErr(ctl.signal.aborted ? 'slow' : 'net'); }
+  finally { clearTimeout(t); }
+}
+/* القاعدة على السيرفر اتعملت من جديد (ep اتغير) أو العدد ناقص: كل حاجة تتبعت تاني من الأول (السيرفر بيتجاهل اللي عنده) */
+function srvForget() { const S = srvS(); delete S.ep; S.cur = 0; Object.values(STORE).forEach(a => db[a].forEach(r => { delete r.svy; delete r.svb; })); }
+function srvOk(j) {
+  if (j && j.ok === true && Array.isArray(j.rows)) return;
+  const e = (j && j.error) || 'page', S = srvS();
+  if (e === 'ep') { srvForget(); S.on = false; S.tryAt = 0; }   // النقل يتعاد على طول (مش بعد 10 دقايق)
+  if (e === 'key' || e === 'off') { if (S.on) srvLost(e); S.on = false; S.bad = {at: nowS(), why: e}; }
+  throw srvErr(e);
+}
+function srvLost(e) { if (typeof tgAlarm === 'function') tgAlarm('srv', `⚠️ الحسابات: ${SRV_WHY[e] || e}، فالمزامنة رجعت لشيت جوجل لوحدها.\nبياناتك سليمة على الموبايل والشيت، بس المزامنة هتبقى أبطأ لحد ما السيرفر يرجع.`, 6 * 3600000); }
+/* دفعة الإرسال: لحد 200 سجل أو ~900 كيلو، كل سجل متشفر لوحده. السجل الأكبر من سطر السيرفر بيتعلّم svb (بيفضل على الجهاز وفي النسخة) */
+async function srvBatch(K) {
+  const out = []; let sz = 0;
+  for (const [kind, r] of srvPend()) {
+    if (out.length >= SRV_ROWS) break;
+    const row = {id: r.id, kind, upd: r.upd, del: !!r.del, data: await srvSeal(K, kind, r)};
+    if (row.data.length > SRV_ROW_MAX) { r.svb = r.upd; continue; }
+    if (out.length && sz + row.data.length > SRV_BODY) break;
+    sz += row.data.length; out.push({r, row});
+  }
+  return out;
+}
+const srvTotal = () => Object.values(STORE).reduce((n, a) => n + db[a].filter(r => r.svb !== r.upd).length, 0);
+/* سحب الجديد وبعت اللي مستني لحد ما يخلصوا، وبعدها السيرفر لازم يكون فيه كل اللي على الجهاز */
+async function srvRun(d0, clash, st) {
+  const K = await srvKeys(), S = srvS();
+  if (db !== d0) return false;
+  for (let guard = 0; guard < 2000; guard++) {
+    const batch = await srvBatch(K), rows = batch.map(x => x.row), t0 = Date.now();
+    if (db !== d0) return false;
+    let j = null;
+    try { j = await srvCall({a: 'sync', k: K.tok, ep: S.ep, since: S.cur || 0, rows}, 15000 + Math.round(rows.reduce((n, r) => n + r.data.length, 0) / 20)); }
+    finally { if (syT) syT.push('سيرفر ' + ((Date.now() - t0) / 1000).toFixed(1) + (j ? '' : '✖')); }
+    if (db !== d0) return false;
+    srvOk(j);
+    const got = [];
+    for (const x of j.rows) got.push({id: x.id, kind: x.kind, upd: x.upd, del: !!x.del, data: await srvOpen(K, x)});
+    if (db !== d0) return false;
+    st.got += pullRows(got, clash, 'svy');
+    S.cur = j.next;
+    if (!j.more) {
+      const ack = new Set(j.ack || []);
+      if (batch.some(x => !ack.has(x.r.id))) throw srvErr('ack');
+      batch.forEach(x => { if (x.r.upd === x.row.upd) x.r.svy = x.r.upd; });
+      st.pushed += batch.length; S.n = j.n;
+      if (!srvPend().length) break;
+    }
+  }
+  const total = srvTotal();
+  if (!(S.n >= total)) {
+    const again = nowS() - (S.vfAt || 0) > 180000;
+    if (again) { S.vfAt = nowS(); Object.values(STORE).forEach(a => db[a].forEach(r => { delete r.svy; })); }
+    throw srvErr('count', `السيرفر فيه ${S.n} سجل والجهاز فيه ${total}${again ? '، هعيد الإرسال' : ''}`);
+  }
+  return true;
+}
+async function srvSync(manual) {
+  if (syncing) { syncAgain = true; return; }
+  syncing = true; syncAgain = false; syncErr = ''; syncAt = Date.now(); syT = []; renderSyncBox();
+  const d0 = db, st = {got: 0, pushed: 0}, clash = [];
+  let fail = false;
+  try {
+    if (!(await srvRun(d0, clash, st))) return;
+    srvS().okAt = db.cfg.lastSync = nowS(); lastPullAt = Date.now(); syLog(true, '', st.pushed);
+    await flushSave();
+    if (manual) toast(st.got ? `اتبعت كل حاجة، ونزل ${st.got} سجل جديد ✔` : 'كل حاجة متزامنة ✔');
+    if (typeof tgAfterSync === 'function') setTimeout(() => tgAfterSync(), 2500);
+    setTimeout(() => { sheetBk(); srvDaily(); }, 4000);
+  } catch (e) {
+    fail = true;
+    if (db === d0) { srvFailAt = Date.now(); syLog(false, 'السيرفر: ' + srvWhy(e) + '، كمّلت على الشيت', st.pushed); flushSave(); }
+  } finally {
+    syncing = false; syT = null;
+    if (db === d0) {
+      if (clash.length) noteClash(clash);
+      if (!fail && syncAgain) { syncAgain = false; setTimeout(() => syncNow(), 300); }
+      renderSyncBox();
+      if (st.got) { if (Object.entries(STORE).some(([k, a]) => IDX[k].size !== db[a].length)) reindex(); whenStill(() => { if (db === d0 && !$('#mask').classList.contains('on')) route(); }); }
+    }
+  }
+  return fail ? 'fail' : undefined;
+}
+/* مقارنة كاملة: كل اللي على السيرفر بيتسحب ويتفك ويتقارن بالحرف باللي على الجهاز (من غير سجل التعديلات وعلامات الجهاز).
+   اللي مختلف أو ناقص بيتعلّم إنه لسه متبعتش (بيتبعت تاني). bad = مختلف، miss = الجهاز فاكره اتبعت والسيرفر معندوش */
+const canon = v => Array.isArray(v) ? '[' + v.map(canon).join(',') + ']' : v && typeof v === 'object' ? '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}' : JSON.stringify(v === undefined ? null : v);
+const srvSame = (a, b) => { const c = o => { const x = Object.assign({}, o); ['id', 'upd', 'hist', ...LOCAL_MK].forEach(k => delete x[k]); x.del = !!x.del; return canon(x); }; return c(a) === c(b); };
+async function srvVerify(d0) {
+  const K = await srvKeys(), S = srvS(), seen = new Map();
+  let since = 0;
+  for (let g = 0; g < 1000; g++) {
+    const j = await srvCall({a: 'sync', k: K.tok, ep: S.ep, since, rows: []}, 30000);
+    if (db !== d0) return null;
+    srvOk(j);
+    j.rows.forEach(x => seen.set(x.kind + '|' + x.id, x));
+    since = j.next; if (!j.more) break;
+  }
+  const bad = [], miss = [];
+  for (const [kind, a] of Object.entries(STORE)) for (const r of db[a]) {
+    if (r.svb === r.upd || r.svy !== r.upd) continue;   // أكبر من السيرفر، أو لسه مستني يتبعت (مش مشكلة)
+    const x = seen.get(kind + '|' + r.id);
+    if (!x || x.upd < r.upd) { miss.push(r); continue; }
+    if (x.upd > r.upd) continue;   // السيرفر عنده أحدث: هيتسحب في المزامنة الجاية
+    let d = null; try { d = await srvOpen(K, x); } catch (e) {}
+    if (db !== d0) return null;
+    if (!d || !!x.del !== !!r.del || !srvSame(d, r)) bad.push(r);
+  }
+  [...bad, ...miss].forEach(r => { delete r.svy; });
+  return {n: seen.size, bad: bad.map(r => r.id), miss: miss.map(r => r.id)};
+}
+/* النقل للسيرفر (لوحده في الخلفية، والشيت لسه الأساس لحد ما يخلص): سلام ← بعت وسحب كل حاجة ← مقارنة بالحرف ← بس ساعتها on */
+async function srvBoot() {
+  if (!db || !SRV_URL || srvBooting || srvOn() || !db.cfg.sheetOk || !db.cfg.sheetKey || !db.cfg.lastSync) return;
+  const S = srvS(), now = nowS();
+  if (S.on && Date.now() - srvFailAt <= SRV_REST) return;   // شغال بس واقع لحظة: المزامنة نفسها هتجربه تاني
+  if (S.bad && now - S.bad.at < 6 * 3600000) return;   // السيرفر رفض (مفتاح/متوقف): بنجرب كل 6 ساعات
+  if (now - (S.tryAt || 0) < 10 * 60000) return;
+  srvBooting = true; S.tryAt = now;
+  const d0 = db, st = {got: 0, pushed: 0}, clash = [];
+  try {
+    const K = await srvKeys(); if (db !== d0) return;
+    const h = await srvCall({a: 'hello', k: K.tok}, 20000); if (db !== d0) return;
+    if (!h || h.ok !== true) { if (h && (h.error === 'key' || h.error === 'off')) S.bad = {at: nowS(), why: h.error}; S.err = SRV_WHY[h && h.error] || 'رد مش مفهوم'; return; }
+    delete S.bad;
+    if (S.ep && S.ep !== h.ep) srvForget();
+    S.ep = h.ep;
+    if (!(await srvRun(d0, clash, st))) return;
+    const v = await srvVerify(d0); if (!v) return;
+    if (v.bad.length || v.miss.length) { S.err = `المقارنة لقت ${v.bad.length + v.miss.length} سجل مختلف، هيتبعتوا تاني وهنقارن تاني`; return; }
+    S.on = true; S.onAt = S.okAt = S.vAt = nowS(); delete S.err;
+    lastPullAt = Date.now(); srvFailAt = 0;   // اتجرب دلوقتي واشتغل: مفيش استنا الدقيقتين
+    toast('⚡ المزامنة بقت على سيرفر المصنع', 5000);
+  } catch (e) { if (db === d0) S.err = srvWhy(e); }
+  finally {
+    srvBooting = false;
+    if (db === d0) {
+      if (clash.length) noteClash(clash);
+      flushSave(); renderSyncBox();
+      if (st.got) { if (Object.entries(STORE).some(([k, a]) => IDX[k].size !== db[a].length)) reindex(); whenStill(() => { if (db === d0 && !$('#mask').classList.contains('on')) route(); }); }
+    }
+  }
+}
+/* كل يوم مرة والمزامنة على السيرفر: المقارنة الكاملة. أي اختلاف = بيتبعت تاني ورسالة تليجرام */
+async function srvDaily() {
+  if (!srvOn() || srvDaying || syncing || nowS() - (srvS().vAt || 0) < SRV_DAY) return;
+  srvDaying = true; const d0 = db, S = srvS();
+  try {
+    const v = await srvVerify(d0); if (!v) return;
+    S.vAt = nowS();
+    const n = v.bad.length + v.miss.length;
+    S.vBad = n ? {at: nowS(), n} : null;
+    if (n) { tgAlarm('srvv', `⚠️ الحسابات: المقارنة اليومية مع سيرفر المصنع لقت ${n} سجل مش زي اللي على الموبايل.\nاتبعتوا تاني من الموبايل لوحدهم. الموبايل والشيت فيهم كل حاجة سليمة.`, SRV_DAY); schedSync(); }
+  } catch (e) {} finally { srvDaying = false; if (db === d0) flushSave(); }
+}
+/* نسخة الشيت كل ساعة في الخلفية (والمزامنة على السيرفر): نفس كود الشيت بالظبط، من غير أي حاجة على الشاشة.
+   لو فشلت يوم كامل ورا بعض: رسالة تليجرام واحدة (كل 24 ساعة بالكتير) */
+async function sheetBk() {
+  if (!srvOn() || shRun || !db.cfg.sheetUrl || !db.cfg.sheetOk) return;
+  const B = db.cfg.shBk || (db.cfg.shBk = {});
+  if (nowS() - (B.at || 0) < SH_BK_MS) return;
+  shRun = true; B.at = nowS();
+  const d0 = db, st = {got: 0, pushed: 0, last: null};
+  try {
+    if (!(await sheetCore(d0, st, [], x => x))) return;
+    B.ok = nowS(); delete B.fail0; delete B.err;
+  } catch (e) {
+    if (db !== d0) return;
+    B.fail0 = B.fail0 || nowS(); B.err = netWhy(e);
+    const from = B.ok || srvS().onAt || B.fail0, h = Math.round((nowS() - from) / 3600000);
+    if (nowS() - from > SRV_DAY) tgAlarm('shbk', `⚠️ الحسابات: نسخة شيت جوجل (اللي بتتحدث لوحدها كل ساعة) واقفة من ${h} ساعة.\nالمزامنة على سيرفر المصنع شغالة، وبياناتك سليمة على الموبايل والسيرفر.\nالسبب: ${B.err}`, SRV_DAY);
+  } finally {
+    shRun = false;
+    if (db === d0) {
+      flushSave();
+      if (st.got) { schedSync(); if (Object.entries(STORE).some(([k, a]) => IDX[k].size !== db[a].length)) reindex(); }   // حاجة نزلت من الشيت (جهاز لسه على النسخة القديمة): تروح للسيرفر
+      if (syncAgain && !syncing) { syncAgain = false; setTimeout(() => syncNow(), 300); }
+    }
+  }
+}
+/* الصفحة استخبت: اللي مستني بيتبعت للسيرفر بطلب بيكمّل حتى لو الصفحة نامت (keepalive، لحد ~55 ألف حرف).
+   since كبير = مبيسحبش حاجة. مبنعلّمهاش "اتبعتت": المزامنة الجاية بتتأكد (السيرفر بيقول ack من غير ما يكتب تاني) */
+async function srvOnHide() {
+  try {
+    if (!db || syncing || !srvK || srvK.sk !== db.cfg.sheetKey) return;
+    const K = srvK, S = srvS(), rows = []; let sz = 0;
+    for (const [kind, r] of srvPend().slice(0, 50)) {
+      const row = {id: r.id, kind, upd: r.upd, del: !!r.del, data: await srvSeal(K, kind, r)};
+      if (sz + row.data.length > 55000) break;
+      sz += row.data.length; rows.push(row);
+    }
+    if (rows.length) fetch(SRV_URL, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify({a: 'sync', k: K.tok, ep: S.ep, since: Number.MAX_SAFE_INTEGER, rows}), keepalive: true}).catch(() => {});
+  } catch (e) {}
 }
 /* شرح طويل بيتخبّى ورا علامة "؟" صغيرة، وبيتفتح بدوسة */
 function qh(html) { return `<span class="qh"><button class="qb" type="button" aria-label="شرح">؟</button><span class="qt" hidden>${html}</span></span>`; }
@@ -4125,20 +4389,21 @@ function renderSyncBox0() {
   const b = $('#syncBox'); if (!b || !db) return;
   const cl = (db.cfg.clash || []).filter(c => !c.seen).length, big = bigRecs().length;
   if (cl) { b.className = 'sync warn'; b.innerHTML = `⚠️ تعارض: ${cl === 1 ? 'حركة اتعدّلت' : cl + ' حركات اتعدّلت'} على جهازين في نفس الوقت <a id="syClash">شوف</a>`; $('#syClash').onclick = clashModal; return; }
-  if (big && !syncing) { b.className = 'sync warn'; b.textContent = `⚠️ ${big === 1 ? 'سجل كبير قوي' : big + ' سجلات كبيرة قوي'} على خانة الشيت ومش بيتبعت (محفوظ على الجهاز وفي النسخة الاحتياطية)`; return; }
+  const svy = srvOn();   // المزامنة على سيرفر المصنع: الكلام من غير "الشيت" (الشيت نسخة في الخلفية)
+  if (big && !syncing && !svy) { b.className = 'sync warn'; b.textContent = `⚠️ ${big === 1 ? 'سجل كبير قوي' : big + ' سجلات كبيرة قوي'} على خانة الشيت ومش بيتبعت (محفوظ على الجهاز وفي النسخة الاحتياطية)`; return; }
   const n = pendingRecs().length;
   if (db.cfg.joinWait && db.cfg.sheetUrl && !db.cfg.sheetOk) { b.className = 'sync warn'; b.innerHTML = `⏳ الربط محفوظ بس لسه مش قادر يوصل للشيت${joinErr ? ' (' + esc(joinErr) + ')' : ''}. بحاول لوحدي. <a id="syRetry">جرّب دلوقتي</a>`; $('#syRetry').onclick = () => { toast('⏳ بحاول…'); finishJoin(true); }; return; }
   if (!db.cfg.sheetUrl || !db.cfg.sheetOk) { b.className = 'sync warn'; b.innerHTML = `الشيت لسه مش مربوط — البيانات على الجهاز ده بس. <a id="syGo">اربطه</a>`; $('#syGo').onclick = () => go('set'); return; }
-  if (syncing) { b.className = 'sync'; b.textContent = 'جاري المزامنة مع الشيت…'; return; }
+  if (syncing) { b.className = 'sync'; b.textContent = svy ? 'جاري المزامنة…' : 'جاري المزامنة مع الشيت…'; return; }
   if (syncErr === 'key') { b.className = 'sync warn'; b.innerHTML = `الشيت رفض المفتاح السري. <a id="syGo">راجع المفتاح</a>`; $('#syGo').onclick = () => go('set'); return; }
   if (!n && !syncErr && accOld()) { b.className = 'sync warn'; b.innerHTML = `⚠️ كود شيت الحسابات قديم: المزامنة شغالة، بس هتبطأ مع كتر الحركات. <a id="syUpd">حدّثه (مرة واحدة)</a>`; $('#syUpd').onclick = accUpdateHelp; return; }
-  if (!n && !syncErr) { b.className = 'sync ok'; b.textContent = '✔ كل حاجة متسجلة على Google Sheet' + (db.cfg.lastSync ? ' — آخر مزامنة ' + dispTime(db.cfg.lastSync) : ''); return; }
-  b.className = 'sync'; b.innerHTML = `${n ? n + ' سجل مستني الإرسال للشيت' : 'مستني المزامنة'}${syncErr ? ' — فيه مشكلة في الاتصال' + (syncWhy ? ': ' + esc(syncWhy) : '') + '، وهيحاول تاني لوحده' : ''} <a id="syNow">زامن دلوقتي</a>`;
+  if (!n && !syncErr) { b.className = 'sync ok'; b.textContent = (svy ? '✔ كل حاجة متزامنة على سيرفر المصنع' : '✔ كل حاجة متسجلة على Google Sheet') + (db.cfg.lastSync ? ' — آخر مزامنة ' + dispTime(db.cfg.lastSync) : ''); return; }
+  b.className = 'sync'; b.innerHTML = `${n ? n + (svy ? ' سجل مستني الإرسال' : ' سجل مستني الإرسال للشيت') : 'مستني المزامنة'}${syncErr ? ' — فيه مشكلة في الاتصال' + (syncWhy ? ': ' + esc(syncWhy) : '') + '، وهيحاول تاني لوحده' : ''} <a id="syNow">زامن دلوقتي</a>`;
   $('#syNow').onclick = () => syncNow(true);
 }
 addEventListener('online', () => syncNow());
 /* في الخلفية: بنبعت اللي مستني بس، والسحب من الشيت بيستنى لحد ما البرنامج يتفتح تاني (توفير نت وبطارية) */
-setInterval(() => { if (db && (pendingRecs().length || (!document.hidden && Date.now() - lastPullAt > 120000))) syncNow(); }, 30000);
+setInterval(() => { if (db && (pendingRecs().length || (!document.hidden && Date.now() - lastPullAt > 120000))) syncNow(); if (db && srvOn()) sheetBk(); }, 30000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && db && Date.now() - lastPullAt > 120000) setTimeout(() => syncNow(), 900); });
 
 /* ====================== الإعدادات ====================== */
@@ -4162,7 +4427,7 @@ function renderSetStat() {
   const n = pendingRecs().length, st = $('#sStat'), openSheet = () => { const k = $('#sSheet').parentNode; $('#p-set').classList.add('advon'); k.classList.remove('shut'); k.scrollIntoView({block: 'start', behavior: 'smooth'}); };
     st.className = 'sstat ' + (c.sheetOk ? 'ok' : 'no');
     const lastBad = (c.syLog || [])[0] && !c.syLog[0].ok ? c.syLog[0] : null;
-    st.innerHTML = c.sheetOk ? `<div><b>${syncing ? '⏳ بيتبعت دلوقتي (' + Math.round((Date.now() - syncAt) / 1000) + ' ثانية)' : syncErr && syncErr !== 'key' ? '⚠️ آخر محاولة مزامنة موصلتش' : n && lastBad ? '⚠️ آخر محاولة موصلتش' : n ? 'مستني يتبعت' : '✔ متزامن مع الشيت'}</b><small>${syncErr && syncWhy ? esc(syncWhy) + '<br>' : ''}${c.lastSync ? 'آخر مزامنة ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة'}${n ? ' · ' + n + ' مستني' : ''}${syncing && lastBad && lastBad.why ? '<br>المرة اللي فاتت: ' + esc(lastBad.why) : ''}</small>${syLogHtml(c.syLog)}</div><button class="btn line" id="sStatGo" type="button">زامن دلوقتي</button>`
+    st.innerHTML = c.sheetOk ? `<div><b>${syncing ? '⏳ بيتبعت دلوقتي (' + Math.round((Date.now() - syncAt) / 1000) + ' ثانية)' : syncErr && syncErr !== 'key' ? '⚠️ آخر محاولة مزامنة موصلتش' : n && lastBad ? '⚠️ آخر محاولة موصلتش' : n ? 'مستني يتبعت' : srvOn() ? '✔ متزامن على سيرفر المصنع ⚡' : '✔ متزامن مع الشيت'}</b><small>${syncErr && syncWhy ? esc(syncWhy) + '<br>' : ''}${c.lastSync ? 'آخر مزامنة ' + dispDate(isoOf(c.lastSync)) + ' ' + dispTime(c.lastSync) : 'لسه مفيش مزامنة'}${n ? ' · ' + n + ' مستني' : ''}${syncing && lastBad && lastBad.why ? '<br>المرة اللي فاتت: ' + esc(lastBad.why) : ''}</small>${syLogHtml(c.syLog)}</div><button class="btn line" id="sStatGo" type="button">زامن دلوقتي</button>`
       : `<div><b>الشيت مش مربوط</b><small>البيانات على الجهاز ده بس</small></div><button class="btn gold" id="sStatGo" type="button">اربطه</button>`;
     $('#sStatGo').onclick = () => { if (c.sheetOk && $('#shNow')) $('#shNow').click(); else openSheet(); };
   if ($('#shNow')) $('#shNow').textContent = `زامن دلوقتي (${n} مستني)`;

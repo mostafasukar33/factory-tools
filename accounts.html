@@ -8928,7 +8928,7 @@ async function mkSyncOnce() {
 /* سحب وارد السوق: كل 8 ثواني وانت شغال أو لما يوصل جديد. لو مفيش لمس ولا جديد بيهدى لوحده:
    كل 20 ثانية بعد دقيقة، وكل دقيقة بعد 5 دقايق. أول لمسة بترجّعه سريع، وبيسحب على طول لو كان هادي */
 let mkNew = 0, mkAt = 0, mkPollT = null, mkSlow = 0;
-const mkGap = () => { const i = Date.now() - Math.max(lastAct, mkNew), g = i < 60000 ? 8000 : i < 300000 ? 20000 : 60000; return mkxI && mkxI.x.alive() ? Math.max(g, 30000) : g; };   // الخط المفتوح شغال: السيرفر بيقول لما فيه جديد
+const mkGap = () => { const i = Date.now() - Math.max(lastAct, mkNew); return i < 60000 ? 8000 : i < 300000 ? 20000 : 60000; };   // زي ما هو حتى والخط المفتوح شغال: كل سحبة بتبص على الشيت كمان لو أحمد لسه عليه (bridge)
 function mkPoll() { clearTimeout(mkPollT); mkSlow = mkGap(); mkPollT = setTimeout(() => { if (db && mkCreds() && !document.hidden) mkSync(); mkPoll(); }, mkSlow); }
 mkPoll();
 ['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => { if (mkSlow > 8000) { if (db && mkCreds() && Date.now() - mkAt > 8000) mkSync(); mkPoll(); } }, {passive: true, capture: true}));

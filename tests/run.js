@@ -1460,11 +1460,12 @@ const T0 = Date.now();
     eq('التقارير: أول صفحة كروت، والأرقام من نفس حسبة التقارير بالقرش', await A.evaluate(() => {
       const card = g => $(`#p-rep .rcd[data-go=${g}] b`).textContent, R = sumRange('month'), x = profitOf(R.f, R.to), bal = allBalances();
       let ly = 0, al = 0; liveParties().forEach(p => { if (p.noTot) return; const v = bal.get(p.id) || 0; if (v > 0) ly += v; else al -= v; });
-      return [!$('#rpK'), $$('#rpS button').length, card('profit') === fmtP(x.before), $$('#p-rep .rcd[data-go=profit] b')[1].textContent === fmtP(x.sales), card('cash') === fmtP(x.exp), card('tot') === fmtP(ly), card('debtp') === fmtP(al),
+      return [!$('#rpK'), $$('#rpS button').length, card('profit') === fmtP(Math.abs(x.net)) && $('#p-rep .rcd[data-go=profit] span').textContent === (x.net < 0 ? 'صافي الخسارة' : 'صافي الربح'),   // بعد مرتبات الشركاء (22/11/2026)
+        $$('#p-rep .rcd[data-go=profit] b')[1].textContent === fmtP(x.sales), card('cash') === fmtP(x.exp), card('tot') === fmtP(ly), card('debtp') === fmtP(al),
         card('cashp') === fmtP(vaultBal('') + (hasMkv() ? vaultBal(MKV) : 0)), sumRange('month', '2026-03-31').pt, sumRange('week', '2026-10-24').f, sumRange('year', '2026-10-24').pt];
     }), [true, 4, true, true, true, true, true, true, '2026-02-28', '2026-10-24', '2025-10-24']);
     await A.click('#p-rep .rcd[data-go=profit]'); await A.settle(200);
-    eq('تقرير الأرباح من الكارت: نفس الفترة (الشهر)، وزرار الملخص بيرجّع للكروت', [await A.getAttribute('#rpK .on', 'data-v'), await A.evaluate(() => repMode), (await A.textContent('#p-rep .ldgf')).includes('بعد الشركاء'), !!(await A.$('#rpHome'))], ['profit', 'month', true, true]);
+    eq('تقرير الأرباح من الكارت: نفس الفترة (الشهر)، وزرار الملخص بيرجّع للكروت', [await A.getAttribute('#rpK .on', 'data-v'), await A.evaluate(() => repMode), /صافي (الربح|الخسارة)|بعد المسحوبات|أكتر من صافي الربح|الباقي بعد أرباح المساهمين/.test(await A.textContent('#p-rep .ldgf')), !!(await A.$('#rpHome'))], ['profit', 'month', true, true]);
     await A.click('#rpPick'); await A.click('#modal [data-v=home]'); await A.settle(150);
     eq('زرار الملخص بيرجّع للكروت', !!(await A.$('#p-rep .rcd')), true);
     await A.click('#p-rep .rcd[data-go=profit]'); await A.settle(150);
@@ -1799,8 +1800,22 @@ const T0 = Date.now();
     eq('الأرباح من جرد لجرد: سطر فرق المخزون والربح بيتظبط بيه، وفترة مش من جرد لجرد مفيهاش السطر', await A.evaluate(d => {
       const f = addDays(d, 1), t = todayISO(), R = profitReport(f, t), x = profitOf(f, t), at = k => R.sum.findIndex(r => r[0].includes(k)), dd = 100000 - 15000000;
       const R2 = profitReport(addDays(d, 3), t);
-      return [R.sum[at('نقص المخزون')][1] === fmtP(-dd), R.sum[at('الربح قبل الشركاء')][1] === fmtP(x.before + dd), R.fin[1] === fmtP(x.after + dd), R.note.includes('الفرق في المخزون'),
+      return [R.sum[at('نقص المخزون')][1] === fmtP(-dd), R.sum[at('الربح قبل الشركاء')][1] === fmtP(x.before + dd), R.fin[1] === fmtP(Math.abs((x.draw + x.iv ? x.after : x.net) + dd)), R.note.includes('الفرق في المخزون'),
         at('المخزون (من الجرد)') === -1 ? 0 : 1, R2.sum.some(r => r[0].includes('المخزون (من الجرد)')), R2.note.includes('من يوم جرد لحد يوم جرد')]; }, oldD), [true, true, true, true, 1, false, true]);
+    /* صافي الربح (22/11/2026، بطلبه): مرتبات الشركاء الأسبوعية بتتخصم قبل صافي الربح، والمسحوبات بعده، و«خسارة» بس لو المصنع خسران فعلاً. before وafter زي ما هم */
+    eq('الأرباح: مرتب الشريك قبل صافي الربح، والمسحوبات بعده من غير كلمة «خسارة» والمصنع كسبان', await A.evaluate(() => {
+      const u = nowS(), V = (db.vaults[0] || {}).id || 'v_main', f = '1993-03-01', t = '1993-03-31', E0 = db.entries.length, T0 = db.txs.length;
+      const p = {id: 'p_net93', sec: 'mkt', name: 'عميل صافي ربح تجربة', phone: '', note: '', noTot: false, at: u, upd: u, del: false}; db.parties.push(p); P.set(p.id, p);
+      db.entries.push({id: 'e_net93', party: p.id, kind: 'inv', date: '1993-03-03', dr: 5000000, cr: 0, lines: [], at: u, upd: u, del: false, hist: []});
+      const tx = (id, cat, amt) => db.txs.push({id, type: 'exp', cat, pt: 'pa', amt, date: '1993-03-10', vault: V, to: '', note: '', pnote: '', at: u, upd: u, del: false, hist: []});
+      tx('t_dr93', 'c_pdraw', 6000000);
+      const x = profitOf(f, t), R = profitReport(f, t), lab = R.sum.map(r => r[0]).concat(R.fin[0]).join('|');
+      tx('t_sl93', 'c_psal', 1000000);
+      const y = profitOf(f, t), R2 = profitReport(f, t), sv = k => (R2.sum.find(r => r[0] === k) || [])[1];
+      const r = [x.net, x.draw, x.after, /خسارة/.test(lab), R.fin[0], R.fin[1] === fmtP(1000000),
+        y.sal, y.before, y.net, y.after, sv('− مرتبات الشركاء') === fmtP(1000000), sv('= صافي الربح') === fmtP(4000000), sv('الربح قبل الشركاء') === fmtP(5000000)];
+      db.entries.splice(E0); db.txs.splice(T0); db.parties.splice(db.parties.indexOf(p), 1); P.delete(p.id); return r; }),
+      [5000000, 6000000, -1000000, false, 'المسحوبات أكتر من صافي الربح بـ', true, 1000000, 5000000, 4000000, -2000000, true, true, true]);
     eq('جرد قديم من غير مخزون مبيدخلش في فرق المخزون', await A.evaluate(d => { const n0 = db.stks.length; jrdOldModal(); $('#joD').value = addDays(d, -1); $('#joN').value = '400000'; $('#joOk').click();
       const o = db.stks[db.stks.length - 1], r = [db.stks.length - n0, !!o.n.noStock, jrdTot(o.n, o.stock).net, !!stockDiff(addDays(d, -1), todayISO())];
       db.stks.forEach(x => { if (x.n.old) x.del = true; }); saveDB(); renderJrd(); return r; }, oldD), [1, true, 40000000, false]);

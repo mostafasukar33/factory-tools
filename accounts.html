@@ -6184,11 +6184,11 @@ function tradeSums(f, t) {
 const isJm = x => !!x.note && /جمعي/.test(x.note);
 const NOT_PL = new Set(['c_inc0', 'c_payout', 'c_adj_in', 'c_adj_out', 'c_hsn']);   // + الفلوس اللي راحت لحسن: عهدة مش مصروف (اللي صرفه هو المصروف، lib/hsn.js)   // تسوية الجرد مش مصروف ولا إيراد (بطلب صاحب المشروع)
 function cashSums(f, t) {
-  const r = {exp: 0, inc: 0, part: 0, cs: 0, byCat: new Map()};
+  const r = {exp: 0, inc: 0, part: 0, sal: 0, draw: 0, cs: 0, byCat: new Map()};   // sal = مرتبات الشركاء، draw = مسحوباتهم (زي ptKind في صفحة الشركاء، 22/11/2026 بطلبه)
   for (const x of db.txs) {
     if (x.del || x.type === 'tr' || x.date < f || x.date > t || NOT_PL.has(x.cat) || isJm(x)) continue;
     if (x.iv || x.cat === 'c_ivdraw' || x.cat === 'c_ivcap') continue;   // فلوس المساهمين (رأس مال وسحب) مش مصروف ولا إيراد
-    if (x.pt || x.cat === 'c_psal' || x.cat === 'c_pdraw') { r.part += x.amt; continue; }
+    if (x.pt || x.cat === 'c_psal' || x.cat === 'c_pdraw') { r.part += x.amt; if (x.cat === 'c_pdraw') r.draw += x.amt; else r.sal += x.amt; continue; }
     if (x.type === 'exp') r.exp += x.amt; else r.inc += x.amt;
     if (x.cat === 'c_inc1') { r.cs += x.amt; continue; }   // البيع الكاش مبيعات مش بند إيراد (بطلبه 30/10/2026)
     const k = (x.type === 'exp' ? '− ' : '+ ') + cName(x.cat); r.byCat.set(k, (r.byCat.get(k) || 0) + x.amt);
@@ -6196,10 +6196,11 @@ function cashSums(f, t) {
   return r;
 }
 /* المبيعات = الفواتير بعد المرتجع + البيع الكاش (cs)، وinc = الإيرادات التانية بس (بطلبه 30/10/2026: كارت المبيعات كان من غير الكاش).
-   before نفسه متغيرش */
+   before نفسه متغيرش. صافي الربح (22/11/2026، بطلبه): net = before − مرتبات الشركاء الأسبوعية (مصروف على المصنع)، والمسحوبات (draw) بعده،
+   وafter زي ما هو (= net − المسحوبات − المساهمين). before وafter متغيروش (المكسب الحقيقي gmSum والمساهمين ivProfit عليهم) */
 function profitOf(f, t) {
   const a = tradeSums(f, t), c = cashSums(f, t), iv = ivProfit(f, t), before = a.sales - a.purch - c.exp + c.inc;
-  return {sales: a.sales + c.cs, cs: c.cs, purch: a.purch, exp: c.exp, inc: c.inc - c.cs, part: c.part, iv, before, after: before - c.part - iv, byCat: c.byCat};
+  return {sales: a.sales + c.cs, cs: c.cs, purch: a.purch, exp: c.exp, inc: c.inc - c.cs, part: c.part, sal: c.sal, draw: c.draw, net: before - c.sal, iv, before, after: before - c.part - iv, byCat: c.byCat};
 }
 const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 function stockDiff(f, t) {
@@ -6702,29 +6703,36 @@ function costModal(after, only) {   // only = مفاتيح أصناف بعينه
   };
 }
 function profitReport(f, t) {
-  const rows = [], tot = {sales: 0, cs: 0, purch: 0, exp: 0, inc: 0, part: 0, iv: 0, before: 0, after: 0}, cats = new Map();
+  const rows = [], tot = {sales: 0, cs: 0, purch: 0, exp: 0, inc: 0, part: 0, sal: 0, draw: 0, net: 0, iv: 0, before: 0, after: 0}, cats = new Map();
   for (let m = f.slice(0, 7); m <= t.slice(0, 7);) {
     const [y, mo] = m.split('-').map(Number), ms = m + '-01' < f ? f : m + '-01', me0 = m + '-' + pad2(new Date(y, mo, 0).getDate()), me = me0 > t ? t : me0;
     const x = profitOf(ms, me);
     Object.keys(tot).forEach(k => tot[k] += x[k]); x.byCat.forEach((v, k) => cats.set(k, (cats.get(k) || 0) + v));
-    rows.push({empty: !x.sales && !x.purch && !x.exp && !x.inc && !x.part && !x.iv, raw: {m: MONTHS[mo - 1], s: x.sales, p: x.after}, cells: [`${MONTHS[mo - 1]} ${y}`, fmtP(x.sales + x.inc), fmtP(x.purch), fmtP(x.exp), fmtP(x.before), fmtP(x.part + x.iv), fmtP(x.after)], cls: x.after < 0 ? 'ret' : ''});
+    rows.push({empty: !x.sales && !x.purch && !x.exp && !x.inc && !x.part && !x.iv, raw: {m: MONTHS[mo - 1], s: x.sales, p: x.after}, cells: [`${MONTHS[mo - 1]} ${y}`, fmtP(x.sales + x.inc), fmtP(x.purch), fmtP(x.exp), fmtP(x.net), fmtP(x.draw + x.iv), fmtP(x.after)], cls: x.after < 0 ? 'ret' : ''});
     m = mo === 12 ? `${y + 1}-01` : `${y}-${pad2(mo + 1)}`;
   }
   /* الفرق في المخزون (بطلبه 17/10/2026): لو أول الفترة وآخرها عند جرد فيه مخزون، الربح بيزيد بزيادة المخزون أو يقل بنقصه، فيطابق الجرد.
      غير كده مفيش تخمين، والشرح تحت بيقول يختار منين لفين */
   const stk = stockDiff(f, t);
-  if (stk) { tot.before += stk.d; tot.after += stk.d; }
+  if (stk) { tot.before += stk.d; tot.net += stk.d; tot.after += stk.d; }
   /* الملخص بالترتيب (بطلبه 17/10/2026): الداخل كله، بعده الخارج كله، وبعدين الربح. نفس الأرقام */
   const byCat = sg => [...cats.entries()].filter(([k]) => k.startsWith(sg)).sort((a, b) => b[1] - a[1]).map(([k, v]) => ['   ' + k, fmtP(v)]);
   const sum = [['صافي المبيعات', fmtP(tot.sales)], ...(tot.cs ? [['   منها فواتير (بعد المرتجع)', fmtP(tot.sales - tot.cs)], ['   منها بيع كاش', fmtP(tot.cs)]] : []), ...byCat('+ '), ...(tot.inc ? [['إجمالي الداخل', fmtP(tot.sales + tot.inc), 'sub']] : []),
     ['صافي المشتريات', fmtP(tot.purch)], ['المصروفات', fmtP(tot.exp)], ...byCat('− '), ['إجمالي الخارج', fmtP(tot.purch + tot.exp), 'sub'],
     ...(stk ? [[stk.d >= 0 ? '+ زاد المخزون (من الجرد)' : '− نقص المخزون (من الجرد)', fmtP(Math.abs(stk.d))]] : []),
-    ['الربح قبل الشركاء', fmtP(tot.before)], ['مرتبات ومسحوبات الشركاء', fmtP(tot.part)], ...(tot.iv ? [['أرباح المساهمين', fmtP(tot.iv)]] : [])];
+    ['الربح قبل الشركاء', fmtP(tot.before)], ...(tot.sal ? [['− مرتبات الشركاء', fmtP(tot.sal)]] : []),
+    ...(tot.sal ? [[tot.net >= 0 ? '= صافي الربح' : '= صافي الخسارة', fmtP(Math.abs(tot.net)), 'sub']] : []),   // من غير مرتبات = نفس «الربح قبل الشركاء»
+    ...(tot.draw ? [['مسحوبات الشركاء', fmtP(tot.draw)]] : []), ...(tot.iv ? [['أرباح المساهمين', fmtP(tot.iv)]] : [])];
+  /* الآخر (22/11/2026، بطلبه): «خسارة» بس لو المصنع خسران فعلاً، مش لما المسحوبات أكتر من الربح */
+  const wd = tot.draw + tot.iv, ivT = tot.iv ? (tot.draw ? ' وأرباح المساهمين' : '') : '';
+  const fin = !wd ? [tot.net >= 0 ? 'صافي الربح' : 'صافي الخسارة', fmtP(Math.abs(tot.net))]
+    : [tot.after >= 0 ? (tot.draw ? 'الباقي بعد المسحوبات' : 'الباقي بعد أرباح المساهمين') + ivT : tot.net >= 0 ? (tot.draw ? 'المسحوبات' : 'أرباح المساهمين') + ivT + ' أكتر من صافي الربح بـ' : 'الخسارة بعد المسحوبات' + ivT, fmtP(Math.abs(tot.after))];
   return {title: 'الأرباح بالشهر', period: rangeText(f, t),
-    cols: [{h: 'الشهر', w: 16, c: 'l'}, {h: tot.inc ? 'الداخل' : 'المبيعات', w: 14, c: 'n'}, {h: 'المشتريات', w: 14, c: 'n'}, {h: 'المصروفات', w: 13, c: 'n'}, {h: 'الربح قبل الشركاء', w: 15, c: 'n'}, {h: tot.iv ? 'الشركاء والمساهمين' : 'الشركاء', w: 13, c: 'n'}, {h: 'الباقي', w: 15, c: 'b'}],
-    rows, sum, fin: [(tot.after >= 0 ? 'الباقي بعد الشركاء' : 'خسارة بعد الشركاء') + (tot.iv ? ' والمساهمين' : ''), fmtP(tot.after)],
+    cols: [{h: 'الشهر', w: 16, c: 'l'}, {h: tot.inc ? 'الداخل' : 'المبيعات', w: 14, c: 'n'}, {h: 'المشتريات', w: 14, c: 'n'}, {h: 'المصروفات', w: 13, c: 'n'}, {h: 'صافي الربح', w: 15, c: 'n'}, {h: tot.iv ? 'المسحوبات والمساهمين' : 'المسحوبات', w: 13, c: 'n'}, {h: 'الباقي', w: 15, c: 'b'}],
+    rows, sum, fin,
     note: (stk ? `الربح هنا = المبيعات − المشتريات − المصروفات + الفرق في المخزون من جرد ${dispDate(stk.a.date)} لجرد ${dispDate(stk.b.date)}.`
       : 'الربح هنا = المبيعات − المشتريات − المصروفات في نفس الفترة، من غير حساب المخزون.') + ' المبيعات = الفواتير بعد المرتجع + البيع الكاش.'
+        + (tot.sal ? ' صافي الربح = بعد مرتبات الشركاء وقبل المسحوبات.' : '')
         + (tot.inc ? ' «الداخل» في الجدول = المبيعات + الإيرادات التانية.' : '')
         + (jrdSaved().some(x => !x.n.noStock) ? ' علشان المخزون يدخل في الحسبة اختار «من–إلى» من يوم جرد لحد يوم جرد تاني.' : '')};
 }
@@ -6960,7 +6968,7 @@ function repCards() {
   return `<div class="seg s4" id="rpS">${REP_SUM.map(([k, n]) => `<button type="button" data-v="${k}" class="${repSum === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div class="rcper">${esc(rangeText(R.f, R.to))}</div>
     ${sec('فلوسي', [
-      card('profit', 'الربح قبل الشركاء', fmtP(a.before), sumCmp(a.before, b.before, 1, pn), a.before < 0),
+      card('profit', a.net < 0 ? 'صافي الخسارة' : 'صافي الربح', fmtP(Math.abs(a.net)), sumCmp(a.net, b.net, 1, pn), a.net < 0),   // بعد مرتبات الشركاء وقبل المسحوبات (22/11/2026، بطلبه)
       (G => card('gm', 'مكسب البضاعة', fmtP(G.gm), `<small>${G.S > 0 ? gmPct(G.gm, G.S) + '% من البيع' : 'اتباع − اتشرى'}</small>`, G.gm < 0))(gmSum(R.f, R.to)),
       card('cashp', D.hasM ? 'المصنع كله دلوقتي' : 'في الخزن دلوقتي', fmtP(D.me + D.mk), `<small>${D.hasM ? `معاك ${fmtP(D.me)} + مع ${esc(MK_PN)} ${fmtP(D.mk)}` : 'كل الخزن'}</small>`, D.me + D.mk < 0, 'w')])}
     ${sec('شغلي', [
@@ -9859,8 +9867,11 @@ function monthSheet(M) {
   if (a.inc) L.push(`📥 إيرادات تانية: ${fmtP(a.inc)}`);
   if (stk) L.push(`${stk.d >= 0 ? '➕ زاد المخزون' : '➖ نقص المخزون'} (من الجرد): ${fmtP(Math.abs(stk.d))}`);
   L.push('', `💰 الربح قبل الشركاء: ${fmtP(before)}${cmp(before, b.before)}`);
-  if (a.part || a.iv) L.push(`👥 الشركاء${a.iv ? ' والمساهمين' : ''}: ${fmtP(a.part + a.iv)}`);
-  L.push(`${after >= 0 ? '✅ الباقي بعد الشركاء' : '🔻 خسارة بعد الشركاء'}: ${fmtP(after)}`);
+  const net = before - a.sal;   // صافي الربح = بعد مرتبات الشركاء وقبل المسحوبات (22/11/2026، بطلبه)
+  if (a.sal) L.push(`👥 مرتبات الشركاء: ${fmtP(a.sal)}`);
+  L.push(`${net >= 0 ? '✅ صافي الربح' : '🔻 صافي الخسارة'}: ${fmtP(Math.abs(net))}`);
+  if (a.draw || a.iv) { L.push(`💸 ${a.draw ? 'مسحوبات الشركاء' : ''}${a.draw && a.iv ? ' و' : ''}${a.iv ? 'أرباح المساهمين' : ''}: ${fmtP(a.draw + a.iv)}`);
+    L.push(after >= 0 ? `   الباقي بعدها: ${fmtP(after)}` : net >= 0 ? `   أكتر من صافي الربح بـ ${fmtP(-after)}` : `   الخسارة بعدها: ${fmtP(-after)}`); }
   if (!stk) L.push('   (من غير حساب المخزون: الشهر اللي فيه شرا خامات كتير بيبان أقل من الحقيقة)');
   /* أكبر 5 عملا في المبيعات */
   const by = new Map();

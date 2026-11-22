@@ -3969,6 +3969,12 @@ function pullRows(rows, clash, mk = 'sy') {
   let got = 0;
   rows.forEach(r => {
     const cur = IDX[r.kind] && r.id && r.data ? IDX[r.kind].get(r.id) : null;
+    /* سيرفر المصنع: جهازين عدّلوا نفس الحركة في نفس الجزء من الألف من الثانية (نفس upd) والتعديلين مختلفين.
+       من غير ده كل جهاز كان بيفضل بنسخته والسيرفر بيعتبرهم واحد (GitHub مسكها 22/11/2026). نسختنا بتاخد وقت أحدث فتكسب عند الكل، وتنبيه تعارض زي أي تعارض */
+    if (mk === 'svy' && cur && r.upd === cur.upd && cur.svy !== cur.upd && !sameData(cur, Object.assign({}, r.data, {del: !!r.del}))) {
+      clash.push({at: nowS(), id: r.id, kind: r.kind, here: true, mine: recSum(r.kind, cur), theirs: recSum(r.kind, Object.assign({}, r.data, {del: !!r.del}))});
+      cur.upd = Math.max(nowS(), cur.upd + 1); return;
+    }
     const c = cur && cur[mk] !== undefined && cur[mk] !== cur.upd && r.upd !== cur[mk] && r.upd !== cur.upd
       && !sameData(cur, Object.assign({}, r.data, {del: !!r.del})) ? {mine: recSum(r.kind, cur), mu: cur.upd} : null;
     if (mergeRow(r, mk)) got++;
@@ -4284,6 +4290,8 @@ async function srvVerify(d0) {
     if (!d || !!x.del !== !!r.del || !srvSame(d, r)) bad.push(r);
   }
   [...bad, ...miss].forEach(r => { delete r.svy; });
+  /* bad = مختلف والوقت واحد بالظبط: إعادة الإرسال لوحدها مبتنفعش (السيرفر بيقول "عندي نفس الوقت" ومبيكتبش)، فنسخة الجهاز بتاخد وقت أحدث وتكسب */
+  bad.forEach(r => { r.upd = Math.max(nowS(), r.upd + 1); });
   return {n: seen.size, bad: bad.map(r => r.id), miss: miss.map(r => r.id)};
 }
 /* النقل للسيرفر (لوحده في الخلفية، والشيت لسه الأساس لحد ما يخلص): سلام ← بعت وسحب كل حاجة ← مقارنة بالحرف ← بس ساعتها on */

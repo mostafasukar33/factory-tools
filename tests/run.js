@@ -1188,13 +1188,24 @@ const T0 = Date.now();
         await Y.evaluate(() => clearTimeout(syncT)); await sync(Y); await sync(X);
         await eqS('حركة الجهاز التاني وصلت الأول من السيرفر (الشيت متلمسش)', [await srvSnap(X), sh2.acc.sheets['السجلات'].rows.length, sheetHas(cY)], [await srvSnap(Y), sheet0, false]);
         /* تعارض: نفس الحساب اتعدّل على الجهازين قبل المزامنة */
-        await X.evaluate(id => { const p = P.get(id); p.note = 'من الجهاز الأول'; touch(p); saveDB(); clearTimeout(syncT); }, cY);
-        await Y.evaluate(id => { const p = P.get(id); p.note = 'من الجهاز التاني'; touch(p); saveDB(); clearTimeout(syncT); }, cY);
+        const xu = await X.evaluate(id => { const p = P.get(id); p.note = 'من الجهاز الأول'; touch(p); saveDB(); clearTimeout(syncT); return p.upd; }, cY);
+        await Y.evaluate(([id, xu]) => { const p = P.get(id); p.note = 'من الجهاز التاني'; touch(p); p.upd = Math.max(p.upd, xu + 5); saveDB(); clearTimeout(syncT); }, [cY, xu]);   // التاني أحدث بالتأكيد (نفس الوقت بالظبط ليه اختبار لوحده تحت)
         await sync(Y);
         const cl0 = await X.evaluate(() => (db.cfg.clash || []).length);
         await sync(X); await X.evaluate(() => { if ($('#mask').classList.contains('on')) closeModal(); });
         await sync(Y);
         await eqS('تعارض بين جهازين على السيرفر: اتقال، والأحدث (التاني) كسب على الجهازين', [await X.evaluate(() => (db.cfg.clash || []).length) - cl0, await X.evaluate(id => P.get(id).note, cY), await Y.evaluate(id => P.get(id).note, cY)], [1, 'من الجهاز التاني', 'من الجهاز التاني']);
+      }
+      {   // نفس الوقت بالظبط وتعديلين مختلفين (جهاز سريع، GitHub مسكها 22/11/2026): تنبيه تعارض والجهازين بيوصلوا لنفس النسخة
+        const [cY] = await Y.evaluate(() => liveParties().filter(p => / ب$/.test(p.name) && p.sec === 'mkt').map(p => p.id));
+        const U = await X.evaluate(() => nowS() + 50);
+        await X.evaluate(([id, U]) => { const p = P.get(id); p.note = 'نفس الوقت أ'; p.upd = U; saveDB(); clearTimeout(syncT); }, [cY, U]);
+        await Y.evaluate(([id, U]) => { const p = P.get(id); p.note = 'نفس الوقت ب'; p.upd = U; saveDB(); clearTimeout(syncT); }, [cY, U]);
+        await sync(Y);
+        const c0 = await X.evaluate(() => (db.cfg.clash || []).length);
+        await sync(X); await X.evaluate(() => { if ($('#mask').classList.contains('on')) closeModal(); });
+        await sync(X); await sync(Y);
+        await eqS('نفس الوقت بالظبط وتعديلين مختلفين: تنبيه تعارض، والجهازين وصلوا لنفس النسخة ومفيش حاجة مستنية', [await X.evaluate(() => (db.cfg.clash || []).length) - c0, await X.evaluate(id => P.get(id).note, cY), await Y.evaluate(id => P.get(id).note, cY), await X.evaluate(() => [srvPend().length, srvOn()])], [1, 'نفس الوقت أ', 'نفس الوقت أ', [0, true]]);
       }
       {   // السيرفر وقع: نفس المزامنة بتروح للشيت على طول، ومفيش حاجة بتضيع
         await X.evaluate(id => { const p = P.get(id); p.note = 'والسيرفر واقع'; touch(p); saveDB(); clearTimeout(syncT); }, cX);
@@ -1256,6 +1267,17 @@ const T0 = Date.now();
         await eqS('المقارنة اليومية لقت السجل الناقص، واتبعت تاني ووصل الجهاز التاني', [vb, await Y.evaluate(id => P.get(id).note, cX)], [[1, 1], 'ضاع في السكة']);
         await X.evaluate(() => { db.cfg.srv.vAt = 0; }); await bg(X, 'srvDaily()');
         await eqS('المقارنة اللي بعدها: مطابق', await X.evaluate(() => db.cfg.srv.vBad), null);
+      }
+      {   // نفس الوقت بالظبط والسيرفر عنده نسخة تانية والجهاز فاكر إنه بعت نسخته: المقارنة اليومية بتمسكها وبتحلها (قبل كده كان بيفضل على الشيت على طول)
+        await idle(X); await idle(Y);
+        const U = await X.evaluate(() => nowS() + 50);
+        await Y.evaluate(([id, U]) => { const p = P.get(id); p.note = 'السيرفر عنده دي'; p.upd = U; saveDB(); clearTimeout(syncT); }, [cX, U]);
+        await sync(Y);
+        await X.evaluate(([id, U]) => { const p = P.get(id); p.note = 'الجهاز فاكر إنه بعت دي'; p.upd = U; p.svy = U; saveDB(); clearTimeout(syncT); db.cfg.srv.vAt = 0; }, [cX, U]);
+        await idle(X); await bg(X, 'srvDaily()');
+        const vb = await X.evaluate(() => { clearTimeout(syncT); return db.cfg.srv.vBad && db.cfg.srv.vBad.n; });
+        await sync(X); await sync(Y);
+        await eqS('نفس الوقت بالظبط والجهاز فاكر إنه بعت: المقارنة اليومية لقته، ونسخة الجهاز وصلت الكل، والمزامنة لسه على السيرفر', [vb, await X.evaluate(id => P.get(id).note, cX), await Y.evaluate(id => P.get(id).note, cX), await X.evaluate(() => [srvOn(), srvPend().length])], [1, 'الجهاز فاكر إنه بعت دي', 'الجهاز فاكر إنه بعت دي', [true, 0]]);
       }
       {   // البرنامج استخبى: اللي مستني بيروح للسيرفر بطلب بيكمّل حتى لو الصفحة نامت
         await X.evaluate(id => { const p = P.get(id); p.note = 'الصفحة استخبت'; touch(p); saveDB(); clearTimeout(syncT); }, cX);

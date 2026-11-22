@@ -1133,6 +1133,9 @@ const T0 = Date.now();
       const SV = await memServer(); SV.url = 'https://srv.test/'; SV.log = [];
       const sh2 = {acc: makeGas(), cash: makeGas(), mkt: makeGas(), pay: makeGas()};
       const SK = 'Srv-Test-Key-2026';
+      /* المزامنة اللي في الخلفية (بعد الحفظ، وكل 30 ثانية، والنقل) لو شغالة: syncNow بيرجع على طول (syncAgain). فبنستنى كله يهدى قبل وبعد (GitHub فشل مرة 22/11/2026 من ده) */
+      const idle = P => P.waitForFunction(() => !syncing && !shRun && !srvBooting && !srvDaying, null, {timeout: 30000, polling: 50}).catch(() => {});
+      const sync = async P => { await idle(P); await P.evaluate(() => clearTimeout(syncT)); await bg(P, 'syncNow()'); await idle(P); };
       const DX = await newDevice(browser, base, sh2, SV), X = await DX.page('accounts.html');
       await unlock(X, true);
       sh2.acc.load(await X.evaluate(() => scriptFor()));
@@ -1150,7 +1153,7 @@ const T0 = Date.now();
       const cX = await mkData(X, 'أ');
       const srvSnap = Y => Y.evaluate(() => [liveParties().map(p => p.name + ':' + balance(p.id)).sort(), vaultBal('')]);
       const sheetHas = (id, txt) => sh2.acc.sheets['السجلات'].rows.some(r => r[0] === id && (!txt || String(r[r.length - 1]).includes(txt)));
-      await bg(X, 'syncNow()');
+      await sync(X);
       await X.waitForFunction(() => db.cfg.srv && db.cfg.srv.on, null, {timeout: 30000}).catch(() => {});
       const st1 = await X.evaluate(() => [srvOn(), db.cfg.srv.n, srvTotal(), srvPend().length, sheetPend().length]);
       eq('أول مزامنة: اتنقلت لوحدها للسيرفر بعد ما اتأكدت إن كل حاجة اتبعتت ومطابقة', [st1[0], st1[1] === st1[2], st1[3], st1[4]], [true, true, 0, 0]);
@@ -1161,7 +1164,7 @@ const T0 = Date.now();
       {   // تعديل: بيروح للسيرفر على طول، والشيت بياخده في نسخة الساعة بس
         await X.evaluate(id => { const p = P.get(id); p.note = 'تعديل على السيرفر'; touch(p); saveDB(); clearTimeout(syncT); }, cX);
         const n0 = SV.log.length;
-        await bg(X, 'syncNow()');
+        await sync(X);
         eq('التعديل راح للسيرفر ومراحش الشيت لسه', [SV.log.length > n0, sheetHas(cX, 'تعديل على السيرفر'), await X.evaluate(() => [pendingRecs().length, db.cfg.syLog[0].ok, /سيرفر [\d.]+/.test(db.cfg.syLog[0].d)])], [true, false, [0, true, true]]);
         eq('الشاشة بتقول متزامن على سيرفر المصنع', (await X.textContent('#syncBox')).includes('سيرفر المصنع'), true);
         await X.evaluate(() => { (db.cfg.shBk = db.cfg.shBk || {}).at = 0; }); await bg(X, 'sheetBk()');
@@ -1178,24 +1181,24 @@ const T0 = Date.now();
       {   // حركة على الجهاز التاني بتوصل الأول من السيرفر من غير الشيت
         const sheet0 = sh2.acc.sheets['السجلات'].rows.length;
         const cY = await mkData(Y, 'ب');
-        await Y.evaluate(() => clearTimeout(syncT)); await bg(Y, 'syncNow()'); await bg(X, 'syncNow()');
+        await Y.evaluate(() => clearTimeout(syncT)); await sync(Y); await sync(X);
         eq('حركة الجهاز التاني وصلت الأول من السيرفر (الشيت متلمسش)', [await srvSnap(X), sh2.acc.sheets['السجلات'].rows.length, sheetHas(cY)], [await srvSnap(Y), sheet0, false]);
         /* تعارض: نفس الحساب اتعدّل على الجهازين قبل المزامنة */
         await X.evaluate(id => { const p = P.get(id); p.note = 'من الجهاز الأول'; touch(p); saveDB(); clearTimeout(syncT); }, cY);
         await Y.evaluate(id => { const p = P.get(id); p.note = 'من الجهاز التاني'; touch(p); saveDB(); clearTimeout(syncT); }, cY);
-        await bg(Y, 'syncNow()');
+        await sync(Y);
         const cl0 = await X.evaluate(() => (db.cfg.clash || []).length);
-        await bg(X, 'syncNow()'); await X.evaluate(() => { if ($('#mask').classList.contains('on')) closeModal(); });
-        await bg(Y, 'syncNow()');
+        await sync(X); await X.evaluate(() => { if ($('#mask').classList.contains('on')) closeModal(); });
+        await sync(Y);
         eq('تعارض بين جهازين على السيرفر: اتقال، والأحدث (التاني) كسب على الجهازين', [await X.evaluate(() => (db.cfg.clash || []).length) - cl0, await X.evaluate(id => P.get(id).note, cY), await Y.evaluate(id => P.get(id).note, cY)], [1, 'من الجهاز التاني', 'من الجهاز التاني']);
       }
       {   // السيرفر وقع: نفس المزامنة بتروح للشيت على طول، ومفيش حاجة بتضيع
         await X.evaluate(id => { const p = P.get(id); p.note = 'والسيرفر واقع'; touch(p); saveDB(); clearTimeout(syncT); }, cX);
-        DX.srvDown = true; await bg(X, 'syncNow()');
+        DX.srvDown = true; await sync(X);
         eq('السيرفر واقع: الحركة راحت للشيت، والسجل بيقول السيرفر موصلش وكمّل على الشيت', [sheetHas(cX, 'والسيرفر واقع'), await X.evaluate(() => [srvOn(), db.cfg.syLog[0].ok, /السيرفر/.test(db.cfg.syLog[1].why), syncErr])], [true, [false, true, true, '']]);
-        DX.srvDown = false; await X.evaluate(() => { srvFailAt = 0; }); await bg(X, 'syncNow()');
+        DX.srvDown = false; await X.evaluate(() => { srvFailAt = 0; }); await sync(X);
         eq('السيرفر رجع: المزامنة رجعت عليه والحركة وصلته', await X.evaluate(() => [srvOn(), srvPend().length]), [true, 0]);
-        await bg(Y, 'syncNow()');
+        await sync(Y);
         eq('الجهاز التاني خد الحركة من السيرفر', await Y.evaluate(id => P.get(id).note, cX), 'والسيرفر واقع');
       }
       {   // حد عدّل في بيانات السيرفر (أو حط سجل مكان سجل): مبيدخلش الحسابات خالص، والمزامنة بتكمّل على الشيت
@@ -1203,10 +1206,10 @@ const T0 = Date.now();
         const seq = SV.st.q("SELECT v FROM meta WHERE k = 'seq'")[0].v * 1 + 1;
         SV.st.q('UPDATE rec SET data = ?, upd = ?, seq = ? WHERE id = ?', b.data, a.upd + 5, seq, a.id); SV.st.q("UPDATE meta SET v = ? WHERE k = 'seq'", seq);
         const before = await X.evaluate(id => JSON.stringify(stripLocal(P.get(id))), a.id);
-        await bg(X, 'syncNow()');
+        await sync(X);
         eq('سجل متلاعب فيه على السيرفر: اترفض ومدخلش الحسابات، والمزامنة كمّلت على الشيت', [await X.evaluate(id => JSON.stringify(stripLocal(P.get(id))), a.id) === before, await X.evaluate(() => [srvOn(), /مش مطابقة للتشفير/.test(db.cfg.syLog[1].why), db.cfg.syLog[0].ok])], [true, [false, true, true]]);
         SV.st.q('UPDATE rec SET data = ?, upd = ? WHERE id = ?', a.data, a.upd, a.id);
-        await X.evaluate(id => { touch(P.get(id)); saveDB(); clearTimeout(syncT); srvFailAt = 0; }, a.id); await bg(X, 'syncNow()');
+        await X.evaluate(id => { touch(P.get(id)); saveDB(); clearTimeout(syncT); srvFailAt = 0; }, a.id); await sync(X);
         eq('بعد ما اتصلّح: رجع على السيرفر', await X.evaluate(() => [srvOn(), srvPend().length]), [true, 0]);
       }
       {   // تذكرة غلط (مفتاح تاني): السيرفر رافض
@@ -1215,19 +1218,22 @@ const T0 = Date.now();
       {   // زرار الطوارئ على السيرفر (OFF): الأجهزة بترجع للشيت لوحدها، ولما يتشال بترجع للسيرفر
         SV.off = true;
         await X.evaluate(id => { const p = P.get(id); p.note = 'وقت الطوارئ'; touch(p); saveDB(); clearTimeout(syncT); }, cX);
-        await bg(X, 'syncNow()');
+        await sync(X);
         eq('السيرفر متوقف بالقصد: رجع للشيت والحركة وصلت الشيت، والإعدادات بتقول السيرفر رافض', [await X.evaluate(() => [srvOn(), db.cfg.srv.on, db.cfg.srv.bad.why, /السيرفر رافض/.test(srvMoveLine())]), sheetHas(cX, 'وقت الطوارئ')], [[false, false, 'off', true], true]);
+        await idle(X);
         SV.off = false; await X.evaluate(() => { delete db.cfg.srv.bad; db.cfg.srv.tryAt = 0; srvFailAt = 0; });
-        await bg(X, 'syncNow()'); await X.waitForFunction(() => db.cfg.srv.on, null, {timeout: 20000}).catch(() => {});
+        await sync(X); await X.waitForFunction(() => db.cfg.srv.on, null, {timeout: 20000}).catch(() => {});
         eq('بعد الطوارئ: اتنقل للسيرفر تاني لوحده بعد المقارنة', await X.evaluate(() => [srvOn(), srvPend().length]), [true, 0]);
       }
       {   // السيرفر اتعمل من جديد (رقم القاعدة اتغير): كل حاجة بتتبعت تاني وتتقارن قبل ما يرجع عليه
+        await idle(X);
         SV.st.q("UPDATE meta SET v = 'newbase00000000' WHERE k = 'ep'");
-        await bg(X, 'syncNow()');
+        await sync(X);
         await X.waitForFunction(() => db.cfg.srv.on && db.cfg.srv.ep === 'newbase00000000', null, {timeout: 30000}).catch(() => {});
         eq('قاعدة جديدة على السيرفر: الجهاز بعت كل حاجة تاني واتأكد ورجع عليه', await X.evaluate(() => [srvOn(), db.cfg.srv.ep, srvPend().length]), [true, 'newbase00000000', 0]);
       }
       {   // النقل اتقطع في النص (زي موبايله أول مرة 22/11/2026): بيقول في الإعدادات، وبيكمّل لوحده بعد دقيقة من مكان ما وقف
+        await idle(X);
         DX.srvDown = true;
         await X.evaluate(() => { srvForget(); db.cfg.srv.on = false; db.cfg.srv.tryAt = 0; srvFailAt = 0; });
         await bg(X, 'srvBoot()');
@@ -1241,8 +1247,8 @@ const T0 = Date.now();
         await X.evaluate(id => { const p = P.get(id); p.note = 'ضاع في السكة'; touch(p); p.svy = p.upd; saveDB(); clearTimeout(syncT); }, cX);
         await X.evaluate(() => { db.cfg.srv.vAt = 0; }); await bg(X, 'srvDaily()');
         const vb = await X.evaluate(() => { clearTimeout(syncT); return [db.cfg.srv.vBad && db.cfg.srv.vBad.n, srvPend().length]; });
-        await bg(X, 'syncNow()'); await X.waitForFunction(() => !syncing && !srvPend().length, null, {timeout: 15000}).catch(() => {});
-        await bg(Y, 'syncNow()'); await Y.waitForFunction(() => srvOn() && db.cfg.srv.ep === 'newbase00000000', null, {timeout: 30000}).catch(() => {}); await bg(Y, 'syncNow()');   // الجهاز التاني عرف إن السيرفر اتعمل من جديد: كمّل على الشيت ورجع للسيرفر لوحده
+        await sync(X); await X.waitForFunction(() => !syncing && !srvPend().length, null, {timeout: 15000}).catch(() => {});
+        await sync(Y); await Y.waitForFunction(() => srvOn() && db.cfg.srv.ep === 'newbase00000000', null, {timeout: 30000}).catch(() => {}); await sync(Y);   // الجهاز التاني عرف إن السيرفر اتعمل من جديد: كمّل على الشيت ورجع للسيرفر لوحده
         eq('المقارنة اليومية لقت السجل الناقص، واتبعت تاني ووصل الجهاز التاني', [vb, await Y.evaluate(id => P.get(id).note, cX)], [[1, 1], 'ضاع في السكة']);
         await X.evaluate(() => { db.cfg.srv.vAt = 0; }); await bg(X, 'srvDaily()');
         eq('المقارنة اللي بعدها: مطابق', await X.evaluate(() => db.cfg.srv.vBad), null);
@@ -1253,12 +1259,12 @@ const T0 = Date.now();
         await X.waitForFunction(() => true); for (let i = 0; i < 50 && !SV.log.some(b => b.includes(String(Number.MAX_SAFE_INTEGER))); i++) await X.waitForFunction(() => true, null, {polling: 100});
         const v = (await SV.handle(JSON.stringify({a: 'sync', k: await X.evaluate(() => srvK.tok), ep: await X.evaluate(() => db.cfg.srv.ep), since: 0, rows: []}))).rows.find(r => r.id === cX);
         eq('الصفحة استخبت: الحركة وصلت السيرفر من غير مزامنة كاملة', [sent, v && v.upd === await X.evaluate(id => P.get(id).upd, cX)], [true, true]);
-        await bg(X, 'syncNow()');
+        await sync(X);
         eq('المزامنة اللي بعدها: مفيش حاجة مستنية ولا تعارض', await X.evaluate(() => [pendingRecs().length, syncErr]), [0, '']);
       }
       {   // نسخة الشيت وقعت: المزامنة على السيرفر شغالة عادي ومفيش أي حاجة على الشاشة
         DX.netDown = true; await X.evaluate(() => { (db.cfg.shBk = db.cfg.shBk || {}).at = 0; }); await bg(X, 'sheetBk()');
-        await X.evaluate(id => { const p = P.get(id); p.note = 'والشيت واقع'; touch(p); saveDB(); clearTimeout(syncT); }, cX); await bg(X, 'syncNow()');
+        await X.evaluate(id => { const p = P.get(id); p.note = 'والشيت واقع'; touch(p); saveDB(); clearTimeout(syncT); }, cX); await sync(X);
         eq('الشيت واقع: النسخة اتسجلت إنها فشلت، والمزامنة على السيرفر نجحت، ومفيش أي كلام عن الشيت على الشاشة', await X.evaluate(() => [!!db.cfg.shBk.fail0, srvOn(), srvPend().length, /الشيت|Google|مشكلة/.test($('#syncBox').textContent)]), [true, true, 0, false]);
         DX.netDown = false; await X.evaluate(() => { (db.cfg.shBk = db.cfg.shBk || {}).at = 0; }); await bg(X, 'sheetBk()');
         eq('الشيت رجع: النسخة كمّلت لوحدها', [sheetHas(cX, 'والشيت واقع'), await X.evaluate(() => [db.cfg.shBk.fail0 || 0, sheetPend().length])], [true, [0, 0]]);

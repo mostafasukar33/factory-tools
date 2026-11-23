@@ -6937,12 +6937,16 @@ function scReport(f, t) {
   /* أي عميل عليه فلوس بيظهر حتى لو ملوش حركة في الفترة (بطلبه 23/11/2026: "عميل كبير مش داخل ولا اسمه مكتوب")، فالقايمة = "عليهم آخر الفترة" بالظبط */
   const L = [...M.values()].map(x => Object.assign(x, {b1: balance(x.p.id, n)})).filter(x => x.s || x.c || x.b1).sort((a, b) => b.s - a.s || b.c - a.c || b.b1 - a.b1);
   const T = (k, sec) => L.filter(x => !sec || x.p.sec === sec).reduce((a, x) => a + x[k], 0), S = T('s'), C = T('c');
-  const all0 = ps.reduce((a, p) => a + balance(p.id, f), 0), all1 = ps.reduce((a, p) => a + balance(p.id, n), 0), pc = v => S ? ` (${Math.round(v * 100 / S)}%)` : '';
+  /* البيع الكاش من المصنع (بطلبه 23/11/2026): في "الكل" بس، بيتزوّد على المبيعات والتحصيل (اتقبض على طول)، فـ أول + باع − حصّل = آخر زي ما هي */
+  const cs = repScSide === 'all' ? cashSums(f, t).cs : 0, ST = S + cs, CT = C + cs;
+  const all0 = ps.reduce((a, p) => a + balance(p.id, f), 0), all1 = ps.reduce((a, p) => a + balance(p.id, n), 0), pc = v => ST ? ` (${Math.round(v * 100 / ST)}%)` : '';
   return {title: 'مبيعات وتحصيلات ' + (repScSide === 'all' ? 'المصنع' : SECS[repScSide]), period: rangeText(f, t),
     cols: [{h: 'العميل', w: 40, c: 'l'}, {h: 'باع', w: 20, c: 'n'}, {h: 'حصّل', w: 20, c: 'n'}, {h: 'عليه دلوقتي', w: 20, c: 'b'}],
     rows: L.map(x => ({cells: [x.p.name, x.s ? fmtP(x.s) : '', x.c ? fmtP(x.c) : '', fmtP(x.b1)], sub: repScSide === 'all' ? SECS[x.p.sec] : '', cls: x.b1 < 0 ? 'ret' : '', id: x.p.id})),
-    sum: [['إجمالي المبيعات', fmtP(S)], ...(repScSide === 'all' ? [['منها عملاء السوق', fmtP(T('s', 'mkt')) + pc(T('s', 'mkt'))], ['منها عملاء المواقع', fmtP(T('s', 'site')) + pc(T('s', 'site'))]] : []),
-      ['إجمالي التحصيل', fmtP(C)], ...(repScSide === 'all' ? [['منه عملاء السوق', fmtP(T('c', 'mkt'))], ['منه عملاء المواقع', fmtP(T('c', 'site'))]] : []),
+    sum: [['إجمالي المبيعات', fmtP(ST)], ...(repScSide === 'all' ? [['منها عملاء السوق', fmtP(T('s', 'mkt')) + pc(T('s', 'mkt'))], ['منها عملاء المواقع', fmtP(T('s', 'site')) + pc(T('s', 'site'))]] : []),
+      ...(cs ? [['منها بيع كاش من المصنع', fmtP(cs) + pc(cs)]] : []),
+      ['إجمالي التحصيل', fmtP(CT)], ...(repScSide === 'all' ? [['منه عملاء السوق', fmtP(T('c', 'mkt'))], ['منه عملاء المواقع', fmtP(T('c', 'site'))]] : []),
+      ...(cs ? [['منه بيع كاش من المصنع', fmtP(cs)]] : []),
       ['عدد العملا اللي اتعاملوا', String(L.filter(x => x.s || x.c).length)], ['كان عليهم أول الفترة', fmtP(all0)]],
     fin: ['عليهم آخر الفترة', fmtP(all1)]};
 }

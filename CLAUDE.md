@@ -45,6 +45,7 @@
 | الجرد / المساهمين (جوه الحسابات) | `accounts.html` (صفحة `#jrd`، والمساهمين `#jrd/iv`، دوال `jrd*` و`iv*`) |
 | وارد السوق (جوه الحسابات) | `accounts.html` (تاب `#mkt`، كود الشيت `marketScript`) |
 | الطلبيات / التسعير (عند مصطفى في الوارد وعند أحمد في الرئيسية) | `lib/orders.js` (`ordOpen`/`prcOpen`، والصفحتين فيهم `ORD_HOST` و`ordLoad` و`ordBadge`) |
+| كشف الحساب من أحمد (للعملاء والموردين) | `lib/mkstmt.js` (`MkStmt.open`، وفي `market.html` `mkStOpen`، والسطور من `mkStLines` في `accounts.html`) |
 | المرتبات / قبض العمال / تطبيق المرتبات | `payroll.html` (+ `payroll.webmanifest`؛ الأرشيف بالشهر باليوم `weekSplit`/`archiveMonths`) |
 | النحاس / تكلفة لفة السلك (جوه تطبيق حسن) | `payroll.html` (تبويب `#c`، `drawCu`، والحسبة `cuCalc` في `engine`) |
 | الاختبارات | `tests/run.js` (الحسابات/التسليم/السوق)، `tests/payroll.js` (المرتبات) |

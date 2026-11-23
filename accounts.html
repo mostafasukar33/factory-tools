@@ -8762,7 +8762,23 @@ function mkWantCard() {
 /* mkUpd: الشيت بيرفض أي سطر وقته مش أكبر من اللي عنده، وبيقول "وصل" برضه، فلو الرصيد اتغير من حركة جاية من جهاز تاني بوقت أقدم
    (أو الجهاز ده نفسه كتب رصيد قبل ما توصله حركة) كان الرصيد الصح بيترفض ويتعلّم إنه اتبعت، والعميل يفضل غلط عند الشريك (بطلبه 3/11/2026).
    دلوقتي الوقت دايماً أكبر بواحد من آخر وقت الجهاز ده بعته للسطر ده (d.cu) */
-const mkCsSig = x => 'v5|' + x.name + '|' + x.bal + '|' + x.lim + '|' + x.lp + '|' + x.avg + '|' + JSON.stringify(x.want);
+const mkCsSig = x => 'v6|' + x.name + '|' + x.bal + '|' + x.lim + '|' + x.lp + '|' + x.avg + '|' + JSON.stringify(x.want) + '|' + mkStHash(x);
+/* كشف الحساب اللي أحمد بيبعته للعميل أو المورد (بطلبه 23/11/2026، lib/mkstmt.js في السوق): نفس سطور كشف الحسابات بالظبط (rowsOfList) من أول الشهر من 3 شهور.
+   s = [[تاريخ، بيان، كمية، سعر، مدين − دائن (بالقرش)، ملاحظة، نوع السطر pay/ret/bnc/op، رقم الفاتورة لو ليها أكتر من سطر]]، sf = أول يوم، so = الرصيد قبله (مدين − دائن).
+   so + مجموع s = الرصيد بالقرش. لو كبير قوي الأقدم بيدخل في so (خانة الشيت 50 ألف حرف) */
+const mkStHash = x => strHash(JSON.stringify([x.sf || '', x.so || 0, x.s || []]));
+function mkStLines(ents, from, max) {
+  let so = 0, sf = from; const live = [], s = [];
+  ents.forEach(e => { if (e.kind === 'open' || e.date < from) so += (e.dr || 0) - (e.cr || 0); else live.push(e); });
+  const rows = rowsOfList(live), cnt = new Map(), gi = new Map();
+  rows.forEach(r => r.e && cnt.set(r.e, (cnt.get(r.e) || 0) + 1));
+  rows.forEach(r => {
+    const g = r.e && isDoc(r.e) && cnt.get(r.e) > 1 ? (gi.get(r.e) || gi.set(r.e, gi.size + 1).get(r.e)) : 0;
+    s.push([r.date, r.desc || '', r.qty || '', r.price || 0, (r.dr || 0) - (r.cr || 0), r.ref || '', r.pay ? 'pay' : r.op ? 'op' : r.ret ? 'ret' : r.bnc ? 'bnc' : '', g]);
+  });
+  while (s.length && JSON.stringify(s).length > max) { const d0 = s[0][0]; while (s.length && s[0][0] === d0) so += s.shift()[4]; sf = s.length ? s[0][0] : todayISO(); }
+  return {sf, so, s};
+}
 const mkUpd = (d, id, now) => Math.max(now + 1, ((d.cu = d.cu || {})[id] || 0) + 1);
 /* رصيد عميل/مورد جاي من الشيت (بطلبه 3/11/2026، "ايمن رصيده عندي صفر وعند احمد 22500"): الشيت ممكن يكون فيه سطر بوقت أكبر من اللي الجهاز
    ده بيبعته (ساعة جهاز كانت قدام، أو جهاز تاني)، فكان بيرفض الرصيد الصح. هنا بنتعلم وقت السطر اللي في الشيت (d.cu) واللي فيه فعلاً (d.cs/d.ss)،
@@ -8771,7 +8787,7 @@ const mkUpd = (d, id, now) => Math.max(now + 1, ((d.cu = d.cu || {})[id] || 0) +
 const mkAccFresh = () => !(db.cfg.sheetUrl && db.cfg.sheetOk) || lastPullAt > 0;
 function mkSeen(d, r) {
   const cu = d.cu = d.cu || {}, box = r.kind === 'sup' ? (d.ss = d.ss || {}) : d.cs, u = Number(r.upd) || 0;
-  const sig = r.del ? '-' : r.kind === 'sup' ? 's3|' + strHash(JSON.stringify(r.data)) : mkCsSig(r.data);
+  const sig = r.del ? '-' : r.kind === 'sup' ? 's4|' + strHash(JSON.stringify(r.data)) : mkCsSig(r.data);
   let ch = false;
   if (u > (cu[r.id] || 0)) { cu[r.id] = u; ch = true; }
   if (box[r.id] !== sig && mkAccFresh()) { box[r.id] = sig; ch = true; }
@@ -8798,16 +8814,31 @@ function mkLost(d, id, k) {
 }
 function mkCustRows() {
   let ver = 0; for (const k of ['parties', 'entries', 'sets']) for (const r of db[k]) if (r.upd > ver) ver = r.upd;
-  const d = mkDb(), bal = allBalances(), out = [], seen = new Set(), now = 1e13 + ver, lps = lastPays(), avs = payAvgs(), W = mkWants();
+  const d = mkDb(), bal = allBalances(), out = [], seen = new Set(), now = 1e13 + ver, lps = lastPays(), avs = payAvgs(), W = mkWants(), ST = mkCustSt();
   liveParties().filter(p => p.sec === 'mkt').forEach(p => {
     seen.add(p.id);
     /* lp = آخر دفعة (للشريك: "آخر دفعة من كام يوم")، want = قايمة "حصّل من دول" */
     const b = bal.get(p.id) || 0, lim = limitClass(p, b) === 'lim-r' ? 'r' : limitClass(p, b) === 'lim-y' ? 'y' : '', lp = lps.get(p.id) || '', avg = avs.get(p.id) || 0, w = W[p.id] || null;
-    const want = w ? {amt: w.amt, at: w.at, note: w.note || ''} : null, sig = mkCsSig({name: p.name, bal: b, lim, lp, avg, want});
-    if (d.cs[p.id] !== sig) out.push({row: {id: p.id, kind: 'cust', upd: mkUpd(d, p.id, now), del: false, view: ['', cell(p.name), b / 100, 'رصيد عميل', want ? 'مطلوب ' + want.amt / 100 : ''], data: {name: p.name, bal: b, lim, lp, avg, want}}, sig});
+    const want = w ? {amt: w.amt, at: w.at, note: w.note || ''} : null, st = ST.get(p.id), x = {name: p.name, bal: b, lim, lp, avg, want, sf: st.sf, so: st.so, s: st.s};
+    const sig = 'v6|' + p.name + '|' + b + '|' + lim + '|' + lp + '|' + avg + '|' + JSON.stringify(want) + '|' + st.h;
+    if (d.cs[p.id] !== sig) out.push({row: {id: p.id, kind: 'cust', upd: mkUpd(d, p.id, now), del: false, view: ['', cell(p.name), b / 100, 'رصيد عميل', want ? 'مطلوب ' + want.amt / 100 : ''], data: x}, sig});
   });
   Object.keys(d.cs).forEach(id => { if (!seen.has(id) && d.cs[id] !== '-') out.push({row: {id, kind: 'cust', upd: mkUpd(d, id, now), del: true, view: ['', '', '', 'اتشال', ''], data: {name: '', bal: 0}}, sig: '-'}); });
   return out;
+}
+/* كشوف عملاء السوق بتتحسب مرة وتفضل لحد ما أي سجل يتغير (نفس بصمة mkSupMemo) */
+let mkCsMemo = null;
+function mkCustSt() {
+  let u1 = 0, u2 = 0; for (const k of ['parties', 'entries', 'sets']) for (const x of db[k]) { const u = +x.upd || 0; u1 += u % 1e7; u2 += Math.floor(u / 1e7); }
+  const from = supFrom(), key = [db.parties.length, db.entries.length, db.sets.length, u1, u2, from].join('|');
+  if (!mkCsMemo || mkCsMemo.db !== db || mkCsMemo.key !== key) mkCsMemo = {db, key, M: new Map()};
+  const M = mkCsMemo.M, cs = liveParties().filter(p => p.sec === 'mkt' && !M.has(p.id));
+  if (cs.length) {
+    const by = new Map(cs.map(p => [p.id, []]));
+    for (const e of db.entries) if (!e.del && by.has(e.party)) by.get(e.party).push(e);
+    cs.forEach(p => { const st = mkStLines(by.get(p.id).sort(entCmp), from, 36000); st.h = mkStHash(st); M.set(p.id, st); });
+  }
+  return M;
 }
 /* حسابات الموردين كلها (بطلب صاحب المشروع 15/10/2026): نسخة للشريك يشوفها بس. كل مورد سطر sup فيه:
    bal = اللي ليه دلوقتي، ob = اللي كان ليه قبل from، وr = حركاته من أول الشهر من 3 شهور [تاريخ، نوع، بيان، اللي ليه زاد بكام (بالسالب لو قل)، ملاحظة].
@@ -8828,8 +8859,9 @@ function mkSupData(p, ents, from) {
     r.push([e.date, e.kind, SUP_LBL[e.kind] || r0.desc || e.desc || '', x, note.length > 140 ? note.slice(0, 139) + '…' : note]);
   });
   /* خانة الشيت 50 ألف حرف: لو مورد حركاته كتير قوي، الأقدم بيدخل في ob والرصيد بيفضل زي ما هو */
-  while (r.length && JSON.stringify(r).length + itN > 40000) { const o = r.shift(); ob += o[3]; from = r.length ? r[0][0] : todayISO(); }
-  return {name: p.name, bal, ob, from, r, it};
+  while (r.length && JSON.stringify(r).length + itN > 20000) { const o = r.shift(); ob += o[3]; from = r.length ? r[0][0] : todayISO(); }
+  const st = mkStLines(ents, supFrom(), Math.max(4000, 40000 - itN - JSON.stringify(r).length));
+  return {name: p.name, bal, ob, from, r, it, sf: st.sf, so: st.so, s: st.s};
 }
 /* كشف الموردين بيتحسب مرة ويفضل لحد ما أي سجل يتغير (بطلبه 31/10/2026، "التهنيجة": كان بيتحسب كله ويتحول نص كل 8 ثواني وانت شغال).
    البصمة = عدد السجلات ومجموع upd (أي تعديل أو سحب بيزوّد upd) وأول الكشف، والنتيجة زي ما هي بالظبط */
@@ -8844,7 +8876,7 @@ function mkSupRows() {
   sups.forEach(p => {
     seen.add(p.id);
     let m = mkSupMemo.M.get(p.id);
-    if (!m) { const data = mkSupData(p, by.get(p.id).sort(entCmp), from); m = {data, sig: 's3|' + strHash(JSON.stringify(data))}; mkSupMemo.M.set(p.id, m); }
+    if (!m) { const data = mkSupData(p, by.get(p.id).sort(entCmp), from); m = {data, sig: 's4|' + strHash(JSON.stringify(data))}; mkSupMemo.M.set(p.id, m); }
     const {data, sig} = m;
     if (ss[p.id] !== sig) out.push({row: {id: p.id, kind: 'sup', upd: mkUpd(d, p.id, now), del: false, view: ['', cell(p.name), data.bal / 100, 'رصيد مورد', ''], data}, sig, box: 'ss'});
   });

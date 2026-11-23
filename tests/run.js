@@ -2628,7 +2628,7 @@ const T0 = Date.now();
     eq('عادة الدفع للشريك (payAvgs) = نفس حسبة payInfo لكل حساب، وبتروح مع رصيد عميل السوق (avg)', await A.evaluate(() => {
       const p = liveParties().find(x => x.sec === 'mkt'), ds = [21, 14, 8, 1].map(n => addDays(todayISO(), -n)), mine = ds.map(d => addEntry({party: p.id, kind: 'pay', date: d, amt: 100, vault: 'v_main'}));
       const av = payAvgs(), same = liveParties().filter(x => x.sec !== 'sup').every(x => (av.get(x.id) || 0) === ((payInfo(x, partyEntries(x.id, true), 1) || {avg: 0}).avg));
-      const row = mkCustRows().find(r => r.row.id === p.id), r = [same, av.get(p.id) > 0, !!row && row.row.data.avg === av.get(p.id), !!row && row.sig.startsWith('v5|')];
+      const row = mkCustRows().find(r => r.row.id === p.id), r = [same, av.get(p.id) > 0, !!row && row.row.data.avg === av.get(p.id), !!row && row.sig.startsWith('v6|')];
       db.entries = db.entries.filter(e => !mine.includes(e)); mine.forEach(e => E.delete(e.id)); return r;
     }), [true, true, true, true]);
     eq('رصيد العميل/المورد عند الشريك: الوقت دايماً أكبر من آخر وقت الجهاز بعته للسطر (الشيت كان بيرفض الرصيد الصح ويقول وصل)', await A.evaluate(() => {
@@ -2638,7 +2638,7 @@ const T0 = Date.now();
       d.cu = {}; const c2 = mkCustRows().find(r => r.row.id === p.id);
       d.cu = cu0; if (cs0 === undefined) delete d.cs[p.id]; else d.cs[p.id] = cs0; if (d.ss) { if (ss0 === undefined) delete d.ss[s.id]; else d.ss[s.id] = ss0; }
       let ver = 0; for (const k of ['parties', 'entries', 'sets']) for (const r of db[k]) if (r.upd > ver) ver = r.upd;
-      return [c.row.upd, u.row.upd, c2.row.upd === 1e13 + ver + 1, c.sig.startsWith('v5|'), u.sig.startsWith('s3|')];
+      return [c.row.upd, u.row.upd, c2.row.upd === 1e13 + ver + 1, c.sig.startsWith('v6|'), u.sig.startsWith('s4|')];
     }), [2e13 + 1, 2e13 + 1, true, true, true]);
     eq('الوارد متقسم (جاهزين للنقل / محتاجين قرارك)، ومفيش زرار "رجّعها" في الوارد نفسه: جوه نافذة السطر', await A.evaluate(async () => {
       const r = [!!document.querySelector('#mkBody .mqsec [data-gs]'), !document.querySelector('#mkBody [data-bk]')];
@@ -3331,6 +3331,52 @@ const T0 = Date.now();
       /* نشيل الدفعتين علشان باقي الاختبارات */
       await M.evaluate(() => { liveOps().filter(o => o.t === 'spay' && (o.sid || o.sname === 'مورد مش موجود خالص') && opState(o) !== 'done').forEach(o => { o.del = true; bump(o); }); save(); });
       await bg(M, 'sync()'); await bg(A, 'mkSync()');
+    }
+
+    sec('٢٢ب١) حركة السوق: أحمد بيبعت كشف حساب للعميل والمورد ويختار المدة (lib/mkstmt.js)');
+    {
+      /* بطلبه 23/11/2026: سطور الكشف بتيجي من الحسابات مع الرصيد (s/sf/so)، والرصيد قبلها + السطور = الرصيد بالقرش */
+      await bg(A, 'mkSync()'); await bg(M, 'sync()'); await M.settle(200);
+      eq('كل عميل وكل مورد عند أحمد: الرصيد قبل الكشف + سطور الكشف = رصيده في الحسابات بالقرش، والكشف من أول الشهر من 3 شهور', await M.evaluate(() => {
+        const C = Object.values(S.cust).filter(c => !c.del), V = Object.values(S.sup).filter(v => !v.del && v.name);
+        const ok = (x, b) => Array.isArray(x.s) && x.so + x.s.reduce((n, r) => n + r[4], 0) === b;
+        return [C.length > 0, V.length > 0, C.every(c => ok(c, c.bal)), V.every(v => ok(v, -v.bal)), [...C, ...V].every(x => x.s.every(r => r[0] >= x.sf))];
+      }), [true, true, true, true, true]);
+      eq('الحسابات: سطور الكشف نفس سطور كشف الحسابات (rowsOfList) من أول الفترة', await A.evaluate(() => {
+        const p = liveParties().find(x => x.sec === 'mkt' && partyEntries(x.id).length), from = supFrom(), st = mkCustSt().get(p.id), sd = stmtData(p.id, from, todayISO());
+        return [st.s.length === sd.rows.length, st.so === (sd.open || 0), st.s.every((r, i) => r[4] === sd.rows[i].dr - sd.rows[i].cr && r[1] === sd.rows[i].desc)];
+      }), [true, true, true]);
+      const cid = await M.evaluate(() => Object.values(S.cust).find(c => !c.del && c.s && c.s.length).id);
+      await M.evaluate(id => { pyTab = 'pay'; nav('p/' + id); }, cid); await M.settle(200);
+      await M.click('#cSt'); await M.waitForFunction(() => window.MkStmt && document.querySelector('#modal #mstP'));
+      eq('صفحة العميل: زرار «ابعت كشف حساب» بيفتح نافذة فيها 4 مدد (الافتراضي 3 شهور) وزرار واتساب', await M.evaluate(() => [$$('#mstP button').length, $('#mstP button.on').dataset.k, !!$('#mstS'), !!$('#mstV')]), [4, 'a', true, true]);
+      eq('مدة الكشف: الأربع زراير سطر واحد ونفس الارتفاع', await M.evaluate(() => { const bs = $$('#mstP button'), hs = new Set(bs.map(b => Math.round(b.getBoundingClientRect().height))); return [hs.size, bs.every(b => b.scrollWidth <= b.clientWidth + 1)]; }), [1, true]);
+      eq('العميل: الكشف (3 شهور) بيقفل على نفس الرصيد اللي ظاهر عند أحمد، حتى مع حركة لسه منزلتش', await M.evaluate(id => {
+        const now = nowS(), o = {id: newId(), t: 'pay', cid: id, cname: 'x', amt: 12300, m: 'cash', ts: now, cr: now, upd: now, del: false}; S.ops[o.id] = o;
+        const c = customers().get(id), pend = custOps(id, aliases()).filter(x => !['done', 'rm'].includes(opState(x)));
+        const s = MkStmt.stmtOf(Object.assign({}, c.st, {sup: false, pend}), c.st.sf, today()); delete S.ops[o.id];
+        return [s.close === c.bal, s.rows.some(r => r.x === -12300 && r.k === 'pay')];
+      }, cid), [true, true]);
+      eq('مدة أقصر: الرصيد قبلها بيتحسب صح (رصيد أول المدة + سطورها = الآخر)', await M.evaluate(id => {
+        const c = customers().get(id), a = Object.assign({}, c.st, {sup: false, pend: []}), t = today(), m0 = t.slice(0, 8) + '01', s = MkStmt.stmtOf(a, m0 < c.st.sf ? c.st.sf : m0, t);
+        return s.open + s.rows.reduce((n, r) => n + r.x, 0) === s.close && s.rows.every(r => r.d >= s.from);
+      }, cid), true);
+      await M.click('#mstV'); await M.waitForFunction(() => document.querySelector('#modal #mstS2') || (document.querySelector('#toast') || {}).textContent.includes('مقدرتش'), null, {timeout: 30000});
+      eq('«شوف الورقة الأول»: الكشف PDF اتعمل وظاهر',await M.evaluate(() => [!!$('#mstS2'), $$('#modal img').length >= 1]), [true, true]);
+      eq('ورقة الكشف: اسم العميل والرصيد بالحروف، ومفيش أيقونات مرسومة جواها', await M.evaluate(id => {
+        const c = customers().get(id), a = Object.assign({}, c.st, {name: c.name, sup: false, pend: []}), pg = MkStmt.build(a, MkStmt.stmtOf(a, c.st.sf, today()));
+        const tx = pg.map(x => x.textContent).join(' '), r = [tx.includes(c.name), tx.includes('كشف حساب'), tx.includes('المبلغ بالحروف'), !document.querySelector('#mstR i-c')];
+        document.querySelector('#mstR').innerHTML = ''; return r;
+      }, cid), [true, true, true, true]);
+      await M.evaluate(() => closeModal()); await M.settle(100);
+      const vid = await M.evaluate(() => Object.values(S.sup).find(v => !v.del && v.name && v.s).id);
+      await M.evaluate(id => nav('v/' + id), vid); await M.settle(150);
+      await M.click('#vSt'); await M.waitForFunction(() => document.querySelector('#modal #mstP'));
+      eq('حساب المورد: زرار «ابعت كشف حساب»، والكشف بيقفل على اللي ليه عند أحمد', await M.evaluate(id => {
+        const v = suppliers().get(id), s = MkStmt.stmtOf(Object.assign({}, v.st, {sup: true, pend: v.pend}), v.st.sf, today()); closeModal();
+        return s.close * s.sg === v.bal;
+      }, vid), true);
+      await M.evaluate(() => nav('')); await M.settle(100);
     }
 
     sec('٢٢ب٢) حركة السوق: أحمد بيسجل فاتورة/مرتجع شراء للمورد ببنودها (اقتراحات بآخر سعر) وبتدخل الحسابات لوحدها وإشعار في الوارد');

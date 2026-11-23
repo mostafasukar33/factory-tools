@@ -1500,11 +1500,11 @@ const T0 = Date.now();
         repScSide = k; renderReports(); const R = buildReport(), [f, t] = repRange(), sec = k === 'all' ? ['mkt', 'site'] : [k], ps = liveParties().filter(p => sec.includes(p.sec) && !p.noTot);
         let s = 0, c = 0; db.entries.forEach(e => { if (e.del || e.kind === 'open' || e.date < f || e.date > t || !ps.some(p => p.id === e.party)) return; const v = (e.dr || 0) - (e.cr || 0); e.kind === 'pay' ? c -= v : s += v; });
         const g = n => (R.sum.find(r => r[0] === n) || [])[1], b0 = ps.reduce((a, p) => a + balance(p.id, f), 0), b1 = ps.reduce((a, p) => a + balance(p.id, addDays(t, 1)), 0);
-        tot[k] = [s, c]; out.push(g('إجمالي المبيعات') === fmtP(s), g('إجمالي التحصيل') === fmtP(c), R.fin[1] === fmtP(b1), b0 + s - c === b1, R.rows.every(r => sec.includes(P.get(r.id).sec)), $$('#rpSC button.on').length === 1, ps.filter(p => balance(p.id, addDays(t, 1))).every(p => R.rows.some(r => r.id === p.id)));
+        tot[k] = [s, c]; out.push(g('إجمالي المبيعات') === fmtP(s), g('إجمالي التحصيل') === fmtP(c), R.fin[1] === fmtP(b1), b0 + s - c === b1, R.rows.every(r => sec.includes(P.get(r.id).sec)), $$('#rpSC button.on').length === 1, ps.filter(p => balance(p.id, addDays(t, 1))).every(p => R.rows.some(r => r.id === p.id)), isWide() || getComputedStyle($('#p-rep .ldg.rp th')).position === 'static');
       }
       out.push(tot.all[0] === tot.mkt[0] + tot.site[0], tot.all[1] === tot.mkt[1] + tot.site[1], tot.all[0] > 0);
       repScSide = 'all'; return out;
-    }), Array(24).fill(true));
+    }), Array(27).fill(true));
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('لوحة النهارده اتشالت من الرئيسية', await A.$('#hDash'), null);
     const SR = await A.evaluate(() => [searchAll('لفة تجربة').length, searchAll('1350').map(r => r.title)[0] || '', searchAll('سلفة').length, searchAll('x').length]);

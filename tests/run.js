@@ -1492,6 +1492,19 @@ const T0 = Date.now();
       const g = k => (R.sum.find(r => r[0] === k) || [])[1];
       return [repMode, dowOf(f), dowOf(t), g('باع') === fmtP(s), g('حصّل') === fmtP(c), R.fin[1] === fmtP(b1), b0 - b1 === c - s, R.sum.every(r => !/الوارد|مصروف|مصاريف/.test(r[0])), R.rows.every(r => !r.id || P.get(r.id).sec === 'mkt'), $('#p-rep .ldg th').textContent];
     }), ['week', 6, 5, true, true, true, true, true, true, 'العميل']);
+    /* مبيعات وتحصيلات المصنع (بطلبه 23/11/2026): الكل = السوق + المواقع بالقرش، وأول + باع − حصّل = آخر، والموردين برّه */
+    await A.click('#rpPick'); await A.click('#modal [data-v=sc]'); await A.settle(200);
+    eq('مبيعات وتحصيلات المصنع: الكل = السوق + المواقع، وأول + باع − حصّل = آخر', await A.evaluate(() => {
+      repMode = 'year'; repYear = ''; const out = [], tot = {};
+      for (const k of ['all', 'mkt', 'site']) {
+        repScSide = k; renderReports(); const R = buildReport(), [f, t] = repRange(), sec = k === 'all' ? ['mkt', 'site'] : [k], ps = liveParties().filter(p => sec.includes(p.sec) && !p.noTot);
+        let s = 0, c = 0; db.entries.forEach(e => { if (e.del || e.kind === 'open' || e.date < f || e.date > t || !ps.some(p => p.id === e.party)) return; const v = (e.dr || 0) - (e.cr || 0); e.kind === 'pay' ? c -= v : s += v; });
+        const g = n => (R.sum.find(r => r[0] === n) || [])[1], b0 = ps.reduce((a, p) => a + balance(p.id, f), 0), b1 = ps.reduce((a, p) => a + balance(p.id, addDays(t, 1)), 0);
+        tot[k] = [s, c]; out.push(g('إجمالي المبيعات') === fmtP(s), g('إجمالي التحصيل') === fmtP(c), R.fin[1] === fmtP(b1), b0 + s - c === b1, R.rows.every(r => sec.includes(P.get(r.id).sec)), $$('#rpSC button.on').length === 1);
+      }
+      out.push(tot.all[0] === tot.mkt[0] + tot.site[0], tot.all[1] === tot.mkt[1] + tot.site[1], tot.all[0] > 0);
+      repScSide = 'all'; return out;
+    }), Array(21).fill(true));
     await A.click('nav button[data-go=home]'); await A.settle(200);
     eq('لوحة النهارده اتشالت من الرئيسية', await A.$('#hDash'), null);
     const SR = await A.evaluate(() => [searchAll('لفة تجربة').length, searchAll('1350').map(r => r.title)[0] || '', searchAll('سلفة').length, searchAll('x').length]);
@@ -2108,7 +2121,7 @@ const T0 = Date.now();
       const r = [!$('#rpK').offsetParent, !!$('#rpPick').offsetParent && $('#rpPick').textContent.includes('الأرباح'), $('#rpPer').textContent.includes('سنة ' + todayISO().slice(0, 4)), !$('#rpM').offsetParent];
       $('#rpPer').click(); r.push(!!$('#rpM').offsetParent); $('#rpPer').click(); r.push(!$('#rpM').offsetParent);
       const td = $('#p-rep table.ldg td'); r.push(!!td && !/\d{4}$/.test(td.textContent.trim()), buildReport().rows.some(x => /\d{4}$/.test(x.cells[0])));
-      $('#rpPick').click(); r.push($$('#modal .rpkm [data-v]').length === 10); $('#modal .rpkm [data-v=gm]').click(); r.push(repKind === 'gm' && !!$('#rpGK').offsetParent);
+      $('#rpPick').click(); r.push($$('#modal .rpkm [data-v]').length === 11); $('#modal .rpkm [data-v=gm]').click(); r.push(repKind === 'gm' && !!$('#rpGK').offsetParent);
       repKind = 'home'; renderReports(); return r; }), [true, true, true, true, true, true, true, true, true, true]);
     eq('الموبايل: كل زراير صفحة العميل جوه الشاشة', await A.evaluate(() => [...$$('#p-party .acts .btn')].filter(b => b.offsetParent).every(b => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })), true);
     eq('رسالة التراجع: صغيرة فوق مكان الاسم، مش فوق أي زرار، وبتختفي في أقل من 5 ثواني', await A.evaluate(async () => {
@@ -3808,7 +3821,7 @@ const T0 = Date.now();
       go('mkt'); return r; }), [true, true, true, true, true, true]);
     sec('قاعدة التبويبات: سطر واحد ونفس الارتفاع ومفيش كلام مقطوع');
     /* أي مجموعة تبويبات (.seg) ظاهرة: كل زرار نفس الارتفاع، الكلام مش ملفوف على سطرين ولا متقطع */
-    for (const k of ['home', 'profit', 'col', 'debt', 'tot', 'cash', 'item', 'gm', 'mat']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
+    for (const k of ['home', 'profit', 'sc', 'col', 'debt', 'tot', 'cash', 'item', 'gm', 'mat']) { await A.evaluate(k => { go('rep'); repKind = k; renderReports(); }, k); await A.settle(150); await segOk(A, 'الحسابات — التقارير (' + k + ')'); }
     await A.evaluate(() => { cashView = 'type'; go('cash'); renderCash(); $('#cPer').classList.add('pk'); }); await A.settle(200); await segOk(A, 'الحسابات — الخزنة (النهارده/الأسبوع/الشهر/من لـ)');
     await A.evaluate(() => { mkView = 'arch'; mkAMode = 'day'; go('mkt'); renderMkt(); }); await A.settle(200); if (await A.$('#maMode')) await segOk(A, 'الحسابات — أرشيف الوارد'); await A.evaluate(() => { mkView = 'in'; });
         await A.evaluate(() => go('set')); await A.settle(200); await segOk(A, 'الحسابات — الإعدادات');

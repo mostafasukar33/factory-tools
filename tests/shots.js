@@ -230,6 +230,8 @@ const HSSHOT = `if (!getSet('paySheet', null)) {
 const SCREENS = [
   ...ACC('m', MOB),
   {name: 'acc-rep-ah-m', app: 'acc', vp: MOB, full: true, go: accEval(`go('rep'); repKind = 'ah'; repMode = 'week'; repDay = addDays(todayISO(), -3); renderReports()`)},
+  {name: 'acc-rep-sc-m', app: 'acc', vp: MOB, full: true, go: accEval(`go('rep'); repKind = 'sc'; repScSide = 'all'; repMode = 'month'; repMonth = ''; renderReports()`)},
+  {name: 'acc-rep-sc-l', app: 'acc', vp: LAP, full: true, go: accEval(`go('rep'); repKind = 'sc'; repScSide = 'all'; repMode = 'month'; repMonth = ''; renderReports()`)},
   {name: 'acc-more-m', app: 'acc', vp: MOB, go: accEval("go('more')")},
   {name: 'acc-tg-m', app: 'acc', vp: MOB, full: true, go: accEval("go('more'); putSet('tgOpts', Object.assign(tgOpts(), {mute: 0})); tgModal()")},   // التحكم في تليجرام (22/11/2026)
   {name: 'acc-tg-off-m', app: 'acc', vp: MOB, full: true, go: accEval("go('more'); putSet('tgOpts', Object.assign(tgOpts(), {mute: tgMuteAt('d')})); tgModal()")},

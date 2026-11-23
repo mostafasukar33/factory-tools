@@ -6792,7 +6792,7 @@ function searchModal(q0) {
   focusSoon('#saQ', 50);
 }
 let repColMode = 'week';   // تقرير التحصيل: أسبوعي (أسابيع الشهر، السبت للجمعة) أو شهري (شهور السنة)
-let repKind = 'home', repSum = 'month', repSide = 'mkt', repMode = 'year', repDay = '', repMonth = '', repYear = '', repFrom = '', repTo = '', repVault = '', repItemKind = 'inv', repPerOpen = false;
+let repKind = 'home', repSum = 'month', repSide = 'mkt', repMode = 'year', repDay = '', repMonth = '', repYear = '', repFrom = '', repTo = '', repVault = '', repItemKind = 'inv', repScSide = 'all', repPerOpen = false;
 function repRange() {
   const t = todayISO();
   if (repMode === 'day') { const d = repDay || t; return [d, d]; }
@@ -6838,6 +6838,7 @@ function buildReport() {
   const ps = liveParties();
   if (repKind === 'profit' || repKind === 'home') { const [f, t] = repRange(); return profitReport(f, t); }
   if (repKind === 'col') return colReport();
+  if (repKind === 'sc') { const [f, t] = repRange(); return scReport(f, t); }
   if (repKind === 'gm') { const [f, t] = repRange(); return gmReport(f, t); }
   if (repKind === 'mat') { const [f, t] = repRange(); return matReport(f, t); }
   if (repKind === 'debt') {
@@ -6922,6 +6923,26 @@ function buildReport() {
     rows: list.map(x => ({cells: [x.name, x.unit ? `${fmtQ(x.q)} ${x.unit}` : '', x.q ? fmtP(Math.round(x.v / x.q)) : '', x.unit ? String(x.docs.size) : '', x.unit ? String(x.who.size) : '', fmtP(x.v)], cls: x.v < 0 ? 'ret' : ''})),
     sum: [['عدد الأصناف', String(list.filter(x => x.unit).length)]], fin: [sale ? 'إجمالي المبيعات' : 'إجمالي المشتريات', fmtP(tot)]};
 }
+/* مبيعات وتحصيلات المصنع (بطلبه 23/11/2026): كل العملاء (أو السوق بس أو المواقع بس) باع كام وحصّل كام في الفترة وعليه كام دلوقتي.
+   نفس حسبة تقرير أحمد: باع = كل حاجة غير الدفعات (فواتير − مرتجع − خصم)، فـ أول + باع − حصّل = آخر بالظبط. عرض بس */
+function scReport(f, t) {
+  const n = addDays(t, 1), secs = repScSide === 'all' ? ['mkt', 'site'] : [repScSide];
+  const ps = liveParties().filter(p => secs.includes(p.sec) && !p.noTot), M = new Map(ps.map(p => [p.id, {p, s: 0, c: 0}]));
+  db.entries.forEach(e => {
+    const x = M.get(e.party); if (!x || e.del || e.kind === 'open' || e.date < f || e.date > t) return;
+    const v = (e.dr || 0) - (e.cr || 0); if (e.kind === 'pay') x.c -= v; else x.s += v;
+  });
+  const L = [...M.values()].filter(x => x.s || x.c).map(x => Object.assign(x, {b1: balance(x.p.id, n)})).sort((a, b) => b.s - a.s || b.c - a.c);
+  const T = (k, sec) => L.filter(x => !sec || x.p.sec === sec).reduce((a, x) => a + x[k], 0), S = T('s'), C = T('c');
+  const all0 = ps.reduce((a, p) => a + balance(p.id, f), 0), all1 = ps.reduce((a, p) => a + balance(p.id, n), 0), pc = v => S ? ` (${Math.round(v * 100 / S)}%)` : '';
+  return {title: 'مبيعات وتحصيلات ' + (repScSide === 'all' ? 'المصنع' : SECS[repScSide]), period: rangeText(f, t),
+    cols: [{h: 'العميل', w: 40, c: 'l'}, {h: 'باع', w: 20, c: 'n'}, {h: 'حصّل', w: 20, c: 'n'}, {h: 'عليه دلوقتي', w: 20, c: 'b'}],
+    rows: L.map(x => ({cells: [x.p.name, x.s ? fmtP(x.s) : '', x.c ? fmtP(x.c) : '', fmtP(x.b1)], sub: repScSide === 'all' ? SECS[x.p.sec] : '', cls: x.b1 < 0 ? 'ret' : '', id: x.p.id})),
+    sum: [['إجمالي المبيعات', fmtP(S)], ...(repScSide === 'all' ? [['منها عملاء السوق', fmtP(T('s', 'mkt')) + pc(T('s', 'mkt'))], ['منها عملاء المواقع', fmtP(T('s', 'site')) + pc(T('s', 'site'))]] : []),
+      ['إجمالي التحصيل', fmtP(C)], ...(repScSide === 'all' ? [['منه عملاء السوق', fmtP(T('c', 'mkt'))], ['منه عملاء المواقع', fmtP(T('c', 'site'))]] : []),
+      ['عدد العملا اللي اتعاملوا', String(L.length)], ['كان عليهم أول الفترة', fmtP(all0)]],
+    fin: ['عليهم آخر الفترة', fmtP(all1)]};
+}
 /* رسمة أعمدة للأرباح بالشهر (في الشاشة بس، مش في الـ PDF): الدهبي المبيعات والأخضر الربح */
 /* الرسم بيعرض الشهور اللي فيها شغل بس (بطلبه 17/10/2026)، ولو 6 أو أقل اسم الشهر كامل */
 function profitChart(rows) {
@@ -7001,16 +7022,16 @@ function repPick(k) { repKind = k; if (repKind === 'profit' && repMode === 'day'
 function renderReports() {
   loadPdfLibs().catch(() => {});   // نجهّز أداة الـ PDF من دلوقتي علشان تبقى جاهزة لما يدوس
   const R = buildReport(), t = todayISO(), [f, to] = repRange();
-  const needRange = repKind === 'ah' || repKind === 'cash' || repKind === 'item' || repKind === 'profit' || repKind === 'gm' || repKind === 'mat';
+  const needRange = repKind === 'ah' || repKind === 'sc' || repKind === 'cash' || repKind === 'item' || repKind === 'profit' || repKind === 'gm' || repKind === 'mat';
   const jw = isWide() ? 0 : ivWaiting(), home = repKind === 'home';
   /* الموبايل (بطلبه 30/10/2026): الجرد زرار صغير في الشريط، والتقرير والفترة زرارين بيفتحوا اختيار (#rpPick/#rpPer) بدل التبويبات والكارت */
   const mob = !isWide();
   const head = (mob ? `<div class="sech ppbar tb" style="margin-top:0"><a id="rpBack">→<em> الحسابات</em></a><b class="tt">📊 التقارير</b><button class="btn line sm rpjb" id="rpJrd" type="button">📦 الجرد${jw ? ` (${jw})` : ''}</button></div>` : '')
     + ((st => st ? `<div class="tstrip">${st}</div>` : '')(home ? '' : '<button class="btn line sm" id="rpHome" type="button">📊 الملخص</button>'));
-  const KS = [['profit', 'الأرباح'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف'], ['gm', 'المكسب'], ['mat', 'الخامات'], ['ah', MK_PN]];
+  const KS = [['profit', 'الأرباح'], ['sc', 'مبيعات وتحصيل'], ['col', 'التحصيل'], ['debt', 'المسحوبات'], ['tot', 'ليا وعليا'], ['cash', 'الخزنة'], ['item', 'بالصنف'], ['gm', 'المكسب'], ['mat', 'الخامات'], ['ah', MK_PN]];
   /* زرار اختيار التقرير (الموبايل): ظاهر من أول ما تدخل التقارير وفي الملخص كمان (بطلبه 31/10/2026: كان مبيظهرش غير بعد ما تفتح تقرير) */
   const bindPick = () => { if ($('#rpPick')) $('#rpPick').onclick = () => {
-    const IC = {home: '📊', profit: '💰', col: '💵', debt: '📤', tot: '👥', cash: '💸', item: '📦', gm: '🏷', mat: '🏭', ah: '🏪'};
+    const IC = {home: '📊', profit: '💰', sc: '🧾', col: '💵', debt: '📤', tot: '👥', cash: '💸', item: '📦', gm: '🏷', mat: '🏭', ah: '🏪'};
     modal(`<h3>اختار التقرير</h3><div class="rpkm">${[['home', 'الملخص'], ...KS].map(([k, n]) => `<button class="btn line ${repKind === k ? 'on' : ''}" type="button" data-v="${k}">${IC[k]} ${esc(n)}</button>`).join('')}</div>`);
     $$('#modal .rpkm [data-v]').forEach(b => b.onclick = () => {
       const k = b.dataset.v, x = $(`#rpK button[data-v=${k}]`); closeModal(); repPerOpen = false;
@@ -7031,13 +7052,14 @@ function renderReports() {
   $('#p-rep').innerHTML = head + `
     <div class="seg s6" id="rpK">${KS.map(([k, n]) => `<button type="button" data-v="${k}" class="${repKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     ${mob ? `<div class="rpbar2"><button class="k" id="rpPick" type="button">${esc((KS.find(x => x[0] === repKind) || ['', ''])[1])} <i>▾</i></button>${needRange ? `<button id="rpPer" type="button">${esc(perLabel)} <i>▾</i></button>` : ''}${repKind === 'profit' || repKind === 'gm' || repKind === 'mat' ? qh(esc(R.note)) : ''}</div>` : ''}
-    <div class="card rpcard${mob && !['debt', 'col', 'gm', 'item', 'cash', 'mat'].includes(repKind) ? ' e0' : ''}${repPerOpen ? ' po' : ''}">
+    <div class="card rpcard${mob && !['debt', 'col', 'gm', 'item', 'cash', 'mat', 'sc'].includes(repKind) ? ' e0' : ''}${repPerOpen ? ' po' : ''}">
       ${repKind === 'debt' ? `<div class="seg s3" id="rpSide" style="margin:0">${Object.entries(SECS).map(([k, n]) => `<button type="button" data-v="${k}" class="${repSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'col' ? `<div class="seg s2" id="rpCM">${[['week', 'أسبوعي'], ['month', 'شهري']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repColMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${repColMode === 'week' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">` : `<input class="inp num" id="rpYear" inputmode="numeric" value="${repYear || t.slice(0, 4)}">`}` : ''}
       ${repKind === 'gm' ? `<div class="seg s5" id="rpGK">${[['type', 'بالنوع'], ['item', 'بالصنف'], ['cust', 'بالعميل'], ['month', 'بالشهر'], ['doc', 'بالفاتورة']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repGmKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'mat' ? `<div class="seg s3" id="rpXK">${[['name', 'بالخامة'], ['sup', 'بالمورد'], ['month', 'بالشهر']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repMatKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${R.groups.length > 1 ? `<div class="seg s2" id="rpXG">${R.groups.map(k => `<button type="button" data-v="${k}" class="${R.g === k ? 'on' : ''}">${MAT_G[k]}</button>`).join('')}</div>` : ''}` : ''}
+      ${repKind === 'sc' ? `<div class="seg s3" id="rpSC">${[['all', 'الكل'], ['mkt', 'السوق'], ['site', 'المواقع']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repScSide === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${repKind === 'item' ? `<div class="seg" id="rpIK">${[['inv', 'المبيعات'], ['pur', 'المشتريات']].map(([k, n]) => `<button type="button" data-v="${k}" class="${repItemKind === k ? 'on' : ''}">${n}</button>`).join('')}</div>` : ''}
       ${needRange ? `<div class="rpper"><div class="seg s4" id="rpM">${(repKind === 'ah' ? [['week', 'أسبوع'], ['month', 'شهر'], ['range', 'من–إلى']] : [['day', 'يوم'], ['month', 'شهر'], ['year', 'سنة'], ['range', 'من–إلى']]).map(([k, n]) => `<button type="button" data-m="${k}" class="${repMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
         ${repMode === 'day' || repMode === 'week' ? `<input class="inp" type="date" id="rpDay" value="${repDay || t}">` : repMode === 'month' ? `<input class="inp" type="month" id="rpMonth" value="${repMonth || t.slice(0, 7)}">`
@@ -7059,6 +7081,7 @@ function renderReports() {
   $$('#rpK button').forEach(b => b.onclick = () => { repPick(b.dataset.v); renderReports(); });
   $$('#rpSide button').forEach(b => b.onclick = () => { repSide = b.dataset.v; renderReports(); });
   $$('#rpIK button').forEach(b => b.onclick = () => { repItemKind = b.dataset.v; renderReports(); });
+  $$('#rpSC button').forEach(b => b.onclick = () => { repScSide = b.dataset.v; renderReports(); });
   $$('#rpGK button').forEach(b => b.onclick = () => { repGmKind = b.dataset.v; renderReports(); });
   if ($('#rpIC')) $('#rpIC').onclick = () => costModal(renderReports);
   if ($('#rpGT')) $('#rpGT').onclick = () => gmTypeModal(renderReports);

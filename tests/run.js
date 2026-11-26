@@ -3469,6 +3469,112 @@ const T0 = Date.now();
       await bg(A, 'mkSync()'); await bg(M, 'sync()');
     }
 
+    sec('٢٢ب٣) حركة السوق: أحمد بيسجل فاتورة العميل بالإجمالي أو ببنودها، وبتدخل الحسابات ببنودها وإشعار، وحماية التكرار (نفس المبلغ في نفس اليوم)');
+    {
+      /* بطلبه 26/11/2026 */
+      const sync2 = async () => { for (let i = 0; i < 2; i++) { await bg(M, 'sync()'); await bg(A, 'mkSync()'); } await bg(M, 'sync()'); await M.settle(200); };
+      await A.evaluate(() => localStorage.setItem('fo_auto', '1'));
+      await sync2();
+      const cid = await M.evaluate(() => Object.values(S.cust).find(c => !c.del && Array.isArray(c.s) && c.s.some(r => r[2] && r[6] !== 'ret' && !/^مرتجع/.test(r[1]))).id);
+      const b0 = await A.evaluate(id => balance(id), cid), mb0 = await M.evaluate(id => customers().get(id).bal, cid), cash0 = await M.evaluate(() => cashNow());
+      await M.evaluate(id => { pyTab = 'inv'; nav('p/' + id); }, cid); await M.settle(200);
+      eq('تبويب الفاتورة عند أحمد: «سجّل بالإجمالي» و«اكتب البنود»', await M.evaluate(() => [$('#invOk').textContent, $('#invLn').textContent]), ['🧾 سجّل بالإجمالي', '📝 اكتب البنود']);
+      await M.click('#invLn'); await M.settle(200);
+      const it = await M.evaluate(id => ciItems(id)[0], cid);
+      await M.fill('#sdL .sdi:first-child [data-f=name]', it.name.slice(0, 2));
+      eq('فاتورة العميل: شاشة البنود، وأول حرفين بيطلّعوا أصناف العميل ده', await M.evaluate(() => [scr.v, !!$('#sdL .sg.on'), $('#sdL .sg .sh') ? $('#sdL .sg .sh').textContent : '']), ['cdoc', true, 'اتباع للعميل ده قبل كده']);
+      await M.fill('#sdL .sdi:first-child [data-f=name]', it.name); await M.evaluate(() => $('#sdL [data-f=name]').dispatchEvent(new Event('change')));
+      await M.fill('#sdL .sdi:first-child [data-f=qty]', '2');
+      eq('اسم الصنف كامل = آخر سعر اتباعله بيه (من كشفه اللي جاي من الحسابات)', await M.evaluate(() => $('#sdL [data-f=price]').value), await M.evaluate(x => fmt(x), it.price));
+      await M.fill('#sdL .sdi:nth-child(2) [data-f=name]', 'صنف فاتورة تجربة'); await M.fill('#sdL .sdi:nth-child(2) [data-f=qty]', '3'); await M.fill('#sdL .sdi:nth-child(2) [data-f=price]', '100');
+      const amt = 2 * it.price + 30000;
+      await M.click('#sdOk'); await M.settle(300);
+      const op = await M.evaluate(() => liveOps().filter(o => o.t === 'inv' && o.lines).sort((a, b) => b.cr - a.cr)[0]);
+      eq('اتسجلت فاتورة ببنودها ورجع لصفحة العميل، ورصيده زاد عند أحمد، والكاش زي ما هو', [op.cid === cid, op.amt, op.lines.length, await M.evaluate(() => scr.v), await M.evaluate(id => customers().get(id).bal, cid) - mb0, await M.evaluate(() => cashNow()) - cash0], [true, amt, 2, 'pay', amt, 0]);
+      eq('الحركة عند أحمد فيها الأصناف، والكشف اللي بيبعته فيه البنود ويقفل على رصيده', await M.evaluate(([oid, id]) => {
+        const o = S.ops[oid], c = customers().get(id), pend = custOps(id, aliases()).filter(x => !['done', 'rm'].includes(opState(x)));
+        const st = MkStmt.stmtOf(Object.assign({}, c.st, {sup: false, pend}), c.st.sf, today());
+        return [opHow(o).includes('صنف فاتورة تجربة'), st.rows.some(r => r.desc === 'صنف فاتورة تجربة' && r.x === 30000), st.close === c.bal];
+      }, [op.id, cid]), [true, true, true]);
+      await sync2();
+      eq('دخلت الحسابات لوحدها ببنودها (مش «من غير بنود»)، ورصيد العميل زاد، وإشعار في الوارد مش مجموعة', await A.evaluate(([oid, id]) => {
+        const e = E.get('e_mk_' + oid);
+        return [e.kind, e.party === id, docTotal(e), e.lines.length, !!e.mkNL, nlList(id).some(x => x.id === e.id), mkNtList().some(x => x.o.id === oid && x.k === 'new'), mkGroups().some(g => g.ops.some(o => o.id === oid))];
+      }, [op.id, cid]), ['inv', true, amt, 2, false, false, true, false]);
+      eq('رصيد العميل في الحسابات زاد بالفاتورة، وتليجرام فيه الأصناف', [await A.evaluate(id => balance(id), cid) - b0, tgTexts().some(t => t.includes('صنف فاتورة تجربة'))], [amt, true]);
+      /* أحمد بيعدّل: نفس الشاشة، والتعديل بيتطبق لوحده طول ما مصطفى ملمسهاش */
+      await M.evaluate(oid => editSheet(S.ops[oid]), op.id); await M.settle(200);
+      eq('تعديل فاتورة العميل ببنودها بيفتح نفس شاشة البنود', await M.evaluate(() => [scr.v, $$('#sdL .sdi').length]), ['cdoc', 3]);
+      await M.fill('#sdL .sdi:nth-child(2) [data-f=qty]', '5'); await M.click('#sdOk'); await M.settle(300);
+      await sync2();
+      eq('تعديل أحمد اتطبق في الحسابات لوحده', await A.evaluate(oid => docTotal(E.get('e_mk_' + oid)), op.id), amt + 20000);
+      /* مصطفى عدّلها بإيده: عند أحمد «مصطفى كتب بنودها» ومبيعدّلش البنود */
+      await A.evaluate(oid => { const e = E.get('e_mk_' + oid); e.lines[1].price = 12000; applyAmounts(e); e.desc = docDesc(e); touch(e); saveDB(); }, op.id);
+      await sync2();
+      eq('مصطفى عدّلها بإيده: عند أحمد «مصطفى كتب بنودها» والتعديل نافذة مش شاشة البنود', await M.evaluate(oid => { const o = S.ops[oid]; editSheet(o); const r = [lnByM(o), scr.v, $('#modal').textContent.includes('مصطفى كتب بنودها'), !$('#eLn')]; closeModal(); return r; }, op.id), [true, 'pay', true, true]);
+      await M.settle(150);
+      /* حماية التكرار عند أحمد */
+      const a1 = amt + 20000;
+      await M.evaluate(id => { pyTab = 'inv'; nav('p/' + id); }, cid); await M.settle(200);
+      const n0 = await M.evaluate(() => liveOps().filter(o => o.t === 'inv').length);
+      await M.fill('#amt', String(a1 / 100)); await M.click('#invOk'); await M.settle(200);
+      eq('عند أحمد: نفس العميل ونفس المبلغ ونفس اليوم بيسأل «انت مسجل فاتورة بنفس المبلغ»', await M.evaluate(() => [$('#mask').classList.contains('on'), $('#modal').textContent.includes('انت مسجل فاتورة بنفس المبلغ')]), [true, true]);
+      await M.click('#aN'); await M.settle(200);
+      eq('«لأ، دي نفسها» = متسجلتش', await M.evaluate(() => liveOps().filter(o => o.t === 'inv').length), n0);
+      const man = await A.evaluate(id => { const e = addEntry({party: id, kind: 'inv', date: todayISO(), no: '', lines: [{name: 'صنف يدوي تجربة', unit: 'قطعة', qty: 1, price: 77700}], disc: 0, note: ''}); applyAmounts(e); e.desc = docDesc(e); saveDB(); return e.id; }, cid);
+      await sync2();
+      await M.evaluate(id => { pyTab = 'inv'; nav('p/' + id); }, cid); await M.settle(200);
+      await M.fill('#amt', '777'); await M.click('#invOk'); await M.settle(200);
+      eq('فاتورة كتبها مصطفى في الحسابات بنفس المبلغ ونفس اليوم: أحمد بيتسأل «مصطفى مسجل»', await M.evaluate(() => $('#modal').textContent.includes('مصطفى مسجل فاتورة بنفس المبلغ (777)')), true);
+      await M.click('#aY'); await M.settle(300);
+      const dop = await M.evaluate(() => liveOps().filter(o => o.t === 'inv').sort((a, b) => b.cr - a.cr)[0].id);
+      await sync2(); await A.evaluate(() => { mkView = 'in'; go('mkt'); }); await A.settle(400);
+      eq('عند مصطفى: فاتورة أحمد المتكررة مدخلتش لوحدها، وفي الوارد «عندك فاتورة بنفس المبلغ» بزرارين', await A.evaluate(oid => { const o = mkDb().ops[oid]; return [mkState(o), !mkRec(o), !!$(`#p-mkt [data-inv="${oid}"]`), $(`#p-mkt [data-sdig="${oid}"]`).textContent, $('#p-mkt').textContent.includes('عندك فاتورة لنفس العميل بنفس المبلغ في نفس اليوم'), mkInvAllOps().some(x => x.id === oid)]; }, dop), ['new', true, true, 'دي نفسها، تجاهلها', true, false]);
+      await A.click(`#p-mkt [data-sdig="${dop}"]`); await A.settle(300);
+      await sync2();
+      eq('«دي نفسها، تجاهلها»: عند مصطفى متجاهلة، وعند أحمد «مصطفى شالها» ومش محسوبة في رصيد العميل', [await A.evaluate(oid => mkState(mkDb().ops[oid]), dop), await M.evaluate(oid => opState(S.ops[oid]), dop), await M.evaluate(id => customers().get(id).bal === S.cust[id].bal + custOps(id, aliases()).filter(o => !['done', 'rm'].includes(opState(o))).reduce((n, o) => n + (o.t === 'inv' ? o.amt : -o.amt), 0), cid)], ['ign', 'rm', true]);
+      /* فاتورة ببنودها متكررة: في الإشعارات تستنى «دخّلها برضه» */
+      const lop = await M.evaluate(id => { const now = nowS(), c = customers().get(id), o = {id: newId(), t: 'inv', cid: id, cname: c.name, amt: 77700, lines: [{name: 'صنف يدوي تجربة', unit: 'قطعة', qty: 1, price: 77700}], ts: now, cr: now, upd: now, del: false}; S.ops[o.id] = o; save(); return o.id; }, cid);
+      await sync2(); await A.evaluate(() => renderMkt()); await A.settle(300);
+      eq('فاتورة ببنودها متكررة: في الإشعارات «مدخلتش لوحدها» و«دخّلها برضه»', await A.evaluate(oid => [mkNtList().find(x => x.o.id === oid).k, $('#mqNt').textContent.includes('عندك فاتورة بنفس المبلغ في نفس اليوم'), $(`#mqNt [data-sdin="${oid}"]`).textContent], lop), ['wait', true, 'دخّلها برضه']);
+      await A.click(`#mqNt [data-sdin="${lop}"]`); await A.settle(300);
+      eq('«دخّلها برضه» = دخلت حساب العميل ببنودها', await A.evaluate(oid => { const e = E.get('e_mk_' + oid); return [!!e && !e.del, e && docTotal(e), e && !!e.mkNL]; }, lop), [true, 77700, false]);
+      /* مصطفى بيكتب فاتورة وأحمد مسجل نفسها ولسه في الوارد */
+      await A.evaluate(() => localStorage.setItem('fo_auto', '0'));
+      const pop = await M.evaluate(id => { const now = nowS(), c = customers().get(id), o = {id: newId(), t: 'inv', cid: id, cname: c.name, amt: 55500, ts: now, cr: now, upd: now, del: false}; S.ops[o.id] = o; save(); return o.id; }, cid);
+      await sync2();
+      const bX = await A.evaluate(id => balance(id), cid);
+      await A.evaluate(id => docModal(P.get(id), 'inv'), cid); await A.settle(200);
+      await A.fill('.li [data-f=name]', 'صنف تحذير تجربة'); await A.fill('.li [data-f=qty]', '1'); await A.fill('.li [data-f=price]', '555');
+      await A.click('#dcOk'); await A.settle(150);
+      eq('مصطفى بيكتب فاتورة وأحمد مسجل نفسها ولسه في الوارد: تنبيه والدوسة الأولى مبتحفظش', [(await A.textContent('#dcWarn')).includes('أحمد مسجل فاتورة بنفس المبلغ (555)'), await A.evaluate(id => balance(id), cid) === bX], [true, true]);
+      await A.click('#dcX'); await closed(A);
+      /* فاتورة بالإجمالي: أحمد يكتب بنودها بعدين من التعديل */
+      await M.evaluate(oid => editSheet(S.ops[oid]), pop); await M.settle(150);
+      await M.click('#eLn'); await M.settle(200);
+      eq('«📝 اكتب بنودها» في فاتورة الإجمالي: شاشة البنود ومكتوب الإجمالي القديم', await M.evaluate(() => [scr.v, $('#main').textContent.includes('كنت كاتب إجماليها 555'), $('#mask').classList.contains('on')]), ['cdoc', true, false]);
+      await M.fill('#sdL .sdi:first-child [data-f=name]', 'صنف تحذير تجربة'); await M.fill('#sdL .sdi:first-child [data-f=qty]', '1'); await M.fill('#sdL .sdi:first-child [data-f=price]', '600');
+      await M.click('#sdOk'); await M.settle(150);
+      eq('إجمالي البنود مختلف عن الإجمالي القديم: تنبيه والدوسة الأولى مبتحفظش', await M.evaluate(oid => [$('#sdW').textContent.includes('مش زي الإجمالي اللي كنت كاتبه'), !S.ops[oid].lines], pop), [true, true]);
+      await M.click('#sdOk'); await M.settle(300);
+      eq('الدوسة التانية: الفاتورة بقت ببنودها', await M.evaluate(oid => [S.ops[oid].amt, S.ops[oid].lines.length, scr.v], pop), [60000, 1, 'pay']);
+      /* فاتورة دخلت الحسابات بالإجمالي (من غير بنود)، وأحمد كتب بنودها بعدين: بتتطبق لوحده والتنبيه «من غير بنود» بيتشال */
+      await A.evaluate(() => localStorage.setItem('fo_auto', '1'));
+      const top = await M.evaluate(id => { const now = nowS(), c = customers().get(id), o = {id: newId(), t: 'inv', cid: id, cname: c.name, amt: 44400, ts: now, cr: now, upd: now, del: false}; S.ops[o.id] = o; save(); return o.id; }, cid);
+      await sync2();
+      eq('فاتورة بالإجمالي دخلت لوحدها «من غير بنود» زي الأول', await A.evaluate(oid => { const e = E.get('e_mk_' + oid); return [!!e.mkNL, docTotal(e), mkNtList().some(x => x.o.id === oid)]; }, top), [true, 44400, false]);
+      await M.evaluate(oid => { const o = S.ops[oid]; o.lines = [{name: 'صنف بعدين تجربة', unit: 'لفة', qty: 2, price: 22200}]; o.amt = 44400; bump(o); save(); }, top);
+      await sync2();
+      eq('أحمد كتب بنودها بعدين: اتكتبت في الحسابات لوحدها والتنبيه «من غير بنود» اتشال، وعند أحمد مش «مصطفى كتب بنودها»', [await A.evaluate(oid => { const e = E.get('e_mk_' + oid); return [!!e.mkNL, e.lines[0].name, docTotal(e), nlList().some(x => x.id === e.id), e.mkSig === mkDocSig(e)]; }, top), await M.evaluate(oid => lnByM(S.ops[oid]), top)], [[false, 'صنف بعدين تجربة', 44400, false, true], false]);
+      /* نشيل كل ده علشان باقي الاختبارات */
+      await M.evaluate(ids => { ids.forEach(i => { S.ops[i].del = true; bump(S.ops[i]); }); save(); }, [op.id, dop, lop, pop, top]);
+      await sync2();
+      await A.evaluate(ids => { ids.forEach(i => { const e = E.get(i); if (e && !e.del) { e.del = true; e.delAt = nowS(); touch(e); } }); const d = mkDb(); d.ns = d.ns || {}; mkNtList().forEach(x => { d.ns[x.o.id] = x.o.upd; }); saveDB(); }, [man, 'e_mk_' + op.id, 'e_mk_' + lop]);
+      await sync2();
+      eq('رصيد العميل رجع زي ما كان عند مصطفى وأحمد', [await A.evaluate(id => balance(id), cid), await M.evaluate(id => customers().get(id).bal, cid)], [b0, mb0]);
+      await M.evaluate(() => nav('')); await M.settle(100);
+    }
+
     {
       /* عميل دفع أكتر من اللي عليه: زي قايمة الحسابات (الرقم بالأحمر وتحته "له عندنا")، مش "—" */
       const r = await M.evaluate(() => { const c = Object.values(S.cust).find(x => !x.del); const b0 = c.bal; c.bal = -150000; nav('c'); const row = $(`#lists .pt[data-c="${c.id}"] .a`).textContent; nav('p/' + c.id); const box = $('#cBox').textContent; c.bal = b0; nav(''); return [row, box.includes('له عندنا') && box.includes('1,500')]; });

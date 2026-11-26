@@ -582,6 +582,7 @@ function opState(o) {               // done | back | wait (عند مصطفى) | 
   if (o.t === 'exp') return 'exp';   // المصروف عند الشريك حركة عادية: مفيش حالة ولا انتظار ولا قفل، وبيتعدّل ويتمسح طول الوقت
   const s = stOf(o);
   if (s && s.done) return 'done';
+  if (s && s.ign) return 'rm';   // مصطفى قال «دي نفسها، تجاهلها» (فاتورة متكررة) أو تجاهل فاتورة/مرتجع مورد: مش في الحسابات فمبتتحسبش هنا (بطلبه 26/11/2026)
   if (s && s.back && s.bv === o.upd) return 'back';
   if (s && s.rm && s.rm === o.upd) return 'rm';   // مصطفى نقلها وبعدين مسحها من الحسابات: مبتتحسبش في رصيد العميل، ولو الشريك عدّلها بترجع تتحسب
   return o.sy === o.upd ? 'wait' : 'unsent';
@@ -599,6 +600,10 @@ const payOps = () => liveOps().filter(o => o.t === 'pay');
 /* حركات العميل: دفعات + فواتير (فاتورة = إجمالي بس، ومصطفى هو اللي بيكتب بنودها) */
 /* حركات العملاء: دفعة / فاتورة / مرتجع أو شغل (rt: مبلغ + ملاحظة بيتخصم من حساب العميل، ملوش دعوة بالكاش) */
 const isCustOp = o => o.t === 'pay' || o.t === 'inv' || o.t === 'rt';
+/* فاتورة العميل ببنودها (بطلبه 26/11/2026): أحمد بيختار «بالإجمالي» (مصطفى بيكتب البنود) أو «ببنودها» (lines زي فاتورة المورد).
+   lnByM = مصطفى كتب أو عدّل بنودها في الحسابات (st.ln من الحسابات): اللي كتب البنود الأول هو اللي بيتعتمد، فالتعديل من عنده */
+const invHasLn = o => o.t === 'inv' && Array.isArray(o.lines) && o.lines.length > 0;
+const lnByM = o => !!(stOf(o) && stOf(o).ln);
 const custAll = () => liveOps().filter(isCustOp);
 function customers() {
   const al = aliases(), m = new Map();
@@ -672,7 +677,7 @@ function sums(ops) {
 const SD_TXT = {sinv: 'فاتورة شراء', srt: 'مرتجع شراء'};
 const sdLines = o => (o.lines || []).map(l => l.name).join('، ');
 const opWhat = o => isSupDoc(o) ? SD_TXT[o.t] + ' — ' + o.sname : o.t === 'rt' ? '↩️ مرتجع/شغل ' + o.cname : o.t === 'cs' ? 'بيع كاش — ' + o.buyer : o.t === 'pay' ? o.cname : o.t === 'inv' ? 'فاتورة ' + o.cname : o.t === 'exp' ? o.cat + (o.note && o.note !== o.cat ? ' — ' + o.note : '') : o.t === 'spay' ? 'دفعت لـ ' + o.sname : 'سلمت لمصطفى';
-const opHow = o => isSupDoc(o) ? SD_TXT[o.t] + ((o.lines || []).length ? ' — ' + sdLines(o) : '') : o.t === 'rt' ? 'مرتجع/شغل' + (o.note ? ' — ' + o.note : '') : o.t === 'cs' ? 'من المصنع' + (csTr(o) ? ' — ' + M_TXT.tr : '') : o.t === 'pay' ? M_TXT[o.m] : o.t === 'inv' ? 'فاتورة (إجمالي بس)' : o.t === 'hand' ? 'كاش' : o.t === 'exp' ? 'مصروف' : 'دفعة مورد';
+const opHow = o => isSupDoc(o) ? SD_TXT[o.t] + ((o.lines || []).length ? ' — ' + sdLines(o) : '') : o.t === 'rt' ? 'مرتجع/شغل' + (o.note ? ' — ' + o.note : '') : o.t === 'cs' ? 'من المصنع' + (csTr(o) ? ' — ' + M_TXT.tr : '') : o.t === 'pay' ? M_TXT[o.m] : o.t === 'inv' ? (invHasLn(o) ? 'فاتورة — ' + sdLines(o) : 'فاتورة (إجمالي بس)') : o.t === 'hand' ? 'كاش' : o.t === 'exp' ? 'مصروف' : 'دفعة مورد';
 const pending = () => Object.values(S.ops).filter(o => o.sy !== o.upd);
 /* حركة مستنية تتبعت من أكتر من ساعة (من آخر مرة اتسجلت أو اتعدّلت) = تنبيه أحمر فوق في كل الشاشات */
 const STUCK_MS = 3600000;
@@ -713,7 +718,7 @@ function merge(r) {
 const TG_IC = {rt: '↩️', pay: '💵', inv: '🧾', exp: '⛽', spay: '🏭', hand: '🤝', cs: '🏭', sinv: '🧾', srt: '↩️'};
 const tgText = o => { const a = fmt(o.amt), w = {cash: 'كاش', tr: 'تحويل', insta: 'إنستا', voda: 'فودافون كاش'};
   if (isSupDoc(o)) return `${SD_TXT[o.t]} من ${o.sname || ''} بـ ${a}: ${(o.lines || []).map(l => `${l.name} ${l.qty} ${l.unit || ''} × ${fmt(l.price)}`).join('، ')}`;
-  return o.t === 'pay' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${a} ${w[o.m] || ''}` : o.t === 'inv' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${a}` : o.t === 'rt' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} مرتجع/شغل بـ ${a}${o.note ? ' — ' + o.note : ''}`
+  return o.t === 'pay' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} دفع ${a} ${w[o.m] || ''}` : o.t === 'inv' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} فاتورة بـ ${a}${invHasLn(o) ? ': ' + o.lines.map(l => `${l.name} ${l.qty} ${l.unit || ''} × ${fmt(l.price)}`).join('، ') : ''}` : o.t === 'rt' ? `${o.cname}${o.newc ? ' (عميل جديد)' : ''} مرتجع/شغل بـ ${a}${o.note ? ' — ' + o.note : ''}`
     : o.t === 'exp' ? `مصروف ${o.cat || ''}: ${a}${o.note && o.note !== o.cat ? ' — ' + o.note : ''}` : o.t === 'spay' ? `دفع للمورد ${o.sname || ''} ${a}` : o.t === 'hand' ? `سلّمك ${a} كاش` : o.t === 'cs' ? `بيع كاش من المصنع ${a} — ${o.buyer || ''}${csTr(o) ? ' (تحويل)' : ''}`
     : o.t === 'cnt' ? `قفّل يومه: عدّ ${a} كاش${o.amt === o.sys ? ' — مظبوط ✓' : ` — المفروض ${fmtN(o.sys)}، ${o.amt < o.sys ? 'ناقص' : 'زيادة'} ${fmt(o.amt - o.sys)}`}` : 'حركة ' + a; };
 const view = o => o.t === 'cnt' ? [dayOf(o.ts) + ' ' + timeOf(o.ts), 'تقفيل اليوم', o.amt / 100, 'تقفيل يوم', o.amt === o.sys ? 'مظبوط' : 'المفروض ' + o.sys / 100] : [dayOf(o.ts) + ' ' + timeOf(o.ts), isCustOp(o) ? o.cname + (o.newc ? ' (جديد)' : '') : o.t === 'cs' ? o.buyer : o.t === 'spay' || isSupDoc(o) ? o.sname : o.t === 'exp' ? o.cat + (o.note && o.note !== o.cat ? ' — ' + o.note : '') : 'تسليم لمصطفى', o.amt / 100, isSupDoc(o) ? SD_TXT[o.t] : o.t === 'pay' ? M_SAID[o.m] || o.m : csTr(o) ? 'بيع كاش — ' + M_SAID.tr : {cs: 'بيع كاش', exp: 'مصروف', spay: 'دفعة مورد', hand: 'تسليم كاش', inv: 'فاتورة', rt: 'مرتجع/شغل'}[o.t], o.t === 'rt' ? o.note || '' : isSupDoc(o) ? sdLines(o) : ''];
@@ -847,7 +852,7 @@ const IC = {
 };
 const TABS = [['home', 'الرئيسية'], ['c', 'العملاء'], ['v', 'الموردين'], ['a', 'الأرشيف'], ['s', 'الإعدادات']];
 const TAB_OF = {home: 'home', c: 'c', v: 'v', a: 'a', day: 'a', mon: 'a', s: 's'};
-const TITLE = {home: 'حركة السوق', c: 'العملاء', v: 'الموردين', sup: 'حساب مورد', sdoc: 'حساب مورد', a: 'الأرشيف', day: 'الأرشيف', mon: 'الأرشيف', s: 'الإعدادات', pay: 'دفعة', spend: 'صرفت', sale: 'بيع كاش من المصنع', ok: ''};
+const TITLE = {home: 'حركة السوق', c: 'العملاء', v: 'الموردين', sup: 'حساب مورد', sdoc: 'حساب مورد', cdoc: 'فاتورة', a: 'الأرشيف', day: 'الأرشيف', mon: 'الأرشيف', s: 'الإعدادات', pay: 'دفعة', spend: 'صرفت', sale: 'بيع كاش من المصنع', ok: ''};
 let scr = {v: 'home'};
 function dotHtml() {
   if (!S.u) return '';
@@ -858,11 +863,11 @@ function dotHtml() {
   return '<span class="dot" id="dot"><i></i>متصل</span>';
 }
 function drawTop() {
-  const t = $('#top'), sub = scr.v === 'pay' || scr.v === 'sup' || scr.v === 'sdoc' || scr.v === 'spend' || scr.v === 'sale' || scr.v === 'ok';
+  const t = $('#top'), sub = scr.v === 'pay' || scr.v === 'sup' || scr.v === 'sdoc' || scr.v === 'cdoc' || scr.v === 'spend' || scr.v === 'sale' || scr.v === 'ok';
   drawStuck();
   t.innerHTML = sub ? `<button class="back" id="bBack" type="button">→ رجوع</button>${TITLE[scr.v] ? `<b style="font-size:var(--f3)">${TITLE[scr.v]}</b>` : ''}${dotHtml()}`
     : `${LOGO}<h1>${TITLE[scr.v] || 'حركة السوق'}${scr.v === 'home' ? '<small>فلاش أون</small>' : ''}</h1>${dotHtml()}`;
-  if ($('#bBack')) $('#bBack').onclick = () => nav(scr.v === 'pay' ? 'c' : scr.v === 'sup' ? 'v' : scr.v === 'sdoc' ? (S.sup[scr.sid] ? 'v/' + scr.sid : 'v') : scr.v === 'spend' ? spBack : '');
+  if ($('#bBack')) $('#bBack').onclick = () => nav(scr.v === 'pay' ? 'c' : scr.v === 'sup' ? 'v' : scr.v === 'sdoc' ? (S.sup[scr.sid] ? 'v/' + scr.sid : 'v') : scr.v === 'cdoc' ? 'p/' + scr.cid : scr.v === 'spend' ? spBack : '');
 }
 function drawTabs() {
   const k = TAB_OF[scr.v], el = $('#tabs');
@@ -912,14 +917,14 @@ const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 function route() {
   mPush = false; hideModal();
   const h = decodeURIComponent(location.hash.slice(1)), [a, b] = h.split('/');
-  scr = a === 'p' && b ? {v: 'pay', cid: b} : a === 'ok' && b && S.ops[b] ? {v: 'ok', op: b} : a === 'x' ? {v: 'spend'} : a === 'b' ? {v: 'sale'} : a === 'c' ? {v: 'c'} : a === 'vd' && b ? {v: 'sdoc', sid: b, k: h.split('/')[2] === 'srt' ? 'srt' : 'sinv', op: h.split('/')[3] || ''} : a === 'v' ? (b ? {v: 'sup', sid: b} : {v: 'v'}) : a === 's' ? {v: 's'} : a === 'a' ? (isDay(b) ? {v: 'day', day: b} : /^\d{4}-\d{2}$/.test(b || '') ? {v: 'mon', mon: b} : {v: 'a'}) : {v: 'home'};
+  scr = a === 'p' && b ? {v: 'pay', cid: b} : a === 'ok' && b && S.ops[b] ? {v: 'ok', op: b} : a === 'x' ? {v: 'spend'} : a === 'b' ? {v: 'sale'} : a === 'c' ? {v: 'c'} : a === 'ci' && b ? {v: 'cdoc', cid: b, op: h.split('/')[2] || ''} : a === 'vd' && b ? {v: 'sdoc', sid: b, k: h.split('/')[2] === 'srt' ? 'srt' : 'sinv', op: h.split('/')[3] || ''} : a === 'v' ? (b ? {v: 'sup', sid: b} : {v: 'v'}) : a === 's' ? {v: 's'} : a === 'a' ? (isDay(b) ? {v: 'day', day: b} : /^\d{4}-\d{2}$/.test(b || '') ? {v: 'mon', mon: b} : {v: 'a'}) : {v: 'home'};
   render(); window.scrollTo(0, 0);
   if (a === 'ord') { history.replaceState(null, '', location.pathname); ordLoad('ordOpen'); }   // دوسة على إشعار طلبية
 }
 function render() {
   drawTop(); drawTabs();
   if (!S.u) { $('#main').innerHTML = `<div class="gate">${LOGO}<h2>حركة السوق</h2><p>التطبيق ده لسه متربطش.<br>اطلب من مصطفى يبعتلك الرابط على الواتساب وافتحه من هنا.</p></div>`; return; }
-  ({pay: drawPay, ok: drawSaved, spend: drawSpend, sale: drawSale, c: drawCustomers, v: drawSuppliers, sup: drawSup, sdoc: drawSDoc, a: drawArchive, mon: drawMonth, day: drawDay, s: drawSettings}[scr.v] || drawHome)();
+  ({pay: drawPay, ok: drawSaved, spend: drawSpend, sale: drawSale, c: drawCustomers, v: drawSuppliers, sup: drawSup, sdoc: drawSDoc, cdoc: drawSDoc, a: drawArchive, mon: drawMonth, day: drawDay, s: drawSettings}[scr.v] || drawHome)();
 }
 /* لما يوصل جديد من الشيت: نرسم من غير ما نبوّظ اللي بيكتبه */
 function refresh() {
@@ -956,7 +961,7 @@ const bindOps = root => $$(root + ' .row[data-o], ' + root + ' tr[data-o], ' + r
    اللي مش كاش معاك (تحويل لمصطفى، تسليم، فاتورة، مرتجع) سطر رمادي تحت. "بدأ بـ" و"قفل اليوم بـ" = الكاش اللي معاك */
 const cashBefore = d => liveOps().reduce((n, o) => dayOf(o.ts) < d ? n + cashSign(o) * o.amt : n, 0);
 const ldName = o => isSupDoc(o) ? (o.t === 'sinv' ? '🏭 فاتورة شراء ' : '↩️ مرتجع شراء ') + o.sname : o.t === 'cs' ? 'بيع كاش' + (o.buyer ? ' — ' + o.buyer : '') : o.t === 'pay' ? o.cname : o.t === 'exp' ? o.cat : o.t === 'spay' ? 'دفعت لـ ' + o.sname : o.t === 'hand' ? '⇄ سلّمت لمصطفى' : o.t === 'inv' ? '🧾 فاتورة ' + o.cname : o.t === 'rt' ? '↩️ مرتجع/شغل ' + o.cname : '⇄ ' + o.cname;
-const ldSub = o => [timeOf(o.ts), o.t === 'exp' ? (o.note && o.note !== o.cat ? o.note : '') : o.t === 'pay' ? M_TXT[o.m] : o.t === 'cs' && csTr(o) ? M_TXT.tr : o.t === 'rt' ? o.note || '' : o.t === 'inv' ? 'إجمالي بس' : isSupDoc(o) ? sdLines(o) : '']
+const ldSub = o => [timeOf(o.ts), o.t === 'exp' ? (o.note && o.note !== o.cat ? o.note : '') : o.t === 'pay' ? M_TXT[o.m] : o.t === 'cs' && csTr(o) ? M_TXT.tr : o.t === 'rt' ? o.note || '' : o.t === 'inv' ? (invHasLn(o) ? sdLines(o) : 'إجمالي بس') : isSupDoc(o) ? sdLines(o) : '']
   .filter(Boolean).map(esc).join(' · ') + stHtml(o);
 /* تبويبين تحت الحركات (بطلب مصطفى 24/10/2026): الفواتير (والمرتجعات) لوحدها، والمتحصلات = الفلوس بس.
    المتحصلات 3 مربعات بكلام واضح بدل ألوان الجدول: دخل جيبك (أخضر)، اتحوّل لمصطفى على طول (أزرق، مش داخل في حسبته)،
@@ -989,7 +994,7 @@ function ledgerDay(d, ops) {
     <div class="meq">بدأت بـ ${n(b0)} + دخل ${n(din, 'in')} − طلع ${n(dout, 'out')} <span>= ${d === today() ? 'معاك' : 'قفلت بـ'} ${n(b1, b1 < 0 ? 'out' : '')}</span></div></section>`;
 }
 /* الفواتير (إجمالي بس) مبتدخلش في اللي معاه، فبتتعرض في سطر لوحدها */
-const invLn = s => s.inv ? `<div class="invln"><span>🧾 فواتير (إجمالي بس)</span><b class="money">${fmt(s.inv)}</b></div>` : '';
+const invLn = s => s.inv ? `<div class="invln"><span>🧾 فواتير</span><b class="money">${fmt(s.inv)}</b></div>` : '';
 const pnHtml = (s, cols, first) => cols === 3
   ? `<div class="pn ${first ? 'first' : ''}" style="--c:3"><div class="c-in"><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div><div class="c-out"><span>صرفت</span><b class="money">${fmt(s.sp)}</b></div><div><span>سلّمت لمصطفى</span><b class="money">${fmt(s.toM)}</b></div></div>${invLn(s)}`
   : `<div class="pn ${first ? 'first' : ''}" style="--c:4"><div class="c-in"><span>حصّلت</span><b class="money">${fmt(s.col)}</b></div><div class="c-out"><span>صرفت</span><b class="money">${fmt(s.sp)}</b></div><div><span>سلّمت لمصطفى</span><b class="money">${fmt(s.toM)}</b></div><div><span>معايا</span><b class="money ${s.left < 0 ? 'neg' : ''}">${fmtN(s.left)}</b></div></div>${invLn(s)}`;
@@ -1265,6 +1270,22 @@ function sdItems(sid, sname) {
     const k = norm(l.name), d = dayOf(o.ts), x = m.get(k); if (!x || x.date <= d) m.set(k, {name: l.name, unit: l.unit, price: l.price, date: d}); }));
   return [...m.values()].sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
 }
+/* أصناف العميل ده بآخر سعر اتباعله بيه (زي custItems في الحسابات): من كشفه اللي جاي من الحسابات واللي أحمد سجله هنا ببنوده */
+function ciItems(cid) {
+  const m = new Map(), c = S.cust[cid], put = (name, unit, price, date) => { name = String(name || '').trim(); if (!name || name === NL_NAME || !(price > 0)) return; const k = norm(name), x = m.get(k); if (!x || x.date <= date) m.set(k, {name, unit: unit || '', price, date: date || ''}); };
+  if (c && Array.isArray(c.s)) c.s.forEach(r => { if (Array.isArray(r) && r[2] && r[6] !== 'ret' && !/^مرتجع: /.test(r[1])) put(r[1], String(r[2]).split(' ').slice(1).join(' '), +r[3] || 0, r[0]); });
+  custOps(cid, aliases()).filter(invHasLn).sort((a, b) => a.ts - b.ts).forEach(o => o.lines.forEach(l => put(l.name, l.unit, l.price, dayOf(o.ts))));
+  return [...m.values()].sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+}
+/* حماية من التكرار (بطلبه 26/11/2026، «لما يكون نفس المبلغ في نفس اليوم»): فاتورة لنفس العميل بنفس المبلغ في نفس اليوم،
+   سجلها أحمد هنا ('me') أو مصطفى في الحسابات ('m'، من كشف العميل: كل فاتورة سطورها مع بعض بالخصم). skip = الفاتورة اللي بتتعدل */
+function invDup(cid, amt, day, skip) {
+  if (custOps(cid, aliases()).some(o => o.t === 'inv' && o !== skip && o.amt === amt && dayOf(o.ts) === day)) return 'me';
+  const c = S.cust[cid], g = new Map();
+  (c && Array.isArray(c.s) ? c.s : []).forEach((r, i) => { if (!Array.isArray(r) || r[0] !== day || r[6]) return; const k = r[7] ? 'g' + r[7] : 'r' + i, x = g.get(k) || {t: 0, q: false}; x.t += +r[4] || 0; x.q = x.q || !!r[2]; g.set(k, x); });
+  return [...g.values()].some(x => x.q && x.t === amt) ? 'm' : '';
+}
+const dupTxt = (w, amt) => `${w === 'm' ? 'مصطفى مسجل' : 'انت مسجل'} فاتورة بنفس المبلغ (${fmt(amt)}) للعميل ده في نفس اليوم.`;
 /* كل الأصناف بآخر سعر (زي itemBook في الحسابات، بطلبه 26/11/2026 «مرتجع الشراء زي عندي»): لما يكتب صنف مش من أصناف المورد ده
    (زي شغل المورد اشتراه مننا) السعر بييجي من آخر مرة الصنف ده اتباع أو اتشرى: كشوف العملا والموردين اللي جاية من الحسابات واللي أحمد سجله هنا */
 const NL_NAME = 'فاتورة السوق (البنود لسه)';
@@ -1277,22 +1298,26 @@ function allItems() {
 }
 function drawSDoc() {
   lastSave = 0;
-  const o0 = scr.op ? S.ops[scr.op] : null, back = () => nav(S.sup[scr.sid] ? 'v/' + scr.sid : 'v', true);
-  if (scr.op && (!o0 || o0.del || !isSupDoc(o0))) return back();
-  const k = o0 ? o0.t : scr.k, v = suppliers().get(scr.sid), name = v ? v.name : o0 ? o0.sname : '';
+  const CU = scr.v === 'cdoc', o0 = scr.op ? S.ops[scr.op] : null, back = () => nav(CU ? 'p/' + scr.cid : S.sup[scr.sid] ? 'v/' + scr.sid : 'v', true);
+  if (scr.op && (!o0 || o0.del || !(CU ? o0.t === 'inv' : isSupDoc(o0)))) return back();
+  if (CU && o0 && lnByM(o0)) { back(); return toast('مصطفى كتب بنود الفاتورة دي في الحسابات. التعديل من عنده.', 4000); }
+  const k = CU ? 'inv' : o0 ? o0.t : scr.k, c = CU ? customers().get(scr.cid) : null, v = CU ? null : suppliers().get(scr.sid);
+  const name = CU ? (c ? c.name : o0 ? o0.cname : '') : v ? v.name : o0 ? o0.sname : '';
   if (!name) return back();
-  const ret = k === 'srt', mine = sdItems(scr.sid, name), byK = new Map(mine.map(x => [norm(x.name), x]));
+  const ret = k === 'srt', mine = CU ? ciItems(scr.cid) : sdItems(scr.sid, name), byK = new Map(mine.map(x => [norm(x.name), x]));
   let book = null; const anyItem = kk => byK.get(kk) || (book = book || allItems()).get(kk);   // أصناف المورد الأول، وبعدين أي صنف بآخر سعر (بيتحسب وقت الحاجة بس)
-  const init = o0 ? o0.lines.map(l => ({name: l.name, unit: l.unit, qty: String(l.qty), price: fmt(l.price)})) : [{name: '', unit: 'كيلو', qty: '', price: ''}];
-  $('#main').innerHTML = `<div class="cust"><b>${esc(name)}<small class="lp">${ret ? '↩️ مرتجع شراء' : '🧾 فاتورة شراء'}${o0 ? ' — تعديل' : ''}</small></b>${v ? `<div><span>${supWord(v.bal)}</span>${v.bal ? `<b class="money">${fmt(v.bal)}</b>` : ''}</div>` : ''}</div>
+  const init = o0 && Array.isArray(o0.lines) && o0.lines.length ? o0.lines.map(l => ({name: l.name, unit: l.unit, qty: String(l.qty), price: fmt(l.price)})) : [{name: '', unit: 'كيلو', qty: '', price: ''}];
+  const tot0 = CU && o0 && !invHasLn(o0) ? o0.amt : 0;   // فاتورة اتسجلت بالإجمالي وبيكتب بنودها دلوقتي
+  $('#main').innerHTML = `<div class="cust"><b>${esc(name)}<small class="lp">${CU ? '🧾 فاتورة' : ret ? '↩️ مرتجع شراء' : '🧾 فاتورة شراء'}${o0 ? (tot0 ? ' — اكتب بنودها' : ' — تعديل') : ''}</small></b>${v ? `<div><span>${supWord(v.bal)}</span>${v.bal ? `<b class="money">${fmt(v.bal)}</b>` : ''}</div>` : c ? `<div><span>${c.bal < 0 ? 'له عندنا' : 'عليه'}</span>${c.bal ? `<b class="money${c.bal < 0 ? ' neg' : ''}">${fmt(c.bal)}</b>` : ''}</div>` : ''}</div>
     <div class="sdh"><span>الصنف</span><span>الوحدة</span><span>الكمية</span><span>السعر</span><span>الإجمالي</span><span></span></div>
     <div id="sdL"></div>
     ${datePick('sdD', o0 ? dayOf(o0.ts) : today())}
     <div class="sdt"><span>${ret ? 'إجمالي المرتجع' : 'إجمالي الفاتورة'}</span><b class="money" id="sdT">0</b></div>
+    ${tot0 ? `<p class="hint" style="margin-top:4px">كنت كاتب إجماليها ${fmt(tot0)}</p>` : ''}
     <div id="sdW"></div>
     <button class="big ${ret ? 'b-sdr' : 'b-sdi'}" id="sdOk" type="button">${o0 ? 'حفظ التعديل' : ret ? 'حفظ المرتجع' : 'حفظ الفاتورة'}</button>
     ${o0 ? '<div style="text-align:center"><button class="oops" id="sdDel" type="button">🗑 امسحها</button></div>' : ''}
-    <p class="hint">${ret ? 'بينزل من اللي ليه' : 'بتزوّد اللي ليه'} وبتدخل حسابات مصطفى لوحدها. مبتلمسش الكاش اللي معاك.</p>`;
+    <p class="hint">${CU ? 'بتتضاف على حساب العميل وبتدخل حسابات مصطفى ببنودها لوحدها' : (ret ? 'بينزل من اللي ليه' : 'بتزوّد اللي ليه') + ' وبتدخل حسابات مصطفى لوحدها'}. مبتلمسش الكاش اللي معاك.</p>`;
   bindDate('sdD');
   const F = (li, f) => li.querySelector(`[data-f=${f}]`);
   const qtyOf = li => Math.round((+normDigits(F(li, 'qty').value).replace(/[٫،]/g, '.').replace(/[^\d.]/g, '') || 0) * 1000) / 1000;
@@ -1341,7 +1366,7 @@ function drawSDoc() {
       const s = norm(el.value);
       rows = mine.filter(x => !s || norm(x.name).includes(s)).slice(0, 5);
       if (!rows.length || (rows.length === 1 && norm(rows[0].name) === s)) return hide();
-      box.innerHTML = `<div class="sh">اتشرى من المورد ده قبل كده</div>` + rows.map((x, i) => `<div class="sr" data-i="${i}"><span>${esc(x.name)}<small>${esc(x.unit || '')}${x.date ? ' — آخر مرة ' + dispDate(x.date) : ''}</small></span>${x.price ? `<b>${fmt(x.price)}</b>` : ''}</div>`).join('');
+      box.innerHTML = `<div class="sh">${CU ? 'اتباع للعميل ده قبل كده' : 'اتشرى من المورد ده قبل كده'}</div>` + rows.map((x, i) => `<div class="sr" data-i="${i}"><span>${esc(x.name)}<small>${esc(x.unit || '')}${x.date ? ' — آخر مرة ' + dispDate(x.date) : ''}</small></span>${x.price ? `<b>${fmt(x.price)}</b>` : ''}</div>`).join('');
       box.classList.add('on');
     };
     box.onmousedown = ev => ev.preventDefault();
@@ -1381,17 +1406,20 @@ function drawSDoc() {
       const w = [], seen = new Set();
       ls.forEach(l => { const kk = norm(l.name), x = byK.get(kk); if (seen.has(kk)) return; seen.add(kk);
         if (x && x.price > 0 && x.unit === l.unit && (l.price >= x.price * 5 || l.price * 5 <= x.price)) w.push(`سعر "${l.name}" (${fmt(l.price)}) بعيد أوي عن آخر سعر (${fmt(x.price)}). اتأكد إن مفيش صفر زيادة أو ناقص.`); });
-      if (!o0 && liveOps().some(o => o.t === k && o.amt === amt && (o.sid === scr.sid || norm(o.sname) === norm(name)) && nowS() - (o.cr || o.ts) < 120000)) w.push(`سجلت ${ret ? 'مرتجع' : 'فاتورة'} بنفس المبلغ (${fmt(amt)}) للمورد ده من شوية. متأكد إنها مش متكررة؟`);
+      if (CU && !o0) { const dw = invDup(scr.cid, amt, dayOf(ts)); if (dw) w.push(dupTxt(dw, amt) + ' متأكد إنها مش متكررة؟'); }
+      if (tot0 && amt !== tot0) w.push(`إجمالي البنود (${fmt(amt)}) مش زي الإجمالي اللي كنت كاتبه (${fmt(tot0)}).`);
+      if (!CU && !o0 && liveOps().some(o => o.t === k && o.amt === amt && (o.sid === scr.sid || norm(o.sname) === norm(name)) && nowS() - (o.cr || o.ts) < 120000)) w.push(`سجلت ${ret ? 'مرتجع' : 'فاتورة'} بنفس المبلغ (${fmt(amt)}) للمورد ده من شوية. متأكد إنها مش متكررة؟`);
       if (w.length) { warned = true; $('#sdW').innerHTML = `<div class="note">${w.map(esc).join('<br>')}</div>`; $('#sdOk').textContent = 'متأكد، احفظ برضه'; return; }
     }
     lastSave = Date.now();
     const now = nowS();
     if (o0) { Object.assign(o0, {lines: ls, amt, ts}); bump(o0); }
+    else if (CU) { const o = {id: newId(), t: 'inv', cid: c ? c.id : scr.cid, cname: name, newc: !!(c && c.nw), amt, lines: ls, ts, cr: now, upd: now, del: false}; S.ops[o.id] = o; }
     else { const o = {id: newId(), t: k, sid: S.sup[scr.sid] ? scr.sid : '', sname: name, amt, lines: ls, ts, cr: now, upd: now, del: false}; if (!o.sid) delete o.sid; S.ops[o.id] = o; }
     save(); sync();
     try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
     back();
-    toast(`✔ ${o0 ? 'اتعدّل' : 'اتسجل'} ${ret ? 'مرتجع شراء' : 'فاتورة'} ${name} — ${fmt(amt)} جنيه`, 3000);
+    toast(CU ? `✔ ${o0 ? 'اتعدّلت' : 'اتسجلت'} فاتورة ${name} — ${fmt(amt)} جنيه` : `✔ ${o0 ? 'اتعدّل' : 'اتسجل'} ${ret ? 'مرتجع شراء' : 'فاتورة'} ${name} — ${fmt(amt)} جنيه`, 3000);
   };
   if ($('#sdDel')) $('#sdDel').onclick = async () => { if (await delOp(o0)) back(); };
   if (!o0) setTimeout(() => { const f = $('#sdL [data-f=name]'); f && f.focus(); }, 120);
@@ -1433,12 +1461,13 @@ function drawPay() {
     $('#pyBtns').innerHTML = pyTab === 'pay'
       ? `${['cash', 'tr'].map(m => `<button class="big b-${m}" data-m="${m}" type="button">${M_BTN[m]}</button>`).join('')}<p class="hint">دوسة على الزرار بتحفظ على طول</p>`
       : pyTab === 'rt' ? `<input class="inp2 rt" id="rtN" autocomplete="off" placeholder="ملاحظة: مرتجع إيه أو شغل إيه"><button class="big b-rt" id="rtOk" type="button">↩️ سجّل (بيتخصم من حسابه)</button><p class="hint">بيتخصم من حساب العميل بس. ملوش دعوة بالكاش اللي معاك.</p>`
-      : `<button class="big b-again" id="invOk" type="button">🧾 سجّل الفاتورة</button><p class="hint">اكتب إجمالي الفاتورة بس (من غير بنود). بتتضاف على حساب العميل عندك، ومصطفى بيكتب البنود من عنده.</p>`;
+      : `<button class="big b-again" id="invOk" type="button">🧾 سجّل بالإجمالي</button><button class="big b-sdi" id="invLn" type="button">📝 اكتب البنود</button><p class="hint">بالإجمالي: اكتب المبلغ فوق ومصطفى بيكتب البنود من عنده. أو اكتب البنود بنفسك وتدخل حساباته ببنودها.</p>`;
     $$('#pyBtns .big[data-m]').forEach(b => {
       b.addEventListener('mousedown', e => e.preventDefault());   // علشان الكيبورد ميقفلش ويتحرك الزرار قبل الدوسة
       b.onclick = () => savePay(c, b.dataset.m);
     });
     if ($('#invOk')) { $('#invOk').addEventListener('mousedown', e => e.preventDefault()); $('#invOk').onclick = () => saveInv(c); }
+    if ($('#invLn')) $('#invLn').onclick = () => nav('ci/' + c.id);
     if ($('#rtOk')) $('#rtOk').onclick = () => saveRt(c);
   };
   $$('#pyT button').forEach(b => b.onclick = () => { pyTab = b.dataset.v; $$('#pyT button').forEach(x => x.classList.toggle('on', x === b)); btns(); inp.focus(); });
@@ -1503,8 +1532,8 @@ async function saveInv(c) {
   const amt = amtOf($('#amt'));
   if (!(amt > 0)) { toast('اكتب إجمالي الفاتورة الأول'); $('#amt').focus(); return; }
   lastSave = Date.now();
-  const al = aliases(), dup = custOps(c.id, al).find(o => o.t === 'inv' && o.amt === amt && nowS() - (o.cr || o.ts) < 120000);
-  if (dup && !(await ask(`سجلت فاتورة ${fmt(amt)} للعميل ده من شوية. دي فاتورة تانية؟`, 'أيوه، فاتورة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
+  const dw = invDup(c.id, amt, dateOf('pyD'));   // نفس العميل ونفس المبلغ ونفس اليوم، عنده أو عند مصطفى (بطلبه 26/11/2026)
+  if (dw && !(await ask(dupTxt(dw, amt) + ' دي فاتورة تانية؟', 'أيوه، فاتورة تانية', 'لأ، دي نفسها'))) { lastSave = 0; return; }
   const now = nowS();
   const o = {id: newId(), t: 'inv', cid: c.id, cname: c.name, newc: !!c.nw, amt, ts: tsOnDay(dateOf('pyD')), cr: now, upd: now, del: false};
   S.ops[o.id] = o;
@@ -1517,6 +1546,8 @@ const EDIT_TITLE = {rt: 'مرتجع / شغل', pay: 'دفعة عميل', inv: '�
 function editSheet(o) {
   if (!o || o.del) return;
   if (isSupDoc(o)) return nav(`vd/${supIdOf(o) || o.sid || '-'}/${o.t}/${o.id}`);   // فاتورة/مرتجع المورد بيتعدّلوا في نفس شاشة البنود
+  const ciPath = () => `ci/${aliases()[o.cid] || o.cid}/${o.id}`;
+  if (invHasLn(o) && !lnByM(o)) return nav(ciPath());   // فاتورة العميل ببنودها: نفس الشاشة
   /* التعديل والمسح في أي وقت (بطلب صاحب المشروع)، حتى بعد ما مصطفى ينقلها: التعديل بيتطبق عنده لوحده وبيوصله إشعار */
   const s = opState(o);
   let m = o.t === 'cs' ? o.m || 'cash' : o.m;
@@ -1531,8 +1562,10 @@ function editSheet(o) {
     ${o.t === 'rt' ? `<input class="inp2 rt" id="eRt" autocomplete="off" placeholder="ملاحظة: مرتجع إيه أو شغل إيه" value="${esc(o.note || '')}">` : ''}
     ${o.t === 'pay' || o.t === 'cs' ? `<div class="seg" id="eM" style="--n:2;margin-top:10px">${['cash', 'tr'].map(k => `<button type="button" data-m="${k}" class="${k === m || (k === 'tr' && m !== 'cash') ? 'on' : ''}">${{cash: 'فلوس معايا', tr: 'تحويل لمصطفى'}[k]}</button>`).join('')}</div>` : ''}
     ${o.t === 'exp' ? `<label class="wh" for="eNt">المصروف ده إيه؟</label><input class="inp2 exp" id="eNt" autocomplete="off" placeholder="اكتب المصروف" value="${esc(o.cat + (o.note ? ' — ' + o.note : ''))}" style="margin-top:6px">` : ''}
+    ${o.t === 'inv' ? (lnByM(o) ? '<div class="note dn" style="margin:10px 0 0">📝 مصطفى كتب بنودها في الحسابات</div>' : '<button class="big b-sdi" id="eLn" type="button" style="margin-top:10px">📝 اكتب بنودها</button>') : ''}
     <div class="row2" style="margin-top:12px"><button class="big b-cash" id="eOk" type="button" style="margin-top:0">حفظ</button><button class="big b-redo" id="eDel" type="button" style="margin-top:0">🗑 مسح</button></div>
     <button class="lnk" id="eX" type="button">إغلاق</button>`);
+  if ($('#eLn')) $('#eLn').onclick = () => nav(ciPath(), true);   // مكان النافذة في التاريخ بيبقى شاشة البنود (route بيقفل النافذة)
   bindAmt($('#eA')); if ($('#eD')) bindDate('eD');
   $$('#eM button').forEach(b => b.onclick = () => { m = b.dataset.m; $$('#eM button').forEach(x => x.classList.toggle('on', x === b)); });
   $('#eX').onclick = closeModal;
@@ -1562,7 +1595,7 @@ async function delOp(o) {
 function sentHtml(o, c) {
   const m = `<b class="money">${fmt(o.amt)}</b>`;
   return o.t === 'pay' ? `${esc(c ? c.name : o.cname)}<br>دفع ${m} جنيه ${esc(M_SAID[o.m])}`
-    : o.t === 'inv' ? `فاتورة ${esc(c ? c.name : o.cname)}<br>إجمالي ${m} جنيه`
+    : o.t === 'inv' ? `فاتورة ${esc(c ? c.name : o.cname)}<br>${invHasLn(o) ? '' : 'إجمالي '}${m} جنيه`
     : o.t === 'rt' ? `مرتجع/شغل ${esc(c ? c.name : o.cname)}<br>${m} جنيه — ${esc(o.note || '')}`
     : o.t === 'cs' ? `بيع كاش من المصنع<br>${esc(o.buyer)} — ${m} جنيه${csTr(o) ? ' ' + esc(M_SAID.tr) : ''}`
     : o.t === 'exp' ? `صرفت ${m} جنيه<br>${esc(o.cat)}${o.note && o.note !== o.cat ? ' — ' + esc(o.note) : ''}`

@@ -3430,11 +3430,25 @@ const T0 = Date.now();
       await M.evaluate(oid => { const o = S.ops[oid]; o.lines[1].qty = 5; o.amt = o.lines.reduce((s, l) => s + sdTot(l), 0); bump(o); save(); }, op.id);
       await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(300);
       eq('اللي مصطفى عدّله بإيده مبيتغيرش من أحمد (إشعار "ظبطها بإيدك")', await A.evaluate(oid => [docTotal(E.get('e_mk_' + oid)), !!$('#mqNt') && $('#mqNt').textContent.includes('ظبطها بإيدك')], op.id), [107000, true]);
-      /* مرتجع شراء */
+      /* مرتجع شراء (بطلبه 26/11/2026 «زي عندي»): الزرار اسمه «مرتجع شراء» زي الحسابات */
+      await M.evaluate(id => nav('v/' + id), vid); await M.settle(150);
+      eq('حساب المورد عند أحمد: زرار «↩️ مرتجع شراء» زي الحسابات', await M.evaluate(() => $('#vRt').textContent), '↩️ مرتجع شراء');
       await M.evaluate(id => nav('vd/' + id + '/srt'), vid); await M.settle(200);
       await M.fill('#sdL .sdi:first-child [data-f=name]', 'خامة تجربة'); await M.evaluate(() => $('#sdL [data-f=name]').dispatchEvent(new Event('change')));
       await M.fill('#sdL .sdi:first-child [data-f=qty]', '1');
       eq('المرتجع: الاسم المكتوب بالكامل بياخد السعر لوحده', await M.evaluate(() => [$('#sdL [data-f=price]').value, $('#sdT').textContent]), ['50', '50']);
+      /* صنف مش من أصناف المورد (شغل اشتراه مننا): السعر من آخر مرة اتباع (كشوف العملا اللي جاية من الحسابات) زي itemBook */
+      const ci = await M.evaluate(() => {
+        const own = new Set((S.sup[scr.sid].it || []).map(x => norm(x[0])));
+        const rows = Object.values(S.cust).filter(c => !c.del && Array.isArray(c.s)).flatMap(c => c.s).filter(r => r[2] && r[6] !== 'ret' && !/^مرتجع/.test(r[1]) && !own.has(norm(r[1]))).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+        const nm = rows.length ? rows[rows.length - 1][1] : '';
+        return [nm, rows.filter(r => r[1] === nm).map(r => fmt(r[3]))];
+      });
+      await M.fill('#sdL .sdi:nth-child(2) [data-f=name]', ci[0]); await M.evaluate(() => $$('#sdL [data-f=name]')[1].dispatchEvent(new Event('change')));
+      const cp = await M.evaluate(() => $$('#sdL .sdi')[1].querySelector('[data-f=price]').value);
+      eq('مرتجع شراء: صنف مش من أصناف المورد بياخد سعره من كشوف العملا', [!!ci[0], ci[1].includes(cp)], [true, true]);
+      await M.click('#sdL .sdi:nth-child(2) [data-del]'); await M.settle(50);
+      eq('مسح السطر رجّع الإجمالي', await M.evaluate(() => $('#sdT').textContent), '50');
       await M.click('#sdOk'); await M.settle(300);
       const rt = await M.evaluate(() => liveOps().filter(o => o.t === 'srt').sort((a, b) => b.cr - a.cr)[0]);
       await bg(M, 'sync()'); await bg(A, 'mkSync()'); await A.settle(300);

@@ -1236,7 +1236,7 @@ function drawSup() {
   let run = v.ob; const rows = v.r.map(x => { run += x[3]; return {d: x[0], k: x[1], t: x[2], x: x[3], n: x[4] || '', run}; }).reverse(), shown = rows.slice(0, vShow);
   $('#main').innerHTML = `<div class="cust"><b>${esc(v.name)}<small class="lp">${esc(supLast(v))}</small></b><div><span>${supWord(v.bal)}</span>${v.bal ? `<b class="money">${fmt(v.bal)}</b>` : ''}</div></div>
     <button class="big b-sup" id="vPay" type="button">🏭 دفعتله</button>
-    <div class="sdb"><button class="big b-sdi" id="vInv" type="button">🧾 فاتورة شراء</button><button class="big b-sdr" id="vRt" type="button">↩️ مرتجع</button></div>
+    <div class="sdb"><button class="big b-sdi" id="vInv" type="button">🧾 فاتورة شراء</button><button class="big b-sdr" id="vRt" type="button">↩️ مرتجع شراء</button></div>
     <button class="more" id="vSt" type="button" style="margin-top:10px">📄 ابعت كشف حساب</button>
     ${v.pend.length ? `<div class="lbl" style="margin-top:16px"><span>سجلتها ولسه منزلتش عند مصطفى (${v.pend.length})</span><span>محسوبة في رصيده</span></div><div class="list">${v.pend.sort((a, b) => b.ts - a.ts).map(o => opRow(o, true, true)).join('')}</div>` : ''}
     <div class="lbl" style="margin-top:16px"><span>كشف الحساب${v.from ? ' من ' + dispDate(v.from) : ''}</span><span>الرصيد بعدها</span></div>
@@ -1265,6 +1265,16 @@ function sdItems(sid, sname) {
     const k = norm(l.name), d = dayOf(o.ts), x = m.get(k); if (!x || x.date <= d) m.set(k, {name: l.name, unit: l.unit, price: l.price, date: d}); }));
   return [...m.values()].sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
 }
+/* كل الأصناف بآخر سعر (زي itemBook في الحسابات، بطلبه 26/11/2026 «مرتجع الشراء زي عندي»): لما يكتب صنف مش من أصناف المورد ده
+   (زي شغل المورد اشتراه مننا) السعر بييجي من آخر مرة الصنف ده اتباع أو اتشرى: كشوف العملا والموردين اللي جاية من الحسابات واللي أحمد سجله هنا */
+const NL_NAME = 'فاتورة السوق (البنود لسه)';
+function allItems() {
+  const m = new Map(), put = (name, unit, price, date) => { name = String(name || '').trim(); if (!name || name === NL_NAME || !(price > 0)) return; const k = norm(name), x = m.get(k); if (!x || x.date <= date) m.set(k, {name, unit: unit || '', price, date: date || ''}); };
+  Object.values(S.cust || {}).forEach(c => { if (c && !c.del && Array.isArray(c.s)) c.s.forEach(r => { if (Array.isArray(r) && r[2] && r[6] !== 'ret' && !/^مرتجع: /.test(r[1])) put(r[1], String(r[2]).split(' ').slice(1).join(' '), +r[3] || 0, r[0]); }); });
+  Object.values(S.sup || {}).forEach(v => { if (v && !v.del && Array.isArray(v.it)) v.it.forEach(x => Array.isArray(x) && put(x[0], x[1], +x[2] || 0, x[3])); });
+  liveOps().filter(o => Array.isArray(o.lines)).sort((a, b) => a.ts - b.ts).forEach(o => o.lines.forEach(l => put(l.name, l.unit, l.price, dayOf(o.ts))));
+  return m;
+}
 function drawSDoc() {
   lastSave = 0;
   const o0 = scr.op ? S.ops[scr.op] : null, back = () => nav(S.sup[scr.sid] ? 'v/' + scr.sid : 'v', true);
@@ -1272,6 +1282,7 @@ function drawSDoc() {
   const k = o0 ? o0.t : scr.k, v = suppliers().get(scr.sid), name = v ? v.name : o0 ? o0.sname : '';
   if (!name) return back();
   const ret = k === 'srt', mine = sdItems(scr.sid, name), byK = new Map(mine.map(x => [norm(x.name), x]));
+  let book = null; const anyItem = kk => byK.get(kk) || (book = book || allItems()).get(kk);   // أصناف المورد الأول، وبعدين أي صنف بآخر سعر (بيتحسب وقت الحاجة بس)
   const init = o0 ? o0.lines.map(l => ({name: l.name, unit: l.unit, qty: String(l.qty), price: fmt(l.price)})) : [{name: '', unit: 'كيلو', qty: '', price: ''}];
   $('#main').innerHTML = `<div class="cust"><b>${esc(name)}<small class="lp">${ret ? '↩️ مرتجع شراء' : '🧾 فاتورة شراء'}${o0 ? ' — تعديل' : ''}</small></b>${v ? `<div><span>${supWord(v.bal)}</span>${v.bal ? `<b class="money">${fmt(v.bal)}</b>` : ''}</div>` : ''}</div>
     <div class="sdh"><span>الصنف</span><span>الوحدة</span><span>الكمية</span><span>السعر</span><span>الإجمالي</span><span></span></div>
@@ -1344,7 +1355,7 @@ function drawSDoc() {
     el.addEventListener('focus', show); el.addEventListener('input', show);
     el.addEventListener('blur', () => setTimeout(hide, 200));
     el.addEventListener('change', () => {
-      const x = byK.get(norm(el.value)); if (!x) return;
+      const x = anyItem(norm(el.value)); if (!x) return;
       if (!li.dataset.um && x.unit) { setUnit(li, x.unit); syncBlank(li); }
       if (!pr.value && x.price && (!x.unit || x.unit === F(li, 'unit').value)) { pr.value = fmt(x.price); calc(); }
     });
@@ -1380,7 +1391,7 @@ function drawSDoc() {
     save(); sync();
     try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
     back();
-    toast(`✔ ${o0 ? 'اتعدّل' : 'اتسجل'} ${ret ? 'مرتجع' : 'فاتورة'} ${name} — ${fmt(amt)} جنيه`, 3000);
+    toast(`✔ ${o0 ? 'اتعدّل' : 'اتسجل'} ${ret ? 'مرتجع شراء' : 'فاتورة'} ${name} — ${fmt(amt)} جنيه`, 3000);
   };
   if ($('#sdDel')) $('#sdDel').onclick = async () => { if (await delOp(o0)) back(); };
   if (!o0) setTimeout(() => { const f = $('#sdL [data-f=name]'); f && f.focus(); }, 120);

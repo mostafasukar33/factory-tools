@@ -5833,29 +5833,58 @@ const lastThu = () => addDays(todayISO(), -((dowOf(todayISO()) - 4 + 7) % 7));
 const partners = () => getSet('partners', null);
 const partName = id => { const s = partners(), p = s && s.list.find(x => x.id === id); return p ? p.name : '؟'; };
 const ptKind = t => t.cat === 'c_pdraw' ? 'draw' : 'sal';
+/* القبض بإيده بس (بطلبه 27/11/2026): مفيش مرتب بيتسجل لوحده كل خميس تاني (اللي اتسجل قبل كده t_ps_ زي ما هو).
+   المصروف العادي (منه أو من أحمد) اللي ملاحظته فيها كلمة (مرتب/قبض = مرتب، سحب/مسحوبات = مسحوبات) + أول اسم شريك
+   بيتفهم لوحده قبض الشريك ده: cat بيبقى c_psal أو c_pdraw، pt = الشريك، pta = 1 (اتفهم لوحده)، pcat = البند القديم، والقديم في hist.
+   نفس المبلغ والخزنة واليوم. "مش قبض شريك" في النافذة = ptk 'exp' ومبيتفهمش تاني. الفترة المقفولة مبتتلمسش.
+   اسم أكتر من شريك في نفس الملاحظة = مبيتفهمش (يتسجل بإيده). */
+const PT_SAL = new Set(['مرتب', 'مرتبه', 'قبض', 'قبضه', 'قبضت']), PT_DRAW = new Set(['سحب', 'سحبه', 'سحبت', 'مسحوبات', 'مسحوب']);
+const PT_RX = /مرتب|قبض|سحب|مسحوب/, ptMemo = new Map();
+function ptGuess(note, list, date) {
+  if (!note || !PT_RX.test(note)) return null;
+  let m = ptMemo.get(note);
+  if (!m) {
+    const w = catWords(note);
+    m = {w, kind: w.some(x => PT_DRAW.has(x)) ? 'draw' : w.some(x => PT_SAL.has(x)) ? 'sal' : ''};
+    if (ptMemo.size > 5000) ptMemo.clear();
+    ptMemo.set(note, m);
+  }
+  if (!m.kind) return null;
+  const w = m.w, hits = (list || []).filter(p => {
+    if ((p.from && date < p.from) || (p.to && date > p.to)) return false;
+    const f = catWords(p.name)[0];
+    return f && (w.includes(f) || w.includes('ل' + f) || w.includes('و' + f)) && !(f === 'حسن' && w.includes('ابو') && w.includes('شوشه'));
+  });
+  return hits.length === 1 ? {pid: hits[0].id, kind: m.kind} : null;
+}
+const PT_CATS = new Set(['c_psal', 'c_pdraw']);
 let apAt = 0;
 function autoPartners(force) {
   if (!db || (!force && nowS() - apAt < 30000)) return 0;
   apAt = nowS();
-  const s = partners(); if (!s || !s.on || !(s.amt > 0) || !s.start) return 0;
-  ensureVaults(); ensurePartCats();
-  if (s.list.some(p => p.vault === MKV)) ensureMktVault();
-  const vault0 = openV(s.vault) || s.vault === MKV ? s.vault : defVault();
-  const t = todayISO(); let n = 0;
-  for (let d = thuOnOrAfter(s.start); d <= t; d = addDays(d, 7)) {
-    if (isLocked(d)) continue;
-    s.list.forEach(p => {
-      if ((p.from && d < p.from) || (p.to && d > p.to)) return;
-      const id = `t_ps_${d}_${p.id}`;
-      if (IDX.tx.get(id)) return;
-      const vault = p.vault === MKV || openV(p.vault) ? p.vault : vault0;
-      const [y, m, dd] = d.split('-').map(Number), ts = new Date(y, m - 1, dd, 9).getTime();
-      const r = {id, type: 'exp', amt: s.amt, vault, to: '', cat: 'c_psal', pt: p.id, pnote: '', note: 'مرتب ' + p.name, date: d, at: ts, upd: ts, del: false, hist: [], auto: 1};
-      db.txs.push(r); IDX.tx.set(id, r); n++;
-    });
+  const s = partners(); if (!s || !s.list || !s.list.length) return 0;
+  let n = 0;
+  const was = t => ({t: nowS(), date: t.date, desc: `${TXT[t.type]} ${cName(t.cat)} — ${t.nv ? 'من غير خزنة' : vName(t.vault)}${t.note ? ' — ' + t.note : ''}`, dr: t.amt, cr: 0});
+  for (const t of db.txs) {
+    if (t.del || t.type !== 'exp' || t.iv || t.cfix || t.hsk || t.hsx || t.ptk || (t.pt && !t.pta)) continue;
+    if (!t.pta && (SPECIAL_CATS.has(t.cat) || NOT_PL.has(t.cat) || isJm(t))) continue;
+    const g = ptGuess(t.note, s.list, t.date);
+    if (t.pta ? g && g.pid === t.pt && t.cat === PART_CATS[g.kind][0] : !g) continue;
+    if (isLocked(t.date)) continue;
+    if (!n) ensurePartCats();
+    (t.hist = t.hist || []).push(was(t));
+    if (g) { if (!t.pta) { t.pcat = t.cat; t.pta = 1; if (t.pnote == null) t.pnote = ''; } t.cat = PART_CATS[g.kind][0]; t.pt = g.pid; }
+    else { if (PT_CATS.has(t.cat)) t.cat = t.pcat && IDX.cat.get(t.pcat) ? t.pcat : 'c_mkexp'; t.pt = ''; t.pta = 0; }   // الملاحظة اتغيرت (أحمد عدّلها مثلاً)
+    touch(t); n++;
   }
   if (n) saveDB();
   return n;
+}
+/* إعدادات الشركاء: لو مش موجودة بتتعمل بالأسامي التلاتة (الصفحة بتشتغل على طول من غير "ابدأ") */
+function partSet() {
+  let s = partners();
+  if (!s) { s = {on: false, amt: 0, vault: defVault(), start: '', list: [{id: 'pa', name: 'مصطفى'}, {id: 'pb', name: 'حسن'}, {id: 'pc', name: 'أحمد'}]}; putSet('partners', s); }
+  return s;
 }
 /* خزنة الشريك: فاضي = خزنة المرتب العامة، أو خزنة السوق (الكاش اللي مع الشريك) */
 const psVOpts = sel => `<option value="" ${!sel ? 'selected' : ''}>بياخد من خزنتي (العادي)</option><option value="${MKV}" ${sel === MKV ? 'selected' : ''}>بياخد من الكاش اللي معاه (خزنة السوق)</option>`;
@@ -5866,18 +5895,16 @@ function partVaultOpts(sel, nv) {
 }
 function partnerSettings() {
   ensureVaults();
-  const s = partners() || {on: false, amt: 0, vault: defVault(), start: lastThu(), list: [{id: 'pa', name: 'مصطفى'}, {id: 'pb', name: 'حسن'}, {id: 'pc', name: 'أحمد'}]};
+  const s = partSet();
   const live = s.list.filter(p => !p.to);
   modal(`<h3>👥 إعدادات الشركاء</h3>
-    <div class="fld"><label>المرتب الأسبوعي لكل شريك (نفس المبلغ للكل)</label><input class="inp num amt" id="psA" placeholder="0" value="${s.amt ? fmtP(s.amt) : ''}"></div>
-    <div class="fld"><label>بيتصرف من خزنة (للشركاء اللي مش مختار لهم حاجة تانية تحت)</label><select class="inp" id="psV">${vaultOpts(s.vault || defVault())}</select></div>
-    <div class="fld"><label>أول خميس يتسجل</label><input class="inp" type="date" id="psS" value="${s.start || lastThu()}"><p class="hint">من التاريخ ده، كل خميس المرتب بيتسجل لوحده في المصروفات. ولو البرنامج متفتحش يوم الخميس، بيتسجل أول ما يتفتح بتاريخ الخميس.</p></div>
+    <div class="fld"><label>المرتب الأسبوعي لكل شريك (اختياري)</label><input class="inp num amt" id="psA" placeholder="0" value="${s.amt ? fmtP(s.amt) : ''}"><p class="hint">مبيتسجلش لوحده. بيساعد البرنامج يفرق مرتب حسن من العهدة.</p></div>
+    <div class="fld"><label>القبض بيتصرف من خزنة (للشركاء اللي مش مختار لهم حاجة تانية تحت)</label><select class="inp" id="psV">${vaultOpts(s.vault || defVault())}</select></div>
     <div class="sech"><span>الشركاء</span></div>
-    <p class="hint">اختار لكل شريك بياخد مرتبه منين. اللي بياخد من الكاش اللي معاه يتختار له "خزنة السوق"، فمرتبه مبيتخصمش من خزنتك ومبيتكتبش مصروف تاني من حركة السوق.</p>
+    <p class="hint">اختار لكل شريك بياخد قبضه منين لما تسجله من هنا. اللي بياخد من الكاش اللي معاه يتختار له "خزنة السوق".</p>
     <div id="psL">${live.map(p => `<div class="krow fld" style="grid-template-columns:1fr auto"><input class="inp" data-p="${esc(p.id)}" value="${esc(p.name)}"><select class="inp" data-pv="${esc(p.id)}" style="grid-column:1/-1">${psVOpts(p.vault)}</select><button class="btn red sm" data-rm="${esc(p.id)}" type="button" style="width:auto">شيل</button></div>`).join('')}</div>
     <button class="btn line sm" id="psAdd" type="button">+ شريك جديد</button>
     <div class="stack" style="margin-top:12px"><button class="btn gold" id="psOk" type="button">حفظ</button>
-    ${s.on ? '<button class="btn red sm" id="psOff" type="button">وقّف التسجيل الأوتوماتيك</button>' : ''}
     <button class="btn line" id="psX" type="button">رجوع</button></div>`, true);
   bindMoney($('#psA'));
   const removed = new Set();
@@ -5885,11 +5912,8 @@ function partnerSettings() {
   bindRm();
   $('#psAdd').onclick = () => { const d = document.createElement('div'); d.className = 'krow fld'; d.style.gridTemplateColumns = '1fr auto'; d.innerHTML = `<input class="inp" data-p="" placeholder="اسم الشريك"><select class="inp" data-pv="" style="grid-column:1/-1">${psVOpts('')}</select><button class="btn red sm" data-rm="" type="button" style="width:auto">شيل</button>`; $('#psL').appendChild(d); bindRm(); d.querySelector('input').focus(); };
   $('#psX').onclick = closeModal;
-  if ($('#psOff')) $('#psOff').onclick = () => { putSet('partners', Object.assign({}, s, {on: false})); closeModal(); route(); toast('اتوقف التسجيل الأوتوماتيك. اللي اتسجل قبل كده زي ما هو.'); };
   $('#psOk').onclick = () => {
-    const amt = toP($('#psA').value), start = $('#psS').value;
-    if (amt <= 0) return toast('اكتب المرتب الأسبوعي');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return toast('اختار أول خميس');
+    const amt = Math.max(0, toP($('#psA').value));
     const t = todayISO(), list = s.list.map(p => Object.assign({}, p));
     list.forEach(p => { if (removed.has(p.id) && !p.to) p.to = addDays(t, -1); });
     let k = 0;
@@ -5900,29 +5924,31 @@ function partnerSettings() {
       else { let id; do { id = 'p' + nowS().toString(36) + (k++); } while (list.some(p => p.id === id)); list.push({id, name, from: t, vault: pv}); }
     });
     if (!list.some(p => !p.to)) return toast('اكتب اسم شريك واحد على الأقل');
-    putSet('partners', {on: true, amt, vault: $('#psV').value, start, list});
+    putSet('partners', Object.assign({}, s, {on: false, amt, vault: $('#psV').value, list}));
     if (list.some(p => p.vault === MKV)) ensureMktVault();
     const n = autoPartners(true);
-    closeModal(); route(); toast(n ? `اتحفظ ✔ واتسجل ${n} مرتب لحد النهارده` : 'اتحفظ ✔');
+    closeModal(); route(); toast(n ? `اتحفظ ✔ واتفهم ${n} قبض من المصروفات` : 'اتحفظ ✔');
   };
 }
 function partnerTxModal(t, kind = 'draw', ptId = '') {
   ensureVaults(); ensurePartCats();
   if (t && t.del) return cancelledModal(t);
   if (t && isLocked(t.date)) { modal(`<h3>🔒 ${PK[ptKind(t)]} ${esc(partName(t.pt))} ${fmtP(t.amt)}</h3><div class="sync">الحركة دي في فترة مقفولة (لحد ${dispDate(lockDate())}). افتحها من الإعدادات لو محتاج تعدّل.</div><button class="btn line" id="lvX" type="button">رجوع</button>`); $('#lvX').onclick = closeModal; return; }
-  const s = partners() || {list: []}, isNew = !t;
+  const s = partSet(), isNew = !t;
   if (t) { kind = ptKind(t); ptId = t.pt; }
   const list = s.list.filter(p => !p.to || p.id === ptId);
   const pDef = id => { const p = s.list && s.list.find(x => x.id === id); const v = p && p.vault || s.vault; return v === MKV || openV(v) ? v : defVault(); };
-  modal(`<h3 class="exp">${isNew ? '− مسحوبات شريك' : 'تعديل ' + PK[kind] + ' شريك'}</h3>
+  modal(`<h3 class="exp">${isNew ? (kind === 'sal' ? '+ قبض شريك' : '− مسحوبات شريك') : 'تعديل ' + PK[kind] + ' شريك'}</h3>
+    ${t && t.pta ? `<p class="hint">اتفهمت لوحدها من المصروف: «${esc(t.note)}»</p>` : ''}
     <div class="fld"><label>الشريك</label><select class="inp" id="ptP">${list.map(p => `<option value="${esc(p.id)}" ${p.id === ptId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
     <div class="fld"><label>النوع</label><div class="seg" id="ptK">${Object.entries(PK).map(([k, n]) => `<button type="button" data-v="${k}" class="${k === kind ? 'on' : ''}">${n}</button>`).join('')}</div></div>
     <div class="fld"><label>المبلغ</label><input class="inp num amt" id="ptA" placeholder="0" value="${t ? fmtP(t.amt) : ''}"></div>
     <div class="fld"><label>الخزنة</label><select class="inp" id="ptV">${partVaultOpts(t ? t.vault : (pDef(ptId) || defVault()), t && t.nv)}</select><p class="hint">لو الفلوس اتاخدت قبل كده، اختار "من غير خزنة": بتتسجل على الشريك وفي الأرباح من غير ما تنزل من أي رصيد.</p></div>
     <div class="fld"><label>التاريخ</label><input class="inp" id="ptD" type="date" value="${t ? t.date : todayISO()}"></div>
-    <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="ptN" value="${esc(t ? t.pnote || '' : '')}" autocomplete="off"></div>
+    <div class="fld"><label>ملاحظة (اختياري)</label><input class="inp" id="ptN" value="${esc(t ? t.pnote || (t.pta ? t.note : '') : '')}" autocomplete="off"></div>
     ${t ? histHtml(t) : ''}
     <div class="stack" style="margin-top:8px"><button class="btn redf" id="ptOk" type="button">${isNew ? 'حفظ' : 'حفظ التعديل'}</button>
+    ${t && t.pta ? '<button class="btn line sm" id="ptNo" type="button">مش قبض شريك — رجّعه مصروف</button>' : ''}
     ${isNew ? '' : '<button class="btn red sm" id="ptDel" type="button">إلغاء الحركة</button>'}
     <button class="btn line" id="ptX" type="button">رجوع</button></div>`);
   bindMoney($('#ptA'));
@@ -5941,16 +5967,21 @@ function partnerTxModal(t, kind = 'draw', ptId = '') {
     else {
       if (['amt', 'date', 'vault', 'cat', 'pt', 'pnote', 'nv'].every(k => (t[k] || '') === (o[k] || ''))) return closeModal();
       (t.hist = t.hist || []).push({t: nowS(), date: t.date, desc: `${PK[ptKind(t)]} ${partName(t.pt)} — ${t.nv ? 'من غير خزنة' : vName(t.vault)}`, dr: t.amt, cr: 0});
-      Object.assign(t, o); touch(t); toast('اتعدّلت ✔');
+      Object.assign(t, o, {pta: 0}); touch(t); toast('اتعدّلت ✔');
     }
     saveDB(); closeModal(); route();
+  };
+  if ($('#ptNo')) $('#ptNo').onclick = () => {
+    (t.hist = t.hist || []).push({t: nowS(), date: t.date, desc: `${PK[ptKind(t)]} ${partName(t.pt)} — ${t.nv ? 'من غير خزنة' : vName(t.vault)}`, dr: t.amt, cr: 0});
+    Object.assign(t, {cat: t.pcat && IDX.cat.get(t.pcat) ? t.pcat : 'c_mkexp', pt: '', pta: 0, ptk: 'exp'}); touch(t);
+    saveDB(); closeModal(); route(); toast('رجعت مصروف ✔');
   };
   if (!isNew) $('#ptDel').onclick = async () => {
     if (!(await confirmBox(`تلغي ${PK[kind]} ${partName(t.pt)} ${fmtP(t.amt)}؟ هتفضل محفوظة كـ "ملغية"${t.auto ? '، ومش هتتسجل تاني' : ''}.`, 'ألغيها', true))) return;
     t.del = true; t.delAt = nowS(); touch(t); saveDB(); closeModal(); route(); toast('اتلغت');
   };
 }
-let partMode = 'month', partMonth = '', partYear = '';
+let partMode = 'all', partMonth = '', partYear = '';
 function partRange() {
   const t = todayISO();
   if (partMode === 'month') { const m = partMonth || t.slice(0, 7), [y, mo] = m.split('-').map(Number); return [m + '-01', m + '-' + pad2(new Date(y, mo, 0).getDate())]; }
@@ -5958,38 +5989,31 @@ function partRange() {
   return ['', ''];
 }
 function renderPartners() {
-  const pg = $('#p-part'), s = partners();
+  const pg = $('#p-part'), s = partSet();
   /* على الموبايل الشركاء مالهاش زرار تحت (مكانها بقى حركة السوق)، فبنفتحها من الخزنة وبنرجعلها */
   const back = isWide() ? '' : '<div class="sech ppbar tb" style="margin-top:0"><a id="ptBack">→<em> الخزنة</em></a><b class="tt">👥 الشركاء</b><span></span></div>';
   const bindBack = () => { if ($('#ptBack')) $('#ptBack').onclick = () => go('cash'); };
-  if (!s || !s.on) {
-    pg.innerHTML = back + `<div class="card"><h2>👥 الشركاء</h2>
-      <p style="font-weight:700;margin:0 0 12px">كل خميس، مرتب كل شريك بيتسجل لوحده في مصروفات الخزنة. وتقدر تسجل مسحوبات زيادة لأي شريك، وتشوف كل واحد خد كام في الشهر والسنة.</p>
-      <button class="btn gold big" id="psGo" type="button">${s ? 'شغّل التسجيل تاني' : 'ابدأ'}</button></div>`;
-    $('#psGo').onclick = partnerSettings; bindBack();
-    return;
-  }
   const [from, to] = partRange(), t = todayISO();
   const mv = db.txs.filter(x => !x.del && x.pt && (!from || x.date >= from) && (!to || x.date <= to)).sort((a, b) => b.date.localeCompare(a.date) || (b.at || 0) - (a.at || 0));
   const per = new Map(s.list.map(p => [p.id, {p, sal: 0, draw: 0}]));
   mv.forEach(x => { const r = per.get(x.pt); if (r) r[ptKind(x)] += x.amt; });
   const rows = [...per.values()].filter(r => !r.p.to || r.sal || r.draw);
   const tot = rows.reduce((a, r) => a + r.sal + r.draw, 0);
-  const next = thuOnOrAfter(addDays(t, dowOf(t) === 4 ? 1 : 0));
   pg.innerHTML = back + `
-    <div class="cbar"><button class="btn redf" id="ptNew" type="button">− مسحوبات شريك</button><button class="btn line" id="ptSet" type="button">⚙ إعدادات الشركاء</button></div>
-    
+    <div class="cbar"><button class="btn gold" id="ptSal" type="button">+ قبض شريك</button><button class="btn redf" id="ptNew" type="button">− مسحوبات</button><button class="btn line" id="ptSet" type="button">⚙</button></div>
     <div class="card">
-      <div class="seg s3" id="ptMode">${[['month', 'شهر'], ['year', 'سنة'], ['all', 'الكل']].map(([k, n]) => `<button type="button" data-m="${k}" class="${partMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+      <div class="seg s3" id="ptMode">${[['all', 'من الأول'], ['year', 'سنة'], ['month', 'شهر']].map(([k, n]) => `<button type="button" data-m="${k}" class="${partMode === k ? 'on' : ''}">${n}</button>`).join('')}</div>
       ${partMode === 'month' ? `<input class="inp" type="month" id="ptMonth" value="${partMonth || t.slice(0, 7)}">` : partMode === 'year' ? `<input class="inp num" id="ptYear" inputmode="numeric" value="${partYear || t.slice(0, 4)}">` : ''}
     </div>
-    <section class="ctab"><div class="cth"><span>الشركاء ${partMode === 'all' ? '' : 'في الفترة'}</span><b>${fmtP(tot)} ${CUR}</b></div>
-      <table class="cmt pst"><thead><tr><th></th><th>مرتبات</th><th>مسحوبات</th><th>الإجمالي</th></tr></thead><tbody>
-      ${rows.map(r => `<tr class="nohov"><td class="w"><b>${esc(r.p.name)}</b>${r.p.to ? '<small>مش شريك دلوقتي</small>' : `<small><a class="lnk" data-dr="${esc(r.p.id)}">− سجّل مسحوبات</a></small>`}</td><td class="n">${fmtP(r.sal)}</td><td class="n">${fmtP(r.draw)}</td><td class="n t">${fmtP(r.sal + r.draw)}</td></tr>`).join('')}
+    <section class="ctab"><div class="cth"><span>${partMode === 'all' ? 'كل واحد خد كام من الأول' : 'كل واحد خد كام في الفترة'}</span><b>${fmtP(tot)} ${CUR}</b></div>
+      <table class="cmt pst"><thead><tr><th></th><th>مرتب</th><th>مسحوبات</th><th>الإجمالي</th></tr></thead><tbody>
+      ${rows.map(r => `<tr class="nohov"><td class="w"><b>${esc(r.p.name)}</b>${r.p.to ? '<small>مش شريك دلوقتي</small>' : `<small><a class="lnk" data-sl="${esc(r.p.id)}">+ قبض</a> · <a class="lnk" data-dr="${esc(r.p.id)}">− مسحوبات</a></small>`}</td><td class="n">${fmtP(r.sal)}</td><td class="n">${fmtP(r.draw)}</td><td class="n t">${fmtP(r.sal + r.draw)}</td></tr>`).join('')}
       </tbody></table></section>
-    <div style="height:12px"></div>
-    ${(() => { const items = mv.map(x => ({date: x.date, who: `${PK[ptKind(x)]} — ${partName(x.pt)}`, what: [x.pnote, x.auto ? 'أوتوماتيك' : ''].filter(Boolean).join(' — '), amt: x.amt})); return cashTable('الحركات', items, items, 'exp'); })()}`;
+    <p class="hint">أي مصروف تكتب في ملاحظته «قبض» أو «مرتب» أو «سحب» واسم الشريك (زي «قبض أحمد») بيتحسب هنا لوحده، منك أو من ${esc(MK_PN)}.</p>
+    ${(() => { const items = mv.map(x => ({date: x.date, who: `${partName(x.pt)} — ${PK[ptKind(x)]}`, what: [x.pta ? (x.pnote || x.note) : x.pnote, x.auto ? 'أوتوماتيك' : ''].filter(Boolean).join(' — '), mk: x.vault === MKV, amt: x.amt})); return cashTable('كل القبض بالتاريخ', items, items, 'exp'); })()}`;
   $('#ptNew').onclick = () => partnerTxModal(null, 'draw'); bindBack();
+  $('#ptSal').onclick = () => partnerTxModal(null, 'sal');
+  $$('#p-part [data-sl]').forEach(b => b.onclick = ev => { ev.stopPropagation(); partnerTxModal(null, 'sal', b.dataset.sl); });
   $('#ptSet').onclick = partnerSettings;
   $$('#p-part [data-dr]').forEach(b => b.onclick = ev => { ev.stopPropagation(); partnerTxModal(null, 'draw', b.dataset.dr); });
   $$('#ptMode button').forEach(b => b.onclick = () => { partMode = b.dataset.m; renderPartners(); });

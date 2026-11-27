@@ -1339,38 +1339,44 @@ const T0 = Date.now();
 
     /* الأجهزة دي خلصت دورها: قفلها بيوقف المزامنة اللي شغالة فيها في الخلفية (كانت بتبطّأ كل الأقسام اللي بعدها) */
     await D3.close(); await D4.close();
-    sec('١٢) الشركاء: مرتب كل خميس ومسحوبات');
+    sec('١٢) الشركاء: القبض بإيده أو بيتفهم من المصروف، ومسحوبات');
     await bg(A, 'syncNow()');   // ياخد اللي اتسجل في الجهاز التاني الأول
     const vb0 = await A.evaluate(() => vaultBal(''));
     eq('الموبايل: الشريط اللي تحت العملاء | الموردين | الوارد | الخزنة | المزيد (بطلبه 16/11/2026)، والشركاء جوه الخزنة', await A.evaluate(() => [...document.querySelectorAll('nav button[data-go]')].filter(b => getComputedStyle(b).display !== 'none').sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map(b => b.dataset.go).reverse()), ["home", "sup", "mkt", "cash", "more"]);
     await A.evaluate(() => go('cash')); await A.click('#cMore'); await A.click('#modal [data-b=cPart]'); await A.waitForSelector('#ptBack', {timeout: 3000}).catch(() => {});   // الصفحة بتفتح بعد تغيير العنوان
     eq('الشركاء من الخزنة: الخزنة متعلّمة تحت وفيه رجوع', [await A.evaluate(() => $('nav button.on').dataset.go), !!await A.$('#ptBack')], ['cash', true]);
-    await A.click('#psGo'); await A.fill('#psA', '10');
-    await A.fill('#psS', await A.evaluate(() => addDays(lastThu(), -14))); await A.click('#psOk'); await A.settle(200);
+    eq('الصفحة بتشتغل على طول (من غير «ابدأ») بالشركاء التلاتة، ومن الأول', await A.evaluate(() => [!$('#psGo'), !!$('#ptSal'), partners().list.map(p => p.name), $('#ptMode button.on').dataset.m]), [true, true, ['مصطفى', 'حسن', 'أحمد'], 'all']);
+    await A.click('#ptSet'); await A.fill('#psA', '10'); await A.click('#psOk'); await A.settle(200);
     const autoN = X => X.evaluate(() => db.txs.filter(t => t.id.startsWith('t_ps_') && !t.del).length);
-    eq('اتسجل مرتب 3 خميسات لـ 3 شركاء بتواريخ الخميس', [await autoN(A), await A.evaluate(() => db.txs.filter(t => t.auto).every(t => dowOf(t.date) === 4)), await A.evaluate(() => vaultBal(''))], [9, true, vb0 - 9000]);
-    eq('التشغيل تاني مبيكررش', await A.evaluate(() => autoPartners(true)), 0);
-    await bg(A, 'syncNow()'); await bg(B, 'syncNow()'); await B.settle(1500);
-    eq('الجهاز التاني مسجلش تاني', [await B.evaluate(() => autoPartners(true)), await autoN(B)], [0, 9]);
-    await A.evaluate(() => { partMode = 'all'; renderPartners(); });   // أول الشهر: الخميسات اللي فاتت في الشهر اللي قبله
-    await A.click('#p-part tr[data-i]'); await A.click('#ptDel'); await A.click('#cOk'); await A.settle(150);
-    eq('المرتب الملغي مبيرجعش يتسجل', [await A.evaluate(() => autoPartners(true)), await autoN(A)], [0, 8]);
-    await A.evaluate(() => { partMode = 'month'; renderPartners(); });
+    eq('مفيش مرتب بيتسجل لوحده كل خميس (بطلبه 27/11/2026)', [await A.evaluate(() => partners().amt), await A.evaluate(() => autoPartners(true)), await autoN(A), await A.evaluate(() => vaultBal(''))], [1000, 0, 0, vb0]);
+    /* القبض بيتفهم لوحده من المصروف العادي: كلمة (قبض/مرتب/سحب) + اسم الشريك، منك أو من أحمد */
+    const pq = await A.evaluate(() => {
+      ensureMktVault();
+      const c = catsL('exp')[0].id, d = todayISO(), add = (amt, note, vault = 'v_main') => { const r = {id: newId('t_'), type: 'exp', amt, vault, to: '', cat: c, note, date: d, at: nowS(), upd: nowS(), del: false, hist: []}; db.txs.push(r); IDX.tx.set(r.id, r); return r.id; };
+      const ids = {q: add(77100, 'قبض أحمد'), m: add(33300, 'مصروفات السوق — مرتب احمد', 'v_mkt'), dr: add(22200, 'سحب مصطفى'), no: add(11100, 'أحمد بنزين'), two: add(44400, 'قبض أحمد ومصطفى'), sh: add(55500, 'مرتب حسن ابو شوشه')};
+      const v0 = [vaultBal(''), vaultBal('v_mkt')], n = autoPartners(true), g = k => IDX.tx.get(ids[k]);
+      return {ids, r: [n, ...['q', 'm', 'dr'].map(k => [partName(g(k).pt), g(k).cat, g(k).pta, g(k).pcat === c, g(k).hist.length]), ...['no', 'two', 'sh'].map(k => !!g(k).pt || g(k).cat !== c), [vaultBal(''), vaultBal('v_mkt')].join() === v0.join(), autoPartners(true)]};
+    });
+    eq('«قبض أحمد» و«مرتب احمد» من أحمد = مرتب أحمد، و«سحب مصطفى» = مسحوبات، والخزن زي ما هي، و«أحمد بنزين» واسمين وأبو شوشه مش قبض', pq.r,
+      [3, ['أحمد', 'c_psal', 1, true, 1], ['أحمد', 'c_psal', 1, true, 1], ['مصطفى', 'c_pdraw', 1, true, 1], false, false, false, true, 0]);
+    await A.evaluate(() => renderPartners());
+    eq('صفحة الشركاء: كل واحد خد كام من الأول، والقبض بالتاريخ', await A.evaluate(() => { const tr = [...$$('#p-part .pst tbody tr')].find(x => x.textContent.includes('أحمد')); return [tr.querySelector('td.t').textContent, $('#p-part').textContent.includes('كل القبض بالتاريخ'), $('#p-part').textContent.includes('قبض أحمد')]; }), [await A.evaluate(() => fmtP(77100 + 33300)), true, true]);
+    eq('مش قبض شريك: رجع مصروف في بنده ومبيتفهمش تاني', await A.evaluate(id => { const t = IDX.tx.get(id); partnerTxModal(t); $('#ptNo').click(); const r = [t.pt, t.ptk, t.cat === catsL('exp')[0].id, t.hist.length]; autoPartners(true); r.push(t.pt); return r; }, pq.ids.q), ['', 'exp', true, 2, '']);
+    eq('أحمد غيّر الملاحظة لحاجة تانية: رجع مصروف لوحده', await A.evaluate(id => { const t = IDX.tx.get(id); t.note = 'مصروفات السوق — بنزين'; autoPartners(true); return [t.pt, t.pta, t.cat === t.pcat]; }, pq.ids.m), ['', 0, true]);
+    await A.evaluate(ids => { Object.values(ids).forEach(id => { const t = IDX.tx.get(id); t.del = true; touch(t); }); saveDB(); renderPartners(); }, pq.ids);
+    await A.click('#ptSal'); await A.fill('#ptA', '20'); await A.click('#ptOk'); await closed(A);
     await A.click('#ptNew'); await A.fill('#ptA', '50'); await A.fill('#ptN', 'سلفة'); await A.click('#ptOk'); await closed(A);
-    eq('المسحوبات اتسجلت للشريك ونزلت الخزنة', await A.evaluate(() => [db.txs.filter(t => t.cat === 'c_pdraw' && !t.del).map(t => [partName(t.pt), t.amt, t.note]), vaultBal('')]), [[['مصطفى', 5000, 'مسحوبات مصطفى — سلفة']], vb0 - 8000 - 5000]);
+    eq('القبض والمسحوبات بإيده من صفحة الشركاء اتسجلوا للشريك ونزلوا الخزنة', await A.evaluate(() => [db.txs.filter(t => (t.cat === 'c_pdraw' || t.cat === 'c_psal') && !t.del).map(t => [partName(t.pt), t.cat, t.amt, t.note]), vaultBal('')]), [[['مصطفى', 'c_psal', 2000, 'مرتب مصطفى'], ['مصطفى', 'c_pdraw', 5000, 'مسحوبات مصطفى — سلفة']], vb0 - 7000]);
     eq('بنود الشركاء مش في قايمة المصروفات العادية', await A.evaluate(() => catsL('exp').some(c => c.id === 'c_psal' || c.id === 'c_pdraw')), false);
-    /* شريك بياخد من الكاش اللي معاه (خزنة السوق)، ومسحوبات قديمة من غير خزنة */
-    eq('الشريك بخزنة السوق: مرتبه ينزل منها، والمسحوبات القديمة من غير خزنة متمسش أي رصيد', await A.evaluate(() => {
-      const s0 = partners(), d = lastThu(), m0 = vaultBal('v_mkt'), v0 = vaultBal(''), p0 = cashSums(d, d).part;
-      putSet('partners', Object.assign({}, s0, {list: s0.list.concat([{id: 'pz', name: 'تجربة', from: d, vault: 'v_mkt'}])}));
-      autoPartners(true);
-      const a = IDX.tx.get(`t_ps_${d}_pz`), r1 = [a && a.vault, vaultBal('v_mkt') - m0, vaultBal('') - v0];
-      const nvr = {id: 't_test_nv', type: 'exp', amt: 7000, vault: '', nv: 1, to: '', cat: 'c_pdraw', pt: 'pz', pnote: '', note: 'قديمة', date: d, at: 1, upd: 1, del: false, hist: []};
+    /* المسحوبات القديمة من غير خزنة */
+    eq('المسحوبات القديمة من غير خزنة متمسش أي رصيد', await A.evaluate(() => {
+      const d = todayISO(), m0 = vaultBal('v_mkt'), v0 = vaultBal(''), p0 = cashSums(d, d).part;
+      const nvr = {id: 't_test_nv', type: 'exp', amt: 7000, vault: '', nv: 1, to: '', cat: 'c_pdraw', pt: 'pa', pnote: '', note: 'قديمة', date: d, at: 1, upd: 1, del: false, hist: []};
       db.txs.push(nvr); IDX.tx.set(nvr.id, nvr);
-      const r2 = [vaultBal('') - v0, vaultBal('v_mkt') - m0, cashSums(d, d).part - p0, vaultMoves('', d, d).some(m => m.r.id === nvr.id)];
-      nvr.del = true; a.del = true; touch(nvr); touch(a); putSet('partners', s0);
-      return [r1, r2];
-    }), [['v_mkt', -1000, 0], [0, -1000, 8000, false]]);
+      const r = [vaultBal('') - v0, vaultBal('v_mkt') - m0, cashSums(d, d).part - p0, vaultMoves('', d, d).some(m => m.r.id === nvr.id)];
+      nvr.del = true; touch(nvr); saveDB();
+      return r;
+    }), [0, 0, 7000, false]);
 
     sec('١٢ب) عهدة حسن (lib/hsn.js): قراية بس من تطبيق المرتبات، والخزنة مبتتحركش');
     {
@@ -1455,7 +1461,7 @@ const T0 = Date.now();
 
     sec('١٣) الأرباح ولوحة النهارده والبحث');
     const PR = await A.evaluate(() => { const y = todayISO().slice(0, 4) + '-01-01', x = profitOf(y, todayISO()), ex = db.txs.filter(t => !t.del && t.type === 'exp' && !t.pt && !NOT_PL.has(t.cat) && t.date >= y).reduce((s, t) => s + t.amt, 0); return [x.sales, x.purch, x.part, x.exp === ex, x.before === x.sales - x.purch - x.exp + x.inc, x.after === x.before - x.part]; });
-    eq('الأرباح: المبيعات والمشتريات والشركاء لوحدهم والربح قبل وبعد', PR, [968500, 5050000, 13000, true, true, true]);
+    eq('الأرباح: المبيعات والمشتريات والشركاء لوحدهم والربح قبل وبعد', PR, [968500, 5050000, 7000, true, true, true]);
     await A.evaluate(() => { repKind = 'home'; repSum = 'month'; go('rep'); renderReports(); }); await A.settle(200);
     eq('التقارير: أول صفحة كروت، والأرقام من نفس حسبة التقارير بالقرش', await A.evaluate(() => {
       const card = g => $(`#p-rep .rcd[data-go=${g}] b`).textContent, R = sumRange('month'), x = profitOf(R.f, R.to), bal = allBalances();
